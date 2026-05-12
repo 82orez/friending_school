@@ -110,7 +110,10 @@ export default function Home() {
     <div className="bg-white font-sans text-[#1a1a1a]">
       {/* 네비 */}
       <nav className="sticky top-0 z-[100] flex items-center justify-between border-b border-[#eee] bg-white px-6 py-4">
-        <div className="text-base font-bold">프렌딩 스쿨</div>
+        <div className="flex items-center">
+          <img src="/images/friending_school_logo.png" alt="프렌딩 스쿨 로고" width={40} height={40} className="h-10 w-auto" />
+        </div>
+        <div className="hidden flex-1 text-center text-3xl font-bold md:block">프렌딩 스쿨</div>
         <button
           type="button"
           onClick={toggleMenu}
