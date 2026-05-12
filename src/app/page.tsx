@@ -303,16 +303,18 @@ export default function Home() {
         </h2>
         <p className="mb-8 text-center text-sm text-[#666]">각 Unit은 4가지 실제 상황으로 구성되어 있습니다</p>
 
-        {units.map((u) => (
-          <div key={u.title} className="mb-6 rounded-lg border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-7">
-            <div className="mb-5 text-[15px] leading-[1.5] font-extrabold text-[#1a1a1a]">{u.title}</div>
-            {u.items.map((item) => (
-              <div key={item} className="ml-4 border-l-2 border-[#ddd] pl-3 text-sm leading-[1.9] text-[#666]">
-                {item}
-              </div>
-            ))}
-          </div>
-        ))}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
+          {units.map((u) => (
+            <div key={u.title} className="rounded-lg border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-7">
+              <div className="mb-5 text-[15px] leading-[1.5] font-extrabold text-[#1a1a1a]">{u.title}</div>
+              {u.items.map((item) => (
+                <div key={item} className="ml-4 border-l-2 border-[#ddd] pl-3 text-sm leading-[1.9] text-[#666]">
+                  {item}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* 8. 프렌딩 스쿨 소개 */}
