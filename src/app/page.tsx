@@ -207,17 +207,17 @@ export default function Home() {
         <h2 className="mb-6 text-center text-[32px] leading-[1.3] font-black">
           우리는 <span className="text-[#ff4757]">이렇게 달라요</span>
         </h2>
-        <p className="mb-6 text-base leading-[1.95] text-[#ddd]">
+        <p className="mb-6 text-center text-base leading-[1.95] text-[#ddd]">
           <strong className="text-[19px] font-extrabold">매일 50분 몰입이 만드는 힘</strong>
           <br />
           영어 초급이라도 집중된 환경에서 2주 반복하면 자동 반응이 됩니다.
         </p>
-        <p className="mt-6 mb-6 text-base leading-[1.95] text-[#ddd]">
+        <p className="mt-6 mb-6 text-center text-base leading-[1.95] text-[#ddd]">
           <strong className="text-[19px] font-extrabold">워홀에서 정말 쓸 표현만</strong>
           <br />
           일반 교과서는 버립니다. Unit 1-10은 모두 실제 워홀러 경험에서 나온 필수 표현입니다.
         </p>
-        <p className="mt-6 mb-6 text-base leading-[1.95] text-[#ddd]">
+        <p className="mt-6 mb-6 text-center text-base leading-[1.95] text-[#ddd]">
           <strong className="text-[19px] font-extrabold">현장에서 바로 먹혀듭니다</strong>
           <br />
           공항, 숙소, 면접, 업무. 당신이 정말 할 말만 배웁니다.
