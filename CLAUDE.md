@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **공통 컴포넌트**: 네비게이션 바(슬라이드 메뉴 포함)와 푸터는 `src/components/Navbar.tsx`, `src/components/Footer.tsx`로 분리되어 있고 `src/app/layout.tsx`에서 `{children}`을 감싸도록 배치됩니다. `Navbar`는 슬라이드 메뉴 상태(`useState`) 때문에 `"use client"` 클라이언트 컴포넌트, `Footer`는 서버 컴포넌트입니다. 전역 색상/폰트(`bg-white font-sans text-[#1a1a1a]`)는 `layout.tsx`의 `<body>` 클래스에 적용되어 있습니다.
 - **루트 레이아웃**: `src/app/layout.tsx`에서 `lang="ko"`, 한글 메타데이터, Pretendard 가변 폰트(`next/font/local`로 `node_modules/pretendard/dist/web/variable/woff2/PretendardVariable.woff2` 로드, `--font-pretendard` CSS 변수)를 설정합니다. 페이지 제목/설명은 한국어 마케팅 카피이므로 변경 시 SEO 영향을 고려해야 합니다.
 - **스타일링**: Tailwind CSS v4를 `globals.css`의 `@import "tailwindcss"` + `@theme inline` 방식으로 사용합니다(별도 `tailwind.config` 파일 없음). 색상 토큰은 `--background`, `--foreground` CSS 변수로 정의되며, `--font-sans`는 `--font-pretendard`에 매핑되어 있습니다. 페이지 내 강조색은 `#ff4757`(브랜드 레드)이 일관되게 사용됩니다.
-- **자산**: 이미지/로고는 `public/images/`에 위치하며 `<img src="/images/...">`로 직접 참조됩니다 (`next/image` 미사용).
+- **자산**: 이미지/로고는 `public/images/`에 위치하며 `<img src="/images/...">`로 직접 참조됩니다 (`next/image` 미사용). Favicon은 Next.js App Router 파일 컨벤션을 따라 `src/app/icon.svg`로 두면 자동으로 `<head>`에 `<link rel="icon" type="image/svg+xml">`이 주입됩니다(`layout.tsx`에 별도 `metadata.icons` 설정 없음).
 - **경로 별칭**: `@/*` → `./src/*` (tsconfig.json).
 - **Supabase 인증 SSR 구조**: `@supabase/ssr` + `@supabase/supabase-js`를 사용해 세 가지 컨텍스트별 클라이언트를 분리해 둡니다.
   - `src/utils/supabase/client.ts` — 클라이언트 컴포넌트용 `createBrowserClient`.

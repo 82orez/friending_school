@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+  <defs>
+    <linearGradient id="crossGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E3488E"/>
+      <stop offset="100%" stop-color="#FA7B5B"/>
+    </linearGradient>
+    
+    <linearGradient id="arrowGrad" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6C2C94"/>
+      <stop offset="100%" stop-color="#1A2254"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M 12 54 L 12 42 L 32 30 L 52 42 L 52 54 L 40 54 L 40 46 L 24 46 L 24 54 Z" fill="#1A2254"/>
+
+  <rect x="28" y="10" width="8" height="26" rx="2" fill="url(#crossGrad)"/>
+  <rect x="20" y="18" width="24" height="8" rx="2" fill="url(#crossGrad)"/>
+
+  <path d="M 8 58
+           C 24 64, 48 64, 56 48
+           L 50 46
+           L 62 38
+           L 62 52
+           L 56 50
+           C 48 60, 24 60, 8 54 Z" fill="url(#arrowGrad)"/>
+</svg>
