@@ -22,6 +22,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **스타일링**: Tailwind CSS v4를 `globals.css`의 `@import "tailwindcss"` + `@theme inline` 방식으로 사용합니다(별도 `tailwind.config` 파일 없음). 색상 토큰은 `--background`, `--foreground` CSS 변수로 정의되며, `--font-sans`는 `--font-pretendard`에 매핑되어 있습니다. 페이지 내 강조색은 `#ff4757`(브랜드 레드)이 일관되게 사용됩니다.
 - **자산**: 이미지/로고는 `public/images/`에 위치하며 `<img src="/images/...">`로 직접 참조됩니다 (`next/image` 미사용).
 - **경로 별칭**: `@/*` → `./src/*` (tsconfig.json).
+- **Supabase 인증 SSR 구조**: `@supabase/ssr` + `@supabase/supabase-js`를 사용해 세 가지 컨텍스트별 클라이언트를 분리해 둡니다.
+  - `src/utils/supabase/client.ts` — 클라이언트 컴포넌트용 `createBrowserClient`.
+  - `src/utils/supabase/server.ts` — 서버 컴포넌트/Route Handler용 `createServerClient` (Next의 `cookies()` 스토어 주입).
+  - `src/utils/supabase/middleware.ts` — `updateSession()`이 매 요청마다 `supabase.auth.getUser()`를 호출해 쿠키 기반 세션을 갱신합니다. **`createServerClient`와 `getUser()` 사이에 다른 로직을 두지 말 것** (세션 갱신 누락으로 사용자가 임의로 로그아웃될 수 있음).
+  - `src/middleware.ts`가 위 `updateSession`을 호출하며, `matcher`로 정적 자산(`_next/static`, `_next/image`, 이미지 확장자, `favicon.ico`)을 제외한 모든 경로에서 동작합니다.
+  - 필요한 환경 변수: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (예: `.env.local`). 미설정 시 미들웨어 단계에서 런타임 오류가 발생합니다.
 
 ## 작업 시 주의사항
 
