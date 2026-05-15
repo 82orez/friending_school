@@ -24,7 +24,7 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
   const origin = headerList.get("origin") ?? headerList.get("x-forwarded-host") ?? "";
 
   const supabase = createClient(await cookies());
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -33,7 +33,16 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
   });
 
   if (error) {
+    if (error.code === "user_already_exists" || /already\s+registered/i.test(error.message)) {
+      return { error: "이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요." };
+    }
     return { error: error.message };
+  }
+
+  // 이메일 확인이 켜진 Supabase 프로젝트에서는 중복 이메일이어도 에러 대신
+  // data.user.identities가 빈 배열로 반환됩니다(사용자 열거 방지).
+  if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    return { error: "이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요." };
   }
 
   return { success: "입력하신 이메일로 인증 링크를 보냈습니다. 메일함을 확인해 주세요." };
