@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { cookies } from "next/headers";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/utils/supabase/server";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -20,15 +22,20 @@ export const metadata: Metadata = {
   description: "청년을 세계로, 프렌딩 스쿨. 매일 50분 워홀 필수 생존 영어 말하기.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <html lang="ko" className={cn("font-sans", geist.variable)}>
       <body className={`${pretendard.variable} bg-white font-sans text-[#1a1a1a] antialiased`}>
-        <Navbar />
+        <Navbar user={user ? { email: user.email } : null} />
         {children}
         <Footer />
       </body>

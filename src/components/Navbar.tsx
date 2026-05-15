@@ -1,8 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+import { logout } from "@/app/logout/actions";
 
-export default function Navbar() {
+type NavbarUser = { email?: string | null } | null;
+
+export default function Navbar({ user }: { user: NavbarUser }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const closeMenu = () => setMenuOpen(false);
@@ -16,13 +20,45 @@ export default function Navbar() {
           <img src="/images/friending_school_logo.png" alt="프렌딩 스쿨 로고" width={40} height={40} className="h-10 w-auto" />
         </div>
         <div className="hidden flex-1 text-center text-3xl font-bold md:block">프렌딩 스쿨</div>
-        <button
-          type="button"
-          onClick={toggleMenu}
-          aria-label="메뉴 열기"
-          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#ff4757] text-xl text-white">
-          ≡
-        </button>
+
+        <div className="flex items-center gap-3">
+          {/* 데스크톱 인라인 인증 영역 */}
+          <div className="hidden items-center gap-3 md:flex">
+            {user ? (
+              <>
+                <span className="max-w-[180px] truncate text-sm text-[#666]" title={user.email ?? undefined}>
+                  {user.email}
+                </span>
+                <form action={logout}>
+                  <button
+                    type="submit"
+                    className="cursor-pointer rounded-full border border-[#ddd] px-3 py-1.5 text-sm font-medium text-[#333] transition-colors hover:border-[#ff4757] hover:text-[#ff4757]">
+                    로그아웃
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm font-medium text-[#333] transition-colors hover:text-[#ff4757]">
+                  로그인
+                </Link>
+                <Link
+                  href="/signup"
+                  className="rounded-full bg-[#ff4757] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#ff4757]/90">
+                  회원가입
+                </Link>
+              </>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={toggleMenu}
+            aria-label="메뉴 열기"
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#ff4757] text-xl text-white">
+            ≡
+          </button>
+        </div>
       </nav>
 
       {/* 슬라이드 메뉴 */}
@@ -48,6 +84,42 @@ export default function Navbar() {
               신청방법
             </a>
           </li>
+
+          {/* 모바일 인증 섹션 */}
+          {user ? (
+            <>
+              <li className="border-b border-[#eee] py-4">
+                <span className="block truncate text-[13px] text-[#888]" title={user.email ?? undefined}>
+                  {user.email}
+                </span>
+              </li>
+              <li className="py-4">
+                <form action={logout}>
+                  <button
+                    type="submit"
+                    className="w-full cursor-pointer rounded-md border border-[#ddd] px-4 py-2.5 text-[15px] font-medium text-[#333] transition-colors hover:border-[#ff4757] hover:text-[#ff4757]">
+                    로그아웃
+                  </button>
+                </form>
+              </li>
+            </>
+          ) : (
+            <>
+              <li className="border-b border-[#eee] py-4">
+                <Link href="/login" onClick={closeMenu} className="text-[15px] font-medium text-[#333] no-underline">
+                  로그인
+                </Link>
+              </li>
+              <li className="py-4">
+                <Link
+                  href="/signup"
+                  onClick={closeMenu}
+                  className="block w-full rounded-md bg-[#ff4757] px-4 py-2.5 text-center text-[15px] font-semibold text-white no-underline transition-colors hover:bg-[#ff4757]/90">
+                  회원가입
+                </Link>
+              </li>
+            </>
+          )}
         </ul>
       </div>
     </>
