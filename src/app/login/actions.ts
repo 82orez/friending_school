@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { emailExists } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
+import { rateLimit, formatRetryAfter } from "@/lib/rate-limit";
 
 export type LoginState = { error?: string; canResend?: boolean } | null;
 export type ResendConfirmationResult = { error?: string; success?: string };
@@ -16,6 +17,11 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
 
   if (!email || !password) {
     return { error: "이메일과 비밀번호를 입력해 주세요." };
+  }
+
+  const limit = rateLimit(`login:${email.toLowerCase()}`, 10, 60_000);
+  if (!limit.allowed) {
+    return { error: `로그인 시도가 너무 잦습니다. ${formatRetryAfter(limit.retryAfterSec)} 다시 시도해 주세요.` };
   }
 
   const supabase = createClient(await cookies());
@@ -45,6 +51,11 @@ export async function resendConfirmation(email: string): Promise<ResendConfirmat
   const trimmed = email.trim();
   if (!trimmed) {
     return { error: "이메일을 입력해 주세요." };
+  }
+
+  const limit = rateLimit(`resend:${trimmed.toLowerCase()}`, 1, 60_000);
+  if (!limit.allowed) {
+    return { error: `재발송 요청이 너무 잦습니다. ${formatRetryAfter(limit.retryAfterSec)} 다시 시도해 주세요.` };
   }
 
   const headerList = await headers();

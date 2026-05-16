@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { emailExists } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
+import { rateLimit, formatRetryAfter } from "@/lib/rate-limit";
 
 export type ForgotPasswordState = { error?: string; success?: string } | null;
 
@@ -12,6 +13,11 @@ export async function forgotPassword(_prev: ForgotPasswordState, formData: FormD
 
   if (!email) {
     return { error: "이메일을 입력해 주세요." };
+  }
+
+  const limit = rateLimit(`forgot-password:${email.toLowerCase()}`, 1, 60_000);
+  if (!limit.allowed) {
+    return { error: `재설정 메일 요청이 너무 잦습니다. ${formatRetryAfter(limit.retryAfterSec)} 다시 시도해 주세요.` };
   }
 
   const exists = await emailExists(email);

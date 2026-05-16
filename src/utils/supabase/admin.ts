@@ -17,12 +17,18 @@ export function createAdminClient() {
  * 이메일이 등록되어 있는지 확인.
  * - `true` / `false`: 확실히 확인됨
  * - `null`: admin API 호출 실패(환경 변수 누락, 네트워크 오류 등) — 호출 측에서 모호한 케이스로 처리할 것.
+ *
+ * 실패 시 console.error로 서버 로그(Vercel function logs 등)에 기록되어 운영자가 진단 가능.
  */
 export async function emailExists(email: string): Promise<boolean | null> {
   let admin;
   try {
     admin = createAdminClient();
-  } catch {
+  } catch (err) {
+    console.error(
+      "[Supabase admin] admin client 생성 실패. SUPABASE_SERVICE_ROLE_KEY 환경 변수가 설정되어 있는지 확인하세요.",
+      err,
+    );
     return null;
   }
   const target = email.toLowerCase();
@@ -30,7 +36,10 @@ export async function emailExists(email: string): Promise<boolean | null> {
   const maxPages = 50;
   for (let page = 1; page <= maxPages; page++) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) return null;
+    if (error) {
+      console.error("[Supabase admin] listUsers 호출 실패:", error);
+      return null;
+    }
     const users = (data?.users ?? []) as Array<{ email?: string | null }>;
     if (users.length === 0) return false;
     if (users.some((u) => u.email?.toLowerCase() === target)) return true;
