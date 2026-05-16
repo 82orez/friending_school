@@ -96,9 +96,17 @@ const units = [
   },
 ];
 
-export default function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ reset?: string }> }) {
+  const { reset } = await searchParams;
+  const showResetSuccess = reset === "success";
+
   return (
     <>
+      {showResetSuccess && (
+        <div className="bg-green-50 px-6 py-3 text-center text-sm font-medium text-green-700" role="status">
+          비밀번호가 성공적으로 변경되었습니다.
+        </div>
+      )}
       {/* 1. 히어로 */}
       <section id="hero" className="bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] px-6 py-14 text-center text-white">
         <div className="mb-4 text-[18px] font-bold tracking-wider opacity-80">청년을 세계로, 프렌딩 스쿨</div>

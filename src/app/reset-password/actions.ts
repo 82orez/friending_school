@@ -29,5 +29,5 @@ export async function resetPassword(_prev: ResetPasswordState, formData: FormDat
   }
 
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect("/?reset=success");
 }

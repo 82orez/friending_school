@@ -36,7 +36,7 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
     if (error.code === "user_already_exists" || /already\s+registered/i.test(error.message)) {
       return { error: "이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요." };
     }
-    return { error: error.message };
+    return { error: "회원가입 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
   // 이메일 확인이 켜진 Supabase 프로젝트에서는 중복 이메일이어도 에러 대신
