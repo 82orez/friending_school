@@ -14,6 +14,9 @@ export async function forgotPassword(_prev: ForgotPasswordState, formData: FormD
   }
 
   const exists = await emailExists(email);
+  if (exists === null) {
+    return { error: "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
   if (!exists) {
     return { error: "가입되지 않은 이메일입니다. 회원가입 후 이용해 주세요." };
   }

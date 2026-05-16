@@ -13,14 +13,24 @@ export function createAdminClient() {
   });
 }
 
-export async function emailExists(email: string): Promise<boolean> {
-  const admin = createAdminClient();
+/**
+ * 이메일이 등록되어 있는지 확인.
+ * - `true` / `false`: 확실히 확인됨
+ * - `null`: admin API 호출 실패(환경 변수 누락, 네트워크 오류 등) — 호출 측에서 모호한 케이스로 처리할 것.
+ */
+export async function emailExists(email: string): Promise<boolean | null> {
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch {
+    return null;
+  }
   const target = email.toLowerCase();
   const perPage = 1000;
   const maxPages = 50;
   for (let page = 1; page <= maxPages; page++) {
     const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) return false;
+    if (error) return null;
     const users = (data?.users ?? []) as Array<{ email?: string | null }>;
     if (users.length === 0) return false;
     if (users.some((u) => u.email?.toLowerCase() === target)) return true;
