@@ -13,6 +13,9 @@ export default function SignupForm() {
   const [state, formAction, pending] = useActionState<SignupState, FormData>(signup, null);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
 
   return (
     <Card className="mx-auto w-full max-w-md">
@@ -24,7 +27,17 @@ export default function SignupForm() {
         <form action={formAction} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">이메일</Label>
-            <Input id="email" name="email" type="email" autoComplete="email" required placeholder="you@example.com" className="h-10" />
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-10"
+            />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="password">비밀번호</Label>
@@ -36,6 +49,8 @@ export default function SignupForm() {
                 autoComplete="new-password"
                 required
                 minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="h-10 pr-10"
               />
               <button
@@ -57,6 +72,8 @@ export default function SignupForm() {
                 type={showPasswordConfirm ? "text" : "password"}
                 autoComplete="new-password"
                 required
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
                 className="h-10 pr-10"
               />
               <button
