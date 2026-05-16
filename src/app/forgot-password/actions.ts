@@ -3,6 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { emailExists } from "@/utils/supabase/admin";
+import { getOrigin } from "@/lib/origin";
 
 export type ForgotPasswordState = { error?: string; success?: string } | null;
 
@@ -22,8 +23,8 @@ export async function forgotPassword(_prev: ForgotPasswordState, formData: FormD
   }
 
   const headerList = await headers();
-  const origin = headerList.get("origin") ?? headerList.get("x-forwarded-host") ?? "";
-  const redirectTo = origin ? `${origin}/auth/confirm?next=/reset-password` : undefined;
+  const origin = getOrigin(headerList);
+  const redirectTo = `${origin}/auth/confirm?next=/reset-password`;
 
   const supabase = createClient(await cookies());
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });

@@ -2,6 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import { getOrigin } from "@/lib/origin";
 
 export type SignupState = { error?: string; success?: string } | null;
 
@@ -21,14 +22,14 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
   }
 
   const headerList = await headers();
-  const origin = headerList.get("origin") ?? headerList.get("x-forwarded-host") ?? "";
+  const origin = getOrigin(headerList);
 
   const supabase = createClient(await cookies());
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: origin ? `${origin}/auth/confirm` : undefined,
+      emailRedirectTo: `${origin}/auth/confirm`,
     },
   });
 

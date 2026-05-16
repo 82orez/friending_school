@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { login, type LoginState } from "@/app/login/actions";
+import { login, resendConfirmation, type LoginState, type ResendConfirmationResult } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,16 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [resendPending, startResend] = useTransition();
+  const [resendResult, setResendResult] = useState<ResendConfirmationResult | null>(null);
+
+  const handleResend = () => {
+    setResendResult(null);
+    startResend(async () => {
+      const result = await resendConfirmation(email);
+      setResendResult(result);
+    });
+  };
 
   return (
     <Card className="mx-auto w-full max-w-md">
@@ -66,8 +76,29 @@ export default function LoginForm() {
           </div>
 
           {state?.error && (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-destructive" role="alert">
+                {state.error}
+              </p>
+              {state.canResend && (
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendPending || !email}
+                  className="self-start cursor-pointer text-sm font-medium text-[#ff4757] hover:underline disabled:cursor-not-allowed disabled:opacity-50">
+                  {resendPending ? "재발송 중..." : "인증 메일 다시 보내기"}
+                </button>
+              )}
+            </div>
+          )}
+          {resendResult?.error && (
             <p className="text-sm text-destructive" role="alert">
-              {state.error}
+              {resendResult.error}
+            </p>
+          )}
+          {resendResult?.success && (
+            <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700" role="status">
+              {resendResult.success}
             </p>
           )}
 
