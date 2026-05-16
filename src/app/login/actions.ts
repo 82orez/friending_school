@@ -4,25 +4,9 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { createAdminClient } from "@/utils/supabase/admin";
+import { emailExists } from "@/utils/supabase/admin";
 
 export type LoginState = { error?: string } | null;
-
-async function emailExists(email: string): Promise<boolean> {
-  const admin = createAdminClient();
-  const target = email.toLowerCase();
-  const perPage = 1000;
-  const maxPages = 50;
-  for (let page = 1; page <= maxPages; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) return false;
-    const users = (data?.users ?? []) as Array<{ email?: string | null }>;
-    if (users.length === 0) return false;
-    if (users.some((u) => u.email?.toLowerCase() === target)) return true;
-    if (users.length < perPage) return false;
-  }
-  return false;
-}
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const email = String(formData.get("email") ?? "").trim();

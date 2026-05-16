@@ -2,6 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import { emailExists } from "@/utils/supabase/admin";
 
 export type ForgotPasswordState = { error?: string; success?: string } | null;
 
@@ -10,6 +11,11 @@ export async function forgotPassword(_prev: ForgotPasswordState, formData: FormD
 
   if (!email) {
     return { error: "이메일을 입력해 주세요." };
+  }
+
+  const exists = await emailExists(email);
+  if (!exists) {
+    return { error: "가입되지 않은 이메일입니다. 회원가입 후 이용해 주세요." };
   }
 
   const headerList = await headers();
