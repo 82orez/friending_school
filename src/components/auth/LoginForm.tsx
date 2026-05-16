@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { login, type LoginState } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label";
 
 export default function LoginForm() {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(login, null);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <Card className="mx-auto w-full max-w-md">
@@ -25,7 +27,23 @@ export default function LoginForm() {
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="password">비밀번호</Label>
-            <Input id="password" name="password" type="password" autoComplete="current-password" required className="h-10" />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                className="h-10 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-muted-foreground hover:text-foreground">
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           {state?.error && (
