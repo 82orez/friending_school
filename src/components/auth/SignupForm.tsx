@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { signup, type SignupState } from "@/app/signup/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,8 @@ import { Label } from "@/components/ui/label";
 
 export default function SignupForm() {
   const [state, formAction, pending] = useActionState<SignupState, FormData>(signup, null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
   return (
     <Card className="mx-auto w-full max-w-md">
@@ -25,12 +28,45 @@ export default function SignupForm() {
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="password">비밀번호</Label>
-            <Input id="password" name="password" type="password" autoComplete="new-password" required minLength={6} className="h-10" />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                required
+                minLength={6}
+                className="h-10 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-muted-foreground hover:text-foreground">
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             <p className="text-xs text-muted-foreground">6자 이상 입력해 주세요.</p>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="passwordConfirm">비밀번호 확인</Label>
-            <Input id="passwordConfirm" name="passwordConfirm" type="password" autoComplete="new-password" required className="h-10" />
+            <div className="relative">
+              <Input
+                id="passwordConfirm"
+                name="passwordConfirm"
+                type={showPasswordConfirm ? "text" : "password"}
+                autoComplete="new-password"
+                required
+                className="h-10 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPasswordConfirm((prev) => !prev)}
+                aria-label={showPasswordConfirm ? "비밀번호 숨기기" : "비밀번호 보기"}
+                className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-muted-foreground hover:text-foreground">
+                {showPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
 
           {state?.error && (

@@ -17,9 +17,13 @@ export default function Navbar({ user }: { user: NavbarUser }) {
       {/* 네비 */}
       <nav className="sticky top-0 z-[100] flex items-center justify-between border-b border-[#eee] bg-white px-6 py-4">
         <div className="flex items-center">
-          <img src="/images/friending_school_logo.png" alt="프렌딩 스쿨 로고" width={40} height={40} className="h-10 w-auto" />
+          <Link href="/">
+            <img src="/images/friending_school_logo.png" alt="프렌딩 스쿨 로고" width={40} height={40} className="h-10 w-auto" />
+          </Link>
         </div>
-        <div className="hidden flex-1 text-center text-3xl font-bold md:block">프렌딩 스쿨</div>
+        <div className="hidden flex-1 text-center text-3xl font-bold md:block">
+          <Link href="/">프렌딩 스쿨 </Link>
+        </div>
 
         <div className="flex items-center gap-3">
           {/* 데스크톱 인라인 인증 영역 */}
