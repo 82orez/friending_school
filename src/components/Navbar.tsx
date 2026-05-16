@@ -1,16 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { logout } from "@/app/logout/actions";
+import { createClient } from "@/utils/supabase/client";
 
 type NavbarUser = { email?: string | null } | null;
 
-export default function Navbar({ user }: { user: NavbarUser }) {
+export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
+  const [user, setUser] = useState<NavbarUser>(initialUser);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const closeMenu = () => setMenuOpen(false);
   const toggleMenu = () => setMenuOpen((prev) => !prev);
+
+  // SSR로 받은 user prop이 갱신되면(로그인 후 revalidatePath로 layout 재실행) state 동기화.
+  useEffect(() => {
+    setUser(initialUser);
+  }, [initialUser]);
+
+  // 다른 탭에서의 로그인/로그아웃, 토큰 갱신, bfcache 복원 등 SSR 재실행 없이 발생하는
+  // auth 상태 변화에 반응. layout-only revalidate가 닿지 않는 케이스를 보완.
+  useEffect(() => {
+    const supabase = createClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ? { email: session.user.email } : null);
+    });
+
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return;
+      supabase.auth.getUser().then(({ data }) => {
+        setUser(data.user ? { email: data.user.email } : null);
+      });
+    };
+    window.addEventListener("pageshow", handlePageShow);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, []);
 
   return (
     <>

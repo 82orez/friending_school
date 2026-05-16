@@ -40,3 +40,6 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 * **서버리스(Serverless) 환경 제약:** Vercel 등 인스턴스가 유동적인 서버리스 환경에서는 인스턴스별로 카운트가 분리되어 제한 효과가 낮아질 수 있습니다.
   * *확장 전략:* 향후 트래픽이 급증하거나 Vercel/Cloudflare 배포 환경으로 완전 이전 시, `rateLimit` 함수 내부만 **Upstash Redis**와 같은 외부 분산 메모리 스토어로 교체하면 됩니다. (호출부 인터페이스/시그니처는 동일하게 유지 가능)
 * **기존 보안 계층과의 관계:** Supabase 자체 보호 기능(이메일 OTP / 매직 링크 제한 등)이 이미 백엔드 단에서 기본 작동 중이므로, 이번 구현은 서비스 안정성을 높이기 위한 **이중 방어(Defense in Depth)** 역할을 수행합니다.
+
+## 추후 해결 과제
+- 로그인 된 상태에서는 로그인 페이지 접근 불가하기
