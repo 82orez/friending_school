@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 export default function LoginForm() {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(login, null);
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   return (
     <Card className="mx-auto w-full max-w-md">
@@ -23,7 +25,17 @@ export default function LoginForm() {
         <form action={formAction} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">이메일</Label>
-            <Input id="email" name="email" type="email" autoComplete="email" required placeholder="you@example.com" className="h-10" />
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-10"
+            />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="password">비밀번호</Label>
@@ -34,6 +46,8 @@ export default function LoginForm() {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="h-10 pr-10"
               />
               <button
