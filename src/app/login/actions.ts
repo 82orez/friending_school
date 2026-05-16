@@ -4,8 +4,25 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 
 export type LoginState = { error?: string } | null;
+
+async function emailExists(email: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const target = email.toLowerCase();
+  const perPage = 1000;
+  const maxPages = 50;
+  for (let page = 1; page <= maxPages; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) return false;
+    const users = (data?.users ?? []) as Array<{ email?: string | null }>;
+    if (users.length === 0) return false;
+    if (users.some((u) => u.email?.toLowerCase() === target)) return true;
+    if (users.length < perPage) return false;
+  }
+  return false;
+}
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const email = String(formData.get("email") ?? "").trim();
@@ -19,7 +36,16 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: "이메일 또는 비밀번호가 올바르지 않습니다." };
+    if (error.code === "email_not_confirmed") {
+      return { error: "이메일 인증이 완료되지 않았습니다. 인증 메일을 확인해 주세요." };
+    }
+    if (error.code === "invalid_credentials") {
+      const exists = await emailExists(email);
+      return exists
+        ? { error: "비밀번호가 일치하지 않습니다." }
+        : { error: "가입되지 않은 이메일입니다. 회원가입 후 이용해 주세요." };
+    }
+    return { error: "로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
 
   revalidatePath("/", "layout");
