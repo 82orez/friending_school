@@ -1,0 +1,27 @@
+"use server";
+
+import { cookies, headers } from "next/headers";
+import { createClient } from "@/utils/supabase/server";
+
+export type ForgotPasswordState = { error?: string; success?: string } | null;
+
+export async function forgotPassword(_prev: ForgotPasswordState, formData: FormData): Promise<ForgotPasswordState> {
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (!email) {
+    return { error: "이메일을 입력해 주세요." };
+  }
+
+  const headerList = await headers();
+  const origin = headerList.get("origin") ?? headerList.get("x-forwarded-host") ?? "";
+  const redirectTo = origin ? `${origin}/auth/confirm?next=/reset-password` : undefined;
+
+  const supabase = createClient(await cookies());
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+  if (error) {
+    return { error: "재설정 메일 발송 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  return { success: "입력하신 이메일로 비밀번호 재설정 링크를 보냈습니다. 메일함을 확인해 주세요." };
+}
