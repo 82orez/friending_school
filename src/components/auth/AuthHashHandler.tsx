@@ -32,7 +32,7 @@ export default function AuthHashHandler() {
         console.error("URL hash로부터 세션 생성 실패:", error);
         return;
       }
-      const next = type === "recovery" ? "/reset-password" : "/";
+      const next = type === "recovery" ? "/reset-password" : "/?verified=success";
       router.replace(next);
       router.refresh();
     });
