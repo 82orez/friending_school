@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import LoginForm from "@/components/auth/LoginForm";
 import AuthBannerSlot from "@/components/auth/AuthBannerSlot";
+import { createClient } from "@/utils/supabase/server";
 
 export const metadata: Metadata = {
   title: "로그인 | 프렌딩 스쿨",
@@ -10,6 +13,15 @@ export const metadata: Metadata = {
 type SearchParams = Promise<{ error?: string; verified?: string }>;
 
 export default async function LoginPage({ searchParams }: { searchParams: SearchParams }) {
+  const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect("/");
+  }
+
   const { error, verified } = await searchParams;
   const showAuthCodeError = error === "auth-code-error";
   const showVerifiedPending = verified === "pending";
