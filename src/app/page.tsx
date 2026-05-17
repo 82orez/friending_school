@@ -96,6 +96,9 @@ const units = [
   },
 ];
 
+import { Button } from "@/components/ui/button";
+import { SectionCard } from "@/components/SectionCard";
+
 export default async function Home({ searchParams }: { searchParams: Promise<{ reset?: string; verified?: string }> }) {
   const { reset, verified } = await searchParams;
   const showResetSuccess = reset === "success";
@@ -139,11 +142,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <br />
           <strong className="text-base">제대로 잡으세요.</strong>
         </div>
-        <button
-          type="button"
-          className="mt-6 w-full rounded bg-[#ff4757] px-8 py-4 text-sm font-bold text-white transition-colors hover:bg-[#ff4757]/90 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a] focus-visible:outline-none md:text-[15px]">
+        <Button variant="brand" className="mt-6 h-auto w-full px-8 py-4 text-sm font-bold md:text-[15px]">
           교육센터에서 신청하기
-        </button>
+        </Button>
       </section>
 
       {/* 2. 선배 워홀러가 후회하는 3가지 */}
@@ -156,18 +157,18 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
         <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {reasons.map((r) => (
-            <div key={r.title} className="rounded-2xl border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-6 md:p-8">
+            <SectionCard key={r.title} variant="accent-left" className="rounded-2xl p-6 md:p-8">
               <h3 className="mb-4 text-base leading-[1.5] font-extrabold text-[#1a1a1a] md:text-[17px]">{r.title}</h3>
               <p className="text-sm leading-[1.85] text-[#666]">{r.desc}</p>
-            </div>
+            </SectionCard>
           ))}
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-6">
-          <div className="rounded-2xl border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-6 md:p-8">
+          <SectionCard variant="accent-left" className="rounded-2xl p-6 md:p-8">
             <h3 className="mb-4 text-base leading-[1.5] font-extrabold text-[#1a1a1a] md:text-[17px]">{lastReason.title}</h3>
             <p className="text-sm leading-[1.85] text-[#666]">{lastReason.desc}</p>
-          </div>
+          </SectionCard>
         </div>
       </section>
 
@@ -208,13 +209,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
         <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {opportunityCards.map((c) => (
-            <div key={c.number} className="rounded-2xl border border-[#e8e8e8] bg-[#f8f8f8] p-6 text-center md:p-8">
+            <SectionCard key={c.number} variant="outline" className="rounded-2xl p-6 text-center md:p-8">
               <div aria-hidden="true" className="mb-3 text-[22px] font-black text-[#ff4757] md:text-[28px]">
                 {c.number}
               </div>
               <h3 className="mb-3 text-base font-extrabold text-[#1a1a1a] md:text-[18px]">{c.title}</h3>
               <p className="text-sm leading-[1.85] text-[#666]">{c.desc}</p>
-            </div>
+            </SectionCard>
           ))}
         </div>
       </section>
@@ -229,12 +230,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
         <div className="my-8 grid grid-cols-2 gap-4 md:gap-6">
           {infoCards.map((c) => (
-            <div key={c.label} className="rounded-xl bg-[#f8f8f8] p-5 text-center md:p-8">
+            <SectionCard key={c.label} variant="plain" className="rounded-xl p-5 text-center md:p-8">
               <div className="mb-3 text-xs font-bold tracking-wide text-[#999] md:text-sm">{c.label}</div>
               <div className={`text-[20px] leading-[1.6] font-black md:text-[24px] ${c.isPrice ? "text-[#ff4757]" : "text-[#1a1a1a]"}`}>
                 {c.value}
               </div>
-            </div>
+            </SectionCard>
           ))}
         </div>
       </section>
@@ -249,22 +250,26 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
         <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {reviewsTop.map((r) => (
-            <div key={r.author} className="rounded-xl border border-[#e8e8e8] bg-[#f8f8f8] p-6 md:p-8">
-              <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">⭐ ⭐ ⭐ ⭐ ⭐</div>
-              <div className="mb-6 text-sm leading-[1.85] text-[#666]">{r.text}</div>
+            <SectionCard key={r.author} variant="outline" className="rounded-xl p-6 md:p-8">
+              <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">
+                ⭐ ⭐ ⭐ ⭐ ⭐
+              </div>
+              <p className="mb-6 text-sm leading-[1.85] text-[#666]">{r.text}</p>
               <div className="mb-1 text-[13px] font-bold text-[#1a1a1a]">{r.author}</div>
               <div className="text-xs text-[#999]">{r.status}</div>
-            </div>
+            </SectionCard>
           ))}
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-6">
-          <div className="rounded-xl border border-[#e8e8e8] bg-[#f8f8f8] p-6 md:p-8">
-            <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">⭐ ⭐ ⭐ ⭐ ⭐</div>
-            <div className="mb-6 text-sm leading-[1.85] text-[#666]">{reviewBottom.text}</div>
+          <SectionCard variant="outline" className="rounded-xl p-6 md:p-8">
+            <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">
+              ⭐ ⭐ ⭐ ⭐ ⭐
+            </div>
+            <p className="mb-6 text-sm leading-[1.85] text-[#666]">{reviewBottom.text}</p>
             <div className="mb-1 text-[13px] font-bold text-[#1a1a1a]">{reviewBottom.author}</div>
             <div className="text-xs text-[#999]">{reviewBottom.status}</div>
-          </div>
+          </SectionCard>
         </div>
       </section>
 
@@ -278,21 +283,21 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-8">
           {units.map((u) => (
-            <div key={u.title} className="rounded-lg border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-5 md:p-7">
+            <SectionCard key={u.title} variant="accent-left" className="rounded-lg p-5 md:p-7">
               <h3 className="mb-5 text-sm leading-[1.5] font-extrabold text-[#1a1a1a] md:text-[15px]">{u.title}</h3>
               {u.items.map((item) => (
                 <div key={item} className="ml-2 border-l-2 border-[#ddd] pl-3 text-sm leading-[1.9] text-[#666] md:ml-4">
                   {item}
                 </div>
               ))}
-            </div>
+            </SectionCard>
           ))}
         </div>
       </section>
 
       {/* 8. 프렌딩 스쿨 소개 */}
       <section className="px-6 py-10 md:py-14">
-        <div className="my-8 rounded-xl bg-[#f8f8f8] p-6 text-center md:p-10">
+        <SectionCard variant="plain" className="my-8 rounded-xl p-6 text-center md:p-10">
           <h3 className="mb-6 text-[20px] font-extrabold text-[#1a1a1a] md:text-[24px]">프렌딩 스쿨은?</h3>
           <p className="mb-4 text-sm leading-[1.95] text-[#666]">
             전국 120개 문화센터에서 외국어 클래스를 진행 중인
@@ -316,7 +321,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
             <br />
             종합 교육 서비스를 제공합니다.
           </p>
-        </div>
+        </SectionCard>
       </section>
 
       {/* 9. 최종 CTA */}
@@ -325,11 +330,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         className="mx-6 mt-10 mb-8 rounded-xl bg-gradient-to-br from-[#ff4757] to-[#ff6b7a] px-6 py-10 text-center text-white md:mt-12 md:py-14">
         <h2 className="mb-3 text-[22px] leading-[1.4] font-black md:text-[28px]">버벅거리는 순간이 오기 전에</h2>
         <p className="mb-8 text-[22px] leading-[1.4] font-extrabold md:text-[28px]">제대로 준비하세요</p>
-        <button
-          type="button"
-          className="mb-6 w-full rounded-lg bg-white px-8 py-4 text-sm font-bold text-[#ff4757] transition-colors hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#ff4757] focus-visible:outline-none md:text-[15px]">
+        <Button variant="brand-inverse" className="mb-6 h-auto w-full px-8 py-4 text-sm font-bold md:text-[15px]">
           지금 신청하기
-        </button>
+        </Button>
         <div className="rounded-lg border-2 border-white bg-white/15 p-5 text-[13px] leading-[1.8] font-semibold text-white">
           <strong className="mb-2 block text-sm font-extrabold">📍 신청 안내</strong>
           수업확인, 연기, 출석 등 원활한 수업 진행을 위해

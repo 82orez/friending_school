@@ -49,7 +49,7 @@ export default function ForgotPasswordForm() {
             </p>
           )}
 
-          <Button type="submit" disabled={pending} className="mt-2 h-11 bg-[#ff4757] text-base font-bold text-white hover:bg-[#ff4757]/90">
+          <Button type="submit" variant="brand" disabled={pending} className="mt-2 h-11 text-base font-bold">
             {pending && <Loader2 className="animate-spin" />}
             {pending ? "발송 중" : "재설정 링크 받기"}
           </Button>
