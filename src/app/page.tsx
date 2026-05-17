@@ -139,7 +139,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <br />
           <strong className="text-base">제대로 잡으세요.</strong>
         </div>
-        <button type="button" className="mt-6 w-full cursor-pointer rounded bg-[#ff4757] px-8 py-4 text-[15px] font-bold text-white">
+        <button type="button" className="mt-6 w-full rounded bg-[#ff4757] px-8 py-4 text-[15px] font-bold text-white">
           교육센터에서 신청하기
         </button>
       </section>
@@ -317,7 +317,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       <section id="apply" className="mx-6 mt-12 mb-8 rounded-xl bg-gradient-to-br from-[#ff4757] to-[#ff6b7a] px-6 py-12 text-center text-white">
         <h2 className="mb-3 text-[28px] leading-[1.4] font-black">버벅거리는 순간이 오기 전에</h2>
         <p className="mb-8 text-[28px] leading-[1.4] font-extrabold">제대로 준비하세요</p>
-        <button type="button" className="mb-6 w-full cursor-pointer rounded-lg bg-white px-8 py-4 text-[15px] font-bold text-[#ff4757]">
+        <button type="button" className="mb-6 w-full rounded-lg bg-white px-8 py-4 text-[15px] font-bold text-[#ff4757]">
           지금 신청하기
         </button>
         <div className="rounded-lg border-2 border-white bg-white/15 p-5 text-[13px] leading-[1.8] font-semibold text-white">

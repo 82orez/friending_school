@@ -67,7 +67,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 <form action={logout}>
                   <button
                     type="submit"
-                    className="cursor-pointer rounded-full border border-[#ddd] px-3 py-1.5 text-sm font-medium text-[#333] transition-colors hover:border-[#ff4757] hover:text-[#ff4757]">
+                    className="rounded-full border border-[#ddd] px-3 py-1.5 text-sm font-medium text-[#333] transition-colors hover:border-[#ff4757] hover:text-[#ff4757]">
                     로그아웃
                   </button>
                 </form>
@@ -90,7 +90,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
             type="button"
             onClick={toggleMenu}
             aria-label="메뉴 열기"
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#ff4757] text-xl text-white">
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ff4757] text-xl text-white">
             ≡
           </button>
         </div>
@@ -105,7 +105,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
           type="button"
           onClick={closeMenu}
           aria-label="메뉴 닫기"
-          className="absolute top-4 right-6 cursor-pointer border-none bg-transparent text-2xl">
+          className="absolute top-4 right-6 border-none bg-transparent text-2xl">
           ✕
         </button>
         <ul className="list-none px-6">
@@ -132,7 +132,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 <form action={logout}>
                   <button
                     type="submit"
-                    className="w-full cursor-pointer rounded-md border border-[#ddd] px-4 py-2.5 text-[15px] font-medium text-[#333] transition-colors hover:border-[#ff4757] hover:text-[#ff4757]">
+                    className="w-full rounded-md border border-[#ddd] px-4 py-2.5 text-[15px] font-medium text-[#333] transition-colors hover:border-[#ff4757] hover:text-[#ff4757]">
                     로그아웃
                   </button>
                 </form>

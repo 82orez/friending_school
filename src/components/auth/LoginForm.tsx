@@ -90,7 +90,7 @@ export default function LoginForm() {
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3 text-muted-foreground hover:text-foreground">
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
@@ -117,7 +117,7 @@ export default function LoginForm() {
                   type="button"
                   onClick={() => setConfirmOpen(true)}
                   disabled={resendDisabled}
-                  className="self-start cursor-pointer text-sm font-medium text-[#ff4757] hover:underline disabled:cursor-not-allowed disabled:opacity-50">
+                  className="self-start text-sm font-medium text-[#ff4757] hover:underline disabled:cursor-not-allowed disabled:opacity-50">
                   {resendLabel}
                 </button>
               )}
