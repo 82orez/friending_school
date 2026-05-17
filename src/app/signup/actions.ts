@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { getOrigin } from "@/lib/origin";
 import { rateLimit, getClientIp, formatRetryAfter } from "@/lib/rate-limit";
+import { isValidEmail } from "@/lib/email";
 
 export type SignupState = { error?: string; success?: string } | null;
 
@@ -27,6 +28,10 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
   const limit = rateLimit(`signup:${ip}`, 5, 5 * 60_000);
   if (!limit.allowed) {
     return { error: `회원가입 시도가 너무 잦습니다. ${formatRetryAfter(limit.retryAfterSec)} 다시 시도해 주세요.` };
+  }
+
+  if (!isValidEmail(email)) {
+    return { error: "올바른 이메일 형식이 아닙니다." };
   }
 
   const origin = getOrigin(headerList);

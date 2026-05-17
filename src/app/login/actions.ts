@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/server";
 import { emailExists } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
 import { rateLimit, formatRetryAfter } from "@/lib/rate-limit";
+import { isValidEmail } from "@/lib/email";
 
 export type LoginState = { error?: string; canResend?: boolean } | null;
 export type ResendConfirmationResult = { error?: string; success?: string };
@@ -22,6 +23,10 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   const limit = rateLimit(`login:${email.toLowerCase()}`, 10, 60_000);
   if (!limit.allowed) {
     return { error: `로그인 시도가 너무 잦습니다. ${formatRetryAfter(limit.retryAfterSec)} 다시 시도해 주세요.` };
+  }
+
+  if (!isValidEmail(email)) {
+    return { error: "올바른 이메일 형식이 아닙니다." };
   }
 
   const supabase = createClient(await cookies());
@@ -56,6 +61,10 @@ export async function resendConfirmation(email: string): Promise<ResendConfirmat
   const limit = rateLimit(`resend:${trimmed.toLowerCase()}`, 1, 60_000);
   if (!limit.allowed) {
     return { error: `재발송 요청이 너무 잦습니다. ${formatRetryAfter(limit.retryAfterSec)} 다시 시도해 주세요.` };
+  }
+
+  if (!isValidEmail(trimmed)) {
+    return { error: "올바른 이메일 형식이 아닙니다." };
   }
 
   const headerList = await headers();
