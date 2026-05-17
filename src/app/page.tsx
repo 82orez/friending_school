@@ -118,21 +118,21 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       )}
       {/* 1. 히어로 */}
       <section id="hero" className="bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] px-6 py-12 text-center text-white md:py-20">
-        <div className="mb-4 text-base font-bold tracking-wider opacity-80 md:text-lg">청년을 세계로, 프렌딩 스쿨</div>
-        <div className="mb-3 text-[26px] leading-tight font-black md:text-4xl">
+        <p className="mb-4 text-base font-bold tracking-wider opacity-80 md:text-lg">청년을 세계로, 프렌딩 스쿨</p>
+        <h1 className="mb-3 text-[26px] leading-tight font-black md:text-4xl">
           초보 워홀 영어
           <br />
           2주만에 판바꾸기
-        </div>
-        <div className="mb-5 text-[17px] font-extrabold text-[#ff4757] md:text-xl">
+        </h1>
+        <p className="mb-5 text-[17px] font-extrabold text-[#ff4757] md:text-xl">
           매일 50분
           <br />
           워홀 필수 생존 영어 말하기
-        </div>
-        <div className="text-sm leading-[1.8] text-[#ddd] md:text-[15px]">
+        </p>
+        <p className="text-sm leading-[1.8] text-[#ddd] md:text-[15px]">
           <strong className="text-base">버벅거리는 순간 기회가 날라갑니다.</strong>
-        </div>
-        <div className="my-6 text-base leading-[1.9] font-semibold text-[#ddd] md:text-[17px]">
+        </p>
+        <p className="my-6 text-base leading-[1.9] font-semibold text-[#ddd] md:text-[17px]">
           받을 걸 제대로 받을 기회
           <br />
           문제를 원활히 해결할 수 있는 기회
@@ -141,7 +141,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <br />
           <br />
           <strong className="text-base">제대로 잡으세요.</strong>
-        </div>
+        </p>
         <Button variant="brand" className="mt-6 h-auto w-full px-8 py-4 text-sm font-bold md:text-[15px]">
           교육센터에서 신청하기
         </Button>
@@ -224,20 +224,20 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       <section className="px-6 py-10 md:py-14">
         <h2 className="mb-4 text-center text-2xl leading-snug font-black md:text-3xl">과정 정보</h2>
         <div className="mb-8 text-center">
-          <div className="mb-4 text-base font-extrabold text-[#1a1a1a] md:text-lg">2주 초보 워홀 집중과정</div>
+          <p className="mb-4 text-base font-extrabold text-[#1a1a1a] md:text-lg">2주 초보 워홀 집중과정</p>
           <p className="text-sm text-[#666] md:text-[15px]">2주의 교육으로 시간과 비용을 세이브하세요.</p>
         </div>
 
-        <div className="my-8 grid grid-cols-2 gap-4 md:gap-6">
+        <dl className="my-8 grid grid-cols-2 gap-4 md:gap-6">
           {infoCards.map((c) => (
             <SectionCard key={c.label} variant="plain" className="rounded-xl p-5 text-center md:p-8">
-              <div className="mb-3 text-xs font-bold tracking-wide text-[#999] md:text-sm">{c.label}</div>
-              <div className={`text-xl leading-[1.6] font-black md:text-2xl ${c.isPrice ? "text-[#ff4757]" : "text-[#1a1a1a]"}`}>
+              <dt className="mb-3 text-xs font-bold tracking-wide text-[#999] md:text-sm">{c.label}</dt>
+              <dd className={`text-xl leading-[1.6] font-black md:text-2xl ${c.isPrice ? "text-[#ff4757]" : "text-[#1a1a1a]"}`}>
                 {c.value}
-              </div>
+              </dd>
             </SectionCard>
           ))}
-        </div>
+        </dl>
       </section>
 
       {/* 6. 워홀러 반응 */}
@@ -251,24 +251,32 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {reviewsTop.map((r) => (
             <SectionCard key={r.author} variant="outline" className="rounded-xl p-6 md:p-8">
-              <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">
-                ⭐ ⭐ ⭐ ⭐ ⭐
-              </div>
-              <p className="mb-6 text-sm leading-[1.85] text-[#666]">{r.text}</p>
-              <div className="mb-1 text-[13px] font-bold text-[#1a1a1a]">{r.author}</div>
-              <div className="text-xs text-[#999]">{r.status}</div>
+              <blockquote>
+                <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">
+                  ⭐ ⭐ ⭐ ⭐ ⭐
+                </div>
+                <p className="mb-6 text-sm leading-[1.85] text-[#666]">{r.text}</p>
+                <footer>
+                  <cite className="mb-1 block text-[13px] font-bold text-[#1a1a1a] not-italic">{r.author}</cite>
+                  <span className="text-xs text-[#999]">{r.status}</span>
+                </footer>
+              </blockquote>
             </SectionCard>
           ))}
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-6">
           <SectionCard variant="outline" className="rounded-xl p-6 md:p-8">
-            <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">
-              ⭐ ⭐ ⭐ ⭐ ⭐
-            </div>
-            <p className="mb-6 text-sm leading-[1.85] text-[#666]">{reviewBottom.text}</p>
-            <div className="mb-1 text-[13px] font-bold text-[#1a1a1a]">{reviewBottom.author}</div>
-            <div className="text-xs text-[#999]">{reviewBottom.status}</div>
+            <blockquote>
+              <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">
+                ⭐ ⭐ ⭐ ⭐ ⭐
+              </div>
+              <p className="mb-6 text-sm leading-[1.85] text-[#666]">{reviewBottom.text}</p>
+              <footer>
+                <cite className="mb-1 block text-[13px] font-bold text-[#1a1a1a] not-italic">{reviewBottom.author}</cite>
+                <span className="text-xs text-[#999]">{reviewBottom.status}</span>
+              </footer>
+            </blockquote>
           </SectionCard>
         </div>
       </section>
@@ -285,11 +293,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           {units.map((u) => (
             <SectionCard key={u.title} variant="accent-left" className="rounded-lg p-5 md:p-7">
               <h3 className="mb-5 text-sm leading-normal font-extrabold text-[#1a1a1a] md:text-[15px]">{u.title}</h3>
-              {u.items.map((item) => (
-                <div key={item} className="ml-2 border-l-2 border-[#ddd] pl-3 text-sm leading-[1.9] text-[#666] md:ml-4">
-                  {item}
-                </div>
-              ))}
+              <ul className="list-none">
+                {u.items.map((item) => (
+                  <li key={item} className="ml-2 border-l-2 border-[#ddd] pl-3 text-sm leading-[1.9] text-[#666] md:ml-4">
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </SectionCard>
           ))}
         </div>
