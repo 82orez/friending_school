@@ -2,11 +2,12 @@
 
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import { getUserStatus } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
 import { rateLimit, getClientIp, formatRetryAfter } from "@/lib/rate-limit";
 import { isValidEmail } from "@/lib/email";
 
-export type SignupState = { error?: string; success?: string } | null;
+export type SignupState = { error?: string; success?: string; canResend?: boolean } | null;
 
 export async function signup(_prev: SignupState, formData: FormData): Promise<SignupState> {
   const email = String(formData.get("email") ?? "").trim();
@@ -32,6 +33,22 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
 
   if (!isValidEmail(email)) {
     return { error: "올바른 이메일 형식이 아닙니다." };
+  }
+
+  // 미확인 사용자가 재가입을 시도하면 Supabase는 저장된 비밀번호를 새 값으로 덮어쓰므로,
+  // signUp() 호출 전에 상태를 확인해 차단한다. admin API 실패 시에는 fail closed.
+  const status = await getUserStatus(email);
+  if (status === null) {
+    return { error: "회원가입 중 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
+  }
+  if (status === "confirmed") {
+    return { error: "이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요." };
+  }
+  if (status === "unconfirmed") {
+    return {
+      error: "이미 가입 시도된 이메일입니다. 메일함을 확인하시거나 아래 '다시 보내기'를 이용해 주세요.",
+      canResend: true,
+    };
   }
 
   const origin = getOrigin(headerList);
