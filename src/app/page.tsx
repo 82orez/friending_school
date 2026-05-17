@@ -96,8 +96,9 @@ const units = [
   },
 ];
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { SectionCard } from "@/components/SectionCard";
+import { cn } from "@/lib/utils";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ reset?: string; verified?: string }> }) {
   const { reset, verified } = await searchParams;
@@ -142,9 +143,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <br />
           <strong className="text-base">제대로 잡으세요.</strong>
         </p>
-        <Button variant="brand" className="mt-6 h-auto w-full px-8 py-4 text-sm font-bold md:text-[15px]">
-          교육센터에서 신청하기
-        </Button>
+        <a
+          href="#apply"
+          className={cn(buttonVariants({ variant: "brand" }), "mt-6 h-auto w-full px-8 py-4 text-sm font-bold md:text-[15px]")}>
+          지금 신청하기
+        </a>
       </section>
 
       {/* 2. 선배 워홀러가 후회하는 3가지 */}
