@@ -55,6 +55,14 @@ export async function resetPassword(_prev: ResetPasswordState, formData: FormDat
     return { error: "비밀번호 변경에 실패했습니다. 재설정 링크를 다시 요청해 주세요." };
   }
 
+  // 비밀번호 변경 후 다른 기기/세션 강제 로그아웃(현재 세션은 유지).
+  // 비밀번호 유출/탈취 시나리오에서 공격자 세션을 즉시 무효화하기 위함.
+  // 실패해도 비밀번호 변경 자체는 성공했으므로 user-facing 에러로 만들지 않고 로그만 남김.
+  const { error: signOutError } = await supabase.auth.signOut({ scope: "others" });
+  if (signOutError) {
+    console.error("[resetPassword] 다른 세션 로그아웃 실패:", signOutError);
+  }
+
   revalidatePath("/", "layout");
   redirect("/?reset=success");
 }
