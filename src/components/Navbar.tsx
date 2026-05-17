@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { logout } from "@/app/logout/actions";
 import { createClient } from "@/utils/supabase/client";
 
@@ -10,6 +10,9 @@ type NavbarUser = { email?: string | null } | null;
 export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
   const [user, setUser] = useState<NavbarUser>(initialUser);
   const [menuOpen, setMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const prevMenuOpen = useRef(false);
 
   const closeMenu = () => setMenuOpen(false);
   const toggleMenu = () => setMenuOpen((prev) => !prev);
@@ -55,6 +58,15 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = prevOverflow;
     };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (menuOpen && !prevMenuOpen.current) {
+      closeButtonRef.current?.focus();
+    } else if (!menuOpen && prevMenuOpen.current) {
+      triggerRef.current?.focus();
+    }
+    prevMenuOpen.current = menuOpen;
   }, [menuOpen]);
 
   return (
@@ -103,6 +115,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
           </div>
 
           <button
+            ref={triggerRef}
             type="button"
             onClick={toggleMenu}
             aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
@@ -130,10 +143,12 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
         aria-modal="true"
         aria-label="모바일 메뉴"
         aria-hidden={!menuOpen}
+        inert={!menuOpen}
         className={`fixed top-0 z-[200] h-screen w-[280px] border-l border-[#eee] bg-white pt-8 transition-[right] duration-300 ease-in-out ${
           menuOpen ? "right-0" : "-right-[300px]"
         }`}>
         <button
+          ref={closeButtonRef}
           type="button"
           onClick={closeMenu}
           aria-label="메뉴 닫기"
