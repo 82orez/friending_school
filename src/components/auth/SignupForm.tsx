@@ -1,10 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { signup, type SignupState } from "@/app/signup/actions";
 import { resendConfirmation, type ResendConfirmationResult } from "@/app/login/actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,12 +32,25 @@ export default function SignupForm() {
   const passwordConfirmCaps = useCapsLockWarning();
   const [resendPending, startResend] = useTransition();
   const [resendResult, setResendResult] = useState<ResendConfirmationResult | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [cooldownSec, setCooldownSec] = useState(0);
+
+  useEffect(() => {
+    if (cooldownSec === 0) return;
+    const id = setInterval(() => setCooldownSec((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [cooldownSec]);
+
+  const resendDisabled = resendPending || !email || cooldownSec > 0;
+  const resendLabel = cooldownSec > 0 ? `${cooldownSec}초 후 다시 시도 가능` : resendPending ? "재발송 중..." : "다시 보내기";
 
   const handleResend = () => {
+    setConfirmOpen(false);
     setResendResult(null);
     startResend(async () => {
       const result = await resendConfirmation(email);
       setResendResult(result);
+      if (result.success) setCooldownSec(60);
     });
   };
 
@@ -122,10 +145,10 @@ export default function SignupForm() {
                   메일이 도착하지 않으셨나요?{" "}
                   <button
                     type="button"
-                    onClick={handleResend}
-                    disabled={resendPending || !email}
+                    onClick={() => setConfirmOpen(true)}
+                    disabled={resendDisabled}
                     className="cursor-pointer font-semibold underline hover:no-underline disabled:cursor-not-allowed disabled:opacity-50">
-                    {resendPending ? "재발송 중..." : "다시 보내기"}
+                    {resendLabel}
                   </button>
                 </p>
               )}
@@ -141,10 +164,10 @@ export default function SignupForm() {
                   메일이 도착하지 않으셨나요?{" "}
                   <button
                     type="button"
-                    onClick={handleResend}
-                    disabled={resendPending || !email}
+                    onClick={() => setConfirmOpen(true)}
+                    disabled={resendDisabled}
                     className="cursor-pointer font-semibold underline hover:no-underline disabled:cursor-not-allowed disabled:opacity-50">
-                    {resendPending ? "재발송 중..." : "다시 보내기"}
+                    {resendLabel}
                   </button>
                 </p>
               )}
@@ -152,6 +175,19 @@ export default function SignupForm() {
               {resendResult?.error && <p className="mt-2 text-xs text-destructive">{resendResult.error}</p>}
             </div>
           )}
+
+          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>인증 메일을 다시 보내시겠습니까?</AlertDialogTitle>
+                <AlertDialogDescription>{email}로 인증 메일이 재발송됩니다.</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>취소</AlertDialogCancel>
+                <AlertDialogAction onClick={handleResend}>보내기</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <Button type="submit" disabled={pending} className="mt-2 h-11 bg-[#ff4757] text-base font-bold text-white hover:bg-[#ff4757]/90">
             {pending ? "처리 중..." : "회원가입"}
