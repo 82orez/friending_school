@@ -118,13 +118,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       )}
       {/* 1. 히어로 */}
       <section id="hero" className="bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] px-6 py-12 text-center text-white md:py-20">
-        <div className="mb-4 text-base font-bold tracking-wider opacity-80 md:text-[18px]">청년을 세계로, 프렌딩 스쿨</div>
-        <div className="mb-3 text-[26px] leading-tight font-black md:text-[36px]">
+        <div className="mb-4 text-base font-bold tracking-wider opacity-80 md:text-lg">청년을 세계로, 프렌딩 스쿨</div>
+        <div className="mb-3 text-[26px] leading-tight font-black md:text-4xl">
           초보 워홀 영어
           <br />
           2주만에 판바꾸기
         </div>
-        <div className="mb-5 text-[17px] font-extrabold text-[#ff4757] md:text-[20px]">
+        <div className="mb-5 text-[17px] font-extrabold text-[#ff4757] md:text-xl">
           매일 50분
           <br />
           워홀 필수 생존 영어 말하기
@@ -149,7 +149,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
       {/* 2. 선배 워홀러가 후회하는 3가지 */}
       <section className="px-6 py-10 md:py-14">
-        <h2 className="mb-8 text-center text-[24px] leading-[1.4] font-black md:text-[32px]">
+        <h2 className="mb-8 text-center text-2xl leading-snug font-black md:text-3xl">
           선배 워홀러들이
           <br />
           <span className="text-[#ff4757]">후회하는 3가지</span>
@@ -158,7 +158,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {reasons.map((r) => (
             <SectionCard key={r.title} variant="accent-left" className="rounded-2xl p-6 md:p-8">
-              <h3 className="mb-4 text-base leading-[1.5] font-extrabold text-[#1a1a1a] md:text-[17px]">{r.title}</h3>
+              <h3 className="mb-4 text-base leading-normal font-extrabold text-[#1a1a1a] md:text-[17px]">{r.title}</h3>
               <p className="text-sm leading-[1.85] text-[#666]">{r.desc}</p>
             </SectionCard>
           ))}
@@ -166,7 +166,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
         <div className="mb-8 grid grid-cols-1 gap-6">
           <SectionCard variant="accent-left" className="rounded-2xl p-6 md:p-8">
-            <h3 className="mb-4 text-base leading-[1.5] font-extrabold text-[#1a1a1a] md:text-[17px]">{lastReason.title}</h3>
+            <h3 className="mb-4 text-base leading-normal font-extrabold text-[#1a1a1a] md:text-[17px]">{lastReason.title}</h3>
             <p className="text-sm leading-[1.85] text-[#666]">{lastReason.desc}</p>
           </SectionCard>
         </div>
@@ -174,7 +174,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
       {/* 3. 우리는 이렇게 달라요 */}
       <section className="mx-6 my-8 rounded-xl bg-[#1a1a1a] px-6 py-10 text-white md:py-14">
-        <h2 className="mb-6 text-center text-[24px] leading-[1.3] font-black md:text-[32px]">
+        <h2 className="mb-6 text-center text-2xl leading-[1.3] font-black md:text-3xl">
           우리는 <span className="text-[#ff4757]">이렇게 달라요</span>
         </h2>
         <p className="mb-6 text-center text-sm leading-[1.95] text-[#ddd] md:text-base">
@@ -196,12 +196,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
       {/* 4. 버벅거리면 떨어집니다 */}
       <section className="px-6 py-10 md:py-14">
-        <h2 className="mb-8 text-center text-[24px] leading-[1.4] font-black md:text-[32px]">
+        <h2 className="mb-8 text-center text-2xl leading-snug font-black md:text-3xl">
           버벅거리면
           <br />
           <span className="text-[#ff4757]">떨어집니다</span>
         </h2>
-        <p className="mb-8 text-center text-base leading-[1.9] font-bold text-[#555] md:text-[18px]">
+        <p className="mb-8 text-center text-base leading-[1.9] font-bold text-[#555] md:text-lg">
           말 한 마디가 인생을 바꿉니다.
           <br />
           버벅거리면 기회는 오지 않습니다.
@@ -213,7 +213,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
               <div aria-hidden="true" className="mb-3 text-[22px] font-black text-[#ff4757] md:text-[28px]">
                 {c.number}
               </div>
-              <h3 className="mb-3 text-base font-extrabold text-[#1a1a1a] md:text-[18px]">{c.title}</h3>
+              <h3 className="mb-3 text-base font-extrabold text-[#1a1a1a] md:text-lg">{c.title}</h3>
               <p className="text-sm leading-[1.85] text-[#666]">{c.desc}</p>
             </SectionCard>
           ))}
@@ -222,9 +222,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
       {/* 5. 과정 정보 */}
       <section className="px-6 py-10 md:py-14">
-        <h2 className="mb-4 text-center text-[24px] leading-[1.4] font-black md:text-[32px]">과정 정보</h2>
+        <h2 className="mb-4 text-center text-2xl leading-snug font-black md:text-3xl">과정 정보</h2>
         <div className="mb-8 text-center">
-          <div className="mb-4 text-base font-extrabold text-[#1a1a1a] md:text-[18px]">2주 초보 워홀 집중과정</div>
+          <div className="mb-4 text-base font-extrabold text-[#1a1a1a] md:text-lg">2주 초보 워홀 집중과정</div>
           <p className="text-sm text-[#666] md:text-[15px]">2주의 교육으로 시간과 비용을 세이브하세요.</p>
         </div>
 
@@ -232,7 +232,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           {infoCards.map((c) => (
             <SectionCard key={c.label} variant="plain" className="rounded-xl p-5 text-center md:p-8">
               <div className="mb-3 text-xs font-bold tracking-wide text-[#999] md:text-sm">{c.label}</div>
-              <div className={`text-[20px] leading-[1.6] font-black md:text-[24px] ${c.isPrice ? "text-[#ff4757]" : "text-[#1a1a1a]"}`}>
+              <div className={`text-xl leading-[1.6] font-black md:text-2xl ${c.isPrice ? "text-[#ff4757]" : "text-[#1a1a1a]"}`}>
                 {c.value}
               </div>
             </SectionCard>
@@ -242,7 +242,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
       {/* 6. 워홀러 반응 */}
       <section className="px-6 py-10 md:py-14">
-        <h2 className="mb-8 text-center text-[24px] leading-[1.4] font-black md:text-[32px]">
+        <h2 className="mb-8 text-center text-2xl leading-snug font-black md:text-3xl">
           실제 워홀러들의
           <br />
           <span className="text-[#ff4757]">반응</span>
@@ -275,7 +275,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
       {/* 7. 커리큘럼 */}
       <section id="curriculum" className="px-6 py-10 md:py-14">
-        <h2 className="mb-4 text-center text-[24px] leading-[1.4] font-black md:text-[32px]">
+        <h2 className="mb-4 text-center text-2xl leading-snug font-black md:text-3xl">
           10 UNITS
           <br />2 주 집중 과정
         </h2>
@@ -284,7 +284,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-8">
           {units.map((u) => (
             <SectionCard key={u.title} variant="accent-left" className="rounded-lg p-5 md:p-7">
-              <h3 className="mb-5 text-sm leading-[1.5] font-extrabold text-[#1a1a1a] md:text-[15px]">{u.title}</h3>
+              <h3 className="mb-5 text-sm leading-normal font-extrabold text-[#1a1a1a] md:text-[15px]">{u.title}</h3>
               {u.items.map((item) => (
                 <div key={item} className="ml-2 border-l-2 border-[#ddd] pl-3 text-sm leading-[1.9] text-[#666] md:ml-4">
                   {item}
@@ -298,7 +298,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       {/* 8. 프렌딩 스쿨 소개 */}
       <section className="px-6 py-10 md:py-14">
         <SectionCard variant="plain" className="my-8 rounded-xl p-6 text-center md:p-10">
-          <h3 className="mb-6 text-[20px] font-extrabold text-[#1a1a1a] md:text-[24px]">프렌딩 스쿨은?</h3>
+          <h3 className="mb-6 text-xl font-extrabold text-[#1a1a1a] md:text-2xl">프렌딩 스쿨은?</h3>
           <p className="mb-4 text-sm leading-[1.95] text-[#666]">
             전국 120개 문화센터에서 외국어 클래스를 진행 중인
             <br />
@@ -328,8 +328,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       <section
         id="apply"
         className="mx-6 mt-10 mb-8 rounded-xl bg-gradient-to-br from-[#ff4757] to-[#ff6b7a] px-6 py-10 text-center text-white md:mt-12 md:py-14">
-        <h2 className="mb-3 text-[22px] leading-[1.4] font-black md:text-[28px]">버벅거리는 순간이 오기 전에</h2>
-        <p className="mb-8 text-[22px] leading-[1.4] font-extrabold md:text-[28px]">제대로 준비하세요</p>
+        <h2 className="mb-3 text-[22px] leading-snug font-black md:text-[28px]">버벅거리는 순간이 오기 전에</h2>
+        <p className="mb-8 text-[22px] leading-snug font-extrabold md:text-[28px]">제대로 준비하세요</p>
         <Button variant="brand-inverse" className="mb-6 h-auto w-full px-8 py-4 text-sm font-bold md:text-[15px]">
           지금 신청하기
         </Button>
