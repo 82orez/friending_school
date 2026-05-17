@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { signup, type SignupState } from "@/app/signup/actions";
 import { resendConfirmation, type ResendConfirmationResult } from "@/app/login/actions";
 import {
@@ -42,7 +42,17 @@ export default function SignupForm() {
   }, [cooldownSec]);
 
   const resendDisabled = resendPending || !email || cooldownSec > 0;
-  const resendLabel = cooldownSec > 0 ? `${cooldownSec}초 후 다시 시도 가능` : resendPending ? "재발송 중..." : "다시 보내기";
+  const resendContent =
+    cooldownSec > 0 ? (
+      `${cooldownSec}초 후 다시 시도 가능`
+    ) : resendPending ? (
+      <span className="inline-flex items-center gap-1.5">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        재발송 중
+      </span>
+    ) : (
+      "다시 보내기"
+    );
 
   const handleResend = () => {
     setConfirmOpen(false);
@@ -148,7 +158,7 @@ export default function SignupForm() {
                     onClick={() => setConfirmOpen(true)}
                     disabled={resendDisabled}
                     className="font-semibold underline hover:no-underline disabled:cursor-not-allowed disabled:opacity-50">
-                    {resendLabel}
+                    {resendContent}
                   </button>
                 </p>
               )}
@@ -167,7 +177,7 @@ export default function SignupForm() {
                   onClick={() => setConfirmOpen(true)}
                   disabled={resendDisabled}
                   className="font-semibold underline hover:no-underline disabled:cursor-not-allowed disabled:opacity-50">
-                  {resendLabel}
+                  {resendContent}
                 </button>
               </p>
               {resendResult?.error && <p className="mt-2 text-xs text-destructive">{resendResult.error}</p>}
@@ -188,7 +198,8 @@ export default function SignupForm() {
           </AlertDialog>
 
           <Button type="submit" disabled={pending} className="mt-2 h-11 bg-[#ff4757] text-base font-bold text-white hover:bg-[#ff4757]/90">
-            {pending ? "처리 중..." : "회원가입"}
+            {pending && <Loader2 className="animate-spin" />}
+            {pending ? "처리 중" : "회원가입"}
           </Button>
 
           <p className="mt-2 text-center text-sm text-muted-foreground">

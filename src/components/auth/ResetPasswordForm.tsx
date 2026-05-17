@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { resetPassword, type ResetPasswordState } from "@/app/reset-password/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -94,7 +94,8 @@ export default function ResetPasswordForm() {
           )}
 
           <Button type="submit" disabled={pending} className="mt-2 h-11 bg-[#ff4757] text-base font-bold text-white hover:bg-[#ff4757]/90">
-            {pending ? "변경 중..." : "비밀번호 변경"}
+            {pending && <Loader2 className="animate-spin" />}
+            {pending ? "변경 중" : "비밀번호 변경"}
           </Button>
         </form>
       </CardContent>

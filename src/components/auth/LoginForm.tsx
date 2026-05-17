@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { AlertTriangle, Eye, EyeOff } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { login, resendConfirmation, type LoginState, type ResendConfirmationResult } from "@/app/login/actions";
 import {
   AlertDialog,
@@ -38,7 +38,17 @@ export default function LoginForm() {
   }, [cooldownSec]);
 
   const resendDisabled = resendPending || !email || cooldownSec > 0;
-  const resendLabel = cooldownSec > 0 ? `${cooldownSec}초 후 다시 시도 가능` : resendPending ? "재발송 중..." : "인증 메일 다시 보내기";
+  const resendContent =
+    cooldownSec > 0 ? (
+      `${cooldownSec}초 후 다시 시도 가능`
+    ) : resendPending ? (
+      <span className="inline-flex items-center gap-1.5">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        재발송 중
+      </span>
+    ) : (
+      "인증 메일 다시 보내기"
+    );
 
   const handleResend = () => {
     setConfirmOpen(false);
@@ -118,7 +128,7 @@ export default function LoginForm() {
                   onClick={() => setConfirmOpen(true)}
                   disabled={resendDisabled}
                   className="self-start text-sm font-medium text-[#ff4757] hover:underline disabled:cursor-not-allowed disabled:opacity-50">
-                  {resendLabel}
+                  {resendContent}
                 </button>
               )}
             </div>
@@ -148,7 +158,8 @@ export default function LoginForm() {
           </AlertDialog>
 
           <Button type="submit" disabled={pending} className="mt-2 h-11 bg-[#ff4757] text-base font-bold text-white hover:bg-[#ff4757]/90">
-            {pending ? "로그인 중..." : "로그인"}
+            {pending && <Loader2 className="animate-spin" />}
+            {pending ? "로그인 중" : "로그인"}
           </Button>
 
           <p className="mt-2 text-center text-sm text-muted-foreground">

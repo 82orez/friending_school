@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { forgotPassword, type ForgotPasswordState } from "@/app/forgot-password/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,7 +48,8 @@ export default function ForgotPasswordForm() {
           )}
 
           <Button type="submit" disabled={pending} className="mt-2 h-11 bg-[#ff4757] text-base font-bold text-white hover:bg-[#ff4757]/90">
-            {pending ? "발송 중..." : "재설정 링크 받기"}
+            {pending && <Loader2 className="animate-spin" />}
+            {pending ? "발송 중" : "재설정 링크 받기"}
           </Button>
 
           <p className="mt-2 text-center text-sm text-muted-foreground">
