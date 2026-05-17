@@ -114,22 +114,22 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         </div>
       )}
       {/* 1. 히어로 */}
-      <section id="hero" className="bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] px-6 py-14 text-center text-white">
-        <div className="mb-4 text-[18px] font-bold tracking-wider opacity-80">청년을 세계로, 프렌딩 스쿨</div>
-        <div className="mb-3 text-[36px] leading-tight font-black">
+      <section id="hero" className="bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] px-6 py-12 text-center text-white md:py-20">
+        <div className="mb-4 text-base font-bold tracking-wider opacity-80 md:text-[18px]">청년을 세계로, 프렌딩 스쿨</div>
+        <div className="mb-3 text-[26px] leading-tight font-black md:text-[36px]">
           초보 워홀 영어
           <br />
           2주만에 판바꾸기
         </div>
-        <div className="mb-5 text-[20px] font-extrabold text-[#ff4757]">
+        <div className="mb-5 text-[17px] font-extrabold text-[#ff4757] md:text-[20px]">
           매일 50분
           <br />
           워홀 필수 생존 영어 말하기
         </div>
-        <div className="text-[15px] leading-[1.8] text-[#ddd]">
+        <div className="text-sm leading-[1.8] text-[#ddd] md:text-[15px]">
           <strong className="text-base">버벅거리는 순간 기회가 날라갑니다.</strong>
         </div>
-        <div className="my-6 text-[17px] leading-[1.9] font-semibold text-[#ddd]">
+        <div className="my-6 text-base leading-[1.9] font-semibold text-[#ddd] md:text-[17px]">
           받을 걸 제대로 받을 기회
           <br />
           문제를 원활히 해결할 수 있는 기회
@@ -139,76 +139,76 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <br />
           <strong className="text-base">제대로 잡으세요.</strong>
         </div>
-        <button type="button" className="mt-6 w-full rounded bg-[#ff4757] px-8 py-4 text-[15px] font-bold text-white">
+        <button type="button" className="mt-6 w-full rounded bg-[#ff4757] px-8 py-4 text-sm font-bold text-white md:text-[15px]">
           교육센터에서 신청하기
         </button>
       </section>
 
       {/* 2. 선배 워홀러가 후회하는 3가지 */}
-      <section className="px-6 py-10">
-        <h2 className="mb-8 text-center text-[32px] leading-[1.4] font-black">
+      <section className="px-6 py-10 md:py-14">
+        <h2 className="mb-8 text-center text-[24px] leading-[1.4] font-black md:text-[32px]">
           선배 워홀러들이
           <br />
           <span className="text-[#ff4757]">후회하는 3가지</span>
         </h2>
 
-        <div className="my-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {reasons.map((r) => (
-            <div key={r.title} className="rounded-2xl border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-8">
-              <h3 className="mb-4 text-[17px] leading-[1.5] font-extrabold text-[#1a1a1a]">{r.title}</h3>
+            <div key={r.title} className="rounded-2xl border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-6 md:p-8">
+              <h3 className="mb-4 text-base leading-[1.5] font-extrabold text-[#1a1a1a] md:text-[17px]">{r.title}</h3>
               <p className="text-sm leading-[1.85] text-[#666]">{r.desc}</p>
             </div>
           ))}
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-6">
-          <div className="rounded-2xl border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-8">
-            <h3 className="mb-4 text-[17px] leading-[1.5] font-extrabold text-[#1a1a1a]">{lastReason.title}</h3>
+          <div className="rounded-2xl border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-6 md:p-8">
+            <h3 className="mb-4 text-base leading-[1.5] font-extrabold text-[#1a1a1a] md:text-[17px]">{lastReason.title}</h3>
             <p className="text-sm leading-[1.85] text-[#666]">{lastReason.desc}</p>
           </div>
         </div>
       </section>
 
       {/* 3. 우리는 이렇게 달라요 */}
-      <section className="mx-6 my-8 rounded-xl bg-[#1a1a1a] px-6 py-12 text-white">
-        <h2 className="mb-6 text-center text-[32px] leading-[1.3] font-black">
+      <section className="mx-6 my-8 rounded-xl bg-[#1a1a1a] px-6 py-10 text-white md:py-14">
+        <h2 className="mb-6 text-center text-[24px] leading-[1.3] font-black md:text-[32px]">
           우리는 <span className="text-[#ff4757]">이렇게 달라요</span>
         </h2>
-        <p className="mb-6 text-center text-base leading-[1.95] text-[#ddd]">
-          <strong className="text-[19px] font-extrabold">매일 50분 몰입이 만드는 힘</strong>
+        <p className="mb-6 text-center text-sm leading-[1.95] text-[#ddd] md:text-base">
+          <strong className="text-[17px] font-extrabold md:text-[19px]">매일 50분 몰입이 만드는 힘</strong>
           <br />
           영어 초급이라도 집중된 환경에서 2주 반복하면 자동 반응이 됩니다.
         </p>
-        <p className="mt-6 mb-6 text-center text-base leading-[1.95] text-[#ddd]">
-          <strong className="text-[19px] font-extrabold">워홀에서 정말 쓸 표현만</strong>
+        <p className="mt-6 mb-6 text-center text-sm leading-[1.95] text-[#ddd] md:text-base">
+          <strong className="text-[17px] font-extrabold md:text-[19px]">워홀에서 정말 쓸 표현만</strong>
           <br />
           일반 교과서는 버립니다. Unit 1-10은 모두 실제 워홀러 경험에서 나온 필수 표현입니다.
         </p>
-        <p className="mt-6 mb-6 text-center text-base leading-[1.95] text-[#ddd]">
-          <strong className="text-[19px] font-extrabold">현장에서 바로 먹혀듭니다</strong>
+        <p className="mt-6 mb-6 text-center text-sm leading-[1.95] text-[#ddd] md:text-base">
+          <strong className="text-[17px] font-extrabold md:text-[19px]">현장에서 바로 먹혀듭니다</strong>
           <br />
           공항, 숙소, 면접, 업무. 당신이 정말 할 말만 배웁니다.
         </p>
       </section>
 
       {/* 4. 버벅거리면 떨어집니다 */}
-      <section className="px-6 py-10">
-        <h2 className="mb-8 text-center text-[32px] leading-[1.4] font-black">
+      <section className="px-6 py-10 md:py-14">
+        <h2 className="mb-8 text-center text-[24px] leading-[1.4] font-black md:text-[32px]">
           버벅거리면
           <br />
           <span className="text-[#ff4757]">떨어집니다</span>
         </h2>
-        <p className="mb-8 text-center text-[18px] leading-[1.9] font-bold text-[#555]">
+        <p className="mb-8 text-center text-base leading-[1.9] font-bold text-[#555] md:text-[18px]">
           말 한 마디가 인생을 바꿉니다.
           <br />
           버벅거리면 기회는 오지 않습니다.
         </p>
 
-        <div className="my-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {opportunityCards.map((c) => (
-            <div key={c.number} className="rounded-2xl border border-[#e8e8e8] bg-[#f8f8f8] p-8 text-center">
-              <div className="mb-3 text-[28px] font-black text-[#ff4757]">{c.number}</div>
-              <div className="mb-3 text-[18px] font-extrabold text-[#1a1a1a]">{c.title}</div>
+            <div key={c.number} className="rounded-2xl border border-[#e8e8e8] bg-[#f8f8f8] p-6 text-center md:p-8">
+              <div className="mb-3 text-[22px] font-black text-[#ff4757] md:text-[28px]">{c.number}</div>
+              <div className="mb-3 text-base font-extrabold text-[#1a1a1a] md:text-[18px]">{c.title}</div>
               <div className="text-sm leading-[1.85] text-[#666]">{c.desc}</div>
             </div>
           ))}
@@ -216,34 +216,36 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       </section>
 
       {/* 5. 과정 정보 */}
-      <section className="px-6 py-10">
-        <h2 className="mb-4 text-center text-[32px] leading-[1.4] font-black">과정 정보</h2>
+      <section className="px-6 py-10 md:py-14">
+        <h2 className="mb-4 text-center text-[24px] leading-[1.4] font-black md:text-[32px]">과정 정보</h2>
         <div className="mb-8 text-center">
-          <div className="mb-4 text-[18px] font-extrabold text-[#1a1a1a]">2주 초보 워홀 집중과정</div>
-          <p className="text-[15px] text-[#666]">2주의 교육으로 시간과 비용을 세이브하세요.</p>
+          <div className="mb-4 text-base font-extrabold text-[#1a1a1a] md:text-[18px]">2주 초보 워홀 집중과정</div>
+          <p className="text-sm text-[#666] md:text-[15px]">2주의 교육으로 시간과 비용을 세이브하세요.</p>
         </div>
 
-        <div className="my-8 grid grid-cols-2 gap-6">
+        <div className="my-8 grid grid-cols-2 gap-4 md:gap-6">
           {infoCards.map((c) => (
-            <div key={c.label} className="rounded-xl bg-[#f8f8f8] p-8 text-center">
-              <div className="mb-3 text-sm font-bold tracking-wide text-[#999] uppercase">{c.label}</div>
-              <div className={`text-[24px] leading-[1.6] font-black ${c.isPrice ? "text-[#ff4757]" : "text-[#1a1a1a]"}`}>{c.value}</div>
+            <div key={c.label} className="rounded-xl bg-[#f8f8f8] p-5 text-center md:p-8">
+              <div className="mb-3 text-xs font-bold tracking-wide text-[#999] md:text-sm">{c.label}</div>
+              <div className={`text-[20px] leading-[1.6] font-black md:text-[24px] ${c.isPrice ? "text-[#ff4757]" : "text-[#1a1a1a]"}`}>
+                {c.value}
+              </div>
             </div>
           ))}
         </div>
       </section>
 
       {/* 6. 워홀러 반응 */}
-      <section className="px-6 py-10">
-        <h2 className="mb-8 text-center text-[32px] leading-[1.4] font-black">
+      <section className="px-6 py-10 md:py-14">
+        <h2 className="mb-8 text-center text-[24px] leading-[1.4] font-black md:text-[32px]">
           실제 워홀러들의
           <br />
           <span className="text-[#ff4757]">반응</span>
         </h2>
 
-        <div className="my-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {reviewsTop.map((r) => (
-            <div key={r.author} className="rounded-xl border border-[#e8e8e8] bg-[#f8f8f8] p-8">
+            <div key={r.author} className="rounded-xl border border-[#e8e8e8] bg-[#f8f8f8] p-6 md:p-8">
               <div className="mb-4 text-[13px] tracking-wide text-[#ffc107]">⭐ ⭐ ⭐ ⭐ ⭐</div>
               <div className="mb-6 text-sm leading-[1.85] text-[#666]">{r.text}</div>
               <div className="mb-1 text-[13px] font-bold text-[#1a1a1a]">{r.author}</div>
@@ -253,7 +255,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-6">
-          <div className="rounded-xl border border-[#e8e8e8] bg-[#f8f8f8] p-8">
+          <div className="rounded-xl border border-[#e8e8e8] bg-[#f8f8f8] p-6 md:p-8">
             <div className="mb-4 text-[13px] tracking-wide text-[#ffc107]">⭐ ⭐ ⭐ ⭐ ⭐</div>
             <div className="mb-6 text-sm leading-[1.85] text-[#666]">{reviewBottom.text}</div>
             <div className="mb-1 text-[13px] font-bold text-[#1a1a1a]">{reviewBottom.author}</div>
@@ -263,19 +265,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       </section>
 
       {/* 7. 커리큘럼 */}
-      <section id="curriculum" className="px-6 py-10">
-        <h2 className="mb-4 text-center text-[32px] leading-[1.4] font-black">
+      <section id="curriculum" className="px-6 py-10 md:py-14">
+        <h2 className="mb-4 text-center text-[24px] leading-[1.4] font-black md:text-[32px]">
           10 UNITS
           <br />2 주 집중 과정
         </h2>
         <p className="mb-8 text-center text-sm text-[#666]">각 Unit은 4가지 실제 상황으로 구성되어 있습니다</p>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-8">
           {units.map((u) => (
-            <div key={u.title} className="rounded-lg border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-7">
-              <div className="mb-5 text-[15px] leading-[1.5] font-extrabold text-[#1a1a1a]">{u.title}</div>
+            <div key={u.title} className="rounded-lg border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-5 md:p-7">
+              <div className="mb-5 text-sm leading-[1.5] font-extrabold text-[#1a1a1a] md:text-[15px]">{u.title}</div>
               {u.items.map((item) => (
-                <div key={item} className="ml-4 border-l-2 border-[#ddd] pl-3 text-sm leading-[1.9] text-[#666]">
+                <div key={item} className="ml-2 border-l-2 border-[#ddd] pl-3 text-sm leading-[1.9] text-[#666] md:ml-4">
                   {item}
                 </div>
               ))}
@@ -285,9 +287,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       </section>
 
       {/* 8. 프렌딩 스쿨 소개 */}
-      <section className="px-6 py-10">
-        <div className="my-8 rounded-xl bg-[#f8f8f8] p-10 text-center">
-          <h3 className="mb-6 text-[24px] font-extrabold text-[#1a1a1a]">프렌딩 스쿨은?</h3>
+      <section className="px-6 py-10 md:py-14">
+        <div className="my-8 rounded-xl bg-[#f8f8f8] p-6 text-center md:p-10">
+          <h3 className="mb-6 text-[20px] font-extrabold text-[#1a1a1a] md:text-[24px]">프렌딩 스쿨은?</h3>
           <p className="mb-4 text-sm leading-[1.95] text-[#666]">
             전국 120개 문화센터에서 외국어 클래스를 진행 중인
             <br />
@@ -314,10 +316,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       </section>
 
       {/* 9. 최종 CTA */}
-      <section id="apply" className="mx-6 mt-12 mb-8 rounded-xl bg-gradient-to-br from-[#ff4757] to-[#ff6b7a] px-6 py-12 text-center text-white">
-        <h2 className="mb-3 text-[28px] leading-[1.4] font-black">버벅거리는 순간이 오기 전에</h2>
-        <p className="mb-8 text-[28px] leading-[1.4] font-extrabold">제대로 준비하세요</p>
-        <button type="button" className="mb-6 w-full rounded-lg bg-white px-8 py-4 text-[15px] font-bold text-[#ff4757]">
+      <section
+        id="apply"
+        className="mx-6 mt-10 mb-8 rounded-xl bg-gradient-to-br from-[#ff4757] to-[#ff6b7a] px-6 py-10 text-center text-white md:mt-12 md:py-14">
+        <h2 className="mb-3 text-[22px] leading-[1.4] font-black md:text-[28px]">버벅거리는 순간이 오기 전에</h2>
+        <p className="mb-8 text-[22px] leading-[1.4] font-extrabold md:text-[28px]">제대로 준비하세요</p>
+        <button type="button" className="mb-6 w-full rounded-lg bg-white px-8 py-4 text-sm font-bold text-[#ff4757] md:text-[15px]">
           지금 신청하기
         </button>
         <div className="rounded-lg border-2 border-white bg-white/15 p-5 text-[13px] leading-[1.8] font-semibold text-white">
@@ -334,7 +338,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           </strong>
         </div>
       </section>
-
     </>
   );
 }
