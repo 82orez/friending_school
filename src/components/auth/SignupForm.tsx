@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { signup, type SignupState } from "@/app/signup/actions";
+import { resendConfirmation, type ResendConfirmationResult } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,16 @@ export default function SignupForm() {
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const passwordCaps = useCapsLockWarning();
   const passwordConfirmCaps = useCapsLockWarning();
+  const [resendPending, startResend] = useTransition();
+  const [resendResult, setResendResult] = useState<ResendConfirmationResult | null>(null);
+
+  const handleResend = () => {
+    setResendResult(null);
+    startResend(async () => {
+      const result = await resendConfirmation(email);
+      setResendResult(result);
+    });
+  };
 
   return (
     <Card className="mx-auto w-full max-w-md">
@@ -109,9 +120,23 @@ export default function SignupForm() {
             </p>
           )}
           {state?.success && (
-            <p className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700" role="status">
-              {state.success}
-            </p>
+            <div className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700" role="status">
+              <p>{state.success}</p>
+              {!resendResult?.success && (
+                <p className="mt-2 text-xs">
+                  메일이 도착하지 않으셨나요?{" "}
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resendPending || !email}
+                    className="cursor-pointer font-semibold underline hover:no-underline disabled:cursor-not-allowed disabled:opacity-50">
+                    {resendPending ? "재발송 중..." : "다시 보내기"}
+                  </button>
+                </p>
+              )}
+              {resendResult?.success && <p className="mt-2 text-xs">{resendResult.success}</p>}
+              {resendResult?.error && <p className="mt-2 text-xs text-destructive">{resendResult.error}</p>}
+            </div>
           )}
 
           <Button type="submit" disabled={pending} className="mt-2 h-11 bg-[#ff4757] text-base font-bold text-white hover:bg-[#ff4757]/90">
