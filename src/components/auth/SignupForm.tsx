@@ -83,6 +83,8 @@ export default function SignupForm() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={!!state?.error}
+              aria-describedby={state?.error ? "signup-error" : undefined}
               className="h-10"
             />
           </div>
@@ -99,19 +101,27 @@ export default function SignupForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 {...passwordCaps.capsLockHandlers}
+                aria-invalid={!!state?.error}
+                aria-describedby={
+                  ["signup-password-hint", state?.error ? "signup-error" : null, passwordCaps.capsLockOn ? "signup-password-caps" : null]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
                 className="h-10 pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground">
+                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:outline-none">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="text-xs text-muted-foreground">8자 이상 입력해 주세요.</p>
+            <p id="signup-password-hint" className="text-xs text-muted-foreground">
+              8자 이상 입력해 주세요.
+            </p>
             {passwordCaps.capsLockOn && (
-              <p className="flex items-center gap-1 text-xs text-amber-700">
+              <p id="signup-password-caps" className="flex items-center gap-1 text-xs text-amber-700">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 Caps Lock이 켜져 있습니다.
               </p>
@@ -129,18 +139,24 @@ export default function SignupForm() {
                 value={passwordConfirm}
                 onChange={(e) => setPasswordConfirm(e.target.value)}
                 {...passwordConfirmCaps.capsLockHandlers}
+                aria-invalid={!!state?.error}
+                aria-describedby={
+                  [state?.error ? "signup-error" : null, passwordConfirmCaps.capsLockOn ? "signup-passwordconfirm-caps" : null]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
                 className="h-10 pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPasswordConfirm((prev) => !prev)}
                 aria-label={showPasswordConfirm ? "비밀번호 숨기기" : "비밀번호 보기"}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground">
+                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:outline-none">
                 {showPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {passwordConfirmCaps.capsLockOn && (
-              <p className="flex items-center gap-1 text-xs text-amber-700">
+              <p id="signup-passwordconfirm-caps" className="flex items-center gap-1 text-xs text-amber-700">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 Caps Lock이 켜져 있습니다.
               </p>
@@ -148,7 +164,7 @@ export default function SignupForm() {
           </div>
 
           {state?.error && (
-            <div role="alert">
+            <div role="alert" id="signup-error">
               <p className="text-sm text-destructive">{state.error}</p>
               {state.canResend && (
                 <p className="mt-2 text-xs text-destructive">

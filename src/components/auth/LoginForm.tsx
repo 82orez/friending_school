@@ -79,6 +79,8 @@ export default function LoginForm() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={!!state?.error}
+              aria-describedby={state?.error ? "login-error" : undefined}
               className="h-10"
             />
           </div>
@@ -94,18 +96,22 @@ export default function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 {...capsLockHandlers}
+                aria-invalid={!!state?.error}
+                aria-describedby={
+                  [state?.error ? "login-error" : null, capsLockOn ? "login-caps-warning" : null].filter(Boolean).join(" ") || undefined
+                }
                 className="h-10 pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground">
+                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:outline-none">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {capsLockOn && (
-              <p className="flex items-center gap-1 text-xs text-amber-700">
+              <p id="login-caps-warning" className="flex items-center gap-1 text-xs text-amber-700">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 Caps Lock이 켜져 있습니다.
               </p>
@@ -119,7 +125,7 @@ export default function LoginForm() {
 
           {state?.error && (
             <div className="flex flex-col gap-2">
-              <p className="text-sm text-destructive" role="alert">
+              <p id="login-error" className="text-sm text-destructive" role="alert">
                 {state.error}
               </p>
               {state.canResend && (

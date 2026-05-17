@@ -139,7 +139,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <br />
           <strong className="text-base">제대로 잡으세요.</strong>
         </div>
-        <button type="button" className="mt-6 w-full rounded bg-[#ff4757] px-8 py-4 text-sm font-bold text-white md:text-[15px]">
+        <button
+          type="button"
+          className="mt-6 w-full rounded bg-[#ff4757] px-8 py-4 text-sm font-bold text-white transition-colors hover:bg-[#ff4757]/90 focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a] focus-visible:outline-none md:text-[15px]">
           교육센터에서 신청하기
         </button>
       </section>
@@ -207,9 +209,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {opportunityCards.map((c) => (
             <div key={c.number} className="rounded-2xl border border-[#e8e8e8] bg-[#f8f8f8] p-6 text-center md:p-8">
-              <div className="mb-3 text-[22px] font-black text-[#ff4757] md:text-[28px]">{c.number}</div>
-              <div className="mb-3 text-base font-extrabold text-[#1a1a1a] md:text-[18px]">{c.title}</div>
-              <div className="text-sm leading-[1.85] text-[#666]">{c.desc}</div>
+              <div aria-hidden="true" className="mb-3 text-[22px] font-black text-[#ff4757] md:text-[28px]">
+                {c.number}
+              </div>
+              <h3 className="mb-3 text-base font-extrabold text-[#1a1a1a] md:text-[18px]">{c.title}</h3>
+              <p className="text-sm leading-[1.85] text-[#666]">{c.desc}</p>
             </div>
           ))}
         </div>
@@ -246,7 +250,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {reviewsTop.map((r) => (
             <div key={r.author} className="rounded-xl border border-[#e8e8e8] bg-[#f8f8f8] p-6 md:p-8">
-              <div className="mb-4 text-[13px] tracking-wide text-[#ffc107]">⭐ ⭐ ⭐ ⭐ ⭐</div>
+              <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">⭐ ⭐ ⭐ ⭐ ⭐</div>
               <div className="mb-6 text-sm leading-[1.85] text-[#666]">{r.text}</div>
               <div className="mb-1 text-[13px] font-bold text-[#1a1a1a]">{r.author}</div>
               <div className="text-xs text-[#999]">{r.status}</div>
@@ -256,7 +260,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
         <div className="mb-8 grid grid-cols-1 gap-6">
           <div className="rounded-xl border border-[#e8e8e8] bg-[#f8f8f8] p-6 md:p-8">
-            <div className="mb-4 text-[13px] tracking-wide text-[#ffc107]">⭐ ⭐ ⭐ ⭐ ⭐</div>
+            <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">⭐ ⭐ ⭐ ⭐ ⭐</div>
             <div className="mb-6 text-sm leading-[1.85] text-[#666]">{reviewBottom.text}</div>
             <div className="mb-1 text-[13px] font-bold text-[#1a1a1a]">{reviewBottom.author}</div>
             <div className="text-xs text-[#999]">{reviewBottom.status}</div>
@@ -275,7 +279,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-8">
           {units.map((u) => (
             <div key={u.title} className="rounded-lg border-l-[6px] border-[#ff4757] bg-[#f8f8f8] p-5 md:p-7">
-              <div className="mb-5 text-sm leading-[1.5] font-extrabold text-[#1a1a1a] md:text-[15px]">{u.title}</div>
+              <h3 className="mb-5 text-sm leading-[1.5] font-extrabold text-[#1a1a1a] md:text-[15px]">{u.title}</h3>
               {u.items.map((item) => (
                 <div key={item} className="ml-2 border-l-2 border-[#ddd] pl-3 text-sm leading-[1.9] text-[#666] md:ml-4">
                   {item}
@@ -321,7 +325,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         className="mx-6 mt-10 mb-8 rounded-xl bg-gradient-to-br from-[#ff4757] to-[#ff6b7a] px-6 py-10 text-center text-white md:mt-12 md:py-14">
         <h2 className="mb-3 text-[22px] leading-[1.4] font-black md:text-[28px]">버벅거리는 순간이 오기 전에</h2>
         <p className="mb-8 text-[22px] leading-[1.4] font-extrabold md:text-[28px]">제대로 준비하세요</p>
-        <button type="button" className="mb-6 w-full rounded-lg bg-white px-8 py-4 text-sm font-bold text-[#ff4757] md:text-[15px]">
+        <button
+          type="button"
+          className="mb-6 w-full rounded-lg bg-white px-8 py-4 text-sm font-bold text-[#ff4757] transition-colors hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#ff4757] focus-visible:outline-none md:text-[15px]">
           지금 신청하기
         </button>
         <div className="rounded-lg border-2 border-white bg-white/15 p-5 text-[13px] leading-[1.8] font-semibold text-white">

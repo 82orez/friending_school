@@ -43,6 +43,20 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [menuOpen]);
+
   return (
     <>
       {/* 네비 */}
@@ -67,19 +81,21 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 <form action={logout}>
                   <button
                     type="submit"
-                    className="rounded-full border border-[#ddd] px-3 py-1.5 text-sm font-medium text-[#333] transition-colors hover:border-[#ff4757] hover:text-[#ff4757]">
+                    className="rounded-full border border-[#ddd] px-3 py-1.5 text-sm font-medium text-[#333] transition-colors hover:border-[#ff4757] hover:text-[#ff4757] focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:ring-offset-2 focus-visible:outline-none">
                     로그아웃
                   </button>
                 </form>
               </>
             ) : (
               <>
-                <Link href="/login" className="text-sm font-medium text-[#333] transition-colors hover:text-[#ff4757]">
+                <Link
+                  href="/login"
+                  className="rounded text-sm font-medium text-[#333] transition-colors hover:text-[#ff4757] focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:ring-offset-2 focus-visible:outline-none">
                   로그인
                 </Link>
                 <Link
                   href="/signup"
-                  className="rounded-full bg-[#ff4757] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#ff4757]/90">
+                  className="rounded-full bg-[#ff4757] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#ff4757]/90 focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:ring-offset-2 focus-visible:outline-none">
                   회원가입
                 </Link>
               </>
@@ -89,15 +105,31 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
           <button
             type="button"
             onClick={toggleMenu}
-            aria-label="메뉴 열기"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ff4757] text-xl text-white">
+            aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ff4757] text-xl text-white focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:ring-offset-2 focus-visible:outline-none">
             ≡
           </button>
         </div>
       </nav>
 
+      {/* 슬라이드 메뉴 배경 오버레이 */}
+      <div
+        aria-hidden="true"
+        onClick={closeMenu}
+        className={`fixed inset-0 z-[150] bg-black/40 transition-opacity duration-300 ${
+          menuOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      />
+
       {/* 슬라이드 메뉴 */}
       <div
+        id="mobile-menu"
+        role="dialog"
+        aria-modal="true"
+        aria-label="모바일 메뉴"
+        aria-hidden={!menuOpen}
         className={`fixed top-0 z-[200] h-screen w-[280px] border-l border-[#eee] bg-white pt-8 transition-[right] duration-300 ease-in-out ${
           menuOpen ? "right-0" : "-right-[300px]"
         }`}>
@@ -105,17 +137,23 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
           type="button"
           onClick={closeMenu}
           aria-label="메뉴 닫기"
-          className="absolute top-4 right-6 border-none bg-transparent text-2xl">
+          className="absolute top-4 right-6 rounded border-none bg-transparent text-2xl focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:ring-offset-2 focus-visible:outline-none">
           ✕
         </button>
         <ul className="list-none px-6">
           <li className="border-b border-[#eee] py-4">
-            <a href="#curriculum" onClick={closeMenu} className="text-[15px] font-medium text-[#333] no-underline">
+            <a
+              href="#curriculum"
+              onClick={closeMenu}
+              className="rounded text-[15px] font-medium text-[#333] no-underline focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:ring-offset-2 focus-visible:outline-none">
               커리큘럼
             </a>
           </li>
           <li className="border-b border-[#eee] py-4">
-            <a href="#apply" onClick={closeMenu} className="text-[15px] font-medium text-[#333] no-underline">
+            <a
+              href="#apply"
+              onClick={closeMenu}
+              className="rounded text-[15px] font-medium text-[#333] no-underline focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:ring-offset-2 focus-visible:outline-none">
               신청방법
             </a>
           </li>
@@ -132,7 +170,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 <form action={logout}>
                   <button
                     type="submit"
-                    className="w-full rounded-md border border-[#ddd] px-4 py-2.5 text-[15px] font-medium text-[#333] transition-colors hover:border-[#ff4757] hover:text-[#ff4757]">
+                    className="w-full rounded-md border border-[#ddd] px-4 py-2.5 text-[15px] font-medium text-[#333] transition-colors hover:border-[#ff4757] hover:text-[#ff4757] focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:ring-offset-2 focus-visible:outline-none">
                     로그아웃
                   </button>
                 </form>
@@ -141,7 +179,10 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
           ) : (
             <>
               <li className="border-b border-[#eee] py-4">
-                <Link href="/login" onClick={closeMenu} className="text-[15px] font-medium text-[#333] no-underline">
+                <Link
+                  href="/login"
+                  onClick={closeMenu}
+                  className="rounded text-[15px] font-medium text-[#333] no-underline focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:ring-offset-2 focus-visible:outline-none">
                   로그인
                 </Link>
               </li>
@@ -149,7 +190,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 <Link
                   href="/signup"
                   onClick={closeMenu}
-                  className="block w-full rounded-md bg-[#ff4757] px-4 py-2.5 text-center text-[15px] font-semibold text-white no-underline transition-colors hover:bg-[#ff4757]/90">
+                  className="block w-full rounded-md bg-[#ff4757] px-4 py-2.5 text-center text-[15px] font-semibold text-white no-underline transition-colors hover:bg-[#ff4757]/90 focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:ring-offset-2 focus-visible:outline-none">
                   회원가입
                 </Link>
               </li>

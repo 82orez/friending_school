@@ -32,12 +32,14 @@ export default function ForgotPasswordForm() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={!!state?.error}
+              aria-describedby={state?.error ? "forgot-error" : undefined}
               className="h-10"
             />
           </div>
 
           {state?.error && (
-            <p className="text-sm text-destructive" role="alert">
+            <p id="forgot-error" className="text-sm text-destructive" role="alert">
               {state.error}
             </p>
           )}
