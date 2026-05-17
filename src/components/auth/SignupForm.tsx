@@ -48,7 +48,7 @@ export default function SignupForm() {
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
                 required
-                minLength={6}
+                minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="h-10 pr-10"
@@ -61,7 +61,7 @@ export default function SignupForm() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="text-xs text-muted-foreground">6자 이상 입력해 주세요.</p>
+            <p className="text-xs text-muted-foreground">8자 이상 입력해 주세요.</p>
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="passwordConfirm">비밀번호 확인</Label>

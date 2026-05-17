@@ -15,8 +15,8 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
   if (!email || !password) {
     return { error: "이메일과 비밀번호를 입력해 주세요." };
   }
-  if (password.length < 6) {
-    return { error: "비밀번호는 6자 이상이어야 합니다." };
+  if (password.length < 8) {
+    return { error: "비밀번호는 8자 이상이어야 합니다." };
   }
   if (password !== passwordConfirm) {
     return { error: "비밀번호 확인이 일치하지 않습니다." };
