@@ -159,19 +159,17 @@ export default function SignupForm() {
           {state?.success && (
             <div className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700" role="status">
               <p>{state.success}</p>
-              {!resendResult?.success && (
-                <p className="mt-2 text-xs">
-                  메일이 도착하지 않으셨나요?{" "}
-                  <button
-                    type="button"
-                    onClick={() => setConfirmOpen(true)}
-                    disabled={resendDisabled}
-                    className="cursor-pointer font-semibold underline hover:no-underline disabled:cursor-not-allowed disabled:opacity-50">
-                    {resendLabel}
-                  </button>
-                </p>
-              )}
               {resendResult?.success && <p className="mt-2 text-xs">{resendResult.success}</p>}
+              <p className="mt-2 text-xs">
+                메일이 도착하지 않으셨나요?{" "}
+                <button
+                  type="button"
+                  onClick={() => setConfirmOpen(true)}
+                  disabled={resendDisabled}
+                  className="cursor-pointer font-semibold underline hover:no-underline disabled:cursor-not-allowed disabled:opacity-50">
+                  {resendLabel}
+                </button>
+              </p>
               {resendResult?.error && <p className="mt-2 text-xs text-destructive">{resendResult.error}</p>}
             </div>
           )}
