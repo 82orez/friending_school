@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useActionState, useState, useTransition } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { login, resendConfirmation, type LoginState, type ResendConfirmationResult } from "@/app/login/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useCapsLockWarning } from "@/hooks/use-caps-lock";
 
 export default function LoginForm() {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(login, null);
@@ -16,6 +17,7 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [resendPending, startResend] = useTransition();
   const [resendResult, setResendResult] = useState<ResendConfirmationResult | null>(null);
+  const { capsLockOn, capsLockHandlers } = useCapsLockWarning();
 
   const handleResend = () => {
     setResendResult(null);
@@ -58,6 +60,7 @@ export default function LoginForm() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                {...capsLockHandlers}
                 className="h-10 pr-10"
               />
               <button
@@ -68,6 +71,12 @@ export default function LoginForm() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {capsLockOn && (
+              <p className="flex items-center gap-1 text-xs text-amber-700">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Caps Lock이 켜져 있습니다.
+              </p>
+            )}
             <div className="flex justify-end">
               <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-[#ff4757] hover:underline">
                 비밀번호를 잊으셨나요?

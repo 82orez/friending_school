@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { signup, type SignupState } from "@/app/signup/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useCapsLockWarning } from "@/hooks/use-caps-lock";
 
 export default function SignupForm() {
   const [state, formAction, pending] = useActionState<SignupState, FormData>(signup, null);
@@ -16,6 +17,8 @@ export default function SignupForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
+  const passwordCaps = useCapsLockWarning();
+  const passwordConfirmCaps = useCapsLockWarning();
 
   return (
     <Card className="mx-auto w-full max-w-md">
@@ -51,6 +54,7 @@ export default function SignupForm() {
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                {...passwordCaps.capsLockHandlers}
                 className="h-10 pr-10"
               />
               <button
@@ -62,6 +66,12 @@ export default function SignupForm() {
               </button>
             </div>
             <p className="text-xs text-muted-foreground">8자 이상 입력해 주세요.</p>
+            {passwordCaps.capsLockOn && (
+              <p className="flex items-center gap-1 text-xs text-amber-700">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Caps Lock이 켜져 있습니다.
+              </p>
+            )}
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="passwordConfirm">비밀번호 확인</Label>
@@ -74,6 +84,7 @@ export default function SignupForm() {
                 required
                 value={passwordConfirm}
                 onChange={(e) => setPasswordConfirm(e.target.value)}
+                {...passwordConfirmCaps.capsLockHandlers}
                 className="h-10 pr-10"
               />
               <button
@@ -84,6 +95,12 @@ export default function SignupForm() {
                 {showPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {passwordConfirmCaps.capsLockOn && (
+              <p className="flex items-center gap-1 text-xs text-amber-700">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Caps Lock이 켜져 있습니다.
+              </p>
+            )}
           </div>
 
           {state?.error && (
