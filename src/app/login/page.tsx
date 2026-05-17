@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import LoginForm from "@/components/auth/LoginForm";
 import AuthBannerSlot from "@/components/auth/AuthBannerSlot";
 
@@ -19,7 +20,14 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
         <AuthBannerSlot>
           {showAuthCodeError && (
             <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
-              인증 링크가 유효하지 않거나 만료되었습니다. 다시 시도해 주세요.
+              <p>인증 링크가 유효하지 않거나 만료되었습니다.</p>
+              <p className="mt-1.5 text-xs text-destructive/80">
+                아래에서 로그인을 시도하시거나, 계정이 없으시면{" "}
+                <Link href="/signup" className="font-semibold underline hover:no-underline">
+                  회원가입
+                </Link>
+                해 주세요.
+              </p>
             </div>
           )}
           {showVerifiedPending && (
