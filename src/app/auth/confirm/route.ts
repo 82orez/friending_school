@@ -21,7 +21,9 @@ export async function GET(request: NextRequest) {
   if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash });
     if (!error) {
-      return NextResponse.redirect(new URL(next, request.url));
+      const target = new URL(next, request.url);
+      if (!isRecovery) target.searchParams.set("verified", "success");
+      return NextResponse.redirect(target);
     }
     if (isRecovery) {
       return NextResponse.redirect(new URL("/forgot-password?error=link-expired", request.url));
@@ -32,7 +34,9 @@ export async function GET(request: NextRequest) {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(new URL(next, request.url));
+      const target = new URL(next, request.url);
+      if (!isRecovery) target.searchParams.set("verified", "success");
+      return NextResponse.redirect(target);
     }
     // PKCE 코드 교환 실패: 보통 cross-device 클릭이나 메일 클라이언트의 prefetch로
     // verifier 쿠키가 없어서 발생.
