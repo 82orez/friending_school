@@ -42,4 +42,10 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 * **기존 보안 계층과의 관계:** Supabase 자체 보호 기능(이메일 OTP / 매직 링크 제한 등)이 이미 백엔드 단에서 기본 작동 중이므로, 이번 구현은 서비스 안정성을 높이기 위한 **이중 방어(Defense in Depth)** 역할을 수행합니다.
 
 ## 추후 해결 과제
-- 로그인 된 상태에서는 로그인 페이지 접근 불가하기
+* 로그인 된 상태에서는 로그인 페이지 접근 불가하기
+* Bot/spam 방지 부재
+  * CAPTCHA, 허니팟 필드 없음. 마케팅 사이트라 회원가입이 공개되어 있으므로 봇이 대량 가입할 수 있음. Cloudflare
+ Turnstile, hCaptcha 등 검토.
+* emailExists 페이지네이션 — 사용자 수 증가 시 비효율
+  * listUsers를 페이지당 1000명씩 최대 50페이지(5만 명)까지 순회. 사용자 수가 많아지면 매 로그인/비밀번호 찾기마다 풀
+ 스캔이 발생. 향후 auth.users를 조회하는 Postgres RPC 함수(SECURITY DEFINER)로 교체 권장.
