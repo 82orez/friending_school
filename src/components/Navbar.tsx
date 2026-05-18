@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { logout } from "@/app/logout/actions";
@@ -75,7 +76,14 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
       <nav className="sticky top-0 z-[100] flex items-center border-b border-rule bg-white px-6 py-4">
         <div className="flex flex-1 items-center justify-start">
           <Link href="/">
-            <img src="/images/friending_school_logo.png" alt="프렌딩 스쿨 로고" width={40} height={40} className="h-10 w-auto" />
+            <Image
+              src="/images/friending_school_logo.png"
+              alt="프렌딩 스쿨 로고"
+              width={107}
+              height={40}
+              priority
+              className="h-10 w-auto"
+            />
           </Link>
         </div>
         <div className="hidden flex-1 justify-center text-3xl font-bold md:flex">
