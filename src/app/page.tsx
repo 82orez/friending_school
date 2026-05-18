@@ -118,22 +118,22 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         </div>
       )}
       {/* 1. 히어로 */}
-      <section id="hero" className="bg-gradient-to-br from-[#1a1a1a] to-[#2d2d2d] px-6 py-12 text-center text-white md:py-20">
+      <section id="hero" className="bg-gradient-to-br from-ink to-[#2d2d2d] px-6 py-12 text-center text-white md:py-20">
         <p className="mb-4 text-base font-bold tracking-wider opacity-80 md:text-lg">청년을 세계로, 프렌딩 스쿨</p>
         <h1 className="mb-3 text-[26px] leading-tight font-black md:text-4xl">
           초보 워홀 영어
           <br />
           2주만에 판바꾸기
         </h1>
-        <p className="mb-5 text-[17px] font-extrabold text-[#ff4757] md:text-xl">
+        <p className="mb-5 text-[17px] font-extrabold text-brand md:text-xl">
           매일 50분
           <br />
           워홀 필수 생존 영어 말하기
         </p>
-        <p className="text-sm leading-[1.8] text-[#ddd] md:text-[15px]">
+        <p className="text-sm leading-[1.8] text-rule-faint md:text-[15px]">
           <strong className="text-base">버벅거리는 순간 기회가 날라갑니다.</strong>
         </p>
-        <p className="my-6 text-base leading-[1.9] font-semibold text-[#ddd] md:text-[17px]">
+        <p className="my-6 text-base leading-[1.9] font-semibold text-rule-faint md:text-[17px]">
           받을 걸 제대로 받을 기회
           <br />
           문제를 원활히 해결할 수 있는 기회
@@ -155,42 +155,42 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <h2 className="mb-8 text-center text-2xl leading-snug font-black md:text-3xl">
           선배 워홀러들이
           <br />
-          <span className="text-[#ff4757]">후회하는 3가지</span>
+          <span className="text-brand">후회하는 3가지</span>
         </h2>
 
         <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {reasons.map((r) => (
             <SectionCard key={r.title} variant="accent-left" className="rounded-2xl p-6 md:p-8">
-              <h3 className="mb-4 text-base leading-normal font-extrabold text-[#1a1a1a] md:text-[17px]">{r.title}</h3>
-              <p className="text-sm leading-[1.85] text-[#666]">{r.desc}</p>
+              <h3 className="mb-4 text-base leading-normal font-extrabold text-ink md:text-[17px]">{r.title}</h3>
+              <p className="text-sm leading-[1.85] text-muted-fg">{r.desc}</p>
             </SectionCard>
           ))}
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-6">
           <SectionCard variant="accent-left" className="rounded-2xl p-6 md:p-8">
-            <h3 className="mb-4 text-base leading-normal font-extrabold text-[#1a1a1a] md:text-[17px]">{lastReason.title}</h3>
-            <p className="text-sm leading-[1.85] text-[#666]">{lastReason.desc}</p>
+            <h3 className="mb-4 text-base leading-normal font-extrabold text-ink md:text-[17px]">{lastReason.title}</h3>
+            <p className="text-sm leading-[1.85] text-muted-fg">{lastReason.desc}</p>
           </SectionCard>
         </div>
       </section>
 
       {/* 3. 우리는 이렇게 달라요 */}
-      <section className="mx-6 my-8 rounded-xl bg-[#1a1a1a] px-6 py-10 text-white md:py-14">
+      <section className="mx-6 my-8 rounded-xl bg-ink px-6 py-10 text-white md:py-14">
         <h2 className="mb-6 text-center text-2xl leading-[1.3] font-black md:text-3xl">
-          우리는 <span className="text-[#ff4757]">이렇게 달라요</span>
+          우리는 <span className="text-brand">이렇게 달라요</span>
         </h2>
-        <p className="mb-6 text-center text-sm leading-[1.95] text-[#ddd] md:text-base">
+        <p className="mb-6 text-center text-sm leading-[1.95] text-rule-faint md:text-base">
           <strong className="text-[17px] font-extrabold md:text-[19px]">매일 50분 몰입이 만드는 힘</strong>
           <br />
           영어 초급이라도 집중된 환경에서 2주 반복하면 자동 반응이 됩니다.
         </p>
-        <p className="mt-6 mb-6 text-center text-sm leading-[1.95] text-[#ddd] md:text-base">
+        <p className="mt-6 mb-6 text-center text-sm leading-[1.95] text-rule-faint md:text-base">
           <strong className="text-[17px] font-extrabold md:text-[19px]">워홀에서 정말 쓸 표현만</strong>
           <br />
           일반 교과서는 버립니다. Unit 1-10은 모두 실제 워홀러 경험에서 나온 필수 표현입니다.
         </p>
-        <p className="mt-6 mb-6 text-center text-sm leading-[1.95] text-[#ddd] md:text-base">
+        <p className="mt-6 mb-6 text-center text-sm leading-[1.95] text-rule-faint md:text-base">
           <strong className="text-[17px] font-extrabold md:text-[19px]">현장에서 바로 먹혀듭니다</strong>
           <br />
           공항, 숙소, 면접, 업무. 당신이 정말 할 말만 배웁니다.
@@ -202,7 +202,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <h2 className="mb-8 text-center text-2xl leading-snug font-black md:text-3xl">
           버벅거리면
           <br />
-          <span className="text-[#ff4757]">떨어집니다</span>
+          <span className="text-brand">떨어집니다</span>
         </h2>
         <p className="mb-8 text-center text-base leading-[1.9] font-bold text-[#555] md:text-lg">
           말 한 마디가 인생을 바꿉니다.
@@ -213,11 +213,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
           {opportunityCards.map((c) => (
             <SectionCard key={c.number} variant="outline" className="rounded-2xl p-6 text-center md:p-8">
-              <div aria-hidden="true" className="mb-3 text-[22px] font-black text-[#ff4757] md:text-[28px]">
+              <div aria-hidden="true" className="mb-3 text-[22px] font-black text-brand md:text-[28px]">
                 {c.number}
               </div>
-              <h3 className="mb-3 text-base font-extrabold text-[#1a1a1a] md:text-lg">{c.title}</h3>
-              <p className="text-sm leading-[1.85] text-[#666]">{c.desc}</p>
+              <h3 className="mb-3 text-base font-extrabold text-ink md:text-lg">{c.title}</h3>
+              <p className="text-sm leading-[1.85] text-muted-fg">{c.desc}</p>
             </SectionCard>
           ))}
         </div>
@@ -227,15 +227,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       <section className="px-6 py-10 md:py-14">
         <h2 className="mb-4 text-center text-2xl leading-snug font-black md:text-3xl">과정 정보</h2>
         <div className="mb-8 text-center">
-          <p className="mb-4 text-base font-extrabold text-[#1a1a1a] md:text-lg">2주 초보 워홀 집중과정</p>
-          <p className="text-sm text-[#666] md:text-[15px]">2주의 교육으로 시간과 비용을 세이브하세요.</p>
+          <p className="mb-4 text-base font-extrabold text-ink md:text-lg">2주 초보 워홀 집중과정</p>
+          <p className="text-sm text-muted-fg md:text-[15px]">2주의 교육으로 시간과 비용을 세이브하세요.</p>
         </div>
 
         <dl className="my-8 grid grid-cols-2 gap-4 md:gap-6">
           {infoCards.map((c) => (
             <SectionCard key={c.label} variant="plain" className="rounded-xl p-5 text-center md:p-8">
-              <dt className="mb-3 text-xs font-bold tracking-wide text-[#999] md:text-sm">{c.label}</dt>
-              <dd className={`text-xl leading-[1.6] font-black md:text-2xl ${c.isPrice ? "text-[#ff4757]" : "text-[#1a1a1a]"}`}>
+              <dt className="mb-3 text-xs font-bold tracking-wide text-muted-fg-faint md:text-sm">{c.label}</dt>
+              <dd className={`text-xl leading-[1.6] font-black md:text-2xl ${c.isPrice ? "text-brand" : "text-ink"}`}>
                 {c.value}
               </dd>
             </SectionCard>
@@ -248,7 +248,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         <h2 className="mb-8 text-center text-2xl leading-snug font-black md:text-3xl">
           실제 워홀러들의
           <br />
-          <span className="text-[#ff4757]">반응</span>
+          <span className="text-brand">반응</span>
         </h2>
 
         <div className="my-8 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
@@ -258,10 +258,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
                 <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">
                   ⭐ ⭐ ⭐ ⭐ ⭐
                 </div>
-                <p className="mb-6 text-sm leading-[1.85] text-[#666]">{r.text}</p>
+                <p className="mb-6 text-sm leading-[1.85] text-muted-fg">{r.text}</p>
                 <footer>
-                  <cite className="mb-1 block text-[13px] font-bold text-[#1a1a1a] not-italic">{r.author}</cite>
-                  <span className="text-xs text-[#999]">{r.status}</span>
+                  <cite className="mb-1 block text-[13px] font-bold text-ink not-italic">{r.author}</cite>
+                  <span className="text-xs text-muted-fg-faint">{r.status}</span>
                 </footer>
               </blockquote>
             </SectionCard>
@@ -274,10 +274,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
               <div role="img" aria-label="별점 5점 만점에 5점" className="mb-4 text-[13px] tracking-wide text-[#ffc107]">
                 ⭐ ⭐ ⭐ ⭐ ⭐
               </div>
-              <p className="mb-6 text-sm leading-[1.85] text-[#666]">{reviewBottom.text}</p>
+              <p className="mb-6 text-sm leading-[1.85] text-muted-fg">{reviewBottom.text}</p>
               <footer>
-                <cite className="mb-1 block text-[13px] font-bold text-[#1a1a1a] not-italic">{reviewBottom.author}</cite>
-                <span className="text-xs text-[#999]">{reviewBottom.status}</span>
+                <cite className="mb-1 block text-[13px] font-bold text-ink not-italic">{reviewBottom.author}</cite>
+                <span className="text-xs text-muted-fg-faint">{reviewBottom.status}</span>
               </footer>
             </blockquote>
           </SectionCard>
@@ -290,15 +290,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           10 UNITS
           <br />2 주 집중 과정
         </h2>
-        <p className="mb-8 text-center text-sm text-[#666]">각 Unit은 4가지 실제 상황으로 구성되어 있습니다</p>
+        <p className="mb-8 text-center text-sm text-muted-fg">각 Unit은 4가지 실제 상황으로 구성되어 있습니다</p>
 
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-8">
           {units.map((u) => (
             <SectionCard key={u.title} variant="accent-left" className="rounded-lg p-5 md:p-7">
-              <h3 className="mb-5 text-sm leading-normal font-extrabold text-[#1a1a1a] md:text-[15px]">{u.title}</h3>
+              <h3 className="mb-5 text-sm leading-normal font-extrabold text-ink md:text-[15px]">{u.title}</h3>
               <ul className="list-none">
                 {u.items.map((item) => (
-                  <li key={item} className="ml-2 border-l-2 border-[#ddd] pl-3 text-sm leading-[1.9] text-[#666] md:ml-4">
+                  <li key={item} className="ml-2 border-l-2 border-rule-faint pl-3 text-sm leading-[1.9] text-muted-fg md:ml-4">
                     {item}
                   </li>
                 ))}
@@ -311,23 +311,23 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       {/* 8. 프렌딩 스쿨 소개 */}
       <section className="px-6 py-10 md:py-14">
         <SectionCard variant="plain" className="my-8 rounded-xl p-6 text-center md:p-10">
-          <h3 className="mb-6 text-xl font-extrabold text-[#1a1a1a] md:text-2xl">프렌딩 스쿨은?</h3>
-          <p className="mb-4 text-sm leading-[1.95] text-[#666]">
+          <h3 className="mb-6 text-xl font-extrabold text-ink md:text-2xl">프렌딩 스쿨은?</h3>
+          <p className="mb-4 text-sm leading-[1.95] text-muted-fg">
             전국 120개 문화센터에서 외국어 클래스를 진행 중인
             <br />
             전문 외국어 교육 기관입니다.
           </p>
-          <p className="mt-6 mb-4 text-sm leading-[1.95] text-[#666]">
+          <p className="mt-6 mb-4 text-sm leading-[1.95] text-muted-fg">
             롯데마트, 롯데백화점, 신세계백화점, 이마트,
             <br />
             트레이더스, AK플라자, NC 백화점
           </p>
-          <p className="mt-6 mb-4 text-sm leading-[1.95] text-[#666]">
+          <p className="mt-6 mb-4 text-sm leading-[1.95] text-muted-fg">
             영어, 일본어, 중국어, 여행영어, 문법회화 등
             <br />
             다양한 과정을 제공하고 있습니다.
           </p>
-          <p className="mt-6 mb-4 text-sm leading-[1.95] text-[#666]">
+          <p className="mt-6 mb-4 text-sm leading-[1.95] text-muted-fg">
             컨텐츠 제작, 호주 여행, 워홀 진행,
             <br />
             일문화교류 등 해외 진출을 위한
@@ -340,7 +340,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       {/* 9. 최종 CTA */}
       <section
         id="apply"
-        className="mx-6 mt-10 mb-8 rounded-xl bg-gradient-to-br from-[#ff4757] to-[#ff6b7a] px-6 py-10 text-center text-white md:mt-12 md:py-14">
+        className="mx-6 mt-10 mb-8 rounded-xl bg-gradient-to-br from-brand to-[#ff6b7a] px-6 py-10 text-center text-white md:mt-12 md:py-14">
         <h2 className="mb-3 text-[22px] leading-snug font-black md:text-[28px]">버벅거리는 순간이 오기 전에</h2>
         <p className="mb-8 text-[22px] leading-snug font-extrabold md:text-[28px]">제대로 준비하세요</p>
         <Button variant="brand-inverse" className="mb-6 h-auto w-full px-8 py-4 text-sm font-bold md:text-[15px]">

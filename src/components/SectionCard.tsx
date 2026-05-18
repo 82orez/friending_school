@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 type SectionCardVariant = "accent-left" | "outline" | "plain";
 
 const variantClasses: Record<SectionCardVariant, string> = {
-  "accent-left": "border-l-[6px] border-[#ff4757] bg-[#f8f8f8]",
-  outline: "border border-[#e8e8e8] bg-[#f8f8f8]",
-  plain: "bg-[#f8f8f8]",
+  "accent-left": "border-l-[6px] border-brand bg-surface",
+  outline: "border border-rule bg-surface",
+  plain: "bg-surface",
 };
 
 export function SectionCard({
