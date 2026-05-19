@@ -51,11 +51,10 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
   if (summary.found && summary.hasPassword) {
     return { error: "이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요." };
   }
-  if (summary.found && summary.oauthProviders.includes("kakao")) {
-    return { error: "이 이메일은 카카오로 가입된 계정입니다. 로그인 페이지에서 '카카오로 시작하기'를 이용해 주세요." };
-  }
   if (summary.found) {
-    return { error: "이 이메일은 다른 로그인 방식으로 가입된 계정입니다. 가입하신 방식으로 로그인해 주세요." };
+    // hasPassword=false면 OAuth 가입자. 현재 지원 provider는 카카오뿐이라
+    // oauthProviders가 비어 있더라도(=identities 조회 누락 등 비정상) 카카오 안내로 통일.
+    return { error: "이 이메일은 카카오로 가입된 계정입니다. 로그인 페이지에서 '카카오로 시작하기'를 이용해 주세요." };
   }
 
   const origin = getOrigin(headerList);

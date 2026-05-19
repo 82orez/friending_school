@@ -101,7 +101,11 @@ export type UserIdentitySummary =
  * - `hasPassword`: identity.provider === "email"인 row가 있는지 (= 비밀번호 로그인 가능)
  * - `oauthProviders`: ["kakao", "google", ...] OAuth 공급자 이름 배열
  *
- * 호출당 listUsers를 풀 스캔하므로 같은 액션에서 두 번 호출하지 말 것.
+ * listUsers로 user.id를 찾은 뒤 getUserById로 identities를 다시 조회한다.
+ * listUsers 응답은 identities를 빈 배열/undefined로 돌려주는 경우가 있어
+ * 그대로 사용하면 provider 분기가 항상 fallback으로 빠짐.
+ *
+ * 호출당 listUsers 풀 스캔 + 매칭 1건의 getUserById가 들어가므로 같은 액션에서 두 번 호출하지 말 것.
  * 실패(서비스 키 누락/네트워크) 시 null — 호출 측에서 "일시적 오류" 메시지로 분기.
  */
 export async function getUserIdentitySummary(email: string): Promise<UserIdentitySummary | null> {
@@ -124,15 +128,16 @@ export async function getUserIdentitySummary(email: string): Promise<UserIdentit
       console.error("[Supabase admin] listUsers 호출 실패:", error);
       return null;
     }
-    const users = (data?.users ?? []) as Array<{
-      email?: string | null;
-      email_confirmed_at?: string | null;
-      identities?: Array<{ provider?: string | null }> | null;
-    }>;
+    const users = (data?.users ?? []) as Array<{ id: string; email?: string | null }>;
     if (users.length === 0) return { found: false };
     const matched = users.find((u) => u.email?.toLowerCase() === target);
     if (matched) {
-      const identities = matched.identities ?? [];
+      const { data: detail, error: detailErr } = await admin.auth.admin.getUserById(matched.id);
+      if (detailErr || !detail?.user) {
+        console.error("[Supabase admin] getUserById 호출 실패:", detailErr);
+        return null;
+      }
+      const identities = (detail.user.identities ?? []) as Array<{ provider?: string | null }>;
       let hasPassword = false;
       const oauthProviders: string[] = [];
       for (const id of identities) {
@@ -140,11 +145,11 @@ export async function getUserIdentitySummary(email: string): Promise<UserIdentit
         if (!provider) continue;
         if (provider === "email") {
           hasPassword = true;
-        } else {
-          if (!oauthProviders.includes(provider)) oauthProviders.push(provider);
+        } else if (!oauthProviders.includes(provider)) {
+          oauthProviders.push(provider);
         }
       }
-      return { found: true, confirmed: !!matched.email_confirmed_at, hasPassword, oauthProviders };
+      return { found: true, confirmed: !!detail.user.email_confirmed_at, hasPassword, oauthProviders };
     }
     if (users.length < perPage) return { found: false };
   }

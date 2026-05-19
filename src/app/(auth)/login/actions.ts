@@ -47,10 +47,9 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
       if (summary.hasPassword) {
         return { error: "비밀번호가 일치하지 않습니다." };
       }
-      if (summary.oauthProviders.includes("kakao")) {
-        return { error: "이 이메일은 카카오로 가입된 계정입니다. 아래 '카카오로 시작하기'를 이용해 주세요." };
-      }
-      return { error: "이 이메일은 다른 로그인 방식으로 가입된 계정입니다." };
+      // hasPassword=false면 OAuth 가입자. 현재 지원 provider는 카카오뿐이라
+      // oauthProviders가 비어 있더라도 카카오 안내로 통일.
+      return { error: "이 이메일은 카카오로 가입된 계정입니다. 아래 '카카오로 시작하기'를 이용해 주세요." };
     }
     return { error: "로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
