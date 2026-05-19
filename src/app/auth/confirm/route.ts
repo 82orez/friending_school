@@ -37,7 +37,24 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       const target = new URL(next, request.url);
-      if (!isRecovery) target.searchParams.set(isOAuth ? "login" : "verified", "success");
+      if (!isRecovery) {
+        if (isOAuth) {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (user) {
+            const createdMs = new Date(user.created_at).getTime();
+            const lastSignInMs = user.last_sign_in_at ? new Date(user.last_sign_in_at).getTime() : createdMs;
+            // 신규 가입은 Supabase가 created_at과 last_sign_in_at을 거의 동시에 set.
+            // 5초는 같은 트랜잭션 내 시계 오차를 흡수할 안전 마진.
+            if (Math.abs(createdMs - lastSignInMs) < 5000) {
+              target.searchParams.set("signup", "success");
+            }
+          }
+        } else {
+          target.searchParams.set("verified", "success");
+        }
+      }
       return NextResponse.redirect(target);
     }
     // PKCE 코드 교환 실패: 보통 cross-device 클릭이나 메일 클라이언트의 prefetch로

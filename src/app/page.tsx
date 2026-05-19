@@ -102,14 +102,14 @@ import ApplyForm from "@/components/ApplyForm";
 import SuccessBanner from "@/components/SuccessBanner";
 import { cn } from "@/lib/utils";
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ reset?: string; verified?: string; login?: string }> }) {
-  const { reset, verified, login } = await searchParams;
+export default async function Home({ searchParams }: { searchParams: Promise<{ reset?: string; verified?: string; signup?: string }> }) {
+  const { reset, verified, signup } = await searchParams;
 
   return (
     <>
       {reset === "success" && <SuccessBanner queryKey="reset" message="비밀번호가 성공적으로 변경되었습니다." />}
       {verified === "success" && <SuccessBanner queryKey="verified" message="이메일 인증이 완료되어 자동으로 로그인되었습니다." />}
-      {login === "success" && <SuccessBanner queryKey="login" message="로그인이 완료되었습니다." />}
+      {signup === "success" && <SuccessBanner queryKey="signup" message="프렌딩 스쿨에 오신 것을 환영합니다." />}
       {/* 1. 히어로 */}
       <section id="hero" className="from-ink bg-gradient-to-br to-[#2d2d2d] px-6 py-12 text-center text-white md:py-20">
         <p className="mb-4 text-base font-bold tracking-wider opacity-80 md:text-lg">청년을 세계로, 프렌딩 스쿨</p>

@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 
 type SuccessBannerProps = {
   message: string;
-  queryKey: "reset" | "verified" | "login";
+  queryKey: "reset" | "verified" | "signup";
   durationMs?: number;
 };
 
