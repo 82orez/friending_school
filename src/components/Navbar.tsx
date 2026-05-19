@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { logout } from "@/app/logout/actions";
+import { logout } from "@/app/(auth)/logout/actions";
 import { createClient } from "@/utils/supabase/client";
 
 type NavbarUser = { email?: string | null } | null;

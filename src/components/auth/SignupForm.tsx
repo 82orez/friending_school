@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { AlertTriangle, Eye, EyeOff, Loader2 } from "lucide-react";
-import { signup, type SignupState } from "@/app/signup/actions";
-import { resendConfirmation, type ResendConfirmationResult } from "@/app/login/actions";
+import { signup, type SignupState } from "@/app/(auth)/signup/actions";
+import { resendConfirmation, type ResendConfirmationResult } from "@/app/(auth)/login/actions";
 import {
   AlertDialog,
   AlertDialogAction,

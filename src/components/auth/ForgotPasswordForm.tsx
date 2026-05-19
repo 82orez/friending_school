@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { forgotPassword, type ForgotPasswordState } from "@/app/forgot-password/actions";
+import { forgotPassword, type ForgotPasswordState } from "@/app/(auth)/forgot-password/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
