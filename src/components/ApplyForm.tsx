@@ -1,22 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import { ko } from "date-fns/locale";
+import { CalendarIcon, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 export default function ApplyForm() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [preferredTime, setPreferredTime] = useState("");
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!startDate) {
+      document.getElementById("apply-start-date")?.focus();
+      return;
+    }
     setPending(true);
     console.log("[ApplyForm] submission:", { name, phone, email, startDate, preferredTime });
     setTimeout(() => {
@@ -90,16 +100,30 @@ export default function ApplyForm() {
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="apply-start-date">희망 시작 날짜</Label>
-          <Input
-            id="apply-start-date"
-            name="startDate"
-            type="text"
-            required
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            placeholder="예: 2026년 6월 초"
-            className="h-10"
-          />
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger
+              id="apply-start-date"
+              className={cn(
+                "inline-flex h-10 w-full items-center justify-start rounded-lg border border-input bg-transparent px-2.5 py-1 text-left text-sm font-normal transition-colors hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+                !startDate && "text-muted-foreground",
+              )}>
+              <CalendarIcon className="mr-2 h-4 w-4 opacity-60" />
+              {startDate ? format(startDate, "yyyy년 M월 d일", { locale: ko }) : "날짜를 선택해 주세요"}
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={startDate}
+                onSelect={(date) => {
+                  setStartDate(date);
+                  if (date) setCalendarOpen(false);
+                }}
+                disabled={{ before: new Date() }}
+                locale={ko}
+                autoFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="apply-preferred-time">희망 수업 시간</Label>
