@@ -96,8 +96,9 @@ const units = [
   },
 ];
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { SectionCard } from "@/components/SectionCard";
+import ApplyForm from "@/components/ApplyForm";
 import { cn } from "@/lib/utils";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ reset?: string; verified?: string }> }) {
@@ -339,24 +340,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       <section
         id="apply"
         className="from-brand mx-6 mt-10 mb-8 rounded-xl bg-gradient-to-br to-[#ff6b7a] px-6 py-10 text-center text-white md:mt-12 md:py-14">
-        <h2 className="mb-3 text-[22px] leading-snug font-black md:text-[28px]">버벅거리는 순간이 오기 전에</h2>
+        <h2 id="apply-heading" className="mb-3 text-[22px] leading-snug font-black md:text-[28px]">
+          버벅거리는 순간이 오기 전에
+        </h2>
         <p className="mb-8 text-[22px] leading-snug font-extrabold md:text-[28px]">제대로 준비하세요</p>
-        <Button variant="brand-inverse" className="mb-6 h-auto w-full px-8 py-4 text-sm font-bold md:max-w-xl md:text-[15px]">
-          지금 신청하기
-        </Button>
-        <div className="rounded-lg border-2 border-white bg-white/15 p-5 text-[13px] leading-[1.8] font-semibold text-white">
-          <strong className="mb-2 block text-sm font-extrabold">📍 신청 안내</strong>
-          수업확인, 연기, 출석 등 원활한 수업 진행을 위해
-          <br />
-          과정은 프렌딩 화상 교육센터에서 진행됩니다.
-          <br />
-          <br />
-          <strong className="block font-extrabold">
-            신청하기를 누르시면 교육센터로 이동하며,
-            <br />
-            그곳에서 신청하시면 됩니다.
-          </strong>
-        </div>
+        <ApplyForm />
       </section>
     </>
   );
