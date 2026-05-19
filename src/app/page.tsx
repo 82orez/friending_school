@@ -101,10 +101,11 @@ import { SectionCard } from "@/components/SectionCard";
 import ApplyForm from "@/components/ApplyForm";
 import { cn } from "@/lib/utils";
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ reset?: string; verified?: string }> }) {
-  const { reset, verified } = await searchParams;
+export default async function Home({ searchParams }: { searchParams: Promise<{ reset?: string; verified?: string; login?: string }> }) {
+  const { reset, verified, login } = await searchParams;
   const showResetSuccess = reset === "success";
   const showVerifiedSuccess = verified === "success";
+  const showLoginSuccess = login === "success";
 
   return (
     <>
@@ -116,6 +117,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       {showVerifiedSuccess && (
         <div className="bg-green-50 px-6 py-3 text-center text-sm font-medium text-green-700" role="status">
           이메일 인증이 완료되어 자동으로 로그인되었습니다.
+        </div>
+      )}
+      {showLoginSuccess && (
+        <div className="bg-green-50 px-6 py-3 text-center text-sm font-medium text-green-700" role="status">
+          로그인이 완료되었습니다.
         </div>
       )}
       {/* 1. 히어로 */}

@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { KakaoButton } from "@/components/auth/KakaoButton";
 import { useCapsLockWarning } from "@/hooks/use-caps-lock";
 
 export default function SignupForm() {
@@ -220,6 +221,14 @@ export default function SignupForm() {
             {pending && <Loader2 className="animate-spin" />}
             {pending ? "처리 중" : "회원가입"}
           </Button>
+
+          <div className="my-1 flex items-center gap-3 text-xs text-muted-fg">
+            <div className="bg-rule h-px flex-1" />
+            <span>또는</span>
+            <div className="bg-rule h-px flex-1" />
+          </div>
+
+          <KakaoButton />
 
           <p className="mt-2 text-center text-sm text-muted-foreground">
             이미 계정이 있으신가요?{" "}

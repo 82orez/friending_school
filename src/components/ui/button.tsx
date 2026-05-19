@@ -21,6 +21,7 @@ const buttonVariants = cva(
         "brand-blue": "bg-brand-blue text-white hover:bg-brand-blue/90 focus-visible:border-brand-blue focus-visible:ring-brand-blue/40",
         "brand-inverse":
           "bg-white text-brand hover:bg-white/90 focus-visible:border-white focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-brand",
+        kakao: "bg-[#FEE500] text-[#191919] hover:bg-[#FEE500]/90 focus-visible:border-[#FEE500] focus-visible:ring-[#FEE500]/60",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
