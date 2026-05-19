@@ -99,31 +99,17 @@ const units = [
 import { buttonVariants } from "@/components/ui/button";
 import { SectionCard } from "@/components/SectionCard";
 import ApplyForm from "@/components/ApplyForm";
+import SuccessBanner from "@/components/SuccessBanner";
 import { cn } from "@/lib/utils";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ reset?: string; verified?: string; login?: string }> }) {
   const { reset, verified, login } = await searchParams;
-  const showResetSuccess = reset === "success";
-  const showVerifiedSuccess = verified === "success";
-  const showLoginSuccess = login === "success";
 
   return (
     <>
-      {showResetSuccess && (
-        <div className="bg-green-50 px-6 py-3 text-center text-sm font-medium text-green-700" role="status">
-          비밀번호가 성공적으로 변경되었습니다.
-        </div>
-      )}
-      {showVerifiedSuccess && (
-        <div className="bg-green-50 px-6 py-3 text-center text-sm font-medium text-green-700" role="status">
-          이메일 인증이 완료되어 자동으로 로그인되었습니다.
-        </div>
-      )}
-      {showLoginSuccess && (
-        <div className="bg-green-50 px-6 py-3 text-center text-sm font-medium text-green-700" role="status">
-          로그인이 완료되었습니다.
-        </div>
-      )}
+      {reset === "success" && <SuccessBanner queryKey="reset" message="비밀번호가 성공적으로 변경되었습니다." />}
+      {verified === "success" && <SuccessBanner queryKey="verified" message="이메일 인증이 완료되어 자동으로 로그인되었습니다." />}
+      {login === "success" && <SuccessBanner queryKey="login" message="로그인이 완료되었습니다." />}
       {/* 1. 히어로 */}
       <section id="hero" className="from-ink bg-gradient-to-br to-[#2d2d2d] px-6 py-12 text-center text-white md:py-20">
         <p className="mb-4 text-base font-bold tracking-wider opacity-80 md:text-lg">청년을 세계로, 프렌딩 스쿨</p>
