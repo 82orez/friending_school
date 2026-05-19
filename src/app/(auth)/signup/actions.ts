@@ -2,7 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
-import { getUserStatus } from "@/utils/supabase/admin";
+import { getUserIdentitySummary } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
 import { rateLimit, getClientIp, formatRetryAfter } from "@/lib/rate-limit";
 import { isValidEmail } from "@/lib/email";
@@ -37,18 +37,25 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
 
   // 미확인 사용자가 재가입을 시도하면 Supabase는 저장된 비밀번호를 새 값으로 덮어쓰므로,
   // signUp() 호출 전에 상태를 확인해 차단한다. admin API 실패 시에는 fail closed.
-  const status = await getUserStatus(email);
-  if (status === null) {
+  // OAuth(카카오)로만 가입된 사용자도 confirmed로 잡히므로 provider 분기로 더 정확한 안내.
+  const summary = await getUserIdentitySummary(email);
+  if (summary === null) {
     return { error: "회원가입 중 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
-  if (status === "confirmed") {
-    return { error: "이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요." };
-  }
-  if (status === "unconfirmed") {
+  if (summary.found && !summary.confirmed) {
     return {
       error: "이미 가입 시도된 이메일입니다. 메일함을 확인하시거나 아래 '다시 보내기'를 이용해 주세요.",
       canResend: true,
     };
+  }
+  if (summary.found && summary.hasPassword) {
+    return { error: "이미 가입된 이메일입니다. 로그인 페이지에서 로그인해 주세요." };
+  }
+  if (summary.found && summary.oauthProviders.includes("kakao")) {
+    return { error: "이 이메일은 카카오로 가입된 계정입니다. 로그인 페이지에서 '카카오로 시작하기'를 이용해 주세요." };
+  }
+  if (summary.found) {
+    return { error: "이 이메일은 다른 로그인 방식으로 가입된 계정입니다. 가입하신 방식으로 로그인해 주세요." };
   }
 
   const origin = getOrigin(headerList);

@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { emailExists } from "@/utils/supabase/admin";
+import { getUserIdentitySummary } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
 import { rateLimit, formatRetryAfter } from "@/lib/rate-limit";
 import { isValidEmail } from "@/lib/email";
@@ -37,13 +37,20 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
       return { error: "이메일 인증이 완료되지 않았습니다. 인증 메일을 확인해 주세요.", canResend: true };
     }
     if (error.code === "invalid_credentials") {
-      const exists = await emailExists(email);
-      if (exists === null) {
+      const summary = await getUserIdentitySummary(email);
+      if (summary === null) {
         return { error: "로그인 중 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
       }
-      return exists
-        ? { error: "비밀번호가 일치하지 않습니다." }
-        : { error: "가입되지 않은 이메일입니다. 회원가입 후 이용해 주세요." };
+      if (!summary.found) {
+        return { error: "가입되지 않은 이메일입니다. 회원가입 후 이용해 주세요." };
+      }
+      if (summary.hasPassword) {
+        return { error: "비밀번호가 일치하지 않습니다." };
+      }
+      if (summary.oauthProviders.includes("kakao")) {
+        return { error: "이 이메일은 카카오로 가입된 계정입니다. 아래 '카카오로 시작하기'를 이용해 주세요." };
+      }
+      return { error: "이 이메일은 다른 로그인 방식으로 가입된 계정입니다." };
     }
     return { error: "로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요." };
   }
