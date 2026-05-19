@@ -115,7 +115,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 </Link>
                 <Link
                   href="/signup"
-                  className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:outline-none">
+                  className="rounded-full bg-brand-blue px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-blue/90 focus-visible:ring-2 focus-visible:ring-brand-blue/50 focus-visible:ring-offset-2 focus-visible:outline-none">
                   회원가입
                 </Link>
               </>
@@ -213,7 +213,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 <Link
                   href="/signup"
                   onClick={closeMenu}
-                  className="block w-full rounded-md bg-brand px-4 py-2.5 text-center text-[15px] font-semibold text-white no-underline transition-colors hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:outline-none">
+                  className="block w-full rounded-md bg-brand-blue px-4 py-2.5 text-center text-[15px] font-semibold text-white no-underline transition-colors hover:bg-brand-blue/90 focus-visible:ring-2 focus-visible:ring-brand-blue/50 focus-visible:ring-offset-2 focus-visible:outline-none">
                   회원가입
                 </Link>
               </li>

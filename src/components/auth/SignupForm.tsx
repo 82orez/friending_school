@@ -15,7 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -113,7 +114,7 @@ export default function SignupForm() {
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:outline-none">
+                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-brand-blue/50 focus-visible:outline-none">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
@@ -151,7 +152,7 @@ export default function SignupForm() {
                 type="button"
                 onClick={() => setShowPasswordConfirm((prev) => !prev)}
                 aria-label={showPasswordConfirm ? "비밀번호 숨기기" : "비밀번호 보기"}
-                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:outline-none">
+                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-brand-blue/50 focus-visible:outline-none">
                 {showPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
@@ -208,19 +209,21 @@ export default function SignupForm() {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>취소</AlertDialogCancel>
-                <AlertDialogAction onClick={handleResend}>보내기</AlertDialogAction>
+                <AlertDialogAction onClick={handleResend} className={cn(buttonVariants({ variant: "brand-blue" }))}>
+                  보내기
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
 
-          <Button type="submit" variant="brand" disabled={pending} className="mt-2 h-11 text-base font-bold">
+          <Button type="submit" variant="brand-blue" disabled={pending} className="mt-2 h-11 text-base font-bold">
             {pending && <Loader2 className="animate-spin" />}
             {pending ? "처리 중" : "회원가입"}
           </Button>
 
           <p className="mt-2 text-center text-sm text-muted-foreground">
             이미 계정이 있으신가요?{" "}
-            <Link href="/login" className="font-semibold text-[#ff4757] hover:underline">
+            <Link href="/login" className="font-semibold text-brand-blue hover:underline">
               로그인
             </Link>
           </p>

@@ -46,6 +46,7 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
   --color-brand: var(--brand);
+  --color-brand-blue: var(--brand-blue);
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-surface: var(--surface);
@@ -89,6 +90,7 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   --brand: #ff4757;
+  --brand-blue: #2563eb;
   --ink: #1a1a1a;
   --ink-soft: #333333;
   --surface: #f8f8f8;
