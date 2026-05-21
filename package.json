@@ -5,7 +5,12 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "db:push": "supabase db push",
+    "db:new": "supabase migration new",
+    "db:list": "supabase migration list",
+    "db:diff": "supabase db diff --linked",
+    "db:types": "supabase gen types typescript --linked --schema public > src/types/database.types.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
@@ -32,6 +37,7 @@
     "@types/react-dom": "^19",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
+    "supabase": "^2.101.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
