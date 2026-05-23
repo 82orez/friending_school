@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FRIENDING · 워홀 실전영어 Unit 22 — Jun Talks With His Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Verdana', sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        /* ═══ 반응형 헤더 ═══ */
+        .header-banner {
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .header-icon {
+            font-size: 40px;
+            flex-shrink: 0;
+        }
+        
+        .header-info {
+            text-align: left;
+        }
+        
+        .unit-label {
+            font-size: 11pt;
+            letter-spacing: 1px;
+            opacity: 0.9;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        
+        .unit-title {
+            font-size: 24pt;
+            font-weight: 900;
+            line-height: 1.2;
+        }
+        
+        .unit-subtitle {
+            font-size: 13pt;
+            opacity: 0.85;
+            font-weight: 400;
+        }
+        
+        @media (max-width: 600px) {
+            .header-banner {
+                padding: 20px;
+            }
+            .header-top {
+                flex-direction: column;
+                text-align: center;
+            }
+            .header-info {
+                text-align: center;
+            }
+            .unit-title {
+                font-size: 20pt;
+            }
+        }
+        
+        /* ═══ 상황 섹션 ═══ */
+        .situation-section {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            flex-direction: row;
+        }
+        
+        @media (max-width: 768px) {
+            .situation-section {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            .situation-icon {
+                order: -1;
+            }
+        }
+        
+        .situation-icon {
+            font-size: 40px;
+            flex-shrink: 0;
+            min-width: 50px;
+        }
+        
+        .situation-title {
+            font-size: 14pt;
+            font-weight: 900;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+        
+        .situation-desc {
+            font-size: 11pt;
+            color: #666;
+            line-height: 1.6;
+            padding-left: 10px;
+            border-left: 3px solid #ff4757;
+            text-align: left;
+        }
+        
+        /* ═══ 섹션 헤더 ═══ */
+        .section-header {
+            font-size: 12pt;
+            color: #ff4757;
+            font-weight: 900;
+            margin: 20px 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* ═══ 카드 박스 ═══ */
+        .card-box {
+            background: white;
+            border-radius: 6px;
+            padding: 20px 15px;
+            margin-bottom: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .card-box {
+                background: transparent;
+                padding: 15px 0;
+            }
+        }
+        
+        /* ═══ 5 PICK ═══ */
+        .pick-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .pick-item {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            padding: 12px 15px;
+            background: #f9f9f9;
+            border: 1.5px solid #e0e0e0;
+            border-left: 4px solid #ff4757;
+            border-radius: 4px;
+        }
+        
+        .pick-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #ff4757;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 12pt;
+            flex-shrink: 0;
+        }
+        
+        .pick-content {
+            flex: 1;
+        }
+        
+        .pick-en {
+            font-size: 12pt;
+            font-weight: 400;
+            color: #1a1a1a;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+        
+        .pick-blank {
+            display: inline-block;
+            border-bottom: 1px solid #000;
+            min-width: 80px;
+            padding: 0 2px;
+        }
+        
+        .pick-kr {
+            font-size: 12pt;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        .word-bank {
+            margin-top: 12px;
+            padding: 10px 15px;
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        
+        .word-chip {
+            background: white;
+            border: 1.5px solid #ff4757;
+            color: #ff4757;
+            padding: 5px 12px;
+            border-radius: 16px;
+            font-size: 11pt;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        
+        /* ═══ TALK ═══ */
+        .talk-section-header {
+            font-size: 12pt;
+            color: #666;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .dialogue {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .dialogue-line {
+            padding: 12px 15px;
+            border-radius: 4px;
+            border-left: 2px solid #f0f0f0;
+        }
+        
+        .dialogue-line.staff {
+            background: white;
+            border-left-color: #e0e0e0;
+        }
+        
+        .dialogue-line.jun {
+            background: #f8f8f8;
+            border-left-color: #ff4757;
+        }
+        
+        .speaker {
+            font-size: 10pt;
+            font-weight: 900;
+            color: #666;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .dialogue-line.jun .speaker {
+            color: #ff4757;
+        }
+        
+        .dialogue-text {
+            font-size: 12pt;
+            color: #1a1a1a;
+            line-height: 1.5;
+        }
+        
+        .scene-spacer {
+            height: 20px;
+        }
+        
+        /* ═══ EXTENSION ═══ */
+        .ext-group {
+            margin-bottom: 15px;
+        }
+        
+        .ext-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .ext-pattern {
+            font-size: 12pt;
+            font-weight: 900;
+            color: #ff4757;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .ext-pattern-num {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #ff4757;
+            color: white;
+            text-align: center;
+            line-height: 22px;
+            margin-right: 8px;
+            font-size: 11pt;
+            font-weight: 900;
+        }
+        
+        .ext-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        
+        .ext-item {
+            font-size: 12pt;
+            color: #1a1a1a;
+            padding: 12px 15px;
+            background: #fafbfe;
+            border-radius: 4px;
+            border-left: 3px solid #888;
+            line-height: 1.4;
+        }
+        
+        @media (max-width: 600px) {
+            .ext-list {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* ═══ ASK ═══ */
+        .ask-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .ask-item {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 14px 15px;
+            background: #fff5f8;
+            border-radius: 4px;
+            border-left: 3px solid #ff4757;
+        }
+        
+        .ask-num {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #ff4757;
+            color: white;
+            font-size: 10pt;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .ask-text {
+            font-size: 12pt;
+            font-weight: 400;
+            color: #1a1a1a;
+            line-height: 1.5;
+        }
+        
+        /* ═══ MISSION ═══ */
+        .mission-section {
+            background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin-top: 30px;
+        }
+        
+        .mission-head {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .mission-head {
+                flex-direction: column;
+                align-items: center;
+                gap: 0;
+            }
+            .mobile-break {
+                display: block;
+                height: 8px;
+            }
+        }
+        
+        @media (min-width: 769px) {
+            .mobile-break {
+                display: none;
+            }
+        }
+        
+        .mission-badge {
+            background: #ff4757;
+            color: white;
+            font-size: 10pt;
+            font-weight: 900;
+            padding: 4px 10px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        }
+        
+        .mission-title {
+            font-size: 14pt;
+            font-weight: 800;
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .mission-title {
+                max-width: 240px;
+            }
+        }
+        
+        .mission-desc {
+            font-size: 11pt;
+            color: rgba(255,255,255,.7);
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+        
+        .mission-checklist {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12pt;
+            color: rgba(255,255,255,.9);
+        }
+        
+        .check-box {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            border: 1.5px solid rgba(255,255,255,.3);
+            flex-shrink: 0;
+        }
+        
+        .mission-example {
+            background: rgba(255,255,255,.06);
+            border-radius: 4px;
+            padding: 12px 15px;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: rgba(255,255,255,.85);
+            border-left: 3px solid #ff4757;
+        }
+        
+        .mission-example-label {
+            display: block;
+            font-size: 9pt;
+            color: rgba(255,255,255,.5);
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: 0.05em;
+        }
+        
+        /* ═══ 푸터 ═══ */
+        .footer {
+            margin-top: 40px;
+            padding: 15px 20px;
+            border-top: 1px solid #e0e0e0;
+            text-align: center;
+            font-size: 9pt;
+            color: #999;
+            letter-spacing: 0.05em;
+        }
+        
+        .grad-line {
+            width: 50px;
+            height: 3px;
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%);
+            border-radius: 2px;
+            margin: 0 auto 10px;
+        }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 반응형 헤더 -->
+    <div class="header-banner">
+        <div class="header-top">
+            <div class="header-info">
+                <div class="unit-label">FRIENDING · WORKING HOLIDAY ENGLISH</div>
+                <div class="unit-title">Jun Talks With His Manager</div>
+                <div class="unit-subtitle">준, 매니저와 대화하다</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 상황 섹션 -->
+    <div class="situation-section">
+        <div class="situation-icon">🍴</div>
+        <div>
+            <div class="situation-title">PART 3 · Unit 22<br class="mobile-break">· 실제 현장 영어</div>
+            <div class="situation-desc">
+                준은 매니저와 스케줄, 근무 시간, 업무 피드백에 대해 이야기한다.
+            </div>
+        </div>
+    </div>
+    
+    <!-- 1. 5 PICK -->
+    <div class="section-header">1. 5 PICK · 핵심 문장 채우기</div>
+    <div class="card-box">
+        <div class="pick-list">
+            <div class="pick-item">
+                <div class="pick-num">1</div>
+                <div class="pick-content">
+                    <div class="pick-en">Can I <span class="pick-blank">     </span> my schedule?</div>
+                    <div class="pick-kr">제 스케줄 볼 수 있나요?</div>
+                </div>
+            </div>
+            <div class="pick-item">
+                <div class="pick-num">2</div>
+                <div class="pick-content">
+                    <div class="pick-en">Can I <span class="pick-blank">     </span> next Friday off?</div>
+                    <div class="pick-kr">다음 주 금요일 쉴 수 있나요?</div>
+                </div>
+            </div>
+            <div class="pick-item">
+                <div class="pick-num">3</div>
+                <div class="pick-content">
+                    <div class="pick-en">How <span class="pick-blank">     </span> I doing so far?</div>
+                    <div class="pick-kr">지금까지 저 어때요?</div>
+                </div>
+            </div>
+            <div class="pick-item">
+                <div class="pick-num">4</div>
+                <div class="pick-content">
+                    <div class="pick-en">Is <span class="pick-blank">     </span> anything to improve?</div>
+                    <div class="pick-kr">개선할 점 있나요?</div>
+                </div>
+            </div>
+            <div class="pick-item">
+                <div class="pick-num">5</div>
+                <div class="pick-content">
+                    <div class="pick-en">I <span class="pick-blank">     </span> feedback.</div>
+                    <div class="pick-kr">피드백 감사해요.</div>
+                </div>
+            </div>
+        </div>
+        <div class="word-bank">
+            <span class="word-chip">see</span>
+            <span class="word-chip">have</span>
+            <span class="word-chip">am</span>
+            <span class="word-chip">there</span>
+            <span class="word-chip">appreciate</span>
+        </div>
+    </div>
+    
+    <!-- 2. TALK -->
+    <div class="section-header">2. TALK · 실전 대화</div>
+    <div class="card-box">
+        <div class="talk-section-header">📍 Scene 1 · Talking About Schedule (스케줄 이야기)</div>
+        <div class="dialogue">
+            <div class="dialogue-line jun">
+                <div class="speaker">Jun</div>
+                <div class="dialogue-text"><strong>Can I see my schedule</strong> for next week?</div>
+            </div>
+            <div class="dialogue-line staff">
+                <div class="speaker">Manager</div>
+                <div class="dialogue-text">Sure, you're working Tuesday to Saturday.</div>
+            </div>
+            <div class="dialogue-line jun">
+                <div class="speaker">Jun</div>
+                <div class="dialogue-text"><strong>Can I have next Friday off</strong>? I have a doctor's appointment.</div>
+            </div>
+            <div class="dialogue-line staff">
+                <div class="speaker">Manager</div>
+                <div class="dialogue-text">Let me check... yes, that's fine.</div>
+            </div>
+            <div class="dialogue-line jun">
+                <div class="speaker">Jun</div>
+                <div class="dialogue-text">Thank you so much.</div>
+            </div>
+        </div>
+        <div class="scene-spacer"></div>
+        <div class="talk-section-header">📍 Scene 2 · Asking for Feedback (피드백 요청)</div>
+        <div class="dialogue">
+            <div class="dialogue-line jun">
+                <div class="speaker">Jun</div>
+                <div class="dialogue-text"><strong>How am I doing so far</strong>?</div>
+            </div>
+            <div class="dialogue-line staff">
+                <div class="speaker">Manager</div>
+                <div class="dialogue-text">You're doing well. You work hard and listen carefully.</div>
+            </div>
+            <div class="dialogue-line jun">
+                <div class="speaker">Jun</div>
+                <div class="dialogue-text"><strong>Is there anything to improve</strong>?</div>
+            </div>
+            <div class="dialogue-line staff">
+                <div class="speaker">Manager</div>
+                <div class="dialogue-text">Try to be a bit faster during the rush.</div>
+            </div>
+            <div class="dialogue-line jun">
+                <div class="speaker">Jun</div>
+                <div class="dialogue-text">Okay, I'll work on that. I appreciate the feedback.</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 3. EXTENSION -->
+    <div class="section-header">3. EXTENSION · 응용 표현</div>
+    <div class="card-box">
+        <div class="ext-group">
+            <div class="ext-pattern">
+                <span class="ext-pattern-num">1</span>Can I see ~?
+            </div>
+            <div class="ext-list">
+                <div class="ext-item">Can I see my schedule?</div>
+                <div class="ext-item">Can I see my hours?</div>
+                <div class="ext-item">Can I see my payslip?</div>
+                <div class="ext-item">Can I see the roster?</div>
+            </div>
+        </div>
+        <div class="ext-group">
+            <div class="ext-pattern">
+                <span class="ext-pattern-num">2</span>Can I have ~ off?
+            </div>
+            <div class="ext-list">
+                <div class="ext-item">Can I have Friday off?</div>
+                <div class="ext-item">Can I have the weekend off?</div>
+                <div class="ext-item">Can I have one day off?</div>
+                <div class="ext-item">Can I have tomorrow off?</div>
+            </div>
+        </div>
+        <div class="ext-group">
+            <div class="ext-pattern">
+                <span class="ext-pattern-num">3</span>How am I ~?
+            </div>
+            <div class="ext-list">
+                <div class="ext-item">How am I doing?</div>
+                <div class="ext-item">How am I performing?</div>
+                <div class="ext-item">How am I so far?</div>
+                <div class="ext-item">How am I in the kitchen?</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 4. ASK -->
+    <div class="section-header">4. ASK · 튜터와 이야기하기</div>
+    <div class="card-box">
+        <div class="ask-list">
+            <div class="ask-item">
+                <div class="ask-num">Q1</div>
+                <div class="ask-text">How often do you check your schedule?</div>
+            </div>
+            <div class="ask-item">
+                <div class="ask-num">Q2</div>
+                <div class="ask-text">Have you asked for time off before?</div>
+            </div>
+            <div class="ask-item">
+                <div class="ask-num">Q3</div>
+                <div class="ask-text">How do you ask for feedback?</div>
+            </div>
+            <div class="ask-item">
+                <div class="ask-num">Q4</div>
+                <div class="ask-text">What feedback have you received at work?</div>
+            </div>
+            <div class="ask-item">
+                <div class="ask-num">Q5</div>
+                <div class="ask-text">What do you want to improve at work?</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 5. MISSION -->
+    <div class="mission-section">
+        <div class="mission-head">
+            <span class="mission-badge">MISSION</span>
+            <br class="mobile-break">
+            <span class="mission-title">튜터에게 영어로 자연스럽게 말해보세요</span>
+        </div>
+        <div class="mission-desc">
+            아래 네 가지 내용을 자기소개처럼 이어서 말해보는 것이 오늘의 목표입니다.
+        </div>
+        
+        <div class="mission-checklist">
+            <div class="check-item">
+                <div class="check-box"></div>
+                <span>스케줄 확인</span>
+            </div>
+            <div class="check-item">
+                <div class="check-box"></div>
+                <span>휴무 요청</span>
+            </div>
+            <div class="check-item">
+                <div class="check-box"></div>
+                <span>내 평가 묻기</span>
+            </div>
+            <div class="check-item">
+                <div class="check-box"></div>
+                <span>개선점 묻기</span>
+            </div>
+        </div>
+        
+        <div class="mission-example">
+            <span class="mission-example-label">📝 EXAMPLE</span>
+            Can I see my schedule? Can I have next Friday off? How am I doing so far? Is there anything to improve?
+        </div>
+    </div>
+    
+    <!-- 푸터 -->
+    <div class="footer">
+        <div class="grad-line"></div>
+        © 2025 FRIENDING · WORKING HOLIDAY ENGLISH SERIES · UNIT 22
+    </div>
+</div>
+
+</body>
+</html>
