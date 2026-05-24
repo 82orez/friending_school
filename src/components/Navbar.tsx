@@ -174,6 +174,16 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
               커리큘럼
             </a>
           </li>
+
+          <li className="border-rule border-b py-4">
+            <a
+              href="#apply"
+              onClick={closeMenu}
+              className="text-ink-soft focus-visible:ring-brand/50 rounded text-[15px] font-medium no-underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              신청방법
+            </a>
+          </li>
+
           <li className="border-rule border-b py-4">
             <button
               type="button"
@@ -190,7 +200,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 "grid overflow-hidden transition-[grid-template-rows] duration-200 ease-in-out",
                 textbookOpen ? "mt-1 grid-rows-[1fr]" : "grid-rows-[0fr]",
               )}>
-              <ul className="list-none min-h-0">
+              <ul className="min-h-0 list-none">
                 {TEXTBOOKS.map((book) => (
                   <li key={book.course} className="py-2 pl-4">
                     <Link
@@ -203,14 +213,6 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 ))}
               </ul>
             </div>
-          </li>
-          <li className="border-rule border-b py-4">
-            <a
-              href="#apply"
-              onClick={closeMenu}
-              className="text-ink-soft focus-visible:ring-brand/50 rounded text-[15px] font-medium no-underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-              신청방법
-            </a>
           </li>
 
           {/* 모바일 인증 섹션 */}
