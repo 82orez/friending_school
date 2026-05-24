@@ -3,20 +3,29 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { logout } from "@/app/(auth)/logout/actions";
 import { createClient } from "@/utils/supabase/client";
+import { cn } from "@/lib/utils";
+import { TEXTBOOKS } from "@/data/textbook";
 
 type NavbarUser = { email?: string | null } | null;
 
 export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
   const [user, setUser] = useState<NavbarUser>(initialUser);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [textbookOpen, setTextbookOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const prevMenuOpen = useRef(false);
 
   const closeMenu = () => setMenuOpen(false);
   const toggleMenu = () => setMenuOpen((prev) => !prev);
+
+  // 슬라이드 메뉴가 닫힐 때 교재 하위 메뉴도 초기화 (다시 열 때 접힌 상태로 시작)
+  useEffect(() => {
+    if (!menuOpen) setTextbookOpen(false);
+  }, [menuOpen]);
 
   // SSR로 받은 user prop이 갱신되면(로그인 후 revalidatePath로 layout 재실행) state 동기화.
   useEffect(() => {
@@ -166,12 +175,34 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
             </a>
           </li>
           <li className="border-rule border-b py-4">
-            <Link
-              href="/textbook/cooking"
-              onClick={closeMenu}
-              className="text-ink-soft focus-visible:ring-brand/50 rounded text-[15px] font-medium no-underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-              교재 보기
-            </Link>
+            <button
+              type="button"
+              onClick={() => setTextbookOpen((prev) => !prev)}
+              aria-expanded={textbookOpen}
+              aria-controls="mobile-textbook-submenu"
+              className="text-ink-soft focus-visible:ring-brand/50 flex w-full items-center justify-between rounded text-[15px] font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              <span>교재 보기</span>
+              <ChevronDown aria-hidden className={cn("size-4 transition-transform duration-200", textbookOpen && "rotate-180")} />
+            </button>
+            <div
+              id="mobile-textbook-submenu"
+              className={cn(
+                "grid overflow-hidden transition-[grid-template-rows] duration-200 ease-in-out",
+                textbookOpen ? "mt-1 grid-rows-[1fr]" : "grid-rows-[0fr]",
+              )}>
+              <ul className="list-none min-h-0">
+                {TEXTBOOKS.map((book) => (
+                  <li key={book.course} className="py-2 pl-4">
+                    <Link
+                      href={book.href}
+                      onClick={closeMenu}
+                      className="text-muted-fg hover:text-brand focus-visible:ring-brand/50 block rounded text-[14px] no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                      {book.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </li>
           <li className="border-rule border-b py-4">
             <a
