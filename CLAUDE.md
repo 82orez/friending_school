@@ -106,3 +106,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 ## 별칭
 
 `@/*` → `./src/*`. 이미지는 `next/image`만(`public/images/`). Favicon은 `src/app/icon.svg`(파일 컨벤션).
+
+## 배포
+
+Vercel 배포. `vercel.json`은 `regions:["icn1"]`(서울 리전 고정)만 설정 — 한국 사용자 대상 레이턴시 최적화. 환경 변수는 위 Supabase SSR 항목 참조.
