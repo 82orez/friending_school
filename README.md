@@ -1,4 +1,13 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+"프렌딩 스쿨" 워홀 영어 교육 과정 랜딩 페이지 + 전자책(교재) 뷰어입니다. [Next.js](https://nextjs.org) App Router 기반이며 [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app)으로 부트스트랩되었습니다.
+
+## 기술 스택
+
+- **Next.js 16** (App Router, Turbopack dev/build) + **React 19.2**
+- **Tailwind CSS v4** + shadcn/ui (`base-nova` 스타일, `neutral` baseColor)
+- **Supabase** SSR 인증(이메일/비밀번호 + 카카오 OAuth) · Postgres + RLS
+- 폰트: Pretendard(`next/font/local`) + [Geist](https://vercel.com/font)(`next/font/google`)
+
+> 참고: Next.js 16에서 라우팅 전 미들웨어 컨벤션이 `middleware` → `proxy`로 리네임되었습니다. 세션 갱신 로직은 `src/proxy.ts`(`export async function proxy`)에 있습니다.
 
 ## Getting Started
 
@@ -16,9 +25,9 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can start editing the page by modifying `src/app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load fonts (Pretendard for Korean body text, [Geist](https://vercel.com/font) for Latin).
 
 ## Learn More
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 개요
 
-"프렌딩 스쿨" 워홀 영어 교육 과정의 랜딩 페이지입니다. Next.js 15(App Router) + React 19 + Tailwind CSS v4 기반의 단일 페이지 마케팅 사이트이며, Supabase SSR 인증을 위한 기반 코드와 함께 shadcn/ui(`base-nova` 스타일, `neutral` baseColor) 컴포넌트, Supabase Server Actions 기반 이메일 인증 화면(`/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/confirm`) 및 카카오 OAuth 소셜 로그인이 함께 구성되어 있습니다. 랜딩 페이지 외에 **전자책(교재) 뷰어 `/textbook/cooking`** (24개 Unit, Unit 1은 무료 미리보기·나머지는 로그인 필수)도 함께 제공됩니다.
+"프렌딩 스쿨" 워홀 영어 교육 과정의 랜딩 페이지입니다. Next.js 16(App Router, Turbopack dev/build) + React 19.2 + Tailwind CSS v4 기반의 단일 페이지 마케팅 사이트이며, Supabase SSR 인증을 위한 기반 코드와 함께 shadcn/ui(`base-nova` 스타일, `neutral` baseColor) 컴포넌트, Supabase Server Actions 기반 이메일 인증 화면(`/login`, `/signup`, `/forgot-password`, `/reset-password`, `/auth/confirm`) 및 카카오 OAuth 소셜 로그인이 함께 구성되어 있습니다. 랜딩 페이지 외에 **전자책(교재) 뷰어 `/textbook/cooking`** (24개 Unit, Unit 1은 무료 미리보기·나머지는 로그인 필수)도 함께 제공됩니다.
 
 ## 자주 사용하는 명령어
 
