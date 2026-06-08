@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit 1 · Mise en Place — Kitchen English for Working Holiday</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Verdana', sans-serif;
+  background: #f5f5f5;
+  color: #1a1a1a;
+  line-height: 1.6;
+  padding: 30px 20px 60px;
+}
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ───────── HEADER ───────── */
+.header {
+  background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%);
+  color: #fff;
+  padding: 30px 32px;
+  border-radius: 6px;
+  margin-bottom: 24px;
+  position: relative;
+}
+.header-tag {
+  display: inline-block;
+  font-size: 9pt;
+  font-weight: 700;
+  background: rgba(0,0,0,.2);
+  color: #fff;
+  padding: 3px 11px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  letter-spacing: 0.5px;
+}
+.header-num {
+  font-size: 10pt;
+  font-weight: 900;
+  opacity: 0.85;
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+}
+.unit-title-en {
+  font-size: 22pt;
+  font-weight: 900;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+.unit-title-kr {
+  font-size: 12pt;
+  font-weight: 700;
+  opacity: 0.95;
+}
+
+/* ───────── SITUATION ───────── */
+.situation {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-left: 4px solid #ff4757;
+  border-radius: 6px;
+  padding: 18px 22px;
+  margin-bottom: 28px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.situation-icon {
+  font-size: 26px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.situation-body h3 {
+  font-size: 10pt;
+  font-weight: 900;
+  color: #ff4757;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.situation-body p {
+  font-size: 11pt;
+  color: #334;
+  line-height: 1.7;
+}
+
+/* ───────── SECTION ───────── */
+.section { margin-bottom: 28px; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #ff4757;
+}
+.section-num {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: #ff4757;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12pt;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+.section-header h2 {
+  font-size: 13pt;
+  font-weight: 900;
+  color: #1a1a1a;
+}
+.section-header .kr {
+  font-size: 10pt;
+  font-weight: 700;
+  color: #888;
+  margin-left: 4px;
+}
+
+/* ───────── 5 PICK ───────── */
+.pick-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pick-item {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 14px 18px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.pick-num {
+  background: #ff4757;
+  color: #fff;
+  font-size: 10pt;
+  font-weight: 900;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.pick-body { flex: 1; }
+.pick-en {
+  font-size: 12pt;
+  color: #1a1a1a;
+  line-height: 1.7;
+  margin-bottom: 4px;
+}
+.pick-blank {
+  display: inline-block;
+  min-width: 90px;
+  border-bottom: 2px solid #1a1a1a;
+  padding: 0 8px;
+  text-align: center;
+  font-weight: 700;
+  color: transparent;
+}
+.pick-kr {
+  font-size: 10pt;
+  color: #888;
+}
+
+.word-bank {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: #fff5f8;
+  border-radius: 6px;
+  border: 1px dashed #ff4757;
+}
+.word-bank-label {
+  font-size: 9pt;
+  font-weight: 900;
+  color: #ff4757;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.word-bank-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chip {
+  background: #fff;
+  border: 1px solid #ff4757;
+  color: #ff4757;
+  font-size: 10pt;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 14px;
+  font-style: italic;
+}
+
+/* ───────── TALK ───────── */
+.scene {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.scene-title {
+  font-size: 11pt;
+  font-weight: 900;
+  color: #ff4757;
+  margin-bottom: 4px;
+}
+.scene-kr {
+  font-size: 9.5pt;
+  color: #888;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.dialog-line {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+  align-items: flex-start;
+}
+.dialog-line:last-child { margin-bottom: 0; }
+.speaker {
+  font-size: 9pt;
+  font-weight: 900;
+  flex-shrink: 0;
+  min-width: 72px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  text-align: center;
+  margin-top: 2px;
+}
+.speaker.jun {
+  background: #ff4757;
+  color: #fff;
+}
+.speaker.other {
+  background: #f0f0f0;
+  color: #555;
+}
+.line-text {
+  flex: 1;
+  font-size: 11pt;
+  line-height: 1.6;
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+.dialog-line.jun-line .line-text {
+  background: #f9f9f9;
+  border-left: 3px solid #ff4757;
+}
+.dialog-line.other-line .line-text {
+  background: #fff;
+  border: 1px solid #e8e8e8;
+}
+.line-text strong { font-weight: 900; color: #ff4757; }
+
+/* ───────── EXTENSION ───────── */
+.pattern-box {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+.pattern-title {
+  font-size: 11pt;
+  font-weight: 900;
+  color: #ff4757;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.pattern-title strong { color: #1a1a1a; font-weight: 900; }
+.pattern-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.pattern-ex {
+  font-size: 11pt;
+  color: #334;
+  line-height: 1.5;
+  padding-left: 16px;
+  position: relative;
+}
+.pattern-ex::before {
+  content: "•";
+  color: #ff4757;
+  position: absolute;
+  left: 4px;
+  font-weight: 900;
+}
+.pattern-ex strong { font-weight: 900; color: #ff4757; }
+
+/* ───────── ASK ───────── */
+.ask-box {
+  background: #fff5f8;
+  border-radius: 6px;
+  padding: 18px 22px;
+}
+.ask-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,71,87,0.15);
+}
+.ask-item:last-child { border-bottom: none; }
+.ask-q {
+  font-size: 10pt;
+  font-weight: 900;
+  color: #ff4757;
+  flex-shrink: 0;
+  min-width: 28px;
+}
+.ask-text {
+  font-size: 11pt;
+  color: #334;
+  line-height: 1.6;
+}
+
+/* ───────── MISSION ───────── */
+.mission {
+  background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+  color: #fff;
+  border-radius: 6px;
+  padding: 22px 24px;
+}
+.mission-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12pt;
+  font-weight: 900;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+.mission-title .ico { font-size: 18px; }
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.check-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 11pt;
+  line-height: 1.6;
+  color: rgba(255,255,255,0.92);
+}
+.check-box {
+  width: 18px; height: 18px;
+  border: 2px solid #ff4757;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.example-box {
+  background: rgba(255,255,255,0.06);
+  border-left: 3px solid #ff4757;
+  border-radius: 4px;
+  padding: 14px 16px;
+}
+.example-label {
+  font-size: 9pt;
+  font-weight: 900;
+  color: #ff6b7a;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.example-text {
+  font-size: 11pt;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.95);
+  font-style: italic;
+}
+
+/* ───────── FOOTER ───────── */
+.footer {
+  margin-top: 36px;
+  text-align: center;
+}
+.footer-line {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%);
+  margin-bottom: 12px;
+}
+.footer-text {
+  font-size: 9pt;
+  color: #888;
+  letter-spacing: 0.5px;
+}
+.footer-text strong { color: #ff4757; font-weight: 900; }
+
+/* 인쇄 */
+@media print {
+  body { padding: 0; background: #fff; }
+  .section { break-inside: avoid; }
+  .mission, .scene, .pattern-box, .pick-item { break-inside: avoid; }
+}
+
+/* 반응형 */
+@media (max-width: 600px) {
+  body { padding: 16px 12px 40px; }
+  .header { padding: 22px 20px; }
+  .unit-title-en { font-size: 18pt; }
+  .unit-title-kr { font-size: 11pt; }
+  .speaker { min-width: 60px; font-size: 8.5pt; }
+  .pick-en, .line-text, .pattern-ex, .ask-text, .check-item { font-size: 10.5pt; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ───────── HEADER ───────── -->
+  <div class="header">
+    <span class="header-tag">PART 1 · PREP & MISE EN PLACE</span>
+    <div class="header-num">UNIT 01</div>
+    <div class="unit-title-en">Mise en Place</div>
+    <div class="unit-title-kr">준, 미장플라스를 익히다</div>
+  </div>
+
+  <!-- ───────── SITUATION ───────── -->
+  <div class="situation">
+    <div class="situation-icon">🥬</div>
+    <div class="situation-body">
+      <h3>SITUATION</h3>
+      <p>준은 시드니의 한 프렌치 비스트로에 출근한 첫날, 셰프에게 미장플라스(mise en place, 모든 재료와 도구를 제자리에 미리 준비해 두는 것)를 배운다. 셰프는 준에게 자신의 스테이션(station, 작업 자리)을 정리하고 프렙 리스트(prep list, 준비 목록)대로 재료를 컨테이너(container, 보관 용기)에 담아 두라고 지시한다. 가니쉬(garnish, 장식용 재료)까지 모두 챙겨야 서비스를 시작할 수 있다.</p>
+    </div>
+  </div>
+
+
+  <!-- ───────── 1. 5 PICK ───────── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2>5 PICK <span class="kr">· 핵심 문장 채우기</span></h2>
+    </div>
+
+    <div class="pick-list">
+      <div class="pick-item">
+        <div class="pick-num">1</div>
+        <div class="pick-body">
+          <div class="pick-en">Finish your <span class="pick-blank">mise en place</span> before service.</div>
+          <div class="pick-kr">서비스 시작 전에 미장플라스를 끝내라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">2</div>
+        <div class="pick-body">
+          <div class="pick-en">Is your <span class="pick-blank">station</span> ready, Jun?</div>
+          <div class="pick-kr">준, 네 스테이션은 준비됐어?</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">3</div>
+        <div class="pick-body">
+          <div class="pick-en">Check the <span class="pick-blank">prep list</span> first.</div>
+          <div class="pick-kr">먼저 프렙 리스트를 확인해.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">4</div>
+        <div class="pick-body">
+          <div class="pick-en">Put the sauce in a clean <span class="pick-blank">container</span>.</div>
+          <div class="pick-kr">소스를 깨끗한 컨테이너에 담아.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">5</div>
+        <div class="pick-body">
+          <div class="pick-en">Prepare the <span class="pick-blank">garnish</span> for table two.</div>
+          <div class="pick-kr">2번 테이블 가니쉬를 준비해.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="word-bank">
+      <div class="word-bank-label">▸ WORD BANK</div>
+      <div class="word-bank-chips">
+        <span class="chip">mise en place</span>
+        <span class="chip">station</span>
+        <span class="chip">prep list</span>
+        <span class="chip">container</span>
+        <span class="chip">garnish</span>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ───────── 2. TALK ───────── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2>TALK <span class="kr">· 실전 대화</span></h2>
+    </div>
+
+    <!-- Scene 1 -->
+    <div class="scene">
+      <div class="scene-title">Scene 1 — First Day in the Kitchen</div>
+      <div class="scene-kr">출근 첫날, 주방에서</div>
+
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Welcome, Jun. This is your station. Check the prep list on the wall.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef! <strong>Is your station ready?</strong> — I mean, where do I start?</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Start with onions and carrots. Use clean containers for everything.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Got it, Chef. Small containers or big ones?</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Small ones. Label them all. And don't forget the garnish.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef!</div>
+      </div>
+    </div>
+
+    <!-- Scene 2 -->
+    <div class="scene">
+      <div class="scene-title">Scene 2 — Before Service</div>
+      <div class="scene-kr">서비스 시작 직전</div>
+
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Jun, twenty minutes to service. How's your station?</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Almost ready. I need two more containers.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Hurry up. <strong>Finish your mise en place</strong> in ten.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef! Garnish is in the fridge. Prep list is done.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Good. Clean your station and we're ready to fire.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Heard, Chef!</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ───────── 3. EXTENSION ───────── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2>EXTENSION <span class="kr">· 응용 표현</span></h2>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 1 · <strong>Finish your ~ before ~</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Finish your</strong> prep <strong>before</strong> service.</div>
+        <div class="pattern-ex"><strong>Finish your</strong> mise en place <strong>before</strong> 5 PM.</div>
+        <div class="pattern-ex"><strong>Finish your</strong> sauce <strong>before</strong> the dinner rush.</div>
+        <div class="pattern-ex"><strong>Finish your</strong> cleaning <strong>before</strong> you leave.</div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 2 · <strong>Is your ~ ready?</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Is your</strong> station <strong>ready</strong>?</div>
+        <div class="pattern-ex"><strong>Is your</strong> prep list <strong>ready</strong>?</div>
+        <div class="pattern-ex"><strong>Is your</strong> garnish <strong>ready</strong>?</div>
+        <div class="pattern-ex"><strong>Is your</strong> knife <strong>ready</strong>?</div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 3 · <strong>Put ~ in a clean container</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Put</strong> the carrots <strong>in a clean container</strong>.</div>
+        <div class="pattern-ex"><strong>Put</strong> the sauce <strong>in a clean container</strong>.</div>
+        <div class="pattern-ex"><strong>Put</strong> the herbs <strong>in a clean container</strong>.</div>
+        <div class="pattern-ex"><strong>Put</strong> the leftovers <strong>in a clean container</strong> and label it.</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ───────── 4. ASK ───────── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2>ASK <span class="kr">· 튜터와 이야기하기</span></h2>
+    </div>
+
+    <div class="ask-box">
+      <div class="ask-item">
+        <div class="ask-q">Q1</div>
+        <div class="ask-text">What does "mise en place" mean to you? Did you use it in Korea?</div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-q">Q2</div>
+        <div class="ask-text">How do you organize your station before a busy service?</div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-q">Q3</div>
+        <div class="ask-text">What's on your usual prep list in a Korean kitchen?</div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-q">Q4</div>
+        <div class="ask-text">How do you label and store containers in your kitchen?</div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-q">Q5</div>
+        <div class="ask-text">What is your favorite garnish, and why?</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ───────── 5. MISSION ───────── -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2>MISSION <span class="kr">· 오늘의 미션</span></h2>
+    </div>
+
+    <div class="mission">
+      <div class="mission-title">
+        <span class="ico">🎯</span>
+        <span>오늘 셰프트에서 꼭 말해보기</span>
+      </div>
+
+      <div class="checklist">
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div>출근하자마자 "Yes, Chef!"로 인사하고, 내 스테이션이 준비됐는지 영어로 확인해 보기.</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div>프렙 리스트를 보고, 무엇부터 시작할지 셰프에게 영어로 물어보기.</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div>재료를 컨테이너에 담을 때 "Put ~ in a clean container." 패턴 한 번 사용하기.</div>
+        </div>
+        <div class="check-item">
+          <div class="check-box"></div>
+          <div>서비스 10분 전, "Finish your mise en place." 표현으로 동료에게 신호 주기.</div>
+        </div>
+      </div>
+
+      <div class="example-box">
+        <div class="example-label">▸ EXAMPLE</div>
+        <div class="example-text">Good morning, Chef! My station is ready. I checked the prep list and started with the onions. I put the carrots in a clean container and labeled them. Garnish is also ready, Chef — let's finish our mise en place before service.</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ───────── FOOTER ───────── -->
+  <div class="footer">
+    <div class="footer-line"></div>
+    <div class="footer-text">
+      <strong>FRIENDING</strong> · Kitchen English for Working Holiday &nbsp;|&nbsp; Unit 01 · Mise en Place
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

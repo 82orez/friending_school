@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit 16 · Sauces — Kitchen English for Working Holiday</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Verdana', sans-serif; background: #f5f5f5; color: #1a1a1a; line-height: 1.6; padding: 30px 20px 60px; }
+.page { max-width: 900px; margin: 0 auto; }
+.header { background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%); color: #fff; padding: 30px 32px; border-radius: 6px; margin-bottom: 24px; position: relative; }
+.header-tag { display: inline-block; font-size: 9pt; font-weight: 700; background: rgba(0,0,0,.2); color: #fff; padding: 3px 11px; border-radius: 12px; margin-bottom: 12px; letter-spacing: 0.5px; }
+.header-num { font-size: 10pt; font-weight: 900; opacity: 0.85; margin-bottom: 4px; letter-spacing: 1px; }
+.unit-title-en { font-size: 22pt; font-weight: 900; margin-bottom: 6px; letter-spacing: 0.3px; }
+.unit-title-kr { font-size: 12pt; font-weight: 700; opacity: 0.95; }
+.situation { background: #fff; border: 1px solid #e0e0e0; border-left: 4px solid #ff4757; border-radius: 6px; padding: 18px 22px; margin-bottom: 28px; display: flex; gap: 14px; align-items: flex-start; }
+.situation-icon { font-size: 26px; flex-shrink: 0; margin-top: 2px; }
+.situation-body h3 { font-size: 10pt; font-weight: 900; color: #ff4757; letter-spacing: 1px; margin-bottom: 6px; }
+.situation-body p { font-size: 11pt; color: #334; line-height: 1.7; }
+.section { margin-bottom: 28px; }
+.section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #ff4757; }
+.section-num { width: 30px; height: 30px; border-radius: 50%; background: #ff4757; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12pt; font-weight: 900; flex-shrink: 0; }
+.section-header h2 { font-size: 13pt; font-weight: 900; color: #1a1a1a; }
+.section-header .kr { font-size: 10pt; font-weight: 700; color: #888; margin-left: 4px; }
+.pick-list { display: flex; flex-direction: column; gap: 12px; }
+.pick-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 18px; display: flex; gap: 14px; align-items: flex-start; }
+.pick-num { background: #ff4757; color: #fff; font-size: 10pt; font-weight: 900; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.pick-body { flex: 1; }
+.pick-en { font-size: 12pt; color: #1a1a1a; line-height: 1.7; margin-bottom: 4px; }
+.pick-blank { display: inline-block; min-width: 90px; border-bottom: 2px solid #1a1a1a; padding: 0 8px; text-align: center; font-weight: 700; color: transparent; }
+.pick-kr { font-size: 10pt; color: #888; }
+.word-bank { margin-top: 14px; padding: 14px 16px; background: #fff5f8; border-radius: 6px; border: 1px dashed #ff4757; }
+.word-bank-label { font-size: 9pt; font-weight: 900; color: #ff4757; letter-spacing: 1px; margin-bottom: 8px; }
+.word-bank-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: #fff; border: 1px solid #ff4757; color: #ff4757; font-size: 10pt; font-weight: 700; padding: 4px 12px; border-radius: 14px; font-style: italic; }
+.scene { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 18px 20px; margin-bottom: 14px; }
+.scene-title { font-size: 11pt; font-weight: 900; color: #ff4757; margin-bottom: 4px; }
+.scene-kr { font-size: 9.5pt; color: #888; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+.dialog-line { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
+.dialog-line:last-child { margin-bottom: 0; }
+.speaker { font-size: 9pt; font-weight: 900; flex-shrink: 0; min-width: 72px; padding: 3px 9px; border-radius: 4px; text-align: center; margin-top: 2px; }
+.speaker.jun { background: #ff4757; color: #fff; }
+.speaker.other { background: #f0f0f0; color: #555; }
+.line-text { flex: 1; font-size: 11pt; line-height: 1.6; padding: 8px 12px; border-radius: 4px; }
+.dialog-line.jun-line .line-text { background: #f9f9f9; border-left: 3px solid #ff4757; }
+.dialog-line.other-line .line-text { background: #fff; border: 1px solid #e8e8e8; }
+.line-text strong { font-weight: 900; color: #ff4757; }
+.pattern-box { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px 18px; margin-bottom: 12px; }
+.pattern-title { font-size: 11pt; font-weight: 900; color: #ff4757; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+.pattern-title strong { color: #1a1a1a; font-weight: 900; }
+.pattern-examples { display: flex; flex-direction: column; gap: 7px; }
+.pattern-ex { font-size: 11pt; color: #334; line-height: 1.5; padding-left: 16px; position: relative; }
+.pattern-ex::before { content: "•"; color: #ff4757; position: absolute; left: 4px; font-weight: 900; }
+.pattern-ex strong { font-weight: 900; color: #ff4757; }
+.ask-box { background: #fff5f8; border-radius: 6px; padding: 18px 22px; }
+.ask-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,71,87,0.15); }
+.ask-item:last-child { border-bottom: none; }
+.ask-q { font-size: 10pt; font-weight: 900; color: #ff4757; flex-shrink: 0; min-width: 28px; }
+.ask-text { font-size: 11pt; color: #334; line-height: 1.6; }
+.mission { background: linear-gradient(135deg, #1a1a1a 0%, #333 100%); color: #fff; border-radius: 6px; padding: 22px 24px; }
+.mission-title { display: flex; align-items: center; gap: 10px; font-size: 12pt; font-weight: 900; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.mission-title .ico { font-size: 18px; }
+.checklist { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.check-item { display: flex; gap: 12px; align-items: flex-start; font-size: 11pt; line-height: 1.6; color: rgba(255,255,255,0.92); }
+.check-box { width: 18px; height: 18px; border: 2px solid #ff4757; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
+.example-box { background: rgba(255,255,255,0.06); border-left: 3px solid #ff4757; border-radius: 4px; padding: 14px 16px; }
+.example-label { font-size: 9pt; font-weight: 900; color: #ff6b7a; letter-spacing: 1px; margin-bottom: 8px; }
+.example-text { font-size: 11pt; line-height: 1.7; color: rgba(255,255,255,0.95); font-style: italic; }
+.footer { margin-top: 36px; text-align: center; }
+.footer-line { height: 3px; border-radius: 2px; background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%); margin-bottom: 12px; }
+.footer-text { font-size: 9pt; color: #888; letter-spacing: 0.5px; }
+.footer-text strong { color: #ff4757; font-weight: 900; }
+@media print { body { padding: 0; background: #fff; } .section { break-inside: avoid; } .mission, .scene, .pattern-box, .pick-item { break-inside: avoid; } }
+@media (max-width: 600px) { body { padding: 16px 12px 40px; } .header { padding: 22px 20px; } .unit-title-en { font-size: 18pt; } .unit-title-kr { font-size: 11pt; } .speaker { min-width: 60px; font-size: 8.5pt; } .pick-en, .line-text, .pattern-ex, .ask-text, .check-item { font-size: 10.5pt; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="header">
+    <span class="header-tag">PART 4 · CLASSIC FRENCH TECHNIQUES</span>
+    <div class="header-num">UNIT 16</div>
+    <div class="unit-title-en">Sauces</div>
+    <div class="unit-title-kr">준, 클래식 소스를 익히다</div>
+  </div>
+
+  <div class="situation">
+    <div class="situation-icon">🍖</div>
+    <div class="situation-body">
+      <h3>SITUATION</h3>
+      <p>준은 클래식 프렌치 소스를 배운다. 우유와 루로 만든 베샤멜(béchamel, 화이트 크림 소스), 마늘 마요네즈인 아이올리(aioli, 마늘 마요네즈), 식초와 기름으로 만든 비네그레트(vinaigrette, 식초 드레싱), 후추와 크림이 들어간 페퍼 소스(pepper sauce, 후추 소스), 그리고 다크 스톡을 짙게 졸인 데미글라스(demi-glace, 짙은 갈색 소스). 셰프는 소스의 농도와 광택, 시즈닝이 한 접시를 완성한다고 강조한다.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2>5 PICK <span class="kr">· 핵심 문장 채우기</span></h2>
+    </div>
+    <div class="pick-list">
+      <div class="pick-item">
+        <div class="pick-num">1</div>
+        <div class="pick-body">
+          <div class="pick-en">Make a <span class="pick-blank">béchamel</span> for the gratin.</div>
+          <div class="pick-kr">그라탕용 베샤멜을 만들어라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">2</div>
+        <div class="pick-body">
+          <div class="pick-en">Whisk the <span class="pick-blank">aioli</span> with garlic and oil.</div>
+          <div class="pick-kr">마늘과 기름으로 아이올리를 휘저어라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">3</div>
+        <div class="pick-body">
+          <div class="pick-en">Dress the salad with a light <span class="pick-blank">vinaigrette</span>.</div>
+          <div class="pick-kr">샐러드에 가벼운 비네그레트를 둘러라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">4</div>
+        <div class="pick-body">
+          <div class="pick-en">Steak comes with creamy <span class="pick-blank">pepper sauce</span>.</div>
+          <div class="pick-kr">스테이크엔 크리미한 페퍼 소스다.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">5</div>
+        <div class="pick-body">
+          <div class="pick-en">Finish the plate with <span class="pick-blank">demi-glace</span>.</div>
+          <div class="pick-kr">데미글라스로 접시를 마무리해라.</div>
+        </div>
+      </div>
+    </div>
+    <div class="word-bank">
+      <div class="word-bank-label">▸ WORD BANK</div>
+      <div class="word-bank-chips">
+        <span class="chip">béchamel</span>
+        <span class="chip">aioli</span>
+        <span class="chip">vinaigrette</span>
+        <span class="chip">pepper sauce</span>
+        <span class="chip">demi-glace</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2>TALK <span class="kr">· 실전 대화</span></h2>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">Scene 1 — Making Aioli</div>
+      <div class="scene-kr">아이올리 만들기</div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Jun, aioli for the brunch. Garlic, egg yolk, lemon, oil.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef!</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Whisk the sauce slowly. Drizzle the oil drop by drop.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Heard, Chef! <strong>Whisk the sauce slowly</strong> — emulsion?</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Right. If it breaks, start over with a fresh yolk.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef!</div>
+      </div>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">Scene 2 — Adjusting on the Pass</div>
+      <div class="scene-kr">패스에서 농도 조절</div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Jun, taste the pepper sauce for the steak.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text"><strong>This sauce is too thick</strong>, Chef.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Right. Loosen it with a splash of cream. And taste again.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Heard, Chef.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Also check the béchamel for the gratin. And finish the plate with demi-glace.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2>EXTENSION <span class="kr">· 응용 표현</span></h2>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 1 · <strong>Whisk the ~ slowly</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Whisk the</strong> sauce <strong>slowly</strong>, drop by drop.</div>
+        <div class="pattern-ex"><strong>Whisk the</strong> aioli <strong>slowly</strong> to keep the emulsion.</div>
+        <div class="pattern-ex"><strong>Whisk the</strong> béchamel <strong>slowly</strong> with warm milk.</div>
+        <div class="pattern-ex"><strong>Whisk the</strong> dressing <strong>slowly</strong> until thick.</div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 2 · <strong>This sauce is too ~</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>This sauce is too</strong> thick.</div>
+        <div class="pattern-ex"><strong>This sauce is too</strong> salty, Chef.</div>
+        <div class="pattern-ex"><strong>This sauce is too</strong> thin — needs more reduction.</div>
+        <div class="pattern-ex"><strong>This sauce is too</strong> bland, more seasoning.</div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 3 · <strong>Finish with ~</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Finish with</strong> demi-glace.</div>
+        <div class="pattern-ex"><strong>Finish with</strong> a drizzle of vinaigrette.</div>
+        <div class="pattern-ex"><strong>Finish with</strong> a knob of butter for shine.</div>
+        <div class="pattern-ex"><strong>Finish with</strong> a spoon of pepper sauce.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2>ASK <span class="kr">· 튜터와 이야기하기</span></h2>
+    </div>
+    <div class="ask-box">
+      <div class="ask-item"><div class="ask-q">Q1</div><div class="ask-text">Have you made béchamel before? For which dish?</div></div>
+      <div class="ask-item"><div class="ask-q">Q2</div><div class="ask-text">Is aioli or regular mayonnaise more common in your kitchen?</div></div>
+      <div class="ask-item"><div class="ask-q">Q3</div><div class="ask-text">What's your favorite vinaigrette recipe?</div></div>
+      <div class="ask-item"><div class="ask-q">Q4</div><div class="ask-text">Pepper sauce or mushroom sauce — which goes better with steak?</div></div>
+      <div class="ask-item"><div class="ask-q">Q5</div><div class="ask-text">What's the trickiest sauce you've ever made?</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2>MISSION <span class="kr">· 오늘의 미션</span></h2>
+    </div>
+    <div class="mission">
+      <div class="mission-title">
+        <span class="ico">🎯</span>
+        <span>오늘 셰프트에서 꼭 말해보기</span>
+      </div>
+      <div class="checklist">
+        <div class="check-item"><div class="check-box"></div><div>소스 작업 시 "Whisk the sauce slowly." 한 번 발화하기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>농도 확인 시 "This sauce is too thick." 표현 사용하기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>동료에게 "Finish with demi-glace." 한 번 지시해 보기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>béchamel · aioli · vinaigrette · pepper sauce · demi-glace 중 3개 이상 발화하기.</div></div>
+      </div>
+      <div class="example-box">
+        <div class="example-label">▸ EXAMPLE</div>
+        <div class="example-text">Yes, Chef! For the aioli, I'll whisk the sauce slowly — drop by drop oil into the garlic and yolk, keep the emulsion. The pepper sauce is too thick — I'll loosen it with a splash of cream. I'll check the béchamel for the gratin, and finish the steak plate with demi-glace, Chef.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-line"></div>
+    <div class="footer-text"><strong>FRIENDING</strong> · Kitchen English for Working Holiday &nbsp;|&nbsp; Unit 16 · Sauces</div>
+  </div>
+
+</div>
+</body>
+</html>

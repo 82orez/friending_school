@@ -1,0 +1,1466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>기초회화문법 Book 4 · Unit 45 — 거기에서 ~했어요!</title>
+<style>
+  :root{
+    --cream-bg: #F5EFE7;
+    --white: #FFFFFF;
+    --pink: #B5245A;
+    --orange: #FF9F43;
+    --text: #333333;
+    --muted: #666666;
+    --border: #d9d9d9;
+  }
+
+  *{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: var(--cream-bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    line-height: 1.6;
+    font-size: 13pt;
+  }
+
+  /* 툴바 */
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    background: var(--white);
+    border-bottom: 2px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .toolbar .group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .toolbar .label {
+    font-size: 11pt;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .btn {
+    border: 2px solid var(--pink);
+    background: var(--white);
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 11pt;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--pink);
+    transition: all 0.3s;
+  }
+
+  .btn:hover {
+    background: var(--pink);
+    color: var(--white);
+  }
+
+  .btn.active {
+    background: var(--pink);
+    color: var(--white);
+  }
+
+  main {
+    transition: all 0.3s;
+  }
+
+  body.mobile main {
+    transform: none;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* 모바일 버튼 클릭 시 적용 */
+  body.mobile .page {
+    width: 100%;
+    height: auto;
+    padding: 30px;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    max-width: 100%;
+  }
+
+  body.mobile .cards-container {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  body.mobile .idiom-container {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  body.mobile .card,
+  body.mobile .word-card-simple {
+    height: auto;
+  }
+
+  body.mobile .comparison-table {
+    font-size: 11pt;
+    width: 100%;
+    display: block;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  body.mobile .comparison-table thead {
+    display: block;
+    width: 100%;
+    background: rgba(181, 36, 90, 0.15);
+    border: none !important;
+    border-radius: 0;
+    overflow: visible;
+    margin-bottom: 10px;
+  }
+
+  body.mobile .comparison-table th {
+    display: inline-block;
+    width: 33.33%;
+    padding: 10px;
+    text-align: center;
+    border: none !important;
+    border-bottom: none !important;
+    background: none;
+    color: var(--pink);
+    font-weight: 700;
+    font-size: 11pt;
+    border-right: 1px solid var(--border) !important;
+  }
+
+  body.mobile .comparison-table thead::after {
+    content: '';
+    display: block;
+    border-bottom: none !important;
+  }
+
+  body.mobile .comparison-table th:last-child {
+    border-right: none;
+  }
+
+  body.mobile .comparison-table tr:first-child {
+    border: 2px solid var(--border) !important;
+    border-radius: 12px !important;
+    background: rgba(181, 36, 90, 0.15);
+    padding: 0;
+    margin: 0 0 12px 0;
+    display: flex;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  body.mobile .comparison-table tr:first-child th {
+    border: none !important;
+    padding: 10px;
+    flex: 1;
+    text-align: center;
+    color: var(--pink);
+    font-weight: 700;
+    font-size: 11pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  body.mobile .comparison-table tr:first-child th:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 60%;
+    background: #999999;
+  }
+
+  body.mobile .comparison-table tr:first-child th:last-child {
+    border-right: none !important;
+  }
+
+  body.mobile .comparison-table tbody {
+    display: block;
+  }
+
+  body.mobile .comparison-table tr {
+    display: block;
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  body.mobile .comparison-table td {
+    display: block;
+    padding: 8px 0;
+    border: none;
+    text-align: left;
+    font-size: 12pt;
+  }
+
+  body.mobile .comparison-table td:first-child {
+    font-weight: 700;
+    color: var(--pink);
+    font-size: 13pt;
+    margin-bottom: 8px;
+  }
+
+  body.mobile .comparison-table td:nth-child(2)::before {
+    display: none;
+  }
+
+  body.mobile .comparison-table td:nth-child(3)::before {
+    display: none;
+  }
+
+  body.mobile .title {
+    font-size: 18pt;
+    margin-bottom: 4px;
+  }
+
+  body.mobile .ask-q {
+    font-size: 12pt;
+    font-weight: 500;
+    color: var(--pink);
+    margin-bottom: 2px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  body.mobile .page-num {
+    display: none;
+  }
+
+  body.mobile .ans-grid {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  body.mobile .ans-box {
+    padding: 8px 10px;
+    font-size: 10pt;
+  }
+
+  body.mobile .talk-sentences {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 페이지 */
+  .page {
+    width: 182mm;
+    min-height: 257mm;
+    margin: 10px auto;
+    background: var(--white);
+    padding: 12mm 22mm;
+    border-radius: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page-label {
+    position: absolute;
+    top: 4mm;
+    left: 22mm;
+    right: 22mm;
+    display: flex;
+    justify-content: space-between;
+    font-size: 8pt;
+    color: #bbbbbb;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  /* 헤더 */
+  .header {
+    margin-bottom: 2px;
+    padding-bottom: 2px;
+    border-bottom: 3px solid var(--pink);
+  }
+
+  .badge {
+    display: inline-block;
+    background: var(--pink);
+    color: var(--white);
+    border-radius: 20px;
+    padding: 3px 8px;
+    font-size: 9pt;
+    font-weight: 700;
+    margin-bottom: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  .title {
+    font-size: 23pt;
+    font-weight: 800;
+    color: var(--pink);
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-size: 12pt;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  /* 섹션 레이블 */
+  .section-label {
+    display: inline-block;
+    background: rgba(181, 36, 90, 0.15);
+    color: var(--pink);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 10pt;
+    font-weight: 700;
+    margin: 4px 0 0 0;
+    letter-spacing: 0px;
+    width: fit-content;
+  }
+
+  /* B/W 모드 - section-label */
+  .theme-bw .section-label {
+    background: #F5F5F5;
+    color: #333333;
+  }
+
+  /* 본문 */
+  .body {
+    font-size: 12pt;
+    margin-bottom: 6px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  /* 구조 박스 */
+  .structure {
+    border: 2px solid #E8D5D5;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 4px 0 10px 0;
+    background: rgba(181, 36, 90, 0.05);
+    font-size: 12pt;
+    text-align: center;
+    font-weight: 700;
+    color: var(--pink);
+  }
+
+  .structure .sub {
+    display: block;
+    font-size: 13pt;
+    color: var(--muted);
+    margin-top: 4px;
+    font-weight: 400;
+  }
+
+  /* 카드 컨테이너 */
+  .cards-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 16px 6px;
+    margin: 0 0 8px 0;
+  }
+
+  .card {
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    transition: all 0.3s;
+  }
+
+  .card:hover {
+    box-shadow: 0 6px 16px rgba(181, 36, 90, 0.15);
+    border-color: var(--pink);
+  }
+
+  .card-ko {
+    font-size: 11pt;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-en {
+    font-size: 13pt;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .card-en b {
+    color: var(--pink);
+    font-weight: 700;
+  }
+
+  /* 웨이브 구분선 */
+  .wave-divider {
+    margin: 6px 0;
+    height: 10px;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 60"><path d="M0,30 Q300,0 600,30 T1200,30" stroke="%23FF9F43" stroke-width="2" fill="none"/></svg>') repeat-x;
+    background-size: 300px 10px;
+    opacity: 0.3;
+  }
+
+  /* 섹션 소제목 */
+  .section-subtitle {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--pink);
+    margin: 0 0 8px 0;
+    padding-bottom: 0;
+  }
+
+  /* 설명 */
+  .description {
+    font-size: 12pt;
+    color: var(--text);
+    margin: 4px 0 10px 0;
+    line-height: 1.8;
+    padding-top: 8px;
+    border-top: 3px solid var(--pink);
+  }
+
+  /* 비교 카드 */
+  .comparison-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .comparison-card {
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    gap: 16px;
+  }
+
+  .comparison-card:hover {
+    box-shadow: 0 4px 12px rgba(181, 36, 90, 0.1);
+  }
+
+  .comparison-label {
+    flex: 0 0 60px;
+    font-weight: 700;
+    color: var(--pink);
+    text-align: center;
+    padding-top: 2px;
+  }
+
+  .comparison-content {
+    flex: 1;
+  }
+
+  .comparison-en {
+    font-size: 12pt;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .comparison-text {
+    font-size: 12pt;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .comparison-text b {
+    color: var(--pink);
+    font-weight: 700;
+  }
+
+  /* 반응형 비교 표 */
+  .comparison-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 8px 0 12px 0;
+    font-size: 12pt;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .comparison-table th:first-child {
+    border-top-left-radius: 10px;
+  }
+
+  .comparison-table th:last-child {
+    border-top-right-radius: 10px;
+  }
+
+  .comparison-table tr:last-child td:first-child {
+    border-bottom-left-radius: 10px;
+  }
+
+  .comparison-table tr:last-child td:last-child {
+    border-bottom-right-radius: 10px;
+  }
+
+  .comparison-table th {
+    background: rgba(181, 36, 90, 0.15);
+    color: var(--pink);
+    padding: 10px;
+    font-weight: 800;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    font-size: 12pt;
+  }
+  .comparison-table th:last-child { border-right: none; }
+
+  /* B/W 모드 - 테이블 헤더 */
+  .theme-bw .comparison-table th {
+    background: #F5F5F5;
+    color: #333333;
+  }
+
+  .comparison-table td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    background: var(--white);
+    font-size: 12pt;
+  }
+  .comparison-table td:last-child { border-right: none; }
+  .comparison-table tr:last-child td { border-bottom: none; }
+
+  .comparison-table td:first-child {
+    font-size: 13pt;
+  }
+
+  .comparison-table tr:nth-child(even) td {
+    background: #fafafa;
+  }
+
+  .comparison-table b {
+    color: var(--pink);
+    font-weight: 700;
+  }
+
+  /* 팁 박스 */
+  .tip {
+    background: linear-gradient(135deg, rgba(181, 36, 90, 0.08) 0%, rgba(255, 159, 67, 0.08) 100%);
+    border: 2px solid #E8D5D5;
+    border-radius: 12px;
+    padding: 10px;
+    margin: 12px 0 8px 0;
+    font-size: 11pt;
+  }
+
+  .tip-title {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--pink);
+    margin-bottom: 8px;
+  }
+
+  .tip-content {
+    font-size: 11pt;
+    color: var(--text);
+    line-height: 1.8;
+  }
+
+  /* ── QUIZ 스타일 ── */
+  .quiz-label {
+    display: inline-block;
+    background: var(--pink);
+    color: var(--white);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 10pt;
+    font-weight: 700;
+    margin: 0 0 18px 0;
+    letter-spacing: 0px;
+    width: fit-content;
+  }
+
+  .quiz-subtitle {
+    font-size: 12pt;
+    font-weight: 700;
+    color: var(--pink);
+    margin: 12px 0 10px 0;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--orange);
+  }
+
+  .quiz-card {
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin: 14px 0 10px 0;
+  }
+
+  .quiz-item {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border);
+  }
+
+  .quiz-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .quiz-q {
+    font-size: 13pt;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .quiz-space {
+    background: #fafafa;
+    border-bottom: 1px solid var(--border);
+    height: 20px;
+    margin-top: 4px;
+  }
+
+  .quiz-space.tall {
+    height: 24px;
+  }
+
+  /* ── 단어 카드 (개별 테두리) ── */
+  .word-card-simple {
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    height: 160px;
+  }
+
+  .word-card-simple:last-child {
+    margin-bottom: 0;
+  }
+
+  .word-en {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--pink);
+    margin-bottom: 4px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+  }
+
+  .word-pron {
+    font-size: 11pt;
+    color: var(--muted);
+    margin-bottom: 4px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+  }
+
+  .word-ko {
+    font-size: 12pt;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+  }
+
+  .word-ex {
+    font-size: 12pt;
+    color: var(--text);
+    line-height: 1.5;
+    height: 48px;
+    overflow: hidden;
+  }
+
+  /* ── IDIOM 박스 (전체 테두리 없음) ── */
+  .idiom-box-simple {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* ── IDIOM 항목 (개별 테두리) ── */
+  .idiom-item-simple {
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .idiom-item-simple:last-child {
+    margin-bottom: 0;
+  }
+
+  .idiom-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .idiom-en {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--pink);
+    margin-bottom: 4px;
+  }
+
+  .idiom-ko {
+    font-size: 12pt;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .idiom-ex {
+    font-size: 12pt;
+    color: var(--text);
+  }
+
+  .tip-content b {
+    color: var(--pink);
+    font-weight: 700;
+  }
+
+  /* 강조 점 */
+  .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--orange);
+    border-radius: 50%;
+    margin: 0 8px;
+  }
+
+  /* 빈 줄 */
+  /* 단어 보기 (Word Bank) */
+  .wbank {
+    margin-top: 12px;
+    padding: 9px 13px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    justify-content: center;
+  }
+  .wchip {
+    font-family: 'Nunito', sans-serif;
+    background: #fff;
+    border: 1.5px solid var(--pink);
+    color: var(--pink);
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 11pt;
+    font-weight: 700;
+  }
+
+  .blank-line {
+    height: 20px;
+    border-bottom: 1px dashed var(--border);
+    margin: 12px 0;
+  }
+
+  .page-num {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11pt;
+    color: var(--muted);
+  }
+
+  @media print {
+    .toolbar {
+      display: none !important;
+    }
+    body {
+      background: var(--white) !important;
+    }
+    .page {
+      margin: 0;
+      box-shadow: none;
+    }
+  }
+
+  /* 모바일 반응형 */
+  @media (max-width: 768px) {
+    .page {
+      padding: 16px;
+      margin: 10px;
+    }
+
+    .title {
+      font-size: 18pt;
+    }
+
+    .cards-container {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    /* 반응형 테이블 */
+    .comparison-table,
+    .comparison-table thead,
+    .comparison-table tbody,
+    .comparison-table th,
+    .comparison-table tr,
+    .comparison-table td {
+      display: block;
+      width: 100%;
+    }
+
+    .comparison-table tr {
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      padding: 10px;
+      background: var(--white);
+    }
+
+    .comparison-table th {
+      display: none;
+    }
+
+    .comparison-table td {
+      border: none;
+      padding: 8px 0;
+      text-align: left;
+      position: relative;
+      padding-left: 80px;
+    }
+
+    .comparison-table td::before {
+      content: attr(data-label);
+      position: absolute;
+      left: 10px;
+      font-weight: 700;
+      color: var(--pink);
+      width: 60px;
+    }
+
+    .comparison-table td:first-child {
+      font-weight: 700;
+      color: var(--text);
+      padding-left: 10px;
+    }
+
+    .comparison-table td:first-child::before {
+      display: none;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .page {
+      width: 100%;
+      height: auto;
+      padding: 20px;
+      margin: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .title {
+      font-size: 18pt;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: 12pt;
+    }
+
+    .badge {
+      font-size: 9pt;
+      padding: 4px 10px;
+    }
+
+    .cards-container {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .idiom-container {
+      gap: 10px;
+    }
+
+    .card {
+      padding: 10px;
+      border-radius: 8px;
+      height: auto;
+    }
+
+    .word-card-simple {
+      height: auto;
+    }
+
+    .comparison-table {
+      font-size: 11pt;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 8px;
+      font-size: 10pt;
+    }
+
+    .comparison-table td:first-child {
+      font-size: 11pt;
+    }
+
+    .card-ko {
+      font-size: 12pt;
+      margin-bottom: 8px;
+    }
+
+    .card-en {
+      font-size: 13pt;
+    }
+
+    .structure {
+      padding: 10px 12px;
+      font-size: 12pt;
+    }
+
+    .structure .sub {
+      font-size: 11pt;
+    }
+
+    .body {
+      font-size: 12pt;
+    }
+
+    .section-subtitle {
+      font-size: 12pt;
+    }
+
+    .description {
+      font-size: 12pt;
+      padding-left: 10px;
+    }
+
+    .tip {
+      padding: 12px;
+    }
+
+    .tip-title {
+      font-size: 12pt;
+    }
+
+    .tip-content {
+      font-size: 11pt;
+    }
+  }
+
+
+  /* ── ASK 페이지 ── */
+  .ask-head {
+    font-size: 14pt;
+    font-weight: 700;
+    color: var(--pink);
+    background: rgba(181, 36, 90, 0.1);
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  /* B/W 모드에서 ask-head */
+  .theme-bw .ask-head {
+    background: #F5F5F5;
+    color: #333333;
+  }
+
+  .ask-item {
+    background: transparent;
+    border-radius: 8px;
+    padding: 6px;
+    margin-bottom: 2px;
+  }
+
+  .ask-q {
+    font-size: 13pt;
+    font-weight: 500;
+    color: var(--pink);
+    margin-bottom: 2px;
+  }
+
+  .ask-ko {
+    font-size: 11pt;
+    color: var(--muted);
+    margin-bottom: 10px;
+    padding-bottom: 4px;
+    padding-left: 20px;
+    font-weight: 500;
+  }
+
+  .ans-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  .ans-box {
+    background: var(--white);
+    border: 2px solid #E8D5D5;
+    border-radius: 10px;
+    padding: 8px 12px;
+    transition: all 0.3s;
+  }
+
+  .ans-box:hover {
+    border-color: var(--pink);
+    box-shadow: 0 2px 6px rgba(181, 36, 90, 0.1);
+  }
+
+  .ans-en {
+    font-size: 12.5pt;
+    font-weight: 600;
+    color: #555555;
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+
+  .ans-ko {
+    font-size: 11pt;
+    color: var(--muted);
+    line-height: 1.3;
+  }
+
+  .ask-write {
+    height: 16px;
+    margin-top: 4px;
+  }
+
+  /* ── Book 4 전용 — POINT 테이블 ── */
+  .ptable {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 10px 0 8px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    font-size: 12pt;
+  }
+  .ptable .th-r td {
+    background: var(--pink);
+    color: #fff;
+    padding: 7px 12px;
+    font-size: 12pt;
+    font-weight: 700;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid rgba(255,255,255,0.2);
+  }
+  .ptable .th-r td:last-child { border-right: none; }
+  .ptable td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    background: var(--white);
+    vertical-align: middle;
+  }
+  .ptable td:last-child { border-right: none; }
+  .ptable tr:last-child td { border-bottom: none; }
+  .ptable tr:nth-child(even) td { background: rgba(181,36,90,0.04); }
+  .pkey { font-size: 13pt; font-weight: 700; }
+  .exlist { list-style: none; padding: 0; margin: 8px 0 0; }
+  .exlist li { border: 1.5px solid var(--border); border-radius: 10px; padding: 5px 12px; margin-bottom: 5px; background: #fafafa; }
+  .elen { font-size: 13pt; font-weight: 500; }
+  .elen b { color: var(--pink); font-weight: 700; }
+  .eko { font-size: 11pt; color: #555; margin-top: 0; }
+  body.mobile .ptable { font-size: 11pt; }
+  body.mobile .page-label { display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="group">
+    <button class="btn active" id="btnColor">Color</button>
+    <button class="btn" id="btnBw">B/W</button>
+  </div>
+  <div class="group">
+    <button class="btn active" id="btnDesktop">Desktop</button>
+    <button class="btn" id="btnMobile">Mobile</button>
+  </div>
+</div>
+
+<main>
+<!-- ════════ PAGE 1 — POINT ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 45 · 관계부사 where — 장소를 설명할 때</span></div>
+
+  <div class="header">
+    <div class="badge">UNIT 45</div>
+    <h1 class="title">거기에서 ~했어요!</h1>
+    <div class="subtitle">관계부사 where — 장소를 설명할 때</div>
+  </div>
+
+  <div class="section-label">POINT</div>
+
+  <p class="body">
+    관계부사 <b>where</b>는 <b>장소 명사</b>를 뒤에서 꾸며줘요. "그 장소에서 ~한다"는 뜻을 한 문장으로 이어 말할 수 있어요!
+  </p>
+
+  <table class="comparison-table">
+    <tr><th>장소 명사</th><th>+ where + 주어 + 동사</th><th>뜻</th></tr>
+    <tr><td data-label="장소 명사">the cafe</td><td data-label="+ where + 주어 + 동사"><b>where</b> I study</td><td data-label="뜻">내가 공부하는 카페</td></tr>
+    <tr><td data-label="장소 명사">the restaurant</td><td data-label="+ where + 주어 + 동사"><b>where</b> we met</td><td data-label="뜻">우리가 만난 식당</td></tr>
+    <tr><td data-label="장소 명사">the house</td><td data-label="+ where + 주어 + 동사"><b>where</b> I grew up</td><td data-label="뜻">내가 자란 집</td></tr>
+    <tr><td data-label="장소 명사">the town</td><td data-label="+ where + 주어 + 동사"><b>where</b> I was born</td><td data-label="뜻">내가 태어난 도시</td></tr>
+  </table>
+
+  <div class="structure">
+    장소 명사 + <span style="color:var(--pink);">where</span> + 주어 + 동사
+    <span class="sub">예) the cafe <b>where</b> I study &nbsp;·&nbsp; the place <b>where</b> we met</span>
+  </div>
+
+  <div class="section-subtitle">💡 where = 거기에서</div>
+  <p class="description">
+    <b>where</b>는 "그 장소에서"라는 뜻이 들어 있어서, 뒤에 <b>there</b>를 또 쓰지 않아요. This is the cafe <b>where</b> I study. (O) / the cafe where I study <s>there</s> (X)
+  </p>
+
+  <div class="section-subtitle">💡 where = 전치사 + which</div>
+  <p class="description">
+    관계부사 <b>where</b>는 "전치사 + which"로 바꿔 쓸 수 있어요. the cafe <b>where</b> I study = the cafe <b>in which</b> I study &nbsp;·&nbsp; the place <b>where</b> we met = the place <b>at which</b> we met
+  </p>
+
+  <div class="cards-container">
+    <div class="card"><div class="card-ko">이게 제가 공부하는 카페예요.</div><div class="card-en">This is the cafe <b>where</b> I study.</div></div>
+    <div class="card"><div class="card-ko">우리가 만난 식당을 알아요.</div><div class="card-en">I know the restaurant <b>where</b> we met.</div></div>
+    <div class="card"><div class="card-ko">제가 자란 집을 기억해요.</div><div class="card-en">I remember the house <b>where</b> I grew up.</div></div>
+    <div class="card"><div class="card-ko">주차할 수 있는 곳을 알아요?</div><div class="card-en">Do you know a place <b>where</b> I can park?</div></div>
+  </div>
+
+  <div class="tip">
+    <div class="tip-content">
+      📌 <b>포인트:</b> 장소 명사 + <b>where</b> + 주어 + 동사 &nbsp;|&nbsp; where 안에 "거기에서"가 들어 있어요 → there 중복 금지!
+    </div>
+  </div>
+
+  <div class="page-num">1</div>
+</section>
+
+
+<!-- ════════ PAGE 2 — ASK 1/2 ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 45 · 관계부사 where — 장소를 설명할 때</span></div>
+
+  <div class="ask-head">ASK 1 / 2 &nbsp;—&nbsp; 장소 묻기</div>
+
+  <div class="ask-item">
+    <div class="ask-q">1. Is this the café where we met?</div>
+    <div class="ask-ko">여기가 우리가 만난 카페예요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, this is the café.</div><div class="ans-ko">네, 이 카페예요.</div></div>
+      <div class="ans-box"><div class="ans-en">No, it was another one.</div><div class="ans-ko">아니요, 다른 곳이었어요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">2. Is that the city where you grew up?</div>
+    <div class="ask-ko">저기가 당신이 자란 도시예요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, that's where I grew up.</div><div class="ans-ko">네, 제가 자란 곳이에요.</div></div>
+      <div class="ans-box"><div class="ans-en">No, I grew up near here.</div><div class="ans-ko">아니요, 이 근처에서 자랐어요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">3. Do you know a place where I can park?</div>
+    <div class="ask-ko">제가 주차할 수 있는 곳을 알아요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, there's a lot nearby.</div><div class="ans-ko">네, 근처에 주차장이 있어요.</div></div>
+      <div class="ans-box"><div class="ans-en">No, parking is hard here.</div><div class="ans-ko">아니요, 여긴 주차가 어려워요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">4. Is there a shop where I can buy coffee?</div>
+    <div class="ask-ko">커피를 살 수 있는 가게가 있어요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, right around the corner.</div><div class="ans-ko">네, 모퉁이 돌면 바로예요.</div></div>
+      <div class="ans-box"><div class="ans-en">No, not on this street.</div><div class="ans-ko">아니요, 이 거리엔 없어요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="page-num">2</div>
+</section>
+
+
+<!-- ════════ PAGE 3 — ASK 2/2 ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 45 · 관계부사 where — 장소를 설명할 때</span></div>
+
+  <div class="ask-head">ASK 2 / 2 &nbsp;—&nbsp; 장소 묻기</div>
+
+  <div class="ask-item">
+    <div class="ask-q">5. Is this the park where you walk every day?</div>
+    <div class="ask-ko">여기가 당신이 매일 걷는 공원이에요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, I walk here every morning.</div><div class="ans-ko">네, 매일 아침 여기 걸어요.</div></div>
+      <div class="ans-box"><div class="ans-en">No, I usually walk by the river.</div><div class="ans-ko">아니요, 보통 강가를 걸어요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">6. Is that the building where you work?</div>
+    <div class="ask-ko">저기가 당신이 일하는 건물이에요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, I work on the third floor.</div><div class="ans-ko">네, 3층에서 일해요.</div></div>
+      <div class="ans-box"><div class="ans-en">No, my office is downtown.</div><div class="ans-ko">아니요, 사무실은 시내예요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">7. Do you know a restaurant where the food is good?</div>
+    <div class="ask-ko">음식이 맛있는 식당을 알아요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, I know a great place.</div><div class="ans-ko">네, 아주 좋은 곳을 알아요.</div></div>
+      <div class="ans-box"><div class="ans-en">No, I'm new to this area.</div><div class="ans-ko">아니요, 이 동네는 처음이에요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">8. Is this the school where you studied?</div>
+    <div class="ask-ko">여기가 당신이 공부한 학교예요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, this is where I studied.</div><div class="ans-ko">네, 제가 공부한 곳이에요.</div></div>
+      <div class="ans-box"><div class="ans-en">No, mine was in another town.</div><div class="ans-ko">아니요, 제 학교는 다른 동네였어요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="page-num">3</div>
+</section>
+
+
+<!-- ════════ PAGE 4 — TALK (한국어) ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 45 · 관계부사 where — 장소를 설명할 때</span></div>
+
+  <div style="background: rgba(181, 36, 90, 0.1); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 12pt; font-weight: 700; color: var(--pink);">
+    TALK — 한국어
+  </div>
+
+  <div style="font-size: 11pt; color: var(--muted); margin-bottom: 12px;">📍 Scene. 동네를 함께 걷는 두 친구</div>
+
+  <div style="background: rgba(181, 36, 90, 0.05); border: 2px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> 여기가 우리가 처음 만난 카페예요?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> 맞아요, 여기가 제가 영어를 공부하<b>는</b> 카페이기도 해요.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> 좋네요! 저기 보이는 도시는 당신이 태어난 곳이에요?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> 네, 저기가 제가 태어나고 자<b>란</b> 도시예요.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> 근처에 음식이 맛있는 식당을 알아요?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> 물론이죠, 우리 가족이 자주 가<b>는</b> 식당이 있어요.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> 거기 가봐요!</div>
+    <div style="font-size: 13pt; color: var(--pink); font-weight: 600;"><b>Ben:</b> 좋아요, 그곳이 제가 가장 좋아하는 곳이에요!</div>
+  </div>
+
+  <div style="font-size: 11pt; font-weight: 700; color: var(--pink); margin-bottom: 8px;">💡 핵심 문장</div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px;" class="talk-sentences">
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      the café where we met
+    </div>
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      the city where I was born
+    </div>
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      the restaurant where my family eats
+    </div>
+  </div>
+
+  <div style="margin-top: 12px;">
+    <div style="font-size: 11pt; font-weight: 700; color: #666666; margin-bottom: 8px;">✏️ 메모 &amp; 따라 쓰기</div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+  </div>
+
+  <div class="page-num">4</div>
+</section>
+
+
+<!-- ════════ PAGE 5 — TALK (English) ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 45 · 관계부사 where — 장소를 설명할 때</span></div>
+
+  <div style="background: rgba(181, 36, 90, 0.1); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 12pt; font-weight: 700; color: var(--pink);">
+    TALK — English
+  </div>
+
+  <div style="font-size: 11pt; color: var(--muted); margin-bottom: 12px;">📍 Scene. Two friends walking around the neighborhood</div>
+
+  <div style="background: rgba(181, 36, 90, 0.05); border: 2px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> Is this the café <b>where</b> we first met?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> Yes, and it's also the café <b>where</b> I study English.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> Nice! Is that the city <b>where</b> you were born?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> Yes, that's the city <b>where</b> I was born and grew up.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> Do you know a restaurant <b>where</b> the food is good?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> Of course, there's a place <b>where</b> my family often eats.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> Let's go there!</div>
+    <div style="font-size: 13pt; color: var(--pink); font-weight: 600;"><b>Ben:</b> Sure, that's the place <b>where</b> I feel most at home!</div>
+  </div>
+
+  <div style="font-size: 11pt; font-weight: 700; color: var(--pink); margin-bottom: 8px;">💡 Key sentences</div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;" class="talk-sentences">
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      the café where we met
+    </div>
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      the city where I was born
+    </div>
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      a place where my family eats
+    </div>
+  </div>
+
+  <div style="margin-top: 12px;">
+    <div style="font-size: 11pt; font-weight: 700; color: #666666; margin-bottom: 8px;">✏️ 따라 쓰기 &amp; 나만의 문장</div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+  </div>
+
+  <div class="page-num">5</div>
+</section>
+
+
+<!-- ════════ PAGE 6 — 5 PICK ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 45 · 관계부사 where — 장소를 설명할 때</span></div>
+
+  <div class="quiz-label">5 PICK</div>
+
+  <div style="font-size: 11pt; color: var(--muted); margin-bottom: 10px;">
+    한국어를 보고 영어 빈칸을 채워 보세요.
+  </div>
+
+  <div style="background: rgba(181, 36, 90, 0.05); border: 2px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+    <div style="margin-bottom: 10px;">
+      <div style="font-size: 13pt; color: var(--text); margin-bottom: 15px; font-weight: 600;">1. 우리가 만난 식당을 알아요.</div>
+      <div style="font-size: 13pt; color: var(--pink); font-weight: 600;">I know the restaurant <span style="border-bottom: 1px solid var(--pink); display: inline-block; width: 70px; margin: 0 4px;"></span> we met.</div>
+    </div>
+    <div style="margin-bottom: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
+      <div style="font-size: 13pt; color: var(--text); margin-bottom: 15px; font-weight: 600;">2. 이게 제가 영어를 공부하는 카페예요.</div>
+      <div style="font-size: 13pt; color: var(--pink); font-weight: 600;">This is the cafe <span style="border-bottom: 1px solid var(--pink); display: inline-block; width: 70px; margin: 0 4px;"></span> I study English.</div>
+    </div>
+    <div style="margin-bottom: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
+      <div style="font-size: 13pt; color: var(--text); margin-bottom: 15px; font-weight: 600;">3. 제가 자란 집을 기억해요.</div>
+      <div style="font-size: 13pt; color: var(--pink); font-weight: 600;">I remember the house <span style="border-bottom: 1px solid var(--pink); display: inline-block; width: 70px; margin: 0 4px;"></span> I grew up.</div>
+    </div>
+    <div style="margin-bottom: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
+      <div style="font-size: 13pt; color: var(--text); margin-bottom: 15px; font-weight: 600;">4. 주차할 수 있는 곳을 알아요?</div>
+      <div style="font-size: 13pt; color: var(--pink); font-weight: 600;">Do you know a place <span style="border-bottom: 1px solid var(--pink); display: inline-block; width: 70px; margin: 0 4px;"></span> I can park?</div>
+    </div>
+    <div style="padding-top: 10px; border-top: 1px solid var(--border);">
+      <div style="font-size: 13pt; color: var(--text); margin-bottom: 15px; font-weight: 600;">5. 여기가 제가 영어를 배우는 곳이에요!</div>
+      <div style="font-size: 13pt; color: var(--pink); font-weight: 600;">This is the place <span style="border-bottom: 1px solid var(--pink); display: inline-block; width: 70px; margin: 0 4px;"></span> I learn English!</div>
+    </div>
+  </div>
+
+  <div class="wbank">
+    <span class="wchip">where</span>
+    <span class="wchip">where</span>
+    <span class="wchip">where</span>
+    <span class="wchip">where</span>
+    <span class="wchip">where</span>
+  </div>
+
+  <div style="margin-top: 10px;">
+    <div style="font-size: 11pt; font-weight: 700; color: var(--pink); margin-bottom: 8px;">✍ where를 사용해서 내가 좋아하는 장소를 한 문장 써 보세요. <span style="font-size:10pt;font-weight:400;color:var(--muted);">(예: That's the cafe where I study English.)</span></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+  </div>
+
+  <div class="page-num">6</div>
+</section>
+</main>
+
+<script>
+  const btnColor   = document.getElementById('btnColor');
+  const btnBw      = document.getElementById('btnBw');
+  const btnDesktop = document.getElementById('btnDesktop');
+  const btnMobile  = document.getElementById('btnMobile');
+
+  function setTheme(theme) {
+    const root = document.documentElement;
+    if (theme === 'bw') {
+      root.style.setProperty('--cream-bg','#FFFFFF');
+      root.style.setProperty('--pink','#333333');
+      root.style.setProperty('--orange','#666666');
+      root.style.setProperty('--text','#000000');
+      root.style.setProperty('--border','#CCCCCC');
+      btnColor.classList.remove('active'); btnBw.classList.add('active');
+    } else {
+      root.style.setProperty('--cream-bg','#F5EFE7');
+      root.style.setProperty('--pink','#B5245A');
+      root.style.setProperty('--orange','#FF9F43');
+      root.style.setProperty('--text','#333333');
+      root.style.setProperty('--border','#d9d9d9');
+      btnColor.classList.add('active'); btnBw.classList.remove('active');
+    }
+  }
+  function setView(view) {
+    if (view === 'mobile') {
+      document.body.classList.add('mobile');
+      btnDesktop.classList.remove('active'); btnMobile.classList.add('active');
+    } else {
+      document.body.classList.remove('mobile');
+      btnDesktop.classList.add('active'); btnMobile.classList.remove('active');
+    }
+  }
+  btnColor.addEventListener('click',   () => setTheme('color'));
+  btnBw.addEventListener('click',      () => setTheme('bw'));
+  btnDesktop.addEventListener('click', () => setView('desktop'));
+  btnMobile.addEventListener('click',  () => setView('mobile'));
+</script>
+</body>
+</html>

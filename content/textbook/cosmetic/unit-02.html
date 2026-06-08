@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRIENDING+ · 화장품 마케팅 영어 Unit 2 — David Gives a Company Tour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --blue:   #3B9FE5;
+  --purple: #7B5CE5;
+  --pink:   #E5356A;
+  --navy:   #1A2440;
+  --grad:   linear-gradient(135deg, #3B9FE5 0%, #7B5CE5 50%, #E5356A 100%);
+}
+
+body {
+  font-family: 'Nanum Gothic', 'Nunito', sans-serif;
+  background: #f5f5f5;
+  padding: 20px;
+}
+
+.container { max-width: 900px; margin: 0 auto; }
+
+.header-banner {
+  background: var(--grad);
+  color: white;
+  padding: 30px 20px;
+  text-align: center;
+  margin-bottom: 30px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+.header-info { text-align: center; }
+.unit-label {
+  font-family: 'Nunito', sans-serif;
+  font-size: 11pt;
+  letter-spacing: 1px;
+  opacity: 0.9;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+.unit-title {
+  font-family: 'Nunito', sans-serif;
+  font-size: 24pt;
+  font-weight: 900;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+.unit-subtitle {
+  font-size: 13pt;
+  opacity: 0.9;
+  font-weight: 700;
+}
+@media (max-width: 600px) {
+  .header-banner { padding: 20px; }
+  .header-top { flex-direction: column; text-align: center; }
+  .unit-title { font-size: 20pt; }
+}
+
+.situation-section {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  background: white;
+  padding: 20px;
+  border-radius: 6px;
+}
+@media (max-width: 768px) {
+  .situation-section {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .situation-icon { order: -1; }
+}
+.situation-icon { font-size: 40px; flex-shrink: 0; min-width: 50px; }
+.situation-title {
+  font-size: 14pt;
+  font-weight: 900;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+.situation-desc {
+  font-size: 11pt;
+  color: #666;
+  line-height: 1.7;
+  padding-left: 12px;
+  border-left: 3px solid var(--blue);
+  text-align: left;
+}
+
+.section-header {
+  font-family: 'Nunito', sans-serif;
+  font-size: 12pt;
+  color: var(--blue);
+  font-weight: 900;
+  margin: 22px 0 10px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-header .time-badge {
+  font-family: 'Nunito', sans-serif;
+  font-size: 9pt;
+  background: #f0f0f0;
+  color: #999;
+  padding: 3px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+}
+.section-header.purple { color: var(--purple); }
+.section-header.pink   { color: var(--pink); }
+
+.card-box {
+  background: white;
+  border-radius: 6px;
+  padding: 20px 15px;
+  margin-bottom: 15px;
+}
+@media (max-width: 768px) {
+  .card-box { background: transparent; padding: 15px 0; }
+}
+
+.audio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all .18s;
+  vertical-align: middle;
+  padding: 0;
+}
+.audio-btn:hover {
+  background: var(--blue);
+  border-color: var(--blue);
+  transform: scale(1.1);
+}
+.audio-btn:hover svg path { fill: #fff; }
+.audio-btn svg { width: 9px; height: 9px; pointer-events: none; }
+.audio-btn svg path { fill: #999; transition: fill .18s; }
+.audio-btn.playing {
+  background: var(--blue);
+  border-color: var(--blue);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.audio-btn.playing svg path { fill: #fff; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59,159,229,.4); }
+  50%      { box-shadow: 0 0 0 7px rgba(59,159,229,0); }
+}
+
+.pick-list { display: flex; flex-direction: column; gap: 12px; }
+.pick-item {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+  padding: 12px 15px;
+  background: #f9f9f9;
+  border: 1.5px solid #e0e0e0;
+  border-left: 4px solid var(--blue);
+  border-radius: 4px;
+}
+.pick-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 900;
+  font-size: 12pt;
+  flex-shrink: 0;
+}
+.pick-content { flex: 1; }
+.pick-en {
+  font-family: 'Nunito', sans-serif;
+  font-size: 12pt;
+  font-weight: 400;
+  color: #1a1a1a;
+  line-height: 1.5;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pick-blank {
+  display: inline-block;
+  border-bottom: 1.5px solid #000;
+  min-width: 80px;
+  padding: 0 4px;
+  text-align: center;
+}
+.pick-kr { font-size: 11pt; color: #666; line-height: 1.5; }
+
+.word-bank {
+  margin-top: 12px;
+  padding: 10px 15px;
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.word-chip {
+  font-family: 'Nunito', sans-serif;
+  background: white;
+  border: 1.5px solid var(--blue);
+  color: var(--blue);
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 11pt;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.talk-section-header {
+  font-size: 12pt;
+  color: #666;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-weight: 700;
+}
+
+.dialogue { display: flex; flex-direction: column; gap: 10px; }
+.dialogue-line {
+  padding: 12px 15px;
+  border-radius: 4px;
+  border-left: 2px solid #f0f0f0;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.dialogue-line.buyer { background: white; border-left-color: #e0e0e0; }
+.dialogue-line.david { background: #f8f8f8; border-left-color: var(--purple); }
+.dialogue-main { flex: 1; min-width: 0; }
+.speaker {
+  font-family: 'Nunito', sans-serif;
+  font-size: 10pt;
+  font-weight: 900;
+  color: #666;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.dialogue-line.david .speaker { color: var(--purple); }
+.dialogue-text {
+  font-family: 'Nunito', sans-serif;
+  font-size: 12pt;
+  color: #1a1a1a;
+  line-height: 1.55;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.dialogue-text .text { flex: 1; }
+.scene-spacer { height: 20px; }
+
+.ask-list { display: flex; flex-direction: column; gap: 10px; }
+.ask-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 15px;
+  background: #fff5f8;
+  border-radius: 4px;
+  border-left: 3px solid var(--pink);
+}
+.ask-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--pink);
+  color: white;
+  font-family: 'Nunito', sans-serif;
+  font-size: 10pt;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ask-text {
+  font-family: 'Nunito', sans-serif;
+  font-size: 12pt;
+  font-weight: 400;
+  color: #1a1a1a;
+  line-height: 1.55;
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.ask-text .text { flex: 1; }
+
+.mission-section {
+  background: linear-gradient(135deg, var(--navy) 0%, #2a3458 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 6px;
+  margin-top: 30px;
+  position: relative;
+  overflow: hidden;
+}
+.mission-section::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--grad);
+}
+.mission-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+@media (max-width: 768px) {
+  .mission-head {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .mobile-break { display: block; height: 8px; }
+}
+@media (min-width: 769px) {
+  .mobile-break { display: none; }
+}
+.mission-badge {
+  background: var(--pink);
+  color: white;
+  font-family: 'Nunito', sans-serif;
+  font-size: 10pt;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.mission-title { font-size: 14pt; font-weight: 800; color: white; }
+@media (max-width: 768px) { .mission-title { max-width: 280px; } }
+.mission-desc {
+  font-size: 11pt;
+  color: rgba(255,255,255,.7);
+  margin-bottom: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+.mission-checklist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12pt;
+  color: rgba(255,255,255,.9);
+  line-height: 1.5;
+}
+.check-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1.5px solid rgba(255,255,255,.3);
+  flex-shrink: 0;
+}
+.mission-example {
+  background: rgba(255,255,255,.06);
+  border-radius: 4px;
+  padding: 14px 15px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 11pt;
+  line-height: 1.7;
+  color: rgba(255,255,255,.9);
+  border-left: 3px solid var(--pink);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.mission-example .ex-content { flex: 1; }
+.mission-example-label {
+  display: block;
+  font-family: 'Nunito', sans-serif;
+  font-size: 9pt;
+  color: rgba(255,255,255,.5);
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+.mission-example .audio-btn {
+  background: rgba(255,255,255,.1);
+  border-color: rgba(255,255,255,.2);
+  margin-top: 2px;
+}
+.mission-example .audio-btn svg path { fill: rgba(255,255,255,.7); }
+
+.footer {
+  margin-top: 40px;
+  padding: 15px 20px;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+  font-family: 'Nunito', sans-serif;
+  font-size: 9pt;
+  color: #999;
+  letter-spacing: 0.05em;
+}
+.grad-line {
+  width: 50px;
+  height: 3px;
+  background: var(--grad);
+  border-radius: 2px;
+  margin: 0 auto 10px;
+}
+.email-note {
+  font-family: 'Nanum Gothic', sans-serif;
+  font-size: 10pt;
+  color: #999;
+  margin-top: 8px;
+  letter-spacing: 0;
+}
+.email-note strong { color: var(--purple); }
+
+@media print {
+  body { background: #fff; padding: 0; }
+  .audio-btn { display: none; }
+  .card-box, .mission-section, .situation-section { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header-banner">
+    <div class="header-top">
+      <div class="header-info">
+        <div class="unit-label">FRIENDING+ · COSMETICS MARKETING ENGLISH</div>
+        <div class="unit-title">David Gives a Company Tour</div>
+        <div class="unit-subtitle">민성, 본사 투어를 안내하다</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="situation-section">
+    <div class="situation-icon">🏢</div>
+    <div>
+      <div class="situation-title">PART 1 · Brand & Product · Unit 2</div>
+      <div class="situation-desc">민성(David)은 어제 도착한 보스턴 바이어 <strong>Sarah</strong>를 인천 본사로 데려와 회사 시설을 안내한다. 25년간 풋케어 전문 제조 노하우를 쌓아온 웰빙헬스팜의 R&D 센터와 생산 라인을 보여주며, 단순한 견학이 아니라 신뢰감을 형성하는 자리로 만들어야 한다.</div>
+    </div>
+  </div>
+
+  <!-- 1. 5 PICK -->
+  <div class="section-header">
+    1. 5 PICK · 핵심 문장 채우기
+    <span class="time-badge">3 MIN</span>
+  </div>
+  <div class="card-box">
+    <div class="pick-list">
+
+      <div class="pick-item">
+        <div class="pick-num">1</div>
+        <div class="pick-content">
+          <div class="pick-en">
+            <button class="audio-btn" data-audio="unit02/pick_1.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span>Let me give you a quick <span class="pick-blank">     </span> of our facility.</span>
+          </div>
+          <div class="pick-kr">저희 시설을 간단히 둘러보시도록 안내해 드리겠습니다.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">2</div>
+        <div class="pick-content">
+          <div class="pick-en">
+            <button class="audio-btn" data-audio="unit02/pick_2.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span>This is our <span class="pick-blank">     </span> center where we develop new formulas.</span>
+          </div>
+          <div class="pick-kr">여기는 새로운 제형을 개발하는 R&D 센터입니다.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">3</div>
+        <div class="pick-content">
+          <div class="pick-en">
+            <button class="audio-btn" data-audio="unit02/pick_3.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span>We have been in this business for over two <span class="pick-blank">     </span>.</span>
+          </div>
+          <div class="pick-kr">저희는 이 분야에서 20년 넘게 사업을 해왔습니다.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">4</div>
+        <div class="pick-content">
+          <div class="pick-en">
+            <button class="audio-btn" data-audio="unit02/pick_4.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span>All our products are manufactured at this <span class="pick-blank">     </span>.</span>
+          </div>
+          <div class="pick-kr">저희 모든 제품은 이 공장에서 생산됩니다.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">5</div>
+        <div class="pick-content">
+          <div class="pick-en">
+            <button class="audio-btn" data-audio="unit02/pick_5.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span>We follow strict <span class="pick-blank">     </span> control standards.</span>
+          </div>
+          <div class="pick-kr">저희는 엄격한 품질 관리 기준을 따릅니다.</div>
+        </div>
+      </div>
+    </div>
+    <div class="word-bank">
+      <span class="word-chip">tour</span>
+      <span class="word-chip">R&D</span>
+      <span class="word-chip">decades</span>
+      <span class="word-chip">plant</span>
+      <span class="word-chip">quality</span>
+    </div>
+  </div>
+
+  <!-- 2. TALK -->
+  <div class="section-header purple">
+    2. TALK · 실전 비즈니스 대화
+    <span class="time-badge">9 MIN</span>
+  </div>
+  <div class="card-box">
+
+    <div class="talk-section-header">🏢 Scene 1. Entering the Headquarters (본사 로비에서 회사 소개)</div>
+    <div class="dialogue">
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk1_1.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Welcome to our headquarters. Let me give you a quick tour of our facility.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk1_2.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Thank you. It's bigger than I expected.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk1_3.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">We've been in the cosmetics business for over two decades, specializing in foot care.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk1_4.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">That's impressive. So foot care is your main expertise?</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk1_5.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Exactly. We're known as the leading foot cream brand in Korea.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk1_6.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Interesting. I'd love to learn more about your manufacturing process.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk1_7.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Sure. Let's start with our R&D center on the second floor.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk1_8.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Sounds great. Lead the way.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="scene-spacer"></div>
+
+    <div class="talk-section-header">🔬 Scene 2. At the R&D Center (R&D 센터 견학)</div>
+    <div class="dialogue">
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk2_1.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">This is our R&D center, where we develop all new formulas.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk2_2.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">How many researchers work here?</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk2_3.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">We have twelve full-time researchers, including three with PhDs in dermatology.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk2_4.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">That's a strong team for a mid-sized company.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk2_5.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Thank you. We also collaborate with university labs for advanced research.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk2_6.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Do you handle stability and safety testing in-house?</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk2_7.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Yes, all stability tests are done here. Safety tests are outsourced to certified labs.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk2_8.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Good. Could we see the production line next?</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit02/talk2_9.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Of course. Please follow me to the manufacturing floor.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ASK -->
+  <div class="section-header pink">
+    3. ASK · 튜터와 이야기하기
+    <span class="time-badge">7 MIN</span>
+  </div>
+  <div class="card-box">
+    <div class="ask-list">
+
+      <div class="ask-item">
+        <div class="ask-num">Q1</div>
+        <div class="ask-text">
+          <button class="audio-btn" data-audio="unit02/ask_1.mp3" aria-label="play">
+            <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+          </button>
+          <span class="text">Have you ever given a company tour in English? How did it feel?</span>
+        </div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-num">Q2</div>
+        <div class="ask-text">
+          <button class="audio-btn" data-audio="unit02/ask_2.mp3" aria-label="play">
+            <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+          </button>
+          <span class="text">What part of your company would you be most proud to show buyers?</span>
+        </div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-num">Q3</div>
+        <div class="ask-text">
+          <button class="audio-btn" data-audio="unit02/ask_3.mp3" aria-label="play">
+            <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+          </button>
+          <span class="text">How important is in-house R&D for cosmetics brands today?</span>
+        </div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-num">Q4</div>
+        <div class="ask-text">
+          <button class="audio-btn" data-audio="unit02/ask_4.mp3" aria-label="play">
+            <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+          </button>
+          <span class="text">What questions do foreign buyers usually ask during a factory tour?</span>
+        </div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-num">Q5</div>
+        <div class="ask-text">
+          <button class="audio-btn" data-audio="unit02/ask_5.mp3" aria-label="play">
+            <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+          </button>
+          <span class="text">How would you explain your company's history in just one minute?</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. MISSION -->
+  <div class="mission-section">
+    <div class="mission-head">
+      <span class="mission-badge">MISSION</span>
+      <br class="mobile-break">
+      <span class="mission-title">본사 투어 진행하기 — R&D 센터 소개</span>
+    </div>
+    <div class="mission-desc">
+      아래 네 가지 내용을 이어서 한 번에 자연스럽게 말해보는 것이 오늘의 목표입니다. <span style="color:rgba(255,255,255,.5)">· 6 MIN</span>
+    </div>
+    <div class="mission-checklist">
+
+      <div class="check-item">
+        <div class="check-box"></div>
+        <span>① 회사 본사 도착 환영 인사하기</span>
+      </div>
+      <div class="check-item">
+        <div class="check-box"></div>
+        <span>② 회사 역사·전문성을 한 문장으로 소개하기</span>
+      </div>
+      <div class="check-item">
+        <div class="check-box"></div>
+        <span>③ R&D 센터의 인력과 강점 설명하기</span>
+      </div>
+      <div class="check-item">
+        <div class="check-box"></div>
+        <span>④ 자연스럽게 생산 라인으로 안내하기</span>
+      </div>
+    </div>
+    <div class="mission-example">
+      <button class="audio-btn" data-audio="unit02/mission_example.mp3" aria-label="play">
+        <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+      </button>
+      <div class="ex-content">
+        <span class="mission-example-label">📝 EXAMPLE</span>
+        Welcome to our headquarters. Let me give you a quick tour of our facility. We have been in the cosmetics business for over two decades, specializing in foot care. This is our R&D center, where twelve full-time researchers develop all our new formulas. Now, let me show you our production line.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="grad-line"></div>
+    © 2026 FRIENDING+ · COSMETICS MARKETING ENGLISH SERIES · UNIT 2
+    <div class="email-note">📧 이 Unit에 해당하는 실무 이메일 샘플은 <strong>부록 (Email Appendix)</strong>에서 확인하세요.</div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const AUDIO_BASE = 'audio/';
+  let currentAudio = null;
+  let currentButton = null;
+
+  document.querySelectorAll('.audio-btn').forEach(btn => {
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      const file = this.getAttribute('data-audio');
+      if (!file) return;
+
+      if (currentButton === this && currentAudio && !currentAudio.paused) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+        return;
+      }
+
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        if (currentButton) currentButton.classList.remove('playing');
+      }
+
+      currentAudio = new Audio(AUDIO_BASE + file);
+      currentButton = this;
+      this.classList.add('playing');
+
+      currentAudio.play().catch(err => {
+        this.classList.remove('playing');
+        const note = document.createElement('div');
+        note.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1A2440;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-family:"Nanum Gothic",sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);';
+        note.textContent = '🔊 음성 파일이 아직 준비되지 않았습니다 (' + file + ')';
+        document.body.appendChild(note);
+        setTimeout(()=>note.remove(), 2500);
+      });
+
+      currentAudio.addEventListener('ended', () => {
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

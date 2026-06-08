@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>기초회화문법 Book 4 · Unit 48 — 그때 ~했더라면!</title>
+<style>
+  :root{
+    --cream-bg: #F5EFE7;
+    --white: #FFFFFF;
+    --pink: #B5245A;
+    --orange: #FF9F43;
+    --text: #333333;
+    --muted: #666666;
+    --border: #d9d9d9;
+  }
+
+  *{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background: var(--cream-bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    line-height: 1.6;
+    font-size: 13pt;
+  }
+
+  /* 툴바 */
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    background: var(--white);
+    border-bottom: 2px solid var(--border);
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .toolbar .group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .toolbar .label {
+    font-size: 11pt;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .btn {
+    border: 2px solid var(--pink);
+    background: var(--white);
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 11pt;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--pink);
+    transition: all 0.3s;
+  }
+
+  .btn:hover {
+    background: var(--pink);
+    color: var(--white);
+  }
+
+  .btn.active {
+    background: var(--pink);
+    color: var(--white);
+  }
+
+  main {
+    transition: all 0.3s;
+  }
+
+  body.mobile main {
+    transform: none;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* 모바일 버튼 클릭 시 적용 */
+  body.mobile .page {
+    width: 100%;
+    height: auto;
+    padding: 30px;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    max-width: 100%;
+  }
+
+  body.mobile .cards-container {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  body.mobile .idiom-container {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  body.mobile .card,
+  body.mobile .word-card-simple {
+    height: auto;
+  }
+
+  body.mobile .comparison-table {
+    font-size: 11pt;
+    width: 100%;
+    display: block;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  body.mobile .comparison-table thead {
+    display: block;
+    width: 100%;
+    background: rgba(181, 36, 90, 0.15);
+    border: none !important;
+    border-radius: 0;
+    overflow: visible;
+    margin-bottom: 10px;
+  }
+
+  body.mobile .comparison-table th {
+    display: inline-block;
+    width: 33.33%;
+    padding: 10px;
+    text-align: center;
+    border: none !important;
+    border-bottom: none !important;
+    background: none;
+    color: var(--pink);
+    font-weight: 700;
+    font-size: 11pt;
+    border-right: 1px solid var(--border) !important;
+  }
+
+  body.mobile .comparison-table thead::after {
+    content: '';
+    display: block;
+    border-bottom: none !important;
+  }
+
+  body.mobile .comparison-table th:last-child {
+    border-right: none;
+  }
+
+  body.mobile .comparison-table tr:first-child {
+    border: 2px solid var(--border) !important;
+    border-radius: 12px !important;
+    background: rgba(181, 36, 90, 0.15);
+    padding: 0;
+    margin: 0 0 12px 0;
+    display: flex;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  body.mobile .comparison-table tr:first-child th {
+    border: none !important;
+    padding: 10px;
+    flex: 1;
+    text-align: center;
+    color: var(--pink);
+    font-weight: 700;
+    font-size: 11pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  body.mobile .comparison-table tr:first-child th:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1px;
+    height: 60%;
+    background: #999999;
+  }
+
+  body.mobile .comparison-table tr:first-child th:last-child {
+    border-right: none !important;
+  }
+
+  body.mobile .comparison-table tbody {
+    display: block;
+  }
+
+  body.mobile .comparison-table tr {
+    display: block;
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  body.mobile .comparison-table td {
+    display: block;
+    padding: 8px 0;
+    border: none;
+    text-align: left;
+    font-size: 12pt;
+  }
+
+  body.mobile .comparison-table td:first-child {
+    font-weight: 700;
+    color: var(--pink);
+    font-size: 13pt;
+    margin-bottom: 8px;
+  }
+
+  body.mobile .comparison-table td:nth-child(2)::before {
+    display: none;
+  }
+
+  body.mobile .comparison-table td:nth-child(3)::before {
+    display: none;
+  }
+
+  body.mobile .title {
+    font-size: 18pt;
+    margin-bottom: 4px;
+  }
+
+  body.mobile .ask-q {
+    font-size: 12pt;
+    font-weight: 500;
+    color: var(--pink);
+    margin-bottom: 2px;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  body.mobile .page-num {
+    display: none;
+  }
+
+  body.mobile .ans-grid {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  body.mobile .ans-box {
+    padding: 8px 10px;
+    font-size: 10pt;
+  }
+
+  body.mobile .talk-sentences {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 페이지 */
+  .page {
+    width: 182mm;
+    min-height: 257mm;
+    margin: 10px auto;
+    background: var(--white);
+    padding: 12mm 22mm;
+    border-radius: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page-label {
+    position: absolute;
+    top: 4mm;
+    left: 22mm;
+    right: 22mm;
+    display: flex;
+    justify-content: space-between;
+    font-size: 8pt;
+    color: #bbbbbb;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  /* 헤더 */
+  .header {
+    margin-bottom: 2px;
+    padding-bottom: 2px;
+    border-bottom: 3px solid var(--pink);
+  }
+
+  .badge {
+    display: inline-block;
+    background: var(--pink);
+    color: var(--white);
+    border-radius: 20px;
+    padding: 3px 8px;
+    font-size: 9pt;
+    font-weight: 700;
+    margin-bottom: 2px;
+    letter-spacing: 0.5px;
+  }
+
+  .title {
+    font-size: 23pt;
+    font-weight: 800;
+    color: var(--pink);
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+
+  .subtitle {
+    font-size: 12pt;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  /* 섹션 레이블 */
+  .section-label {
+    display: inline-block;
+    background: rgba(181, 36, 90, 0.15);
+    color: var(--pink);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 10pt;
+    font-weight: 700;
+    margin: 4px 0 0 0;
+    letter-spacing: 0px;
+    width: fit-content;
+  }
+
+  /* B/W 모드 - section-label */
+  .theme-bw .section-label {
+    background: #F5F5F5;
+    color: #333333;
+  }
+
+  /* 본문 */
+  .body {
+    font-size: 12pt;
+    margin-bottom: 6px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  /* 구조 박스 */
+  .structure {
+    border: 2px solid #E8D5D5;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 4px 0 10px 0;
+    background: rgba(181, 36, 90, 0.05);
+    font-size: 12pt;
+    text-align: center;
+    font-weight: 700;
+    color: var(--pink);
+  }
+
+  .structure .sub {
+    display: block;
+    font-size: 13pt;
+    color: var(--muted);
+    margin-top: 4px;
+    font-weight: 400;
+  }
+
+  /* 카드 컨테이너 */
+  .cards-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 16px 6px;
+    margin: 0 0 8px 0;
+  }
+
+  .card {
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    transition: all 0.3s;
+  }
+
+  .card:hover {
+    box-shadow: 0 6px 16px rgba(181, 36, 90, 0.15);
+    border-color: var(--pink);
+  }
+
+  .card-ko {
+    font-size: 11pt;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-en {
+    font-size: 13pt;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .card-en b {
+    color: var(--pink);
+    font-weight: 700;
+  }
+
+  /* 웨이브 구분선 */
+  .wave-divider {
+    margin: 6px 0;
+    height: 10px;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 60"><path d="M0,30 Q300,0 600,30 T1200,30" stroke="%23FF9F43" stroke-width="2" fill="none"/></svg>') repeat-x;
+    background-size: 300px 10px;
+    opacity: 0.3;
+  }
+
+  /* 섹션 소제목 */
+  .section-subtitle {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--pink);
+    margin: 0 0 8px 0;
+    padding-bottom: 0;
+  }
+
+  /* 설명 */
+  .description {
+    font-size: 12pt;
+    color: var(--text);
+    margin: 4px 0 10px 0;
+    line-height: 1.8;
+    padding-top: 8px;
+    border-top: 3px solid var(--pink);
+  }
+
+  /* 비교 카드 */
+  .comparison-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .comparison-card {
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    gap: 16px;
+  }
+
+  .comparison-card:hover {
+    box-shadow: 0 4px 12px rgba(181, 36, 90, 0.1);
+  }
+
+  .comparison-label {
+    flex: 0 0 60px;
+    font-weight: 700;
+    color: var(--pink);
+    text-align: center;
+    padding-top: 2px;
+  }
+
+  .comparison-content {
+    flex: 1;
+  }
+
+  .comparison-en {
+    font-size: 12pt;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .comparison-text {
+    font-size: 12pt;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .comparison-text b {
+    color: var(--pink);
+    font-weight: 700;
+  }
+
+  /* 반응형 비교 표 */
+  .comparison-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 8px 0 12px 0;
+    font-size: 12pt;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+
+  .comparison-table th:first-child {
+    border-top-left-radius: 10px;
+  }
+
+  .comparison-table th:last-child {
+    border-top-right-radius: 10px;
+  }
+
+  .comparison-table tr:last-child td:first-child {
+    border-bottom-left-radius: 10px;
+  }
+
+  .comparison-table tr:last-child td:last-child {
+    border-bottom-right-radius: 10px;
+  }
+
+  .comparison-table th {
+    background: rgba(181, 36, 90, 0.15);
+    color: var(--pink);
+    padding: 10px;
+    font-weight: 800;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    font-size: 12pt;
+  }
+  .comparison-table th:last-child { border-right: none; }
+
+  /* B/W 모드 - 테이블 헤더 */
+  .theme-bw .comparison-table th {
+    background: #F5F5F5;
+    color: #333333;
+  }
+
+  .comparison-table td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    background: var(--white);
+    font-size: 12pt;
+  }
+  .comparison-table td:last-child { border-right: none; }
+  .comparison-table tr:last-child td { border-bottom: none; }
+
+  .comparison-table td:first-child {
+    font-size: 13pt;
+  }
+
+  .comparison-table tr:nth-child(even) td {
+    background: #fafafa;
+  }
+
+  .comparison-table b {
+    color: var(--pink);
+    font-weight: 700;
+  }
+
+  /* 팁 박스 */
+  .tip {
+    background: linear-gradient(135deg, rgba(181, 36, 90, 0.08) 0%, rgba(255, 159, 67, 0.08) 100%);
+    border: 2px solid #E8D5D5;
+    border-radius: 12px;
+    padding: 10px;
+    margin: 12px 0 8px 0;
+    font-size: 11pt;
+  }
+
+  .tip-title {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--pink);
+    margin-bottom: 8px;
+  }
+
+  .tip-content {
+    font-size: 11pt;
+    color: var(--text);
+    line-height: 1.8;
+  }
+
+  /* ── QUIZ 스타일 ── */
+  .quiz-label {
+    display: inline-block;
+    background: var(--pink);
+    color: var(--white);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 10pt;
+    font-weight: 700;
+    margin: 0 0 18px 0;
+    letter-spacing: 0px;
+    width: fit-content;
+  }
+
+  .quiz-subtitle {
+    font-size: 12pt;
+    font-weight: 700;
+    color: var(--pink);
+    margin: 12px 0 10px 0;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--orange);
+  }
+
+  .quiz-card {
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    margin: 14px 0 10px 0;
+  }
+
+  .quiz-item {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border);
+  }
+
+  .quiz-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .quiz-q {
+    font-size: 13pt;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .quiz-space {
+    background: #fafafa;
+    border-bottom: 1px solid var(--border);
+    height: 20px;
+    margin-top: 4px;
+  }
+
+  .quiz-space.tall {
+    height: 24px;
+  }
+
+  /* ── 단어 카드 (개별 테두리) ── */
+  .word-card-simple {
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    height: 160px;
+  }
+
+  .word-card-simple:last-child {
+    margin-bottom: 0;
+  }
+
+  .word-en {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--pink);
+    margin-bottom: 4px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+  }
+
+  .word-pron {
+    font-size: 11pt;
+    color: var(--muted);
+    margin-bottom: 4px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+  }
+
+  .word-ko {
+    font-size: 12pt;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+  }
+
+  .word-ex {
+    font-size: 12pt;
+    color: var(--text);
+    line-height: 1.5;
+    height: 48px;
+    overflow: hidden;
+  }
+
+  /* ── IDIOM 박스 (전체 테두리 없음) ── */
+  .idiom-box-simple {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  /* ── IDIOM 항목 (개별 테두리) ── */
+  .idiom-item-simple {
+    background: var(--white);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .idiom-item-simple:last-child {
+    margin-bottom: 0;
+  }
+
+  .idiom-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .idiom-en {
+    font-size: 13pt;
+    font-weight: 700;
+    color: var(--pink);
+    margin-bottom: 4px;
+  }
+
+  .idiom-ko {
+    font-size: 12pt;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .idiom-ex {
+    font-size: 12pt;
+    color: var(--text);
+  }
+
+  .tip-content b {
+    color: var(--pink);
+    font-weight: 700;
+  }
+
+  /* 강조 점 */
+  .dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--orange);
+    border-radius: 50%;
+    margin: 0 8px;
+  }
+
+  /* 빈 줄 */
+  /* 단어 보기 (Word Bank) */
+  .wbank {
+    margin-top: 12px;
+    padding: 9px 13px;
+    background: #f5f5f5;
+    border-radius: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    justify-content: center;
+  }
+  .wchip {
+    font-family: 'Nunito', sans-serif;
+    background: #fff;
+    border: 1.5px solid var(--pink);
+    color: var(--pink);
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 11pt;
+    font-weight: 700;
+  }
+
+  .blank-line {
+    height: 20px;
+    border-bottom: 1px dashed var(--border);
+    margin: 12px 0;
+  }
+
+  .page-num {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11pt;
+    color: var(--muted);
+  }
+
+  @media print {
+    .toolbar {
+      display: none !important;
+    }
+    body {
+      background: var(--white) !important;
+    }
+    .page {
+      margin: 0;
+      box-shadow: none;
+    }
+  }
+
+  /* 모바일 반응형 */
+  @media (max-width: 768px) {
+    .page {
+      padding: 16px;
+      margin: 10px;
+    }
+
+    .title {
+      font-size: 18pt;
+    }
+
+    .cards-container {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    /* 반응형 테이블 */
+    .comparison-table,
+    .comparison-table thead,
+    .comparison-table tbody,
+    .comparison-table th,
+    .comparison-table tr,
+    .comparison-table td {
+      display: block;
+      width: 100%;
+    }
+
+    .comparison-table tr {
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      padding: 10px;
+      background: var(--white);
+    }
+
+    .comparison-table th {
+      display: none;
+    }
+
+    .comparison-table td {
+      border: none;
+      padding: 8px 0;
+      text-align: left;
+      position: relative;
+      padding-left: 80px;
+    }
+
+    .comparison-table td::before {
+      content: attr(data-label);
+      position: absolute;
+      left: 10px;
+      font-weight: 700;
+      color: var(--pink);
+      width: 60px;
+    }
+
+    .comparison-table td:first-child {
+      font-weight: 700;
+      color: var(--text);
+      padding-left: 10px;
+    }
+
+    .comparison-table td:first-child::before {
+      display: none;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .page {
+      width: 100%;
+      height: auto;
+      padding: 20px;
+      margin: 0;
+      border-radius: 0;
+      box-shadow: none;
+    }
+
+    .title {
+      font-size: 18pt;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: 12pt;
+    }
+
+    .badge {
+      font-size: 9pt;
+      padding: 4px 10px;
+    }
+
+    .cards-container {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .idiom-container {
+      gap: 10px;
+    }
+
+    .card {
+      padding: 10px;
+      border-radius: 8px;
+      height: auto;
+    }
+
+    .word-card-simple {
+      height: auto;
+    }
+
+    .comparison-table {
+      font-size: 11pt;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 8px;
+      font-size: 10pt;
+    }
+
+    .comparison-table td:first-child {
+      font-size: 11pt;
+    }
+
+    .card-ko {
+      font-size: 12pt;
+      margin-bottom: 8px;
+    }
+
+    .card-en {
+      font-size: 13pt;
+    }
+
+    .structure {
+      padding: 10px 12px;
+      font-size: 12pt;
+    }
+
+    .structure .sub {
+      font-size: 11pt;
+    }
+
+    .body {
+      font-size: 12pt;
+    }
+
+    .section-subtitle {
+      font-size: 12pt;
+    }
+
+    .description {
+      font-size: 12pt;
+      padding-left: 10px;
+    }
+
+    .tip {
+      padding: 12px;
+    }
+
+    .tip-title {
+      font-size: 12pt;
+    }
+
+    .tip-content {
+      font-size: 11pt;
+    }
+  }
+
+
+  /* ── ASK 페이지 ── */
+  .ask-head {
+    font-size: 14pt;
+    font-weight: 700;
+    color: var(--pink);
+    background: rgba(181, 36, 90, 0.1);
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  /* B/W 모드에서 ask-head */
+  .theme-bw .ask-head {
+    background: #F5F5F5;
+    color: #333333;
+  }
+
+  .ask-item {
+    background: transparent;
+    border-radius: 8px;
+    padding: 6px;
+    margin-bottom: 2px;
+  }
+
+  .ask-q {
+    font-size: 13pt;
+    font-weight: 500;
+    color: var(--pink);
+    margin-bottom: 2px;
+  }
+
+  .ask-ko {
+    font-size: 11pt;
+    color: var(--muted);
+    margin-bottom: 10px;
+    padding-bottom: 4px;
+    padding-left: 20px;
+    font-weight: 500;
+  }
+
+  .ans-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+
+  .ans-box {
+    background: var(--white);
+    border: 2px solid #E8D5D5;
+    border-radius: 10px;
+    padding: 8px 12px;
+    transition: all 0.3s;
+  }
+
+  .ans-box:hover {
+    border-color: var(--pink);
+    box-shadow: 0 2px 6px rgba(181, 36, 90, 0.1);
+  }
+
+  .ans-en {
+    font-size: 12.5pt;
+    font-weight: 600;
+    color: #555555;
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+
+  .ans-ko {
+    font-size: 11pt;
+    color: var(--muted);
+    line-height: 1.3;
+  }
+
+  .ask-write {
+    height: 16px;
+    margin-top: 4px;
+  }
+
+  /* ── Book 4 전용 — POINT 테이블 ── */
+  .ptable {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 10px 0 8px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    font-size: 12pt;
+  }
+  .ptable .th-r td {
+    background: var(--pink);
+    color: #fff;
+    padding: 7px 12px;
+    font-size: 12pt;
+    font-weight: 700;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid rgba(255,255,255,0.2);
+  }
+  .ptable .th-r td:last-child { border-right: none; }
+  .ptable td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    background: var(--white);
+    vertical-align: middle;
+  }
+  .ptable td:last-child { border-right: none; }
+  .ptable tr:last-child td { border-bottom: none; }
+  .ptable tr:nth-child(even) td { background: rgba(181,36,90,0.04); }
+  .pkey { font-size: 13pt; font-weight: 700; }
+  .exlist { list-style: none; padding: 0; margin: 8px 0 0; }
+  .exlist li { border: 1.5px solid var(--border); border-radius: 10px; padding: 5px 12px; margin-bottom: 5px; background: #fafafa; }
+  .elen { font-size: 13pt; font-weight: 500; }
+  .elen b { color: var(--pink); font-weight: 700; }
+  .eko { font-size: 11pt; color: #555; margin-top: 0; }
+  body.mobile .ptable { font-size: 11pt; }
+  body.mobile .page-label { display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="group">
+    <button class="btn active" id="btnColor">Color</button>
+    <button class="btn" id="btnBw">B/W</button>
+  </div>
+  <div class="group">
+    <button class="btn active" id="btnDesktop">Desktop</button>
+    <button class="btn" id="btnMobile">Mobile</button>
+  </div>
+</div>
+
+<main>
+<!-- ════════ PAGE 1 — POINT ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 48 · 가정법 3 — If + had p.p., would have p.p.</span></div>
+
+  <div class="header">
+    <div class="badge">UNIT 48</div>
+    <h1 class="title">그때 ~했더라면!</h1>
+    <div class="subtitle">가정법 3 — If + had p.p., would have p.p.</div>
+  </div>
+
+  <div class="section-label">POINT</div>
+
+  <p class="body">
+    가정법 3은 <b>이미 지나간 과거</b>를 다르게 상상할 때 써요. 주로 <b>후회 · 아쉬움 · 지나간 일에 대한 상상</b>을 말할 때 사용해요!
+  </p>
+
+  <table class="comparison-table">
+    <tr><th>구분</th><th>의미</th><th>예문</th></tr>
+    <tr><td data-label="구분"><b>가정법 1</b></td><td data-label="의미">앞으로 일어날 일<br><span style="font-size:10pt;color:#888;">If + 현재형, will ~</span></td><td data-label="예문">If it <b>rains</b>, I <b>will</b> stay home.</td></tr>
+    <tr><td data-label="구분"><b>가정법 2</b></td><td data-label="의미">현재와 다른 상상<br><span style="font-size:10pt;color:#888;">If + 과거형, would ~</span></td><td data-label="예문">If I <b>were</b> rich, I <b>would</b> travel.</td></tr>
+    <tr><td data-label="구분"><b>가정법 3</b></td><td data-label="의미">과거와 다른 상상 (후회)<br><span style="font-size:10pt;color:#888;">If + had p.p., would have p.p.</span></td><td data-label="예문">If I <b>had known</b>, I <b>would have</b> helped you.</td></tr>
+  </table>
+
+  <div class="structure">
+    If + had p.p., &nbsp;주어 + would have + p.p.
+    <span class="sub">예) If I <b>had known</b>, I <b>would have helped</b> you.</span>
+  </div>
+
+  <div class="section-subtitle">💡 대비로 기억</div>
+  <p class="description">
+    <b>If절 = had p.p.</b> (과거보다 더 이전 느낌), <b>주절 = would have p.p.</b>로 짝지어 기억하세요. should have p.p.(~했어야 했는데) · I wish I had p.p.(~했더라면 좋았을 텐데)도 함께 익혀 두세요.
+  </p>
+
+  <div class="cards-container">
+    <div class="card"><div class="card-ko">알았더라면 도와줬을 텐데. (몰랐어요)</div><div class="card-en">If I <b>had known</b>, I <b>would have helped</b> you.</div></div>
+    <div class="card"><div class="card-ko">더 공부했더라면 합격했을 텐데.</div><div class="card-en">If I <b>had studied</b> harder, I <b>would have passed</b>.</div></div>
+    <div class="card"><div class="card-ko">너에게 전화했어야 했는데.</div><div class="card-en">I <b>should have called</b> you.</div></div>
+    <div class="card"><div class="card-ko">영어를 더 일찍 배웠더라면.</div><div class="card-en">I <b>wish I had learned</b> English earlier.</div></div>
+  </div>
+
+  <div class="tip">
+    <div class="tip-content">
+      📌 <b>포인트:</b> If절 = <b>had p.p.</b> (과거의 과거, 그때) &nbsp;|&nbsp; 주절 = <b>would have p.p.</b> &nbsp;|&nbsp; 후회 = <b>should have p.p.</b>
+    </div>
+  </div>
+
+  <div class="page-num">1</div>
+</section>
+
+
+<!-- ════════ PAGE 2 — ASK 1/2 ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 48 · 가정법 3 — If + had p.p., would have p.p.</span></div>
+
+  <div class="ask-head">ASK 1 / 2 &nbsp;—&nbsp; 후회와 상상 묻기</div>
+
+  <div class="ask-item">
+    <div class="ask-q">1. If you had studied harder, would you have passed?</div>
+    <div class="ask-ko">더 공부했더라면 합격했을까요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, I would have passed.</div><div class="ans-ko">네, 합격했을 거예요.</div></div>
+      <div class="ans-box"><div class="ans-en">No, it was too hard.</div><div class="ans-ko">아니요, 너무 어려웠어요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">2. What would you have done if you had had more time?</div>
+    <div class="ask-ko">시간이 더 있었더라면 뭘 했을까요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">I would have traveled more.</div><div class="ans-ko">여행을 더 했을 거예요.</div></div>
+      <div class="ans-box"><div class="ans-en">I would have learned a new hobby.</div><div class="ans-ko">새 취미를 배웠을 거예요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">3. Do you think you should have called more often?</div>
+    <div class="ask-ko">더 자주 전화했어야 했다고 생각해요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, I should have called every week.</div><div class="ans-ko">네, 매주 전화했어야 했어요.</div></div>
+      <div class="ans-box"><div class="ans-en">No, I did my best.</div><div class="ans-ko">아니요, 최선을 다했어요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">4. Where would you have gone if you had had a long holiday?</div>
+    <div class="ask-ko">긴 휴가가 있었더라면 어디로 갔을까요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">I would have gone to Europe.</div><div class="ans-ko">유럽에 갔을 거예요.</div></div>
+      <div class="ans-box"><div class="ans-en">I would have stayed home and rested.</div><div class="ans-ko">집에서 쉬었을 거예요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="page-num">2</div>
+</section>
+
+
+<!-- ════════ PAGE 3 — ASK 2/2 ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 48 · 가정법 3 — If + had p.p., would have p.p.</span></div>
+
+  <div class="ask-head">ASK 2 / 2 &nbsp;—&nbsp; 후회와 상상 묻기</div>
+
+  <div class="ask-item">
+    <div class="ask-q">5. What is one thing you should have done earlier?</div>
+    <div class="ask-ko">더 일찍 했어야 했던 한 가지는 뭐예요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">I should have started exercising.</div><div class="ans-ko">운동을 시작했어야 했어요.</div></div>
+      <div class="ans-box"><div class="ans-en">I should have saved more money.</div><div class="ans-ko">돈을 더 모았어야 했어요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">6. Do you wish you had learned English earlier?</div>
+    <div class="ask-ko">영어를 더 일찍 배웠더라면 하고 바라요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, I wish I had started young.</div><div class="ans-ko">네, 어렸을 때 시작했더라면.</div></div>
+      <div class="ans-box"><div class="ans-en">No, now is a good time.</div><div class="ans-ko">아니요, 지금이 좋아요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">7. If you had left earlier, would you have caught the train?</div>
+    <div class="ask-ko">더 일찍 출발했더라면 기차를 탔을까요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">Yes, I would have caught it.</div><div class="ans-ko">네, 탔을 거예요.</div></div>
+      <div class="ans-box"><div class="ans-en">No, it was already late.</div><div class="ans-ko">아니요, 이미 늦었어요.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="ask-item">
+    <div class="ask-q">8. What do you wish you had said to someone?</div>
+    <div class="ask-ko">누군가에게 했더라면 하는 말은 뭐예요?</div>
+    <div class="ans-grid">
+      <div class="ans-box"><div class="ans-en">I wish I had said "thank you" more.</div><div class="ans-ko">"고마워"라고 더 말했더라면.</div></div>
+      <div class="ans-box"><div class="ans-en">I wish I had said "I love you."</div><div class="ans-ko">"사랑해"라고 말했더라면.</div></div>
+    </div>
+    <div class="ask-write"></div>
+  </div>
+
+  <div class="page-num">3</div>
+</section>
+
+
+<!-- ════════ PAGE 4 — TALK (한국어) ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 48 · 가정법 3 — If + had p.p., would have p.p.</span></div>
+
+  <div style="background: rgba(181, 36, 90, 0.1); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 12pt; font-weight: 700; color: var(--pink);">
+    TALK — 한국어
+  </div>
+
+  <div style="font-size: 11pt; color: var(--muted); margin-bottom: 12px;">📍 Scene. 더 일찍 했어야 했던 일에 대한 두 친구의 대화</div>
+
+  <div style="background: rgba(181, 36, 90, 0.05); border: 2px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> 더 일찍 <b>했어야 했던</b> 일이 있어요?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> 여행을 더 많이 <b>다녔어야 했어요</b>.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> 어디를 가봤어야 했어요?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> 시간이 <b>있었더라면</b> 유럽에 갔을 텐데요.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> 왜 못 가셨어요?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> 일하느라 너무 바빴어요.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> 지금부터는 어떻게 하실 거예요?</div>
+    <div style="font-size: 13pt; color: var(--pink); font-weight: 600;"><b>Ben:</b> 이제부터 여행을 많이 다닐 거예요!</div>
+  </div>
+
+  <div style="font-size: 11pt; font-weight: 700; color: var(--pink); margin-bottom: 8px;">💡 핵심 문장</div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px;" class="talk-sentences">
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      should have p.p.
+    </div>
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      If I had p.p., I would have p.p.
+    </div>
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      후회 → 이유 → 다짐(will)
+    </div>
+  </div>
+
+  <div style="margin-top: 12px;">
+    <div style="font-size: 11pt; font-weight: 700; color: #666666; margin-bottom: 8px;">✏️ 메모 &amp; 따라 쓰기</div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+  </div>
+
+  <div class="page-num">4</div>
+</section>
+
+
+<!-- ════════ PAGE 5 — TALK (English) ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 48 · 가정법 3 — If + had p.p., would have p.p.</span></div>
+
+  <div style="background: rgba(181, 36, 90, 0.1); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 12pt; font-weight: 700; color: var(--pink);">
+    TALK — English
+  </div>
+
+  <div style="font-size: 11pt; color: var(--muted); margin-bottom: 12px;">📍 Scene. Two friends talking about things they should have done</div>
+
+  <div style="background: rgba(181, 36, 90, 0.05); border: 2px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> What's one thing you <b>should have</b> done earlier?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> I <b>should have traveled</b> more.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> Where should you have been to?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> If I <b>had had</b> the time, I <b>would have gone</b> to Europe.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> Why didn't you go?</div>
+    <div style="font-size: 13pt; margin-bottom: 8px; color: var(--pink); font-weight: 600;"><b>Ben:</b> I was too busy working.</div>
+    <div style="font-size: 13pt; margin-bottom: 8px;"><b>Anna:</b> What will you do now?</div>
+    <div style="font-size: 13pt; color: var(--pink); font-weight: 600;"><b>Ben:</b> I'll travel a lot from now on!</div>
+  </div>
+
+  <div style="font-size: 11pt; font-weight: 700; color: var(--pink); margin-bottom: 8px;">💡 Key sentences</div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px;" class="talk-sentences">
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      should have p.p.
+    </div>
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      If I had p.p., I would have p.p.
+    </div>
+    <div style="background: var(--white); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; font-size: 11pt; font-weight: 700; color: var(--pink); display: flex; align-items: center; justify-content: center;">
+      regret → reason → resolve (will)
+    </div>
+  </div>
+
+  <div style="margin-top: 12px;">
+    <div style="font-size: 11pt; font-weight: 700; color: #666666; margin-bottom: 8px;">✏️ 따라 쓰기 &amp; 나만의 문장</div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+  </div>
+
+  <div class="page-num">5</div>
+</section>
+
+
+<!-- ════════ PAGE 6 — 5 PICK ════════ -->
+<section class="page">
+  <div class="page-label"><span>FRIENDING+ · 기초회화문법 Book 4</span><span>Unit 48 · 가정법 3 — If + had p.p., would have p.p.</span></div>
+
+  <div class="quiz-label">5 PICK</div>
+
+  <div style="font-size: 11pt; color: var(--muted); margin-bottom: 10px;">
+    한국어를 보고 영어 빈칸을 채워 보세요.
+  </div>
+
+  <div style="background: rgba(181, 36, 90, 0.05); border: 2px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+    <div style="margin-bottom: 10px;">
+      <div style="font-size: 13pt; color: var(--text); margin-bottom: 15px; font-weight: 600;">1. 내가 알았더라면, 너를 도와줬을 텐데요.</div>
+      <div style="font-size: 13pt; color: var(--pink); font-weight: 600;">If I <span style="border-bottom: 1px solid var(--pink); display: inline-block; width: 50px; margin: 0 4px;"></span> known, I <span style="border-bottom: 1px solid var(--pink); display: inline-block; width: 110px; margin: 0 4px;"></span> helped you.</div>
+    </div>
+    <div style="margin-bottom: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
+      <div style="font-size: 13pt; color: var(--text); margin-bottom: 15px; font-weight: 600;">2. 더 열심히 공부했더라면 시험에 합격했을 텐데요.</div>
+      <div style="font-size: 13pt; color: var(--pink); font-weight: 600;">If I had studied harder, I <span style="border-bottom: 1px solid var(--pink); display: inline-block; width: 110px; margin: 0 4px;"></span> passed the test.</div>
+    </div>
+    <div style="margin-bottom: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
+      <div style="font-size: 13pt; color: var(--text); margin-bottom: 15px; font-weight: 600;">3. 너에게 전화했어야 했는데요. (후회)</div>
+      <div style="font-size: 13pt; color: var(--pink); font-weight: 600;">I <span style="border-bottom: 1px solid var(--pink); display: inline-block; width: 110px; margin: 0 4px;"></span> called you.</div>
+    </div>
+    <div style="margin-bottom: 10px; padding-top: 10px; border-top: 1px solid var(--border);">
+      <div style="font-size: 13pt; color: var(--text); margin-bottom: 15px; font-weight: 600;">4. 더 일찍 출발했어야 했는데요. (후회)</div>
+      <div style="font-size: 13pt; color: var(--pink); font-weight: 600;">I <span style="border-bottom: 1px solid var(--pink); display: inline-block; width: 110px; margin: 0 4px;"></span> left earlier.</div>
+    </div>
+    <div style="padding-top: 10px; border-top: 1px solid var(--border);">
+      <div style="font-size: 13pt; color: var(--text); margin-bottom: 15px; font-weight: 600;">5. 어렸을 때 영어를 배웠더라면 좋았을 텐데요.</div>
+      <div style="font-size: 13pt; color: var(--pink); font-weight: 600;">I <span style="border-bottom: 1px solid var(--pink); display: inline-block; width: 50px; margin: 0 4px;"></span> I had learned English when I was young.</div>
+    </div>
+  </div>
+
+  <div class="wbank">
+    <span class="wchip">would have</span>
+    <span class="wchip">wish</span>
+    <span class="wchip">had</span>
+    <span class="wchip">should have</span>
+  </div>
+
+  <div style="margin-top: 10px;">
+    <div style="font-size: 11pt; font-weight: 700; color: var(--pink); margin-bottom: 8px;">✍ "I should have ~" 또는 "If I had ~, I would have ~" 문장을 하나 써 보세요.</div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+    <div style="border-bottom: 1px solid var(--border); margin-bottom: 10px; height: 28px;"></div>
+  </div>
+
+  <div class="page-num">6</div>
+</section>
+</main>
+
+<script>
+  const btnColor   = document.getElementById('btnColor');
+  const btnBw      = document.getElementById('btnBw');
+  const btnDesktop = document.getElementById('btnDesktop');
+  const btnMobile  = document.getElementById('btnMobile');
+
+  function setTheme(theme) {
+    const root = document.documentElement;
+    if (theme === 'bw') {
+      root.style.setProperty('--cream-bg','#FFFFFF');
+      root.style.setProperty('--pink','#333333');
+      root.style.setProperty('--orange','#666666');
+      root.style.setProperty('--text','#000000');
+      root.style.setProperty('--border','#CCCCCC');
+      btnColor.classList.remove('active'); btnBw.classList.add('active');
+    } else {
+      root.style.setProperty('--cream-bg','#F5EFE7');
+      root.style.setProperty('--pink','#B5245A');
+      root.style.setProperty('--orange','#FF9F43');
+      root.style.setProperty('--text','#333333');
+      root.style.setProperty('--border','#d9d9d9');
+      btnColor.classList.add('active'); btnBw.classList.remove('active');
+    }
+  }
+  function setView(view) {
+    if (view === 'mobile') {
+      document.body.classList.add('mobile');
+      btnDesktop.classList.remove('active'); btnMobile.classList.add('active');
+    } else {
+      document.body.classList.remove('mobile');
+      btnDesktop.classList.add('active'); btnMobile.classList.remove('active');
+    }
+  }
+  btnColor.addEventListener('click',   () => setTheme('color'));
+  btnBw.addEventListener('click',      () => setTheme('bw'));
+  btnDesktop.addEventListener('click', () => setView('desktop'));
+  btnMobile.addEventListener('click',  () => setView('mobile'));
+</script>
+</body>
+</html>

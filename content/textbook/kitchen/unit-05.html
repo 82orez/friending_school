@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit 5 · Frying & Searing — Kitchen English for Working Holiday</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Verdana', sans-serif; background: #f5f5f5; color: #1a1a1a; line-height: 1.6; padding: 30px 20px 60px; }
+.page { max-width: 900px; margin: 0 auto; }
+.header { background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%); color: #fff; padding: 30px 32px; border-radius: 6px; margin-bottom: 24px; position: relative; }
+.header-tag { display: inline-block; font-size: 9pt; font-weight: 700; background: rgba(0,0,0,.2); color: #fff; padding: 3px 11px; border-radius: 12px; margin-bottom: 12px; letter-spacing: 0.5px; }
+.header-num { font-size: 10pt; font-weight: 900; opacity: 0.85; margin-bottom: 4px; letter-spacing: 1px; }
+.unit-title-en { font-size: 22pt; font-weight: 900; margin-bottom: 6px; letter-spacing: 0.3px; }
+.unit-title-kr { font-size: 12pt; font-weight: 700; opacity: 0.95; }
+.situation { background: #fff; border: 1px solid #e0e0e0; border-left: 4px solid #ff4757; border-radius: 6px; padding: 18px 22px; margin-bottom: 28px; display: flex; gap: 14px; align-items: flex-start; }
+.situation-icon { font-size: 26px; flex-shrink: 0; margin-top: 2px; }
+.situation-body h3 { font-size: 10pt; font-weight: 900; color: #ff4757; letter-spacing: 1px; margin-bottom: 6px; }
+.situation-body p { font-size: 11pt; color: #334; line-height: 1.7; }
+.section { margin-bottom: 28px; }
+.section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #ff4757; }
+.section-num { width: 30px; height: 30px; border-radius: 50%; background: #ff4757; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12pt; font-weight: 900; flex-shrink: 0; }
+.section-header h2 { font-size: 13pt; font-weight: 900; color: #1a1a1a; }
+.section-header .kr { font-size: 10pt; font-weight: 700; color: #888; margin-left: 4px; }
+.pick-list { display: flex; flex-direction: column; gap: 12px; }
+.pick-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 18px; display: flex; gap: 14px; align-items: flex-start; }
+.pick-num { background: #ff4757; color: #fff; font-size: 10pt; font-weight: 900; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.pick-body { flex: 1; }
+.pick-en { font-size: 12pt; color: #1a1a1a; line-height: 1.7; margin-bottom: 4px; }
+.pick-blank { display: inline-block; min-width: 90px; border-bottom: 2px solid #1a1a1a; padding: 0 8px; text-align: center; font-weight: 700; color: transparent; }
+.pick-kr { font-size: 10pt; color: #888; }
+.word-bank { margin-top: 14px; padding: 14px 16px; background: #fff5f8; border-radius: 6px; border: 1px dashed #ff4757; }
+.word-bank-label { font-size: 9pt; font-weight: 900; color: #ff4757; letter-spacing: 1px; margin-bottom: 8px; }
+.word-bank-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: #fff; border: 1px solid #ff4757; color: #ff4757; font-size: 10pt; font-weight: 700; padding: 4px 12px; border-radius: 14px; font-style: italic; }
+.scene { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 18px 20px; margin-bottom: 14px; }
+.scene-title { font-size: 11pt; font-weight: 900; color: #ff4757; margin-bottom: 4px; }
+.scene-kr { font-size: 9.5pt; color: #888; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+.dialog-line { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
+.dialog-line:last-child { margin-bottom: 0; }
+.speaker { font-size: 9pt; font-weight: 900; flex-shrink: 0; min-width: 72px; padding: 3px 9px; border-radius: 4px; text-align: center; margin-top: 2px; }
+.speaker.jun { background: #ff4757; color: #fff; }
+.speaker.other { background: #f0f0f0; color: #555; }
+.line-text { flex: 1; font-size: 11pt; line-height: 1.6; padding: 8px 12px; border-radius: 4px; }
+.dialog-line.jun-line .line-text { background: #f9f9f9; border-left: 3px solid #ff4757; }
+.dialog-line.other-line .line-text { background: #fff; border: 1px solid #e8e8e8; }
+.line-text strong { font-weight: 900; color: #ff4757; }
+.pattern-box { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px 18px; margin-bottom: 12px; }
+.pattern-title { font-size: 11pt; font-weight: 900; color: #ff4757; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+.pattern-title strong { color: #1a1a1a; font-weight: 900; }
+.pattern-examples { display: flex; flex-direction: column; gap: 7px; }
+.pattern-ex { font-size: 11pt; color: #334; line-height: 1.5; padding-left: 16px; position: relative; }
+.pattern-ex::before { content: "•"; color: #ff4757; position: absolute; left: 4px; font-weight: 900; }
+.pattern-ex strong { font-weight: 900; color: #ff4757; }
+.ask-box { background: #fff5f8; border-radius: 6px; padding: 18px 22px; }
+.ask-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,71,87,0.15); }
+.ask-item:last-child { border-bottom: none; }
+.ask-q { font-size: 10pt; font-weight: 900; color: #ff4757; flex-shrink: 0; min-width: 28px; }
+.ask-text { font-size: 11pt; color: #334; line-height: 1.6; }
+.mission { background: linear-gradient(135deg, #1a1a1a 0%, #333 100%); color: #fff; border-radius: 6px; padding: 22px 24px; }
+.mission-title { display: flex; align-items: center; gap: 10px; font-size: 12pt; font-weight: 900; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.mission-title .ico { font-size: 18px; }
+.checklist { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.check-item { display: flex; gap: 12px; align-items: flex-start; font-size: 11pt; line-height: 1.6; color: rgba(255,255,255,0.92); }
+.check-box { width: 18px; height: 18px; border: 2px solid #ff4757; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
+.example-box { background: rgba(255,255,255,0.06); border-left: 3px solid #ff4757; border-radius: 4px; padding: 14px 16px; }
+.example-label { font-size: 9pt; font-weight: 900; color: #ff6b7a; letter-spacing: 1px; margin-bottom: 8px; }
+.example-text { font-size: 11pt; line-height: 1.7; color: rgba(255,255,255,0.95); font-style: italic; }
+.footer { margin-top: 36px; text-align: center; }
+.footer-line { height: 3px; border-radius: 2px; background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%); margin-bottom: 12px; }
+.footer-text { font-size: 9pt; color: #888; letter-spacing: 0.5px; }
+.footer-text strong { color: #ff4757; font-weight: 900; }
+@media print { body { padding: 0; background: #fff; } .section { break-inside: avoid; } .mission, .scene, .pattern-box, .pick-item { break-inside: avoid; } }
+@media (max-width: 600px) { body { padding: 16px 12px 40px; } .header { padding: 22px 20px; } .unit-title-en { font-size: 18pt; } .unit-title-kr { font-size: 11pt; } .speaker { min-width: 60px; font-size: 8.5pt; } .pick-en, .line-text, .pattern-ex, .ask-text, .check-item { font-size: 10.5pt; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="header">
+    <span class="header-tag">PART 2 · BASIC COOKING METHODS</span>
+    <div class="header-num">UNIT 05</div>
+    <div class="unit-title-en">Frying & Searing</div>
+    <div class="unit-title-kr">준, 튀기기와 시어링을 배우다</div>
+  </div>
+
+  <div class="situation">
+    <div class="situation-icon">🔥</div>
+    <div class="situation-body">
+      <h3>SITUATION</h3>
+      <p>준은 본격적인 조리법을 배우기 시작한다. 셰프는 다양한 튀김 기법을 가르친다. 기름에 깊이 잠기게 하는 딥프라이(deep-fry, 기름에 완전히 잠겨 튀기기), 적은 기름으로 표면만 익히는 섈로우 프라이(shallow fry, 얕은 기름에 지지기), 강한 불에 표면만 갈변시키는 시어링(sear, 센 불에 겉면 빠르게 익히기), 기름에 빠르게 볶는 소테(sauté, 빠르게 볶기)까지. 모두 불의 강도가 핵심이다.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2>5 PICK <span class="kr">· 핵심 문장 채우기</span></h2>
+    </div>
+    <div class="pick-list">
+      <div class="pick-item">
+        <div class="pick-num">1</div>
+        <div class="pick-body">
+          <div class="pick-en"><span class="pick-blank">Sear</span> the steak quickly on high heat.</div>
+          <div class="pick-kr">센 불에서 스테이크 겉면을 빠르게 익혀라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">2</div>
+        <div class="pick-body">
+          <div class="pick-en"><span class="pick-blank">Fry</span> the chicken in hot oil.</div>
+          <div class="pick-kr">뜨거운 기름에 닭을 튀겨라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">3</div>
+        <div class="pick-body">
+          <div class="pick-en"><span class="pick-blank">Deep-fry</span> the potatoes until golden.</div>
+          <div class="pick-kr">감자가 황금색이 될 때까지 딥프라이 해라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">4</div>
+        <div class="pick-body">
+          <div class="pick-en">Use <span class="pick-blank">shallow fry</span> for the fish fillet.</div>
+          <div class="pick-kr">생선 필레는 얕은 기름에 지져라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">5</div>
+        <div class="pick-body">
+          <div class="pick-en"><span class="pick-blank">Sauté</span> the mushrooms in butter.</div>
+          <div class="pick-kr">버섯을 버터에 빠르게 볶아라.</div>
+        </div>
+      </div>
+    </div>
+    <div class="word-bank">
+      <div class="word-bank-label">▸ WORD BANK</div>
+      <div class="word-bank-chips">
+        <span class="chip">sear</span>
+        <span class="chip">fry</span>
+        <span class="chip">deep-fry</span>
+        <span class="chip">shallow fry</span>
+        <span class="chip">sauté</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2>TALK <span class="kr">· 실전 대화</span></h2>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">Scene 1 — Searing the Steak</div>
+      <div class="scene-kr">스테이크 시어링하기</div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Jun, two steaks for table six. Get the pan smoking hot.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef! Pan is screaming hot.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Good. Sear the steak quickly. Two minutes each side.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Heard, Chef! <strong>Sear the steak quickly</strong> — two minutes each side.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">After searing, finish them in the oven.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef!</div>
+      </div>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">Scene 2 — Fryer Station</div>
+      <div class="scene-kr">튀김 스테이션에서</div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Jun, watch the fries. We need them crispy and golden.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef!</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Drop the fries now! Order in for table three.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text"><strong>Drop the fries</strong> — on it, Chef!</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">And sauté the mushrooms while you wait.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Heard, Chef!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2>EXTENSION <span class="kr">· 응용 표현</span></h2>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 1 · <strong>Sear / Fry / Sauté the ~</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Sear</strong> the scallops fast.</div>
+        <div class="pattern-ex"><strong>Fry</strong> the chicken until golden.</div>
+        <div class="pattern-ex"><strong>Sauté</strong> the onions until soft.</div>
+        <div class="pattern-ex"><strong>Deep-fry</strong> the calamari in batches.</div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 2 · <strong>Drop the ~</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Drop the</strong> fries now!</div>
+        <div class="pattern-ex"><strong>Drop the</strong> chicken in the fryer.</div>
+        <div class="pattern-ex"><strong>Drop the</strong> pasta in boiling water.</div>
+        <div class="pattern-ex"><strong>Drop the</strong> dumplings in the oil.</div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 3 · <strong>on high / medium / low heat</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex">Sear it <strong>on high heat</strong>.</div>
+        <div class="pattern-ex">Sauté the garlic <strong>on medium heat</strong>.</div>
+        <div class="pattern-ex">Keep the sauce <strong>on low heat</strong>.</div>
+        <div class="pattern-ex">Fry it <strong>on high heat</strong> for two minutes.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2>ASK <span class="kr">· 튜터와 이야기하기</span></h2>
+    </div>
+    <div class="ask-box">
+      <div class="ask-item"><div class="ask-q">Q1</div><div class="ask-text">What Korean dishes do you sear before serving?</div></div>
+      <div class="ask-item"><div class="ask-q">Q2</div><div class="ask-text">How do you control the oil temperature for frying?</div></div>
+      <div class="ask-item"><div class="ask-q">Q3</div><div class="ask-text">Deep-fry or shallow fry — which do you use more in Korea?</div></div>
+      <div class="ask-item"><div class="ask-q">Q4</div><div class="ask-text">What's your favorite ingredient to sauté?</div></div>
+      <div class="ask-item"><div class="ask-q">Q5</div><div class="ask-text">How do you keep fried food crispy during a busy service?</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2>MISSION <span class="kr">· 오늘의 미션</span></h2>
+    </div>
+    <div class="mission">
+      <div class="mission-title">
+        <span class="ico">🎯</span>
+        <span>오늘 셰프트에서 꼭 말해보기</span>
+      </div>
+      <div class="checklist">
+        <div class="check-item"><div class="check-box"></div><div>스테이크 지시받으면 "Sear the steak quickly." 한 번 복창하기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>튀김 주문이 들어오면 "Drop the fries." 큰 소리로 발화하기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>동료에게 "Sauté the onions, please." 같은 지시 한 번 해보기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>fry · deep-fry · sear · sauté 중 3개 이상 실제 발화하기.</div></div>
+      </div>
+      <div class="example-box">
+        <div class="example-label">▸ EXAMPLE</div>
+        <div class="example-text">Yes, Chef! I'll sear the steak quickly on high heat — two minutes each side, then finish it in the oven. While it rests, I'll sauté the mushrooms in butter. Order in — drop the fries! I'll deep-fry them until golden and crispy, Chef.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-line"></div>
+    <div class="footer-text"><strong>FRIENDING</strong> · Kitchen English for Working Holiday &nbsp;|&nbsp; Unit 05 · Frying & Searing</div>
+  </div>
+
+</div>
+</body>
+</html>

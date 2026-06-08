@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit 19 · Kitchen Safety — Kitchen English for Working Holiday</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Verdana', sans-serif; background: #f5f5f5; color: #1a1a1a; line-height: 1.6; padding: 30px 20px 60px; }
+.page { max-width: 900px; margin: 0 auto; }
+.header { background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%); color: #fff; padding: 30px 32px; border-radius: 6px; margin-bottom: 24px; position: relative; }
+.header-tag { display: inline-block; font-size: 9pt; font-weight: 700; background: rgba(0,0,0,.2); color: #fff; padding: 3px 11px; border-radius: 12px; margin-bottom: 12px; letter-spacing: 0.5px; }
+.header-num { font-size: 10pt; font-weight: 900; opacity: 0.85; margin-bottom: 4px; letter-spacing: 1px; }
+.unit-title-en { font-size: 22pt; font-weight: 900; margin-bottom: 6px; letter-spacing: 0.3px; }
+.unit-title-kr { font-size: 12pt; font-weight: 700; opacity: 0.95; }
+.situation { background: #fff; border: 1px solid #e0e0e0; border-left: 4px solid #ff4757; border-radius: 6px; padding: 18px 22px; margin-bottom: 28px; display: flex; gap: 14px; align-items: flex-start; }
+.situation-icon { font-size: 26px; flex-shrink: 0; margin-top: 2px; }
+.situation-body h3 { font-size: 10pt; font-weight: 900; color: #ff4757; letter-spacing: 1px; margin-bottom: 6px; }
+.situation-body p { font-size: 11pt; color: #334; line-height: 1.7; }
+.section { margin-bottom: 28px; }
+.section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #ff4757; }
+.section-num { width: 30px; height: 30px; border-radius: 50%; background: #ff4757; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12pt; font-weight: 900; flex-shrink: 0; }
+.section-header h2 { font-size: 13pt; font-weight: 900; color: #1a1a1a; }
+.section-header .kr { font-size: 10pt; font-weight: 700; color: #888; margin-left: 4px; }
+.pick-list { display: flex; flex-direction: column; gap: 12px; }
+.pick-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 18px; display: flex; gap: 14px; align-items: flex-start; }
+.pick-num { background: #ff4757; color: #fff; font-size: 10pt; font-weight: 900; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.pick-body { flex: 1; }
+.pick-en { font-size: 12pt; color: #1a1a1a; line-height: 1.7; margin-bottom: 4px; }
+.pick-blank { display: inline-block; min-width: 90px; border-bottom: 2px solid #1a1a1a; padding: 0 8px; text-align: center; font-weight: 700; color: transparent; }
+.pick-kr { font-size: 10pt; color: #888; }
+.word-bank { margin-top: 14px; padding: 14px 16px; background: #fff5f8; border-radius: 6px; border: 1px dashed #ff4757; }
+.word-bank-label { font-size: 9pt; font-weight: 900; color: #ff4757; letter-spacing: 1px; margin-bottom: 8px; }
+.word-bank-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: #fff; border: 1px solid #ff4757; color: #ff4757; font-size: 10pt; font-weight: 700; padding: 4px 12px; border-radius: 14px; font-style: italic; }
+.scene { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 18px 20px; margin-bottom: 14px; }
+.scene-title { font-size: 11pt; font-weight: 900; color: #ff4757; margin-bottom: 4px; }
+.scene-kr { font-size: 9.5pt; color: #888; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+.dialog-line { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
+.dialog-line:last-child { margin-bottom: 0; }
+.speaker { font-size: 9pt; font-weight: 900; flex-shrink: 0; min-width: 72px; padding: 3px 9px; border-radius: 4px; text-align: center; margin-top: 2px; }
+.speaker.jun { background: #ff4757; color: #fff; }
+.speaker.other { background: #f0f0f0; color: #555; }
+.line-text { flex: 1; font-size: 11pt; line-height: 1.6; padding: 8px 12px; border-radius: 4px; }
+.dialog-line.jun-line .line-text { background: #f9f9f9; border-left: 3px solid #ff4757; }
+.dialog-line.other-line .line-text { background: #fff; border: 1px solid #e8e8e8; }
+.line-text strong { font-weight: 900; color: #ff4757; }
+.pattern-box { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px 18px; margin-bottom: 12px; }
+.pattern-title { font-size: 11pt; font-weight: 900; color: #ff4757; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+.pattern-title strong { color: #1a1a1a; font-weight: 900; }
+.pattern-examples { display: flex; flex-direction: column; gap: 7px; }
+.pattern-ex { font-size: 11pt; color: #334; line-height: 1.5; padding-left: 16px; position: relative; }
+.pattern-ex::before { content: "•"; color: #ff4757; position: absolute; left: 4px; font-weight: 900; }
+.pattern-ex strong { font-weight: 900; color: #ff4757; }
+.ask-box { background: #fff5f8; border-radius: 6px; padding: 18px 22px; }
+.ask-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,71,87,0.15); }
+.ask-item:last-child { border-bottom: none; }
+.ask-q { font-size: 10pt; font-weight: 900; color: #ff4757; flex-shrink: 0; min-width: 28px; }
+.ask-text { font-size: 11pt; color: #334; line-height: 1.6; }
+.mission { background: linear-gradient(135deg, #1a1a1a 0%, #333 100%); color: #fff; border-radius: 6px; padding: 22px 24px; }
+.mission-title { display: flex; align-items: center; gap: 10px; font-size: 12pt; font-weight: 900; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.mission-title .ico { font-size: 18px; }
+.checklist { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.check-item { display: flex; gap: 12px; align-items: flex-start; font-size: 11pt; line-height: 1.6; color: rgba(255,255,255,0.92); }
+.check-box { width: 18px; height: 18px; border: 2px solid #ff4757; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
+.example-box { background: rgba(255,255,255,0.06); border-left: 3px solid #ff4757; border-radius: 4px; padding: 14px 16px; }
+.example-label { font-size: 9pt; font-weight: 900; color: #ff6b7a; letter-spacing: 1px; margin-bottom: 8px; }
+.example-text { font-size: 11pt; line-height: 1.7; color: rgba(255,255,255,0.95); font-style: italic; }
+.footer { margin-top: 36px; text-align: center; }
+.footer-line { height: 3px; border-radius: 2px; background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%); margin-bottom: 12px; }
+.footer-text { font-size: 9pt; color: #888; letter-spacing: 0.5px; }
+.footer-text strong { color: #ff4757; font-weight: 900; }
+@media print { body { padding: 0; background: #fff; } .section { break-inside: avoid; } .mission, .scene, .pattern-box, .pick-item { break-inside: avoid; } }
+@media (max-width: 600px) { body { padding: 16px 12px 40px; } .header { padding: 22px 20px; } .unit-title-en { font-size: 18pt; } .unit-title-kr { font-size: 11pt; } .speaker { min-width: 60px; font-size: 8.5pt; } .pick-en, .line-text, .pattern-ex, .ask-text, .check-item { font-size: 10.5pt; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="header">
+    <span class="header-tag">PART 5 · SERVICE COMMUNICATION</span>
+    <div class="header-num">UNIT 19</div>
+    <div class="unit-title-en">Kitchen Safety</div>
+    <div class="unit-title-kr">준, 주방 안전 호출을 익히다</div>
+  </div>
+
+  <div class="situation">
+    <div class="situation-icon">⏱️</div>
+    <div class="situation-body">
+      <h3>SITUATION</h3>
+      <p>주방은 좁고 위험한 공간이다. 동료 뒤로 지나갈 때는 비하인드(behind, 뒤로 지나갑니다)나 코너(corner, 코너 돌아갑니다)를 큰 소리로 외친다. 뜨거운 팬(hot pan, 뜨거운 팬)을 들고 이동할 때도, 날카로운 칼(sharp knife, 날카로운 칼)을 옮길 때도 마찬가지. 바닥에 스필(spill, 흘린 물·기름)이 생기면 즉시 외쳐서 알린다. 큰 목소리가 모두를 살린다.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2>5 PICK <span class="kr">· 핵심 문장 채우기</span></h2>
+    </div>
+    <div class="pick-list">
+      <div class="pick-item">
+        <div class="pick-num">1</div>
+        <div class="pick-body">
+          <div class="pick-en"><span class="pick-blank">Behind</span>! Coming through.</div>
+          <div class="pick-kr">뒤로 지나갑니다!</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">2</div>
+        <div class="pick-body">
+          <div class="pick-en"><span class="pick-blank">Corner</span>! Watch out!</div>
+          <div class="pick-kr">코너 돌아갑니다, 조심!</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">3</div>
+        <div class="pick-body">
+          <div class="pick-en"><span class="pick-blank">Hot pan</span> coming through!</div>
+          <div class="pick-kr">뜨거운 팬 지나갑니다!</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">4</div>
+        <div class="pick-body">
+          <div class="pick-en"><span class="pick-blank">Sharp knife</span> in my hand, careful.</div>
+          <div class="pick-kr">날카로운 칼 들고 있어요, 조심.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">5</div>
+        <div class="pick-body">
+          <div class="pick-en">Big <span class="pick-blank">spill</span> on the floor!</div>
+          <div class="pick-kr">바닥에 큰 거 흘렸어요!</div>
+        </div>
+      </div>
+    </div>
+    <div class="word-bank">
+      <div class="word-bank-label">▸ WORD BANK</div>
+      <div class="word-bank-chips">
+        <span class="chip">behind</span>
+        <span class="chip">corner</span>
+        <span class="chip">hot pan</span>
+        <span class="chip">sharp knife</span>
+        <span class="chip">spill</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2>TALK <span class="kr">· 실전 대화</span></h2>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">Scene 1 — Moving Through the Line</div>
+      <div class="scene-kr">라인을 가로질러 이동하기</div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text"><strong>Behind!</strong> Coming through with the tray.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Heard you, Jun. Watch the spill on three.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text"><strong>Corner!</strong> Sharp knife in my hand.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sam</div>
+        <div class="line-text">Got it! Make space.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Heard! Behind on your right.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Good awareness, Jun. Keep calling it out.</div>
+      </div>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">Scene 2 — Hot Pan Hazard</div>
+      <div class="scene-kr">뜨거운 팬 운반</div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Jun, where's the sauté pan from the steak?</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text"><strong>Hot pan coming through!</strong> Right behind you, Chef.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Heard! Move it to the pass slowly. Mind the corner.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Heard, Chef. Corner!</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">And mop the spill near the fryer before someone slips.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2>EXTENSION <span class="kr">· 응용 표현</span></h2>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 1 · <strong>Behind! / Corner! / Hot behind!</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Behind!</strong></div>
+        <div class="pattern-ex"><strong>Behind</strong> on your right, Chef!</div>
+        <div class="pattern-ex"><strong>Corner!</strong> Watch out!</div>
+        <div class="pattern-ex"><strong>Hot behind!</strong> Move, please.</div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 2 · <strong>~ coming through!</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex">Hot pan <strong>coming through!</strong></div>
+        <div class="pattern-ex">Sharp knife <strong>coming through!</strong></div>
+        <div class="pattern-ex">Hot oil <strong>coming through!</strong></div>
+        <div class="pattern-ex">Heavy tray <strong>coming through!</strong></div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 3 · <strong>Watch out for / Watch the ~</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Watch out for</strong> the spill!</div>
+        <div class="pattern-ex"><strong>Watch the</strong> corner, Chef.</div>
+        <div class="pattern-ex"><strong>Watch the</strong> hot oven door.</div>
+        <div class="pattern-ex"><strong>Watch out for</strong> the open drawer.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2>ASK <span class="kr">· 튜터와 이야기하기</span></h2>
+    </div>
+    <div class="ask-box">
+      <div class="ask-item"><div class="ask-q">Q1</div><div class="ask-text">What do you shout in a Korean kitchen for safety?</div></div>
+      <div class="ask-item"><div class="ask-q">Q2</div><div class="ask-text">What's the most common kitchen accident you've seen?</div></div>
+      <div class="ask-item"><div class="ask-q">Q3</div><div class="ask-text">How do you carry a hot pan safely through a busy line?</div></div>
+      <div class="ask-item"><div class="ask-q">Q4</div><div class="ask-text">What's the rule for spills in your kitchen?</div></div>
+      <div class="ask-item"><div class="ask-q">Q5</div><div class="ask-text">Sharp knife or open fire — which scares you more?</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2>MISSION <span class="kr">· 오늘의 미션</span></h2>
+    </div>
+    <div class="mission">
+      <div class="mission-title">
+        <span class="ico">🎯</span>
+        <span>오늘 셰프트에서 꼭 말해보기</span>
+      </div>
+      <div class="checklist">
+        <div class="check-item"><div class="check-box"></div><div>동료 뒤로 지나갈 때 "Behind!" 또는 "Corner!" 큰 소리로 외치기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>뜨거운 팬 이동 시 "Hot pan coming through!" 한 번 발화하기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>바닥 사고 발견 시 "Spill on the floor!" 즉시 외치기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>behind · corner · hot pan · sharp knife · spill 중 3개 이상 발화하기.</div></div>
+      </div>
+      <div class="example-box">
+        <div class="example-label">▸ EXAMPLE</div>
+        <div class="example-text">Behind! Coming through, Chef! Corner on your right — hot pan coming through! I see a big spill near the fryer — I'll mop it before someone slips. Sharp knife in my hand, moving slowly. Stay safe, Chef!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-line"></div>
+    <div class="footer-text"><strong>FRIENDING</strong> · Kitchen English for Working Holiday &nbsp;|&nbsp; Unit 19 · Kitchen Safety</div>
+  </div>
+
+</div>
+</body>
+</html>

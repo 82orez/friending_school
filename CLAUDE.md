@@ -4,7 +4,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 
 ## 개요
 
-"프렌딩 스쿨" 워홀 영어 과정 랜딩 페이지. Next.js 16(App Router, Turbopack) + React 19.2 + Tailwind v4. shadcn/ui(`base-nova`/`neutral`), Supabase SSR 인증(이메일 + 카카오 OAuth), 전자책 뷰어 `/textbook/cooking`(24 Unit, Unit 1만 무료·나머지 로그인 필수) 포함.
+"프렌딩 스쿨" 워홀 영어 과정 랜딩 페이지. Next.js 16(App Router, Turbopack) + React 19.2 + Tailwind v4. shadcn/ui(`base-nova`/`neutral`), Supabase SSR 인증(이메일 + 카카오 OAuth), 전자책 뷰어 `/textbook/[course]`(레지스트리 기반 교재 5종, 무료 미리보기 외 로그인 필수) 포함.
 
 ## 명령어
 
@@ -50,15 +50,15 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 - **재발송 UX**(Login/Signup 공통): (1) `<AlertDialog>` 확인 모달, (2) success 시 **60초 클라 쿨다운**(`cooldownSec` + `setInterval`, 버튼 disabled). 서버 rate limit(1분/1회)과 이중 보호. **SignupForm은 success/error 양쪽에 트리거** — 한쪽 수정 시 다른 쪽도 검토(조건부 숨김 시 카운트다운 회귀 주의).
 - **로딩 스피너**: `Loader2 animate-spin` + 컨텍스트 텍스트("로그인 중" 등), **trailing `...` 금지**. shadcn Button 내부는 `<Loader2 className="animate-spin"/>` 한 줄, raw button은 `<span className="inline-flex items-center gap-1.5">`로 감쌈.
 
-### 전자책 `/textbook/cooking` (5파일 분리)
+### 전자책 `/textbook/[course]` (레지스트리 기반, 교재 5종)
 
-- `src/data/textbook/cooking.ts` — `COOKING_COURSE="cooking"`, `COOKING_TOTAL_UNITS=24`, `COOKING_UNITS`(5필드×24), `getCookingUnit()`. **course는 DB `reading_progress.course`와 1:1.**
-- `src/data/textbook/index.ts` — 레지스트리 `TEXTBOOKS`(`{course,title,href}`), Navbar "교재 보기"가 `.map()`. `course`는 시리즈 상수 import.
-- `cooking/page.tsx`(server) — Unit 목록. 로그인 시 `reading_progress` 1회 조회 → 진행률 바·`CheckCircle2`·`Lock`(Unit 2~24 미로그인). 자물쇠는 `/login?next=...`.
-- `cooking/[unit]/page.tsx`(server) — `generateStaticParams` 1~24, `notFound()` 범위 외, **Unit 2~24 미로그인 `redirect("/login?next=...")`**. HTML은 `content/textbook/cooking/unit-XX.html`을 `fs.readFile` → `TextbookViewer` prop, `initialScrollPercent`도 SSR 조회.
-- `cooking/actions.ts` — `saveScrollProgress(course,unit,percent,completed)`. **진입 가드 순서 고정: (1) course 화이트리스트(`===COOKING_COURSE`), (2) unit `Number.isInteger`+`[1,TOTAL]`, (3) percent `Number.isFinite`+0~100 clamp, (4) `getUser()` 없으면 silent return.** `upsert({onConflict:"user_id,course,unit"})`, **기존 `completed`를 먼저 읽어 OR 결합**(완독 후 재스크롤해도 유지 — 이 read-then-merge 깨지 말 것).
-- `src/components/textbook/TextbookViewer.tsx`(client) — **iframe `srcDoc`**로 격리, `scrolling="no"` + `ResizeObserver` + 0.5/1.5s 재측정으로 높이 동적 확장 → 부모 자연 스크롤. 상·하단 `NavBar`(상단 `sticky top-[72px]`). 초기 복원은 load 후 `requestAnimationFrame` 1회(`scrollRestored` 가드). 저장은 로그인만, `SAVE_IDLE_MS=1000` 디바운스 + `lastSentPercentRef` skip, `COMPLETED_THRESHOLD=95`. 네트워크 오류 silent.
-- **HTML 본문**: 프로젝트 루트 `content/textbook/<course>/unit-XX.html`(완전한 HTML 문서). **`src/` 아닌 `content/`**, `fs.readFile`로 읽음(번들 미포함, public 아님 → 직접 URL 불가). 새 unit: (1) HTML 파일, (2) 데이터 배열 항목, (3) `TOTAL` 증가. 마이그레이션 불필요.
+- **레지스트리** `src/data/textbook/index.ts` — `TEXTBOOK_REGISTRY: Textbook[]`(5종: `cooking`·`kitchen`·`grammar1`·`grammar2`·`cosmetic`). 각 `{course,title,subtitle,eyebrow,freeUnits[],units[]}`. **course는 DB `reading_progress.course` & URL segment와 1:1.** `units`는 `unitsFromBook(bookKey)`로 `landing.ts` `BOOKS`(셀프디벨롭)에서 파생(중복 방지) — `cooking`만 `cooking.ts`의 `COOKING_UNITS` 직접 사용. `grammar2`는 unit 번호 **25–48**(`freeUnits:[25]`). export: `getTextbook`/`getTextbookUnit`/`getAdjacentUnits`(유닛 배열 순서 기준 prev/next)/`TEXTBOOKS`(`{course,title,href}`, Navbar "교재 보기"가 `.map()`).
+- `src/data/textbook/cooking.ts` — `COOKING_COURSE="cooking"`, `COOKING_UNITS`(5필드×24). 기존 워홀 콘텐츠(URL/DB 유지).
+- `[course]/page.tsx`(server) — `generateStaticParams`=레지스트리, `getTextbook`→`notFound()`. Unit 목록, 로그인 시 `reading_progress`(course별) 1회 조회→진행률 바·`CheckCircle2`·`Lock`. 잠금=`!user && !freeUnits.includes(unit)`, 자물쇠는 `/login?next=...`.
+- `[course]/[unit]/page.tsx`(server) — `generateStaticParams`=레지스트리 flatMap, `notFound()`(course/unit 무효), **무료 외 미로그인 `redirect("/login?next=/textbook/<course>/<unit>")`**. HTML `content/textbook/<course>/<htmlFile>` `fs.readFile`→`TextbookViewer`. `prev/nextHref`는 `getAdjacentUnits`, `totalUnits`=최대 unit 번호(grammar2 라벨 "Unit 25/48"용).
+- `src/app/textbook/actions.ts`(공유 `"use server"`) — `saveScrollProgress(course,unit,percent,completed)`. **진입 가드 순서 고정: (1) `getTextbook(course)` 화이트리스트, (2) unit이 해당 교재 `units`에 존재, (3) percent `Number.isFinite`+0~100 clamp, (4) `getUser()` 없으면 silent.** `upsert({onConflict:"user_id,course,unit"})`, **기존 `completed`를 먼저 읽어 OR 결합**(read-then-merge 깨지 말 것).
+- `src/components/textbook/TextbookViewer.tsx`(client) — **iframe `srcDoc`** 격리, `scrolling="no"` + `ResizeObserver` + 0.5/1.5s 재측정으로 높이 확장→부모 스크롤. 상·하단 `NavBar`(상단 `sticky top-[72px]`), prev/next는 **`prevHref`/`nextHref` 유무로 렌더**. 초기 복원 load 후 `requestAnimationFrame` 1회(`scrollRestored` 가드). 저장 로그인만, `SAVE_IDLE_MS=1000` 디바운스+`lastSentPercentRef` skip, `COMPLETED_THRESHOLD=95`. 액션 import는 `@/app/textbook/actions`.
+- **HTML 본문**: 루트 `content/textbook/<course>/unit-XX.html`(완전한 HTML 문서, 2자리 zero-pad). **`src/` 아닌 `content/`**, `fs.readFile`(번들 미포함·public 아님). **새 교재 추가: (1) `content/textbook/<course>/unit-NN.html`, (2) `TEXTBOOK_REGISTRY`에 항목 추가(`units`는 `unitsFromBook` 또는 직접 작성).** 라우트·Navbar·진행률이 모두 레지스트리 기반이라 마이그레이션 불필요.
 
 ### 헬퍼
 

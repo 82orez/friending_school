@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit 22 · Eggs & Breakfast — Kitchen English for Working Holiday</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Verdana', sans-serif; background: #f5f5f5; color: #1a1a1a; line-height: 1.6; padding: 30px 20px 60px; }
+.page { max-width: 900px; margin: 0 auto; }
+.header { background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%); color: #fff; padding: 30px 32px; border-radius: 6px; margin-bottom: 24px; position: relative; }
+.header-tag { display: inline-block; font-size: 9pt; font-weight: 700; background: rgba(0,0,0,.2); color: #fff; padding: 3px 11px; border-radius: 12px; margin-bottom: 12px; letter-spacing: 0.5px; }
+.header-num { font-size: 10pt; font-weight: 900; opacity: 0.85; margin-bottom: 4px; letter-spacing: 1px; }
+.unit-title-en { font-size: 22pt; font-weight: 900; margin-bottom: 6px; letter-spacing: 0.3px; }
+.unit-title-kr { font-size: 12pt; font-weight: 700; opacity: 0.95; }
+.situation { background: #fff; border: 1px solid #e0e0e0; border-left: 4px solid #ff4757; border-radius: 6px; padding: 18px 22px; margin-bottom: 28px; display: flex; gap: 14px; align-items: flex-start; }
+.situation-icon { font-size: 26px; flex-shrink: 0; margin-top: 2px; }
+.situation-body h3 { font-size: 10pt; font-weight: 900; color: #ff4757; letter-spacing: 1px; margin-bottom: 6px; }
+.situation-body p { font-size: 11pt; color: #334; line-height: 1.7; }
+.section { margin-bottom: 28px; }
+.section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #ff4757; }
+.section-num { width: 30px; height: 30px; border-radius: 50%; background: #ff4757; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12pt; font-weight: 900; flex-shrink: 0; }
+.section-header h2 { font-size: 13pt; font-weight: 900; color: #1a1a1a; }
+.section-header .kr { font-size: 10pt; font-weight: 700; color: #888; margin-left: 4px; }
+.pick-list { display: flex; flex-direction: column; gap: 12px; }
+.pick-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 18px; display: flex; gap: 14px; align-items: flex-start; }
+.pick-num { background: #ff4757; color: #fff; font-size: 10pt; font-weight: 900; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.pick-body { flex: 1; }
+.pick-en { font-size: 12pt; color: #1a1a1a; line-height: 1.7; margin-bottom: 4px; }
+.pick-blank { display: inline-block; min-width: 90px; border-bottom: 2px solid #1a1a1a; padding: 0 8px; text-align: center; font-weight: 700; color: transparent; }
+.pick-kr { font-size: 10pt; color: #888; }
+.word-bank { margin-top: 14px; padding: 14px 16px; background: #fff5f8; border-radius: 6px; border: 1px dashed #ff4757; }
+.word-bank-label { font-size: 9pt; font-weight: 900; color: #ff4757; letter-spacing: 1px; margin-bottom: 8px; }
+.word-bank-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: #fff; border: 1px solid #ff4757; color: #ff4757; font-size: 10pt; font-weight: 700; padding: 4px 12px; border-radius: 14px; font-style: italic; }
+.scene { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 18px 20px; margin-bottom: 14px; }
+.scene-title { font-size: 11pt; font-weight: 900; color: #ff4757; margin-bottom: 4px; }
+.scene-kr { font-size: 9.5pt; color: #888; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+.dialog-line { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
+.dialog-line:last-child { margin-bottom: 0; }
+.speaker { font-size: 9pt; font-weight: 900; flex-shrink: 0; min-width: 72px; padding: 3px 9px; border-radius: 4px; text-align: center; margin-top: 2px; }
+.speaker.jun { background: #ff4757; color: #fff; }
+.speaker.other { background: #f0f0f0; color: #555; }
+.line-text { flex: 1; font-size: 11pt; line-height: 1.6; padding: 8px 12px; border-radius: 4px; }
+.dialog-line.jun-line .line-text { background: #f9f9f9; border-left: 3px solid #ff4757; }
+.dialog-line.other-line .line-text { background: #fff; border: 1px solid #e8e8e8; }
+.line-text strong { font-weight: 900; color: #ff4757; }
+.pattern-box { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px 18px; margin-bottom: 12px; }
+.pattern-title { font-size: 11pt; font-weight: 900; color: #ff4757; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+.pattern-title strong { color: #1a1a1a; font-weight: 900; }
+.pattern-examples { display: flex; flex-direction: column; gap: 7px; }
+.pattern-ex { font-size: 11pt; color: #334; line-height: 1.5; padding-left: 16px; position: relative; }
+.pattern-ex::before { content: "•"; color: #ff4757; position: absolute; left: 4px; font-weight: 900; }
+.pattern-ex strong { font-weight: 900; color: #ff4757; }
+.ask-box { background: #fff5f8; border-radius: 6px; padding: 18px 22px; }
+.ask-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,71,87,0.15); }
+.ask-item:last-child { border-bottom: none; }
+.ask-q { font-size: 10pt; font-weight: 900; color: #ff4757; flex-shrink: 0; min-width: 28px; }
+.ask-text { font-size: 11pt; color: #334; line-height: 1.6; }
+.mission { background: linear-gradient(135deg, #1a1a1a 0%, #333 100%); color: #fff; border-radius: 6px; padding: 22px 24px; }
+.mission-title { display: flex; align-items: center; gap: 10px; font-size: 12pt; font-weight: 900; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.mission-title .ico { font-size: 18px; }
+.checklist { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.check-item { display: flex; gap: 12px; align-items: flex-start; font-size: 11pt; line-height: 1.6; color: rgba(255,255,255,0.92); }
+.check-box { width: 18px; height: 18px; border: 2px solid #ff4757; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
+.example-box { background: rgba(255,255,255,0.06); border-left: 3px solid #ff4757; border-radius: 4px; padding: 14px 16px; }
+.example-label { font-size: 9pt; font-weight: 900; color: #ff6b7a; letter-spacing: 1px; margin-bottom: 8px; }
+.example-text { font-size: 11pt; line-height: 1.7; color: rgba(255,255,255,0.95); font-style: italic; }
+.footer { margin-top: 36px; text-align: center; }
+.footer-line { height: 3px; border-radius: 2px; background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%); margin-bottom: 12px; }
+.footer-text { font-size: 9pt; color: #888; letter-spacing: 0.5px; }
+.footer-text strong { color: #ff4757; font-weight: 900; }
+@media print { body { padding: 0; background: #fff; } .section { break-inside: avoid; } .mission, .scene, .pattern-box, .pick-item { break-inside: avoid; } }
+@media (max-width: 600px) { body { padding: 16px 12px 40px; } .header { padding: 22px 20px; } .unit-title-en { font-size: 18pt; } .unit-title-kr { font-size: 11pt; } .speaker { min-width: 60px; font-size: 8.5pt; } .pick-en, .line-text, .pattern-ex, .ask-text, .check-item { font-size: 10.5pt; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="header">
+    <span class="header-tag">PART 6 · REAL KITCHEN FOOD</span>
+    <div class="header-num">UNIT 22</div>
+    <div class="unit-title-en">Eggs & Breakfast</div>
+    <div class="unit-title-kr">준, 브런치 서비스에 투입되다</div>
+  </div>
+
+  <div class="situation">
+    <div class="situation-icon">🍳</div>
+    <div class="situation-body">
+      <h3>SITUATION</h3>
+      <p>준은 브런치 서비스에 투입된다. 가장 까다로운 게 계란이다. 식초 푼 잔잔한 물에서 익히는 포치드 에그(poached egg, 포치드 에그), 부드럽게 휘저은 스크램블드 에그(scrambled egg, 스크램블드 에그), 반숙으로 삶은 소프트 보일드(soft-boiled, 반숙 계란), 팬에 굽는 프라이드 에그(fried egg, 프라이드 에그), 그리고 가장 어려운 오믈렛(omelet, 오믈렛). 손님이 원하는 방식대로 정확히 내야 한다.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2>5 PICK <span class="kr">· 핵심 문장 채우기</span></h2>
+    </div>
+    <div class="pick-list">
+      <div class="pick-item">
+        <div class="pick-num">1</div>
+        <div class="pick-body">
+          <div class="pick-en">Two <span class="pick-blank">poached eggs</span> for table four.</div>
+          <div class="pick-kr">테이블 4번 포치드 에그 두 개.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">2</div>
+        <div class="pick-body">
+          <div class="pick-en">Order of soft <span class="pick-blank">scrambled eggs</span> on toast.</div>
+          <div class="pick-kr">토스트 위에 부드러운 스크램블 주문.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">3</div>
+        <div class="pick-body">
+          <div class="pick-en">Make a classic <span class="pick-blank">omelet</span>, three eggs.</div>
+          <div class="pick-kr">계란 세 개로 클래식 오믈렛을 만들어라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">4</div>
+        <div class="pick-body">
+          <div class="pick-en">Two <span class="pick-blank">soft-boiled</span> eggs with toast soldiers.</div>
+          <div class="pick-kr">토스트 스틱과 함께 반숙 계란 두 개.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">5</div>
+        <div class="pick-body">
+          <div class="pick-en">Add a <span class="pick-blank">fried egg</span> on top of the burger.</div>
+          <div class="pick-kr">버거 위에 프라이드 에그를 올려라.</div>
+        </div>
+      </div>
+    </div>
+    <div class="word-bank">
+      <div class="word-bank-label">▸ WORD BANK</div>
+      <div class="word-bank-chips">
+        <span class="chip">poached eggs</span>
+        <span class="chip">scrambled eggs</span>
+        <span class="chip">omelet</span>
+        <span class="chip">soft-boiled</span>
+        <span class="chip">fried egg</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2>TALK <span class="kr">· 실전 대화</span></h2>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">Scene 1 — Poached Eggs Setup</div>
+      <div class="scene-kr">포치드 에그 준비</div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Jun, brunch starts in five. Get the poaching water ready.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef! Vinegar in, gentle simmer.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Order: <strong>two poached eggs</strong> for table four. Soft yolks.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Heard, Chef! <strong>Two poached eggs</strong> — three minutes, drained.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Trim the rough edges before plating.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef!</div>
+      </div>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">Scene 2 — Scrambled and Omelet</div>
+      <div class="scene-kr">스크램블과 오믈렛</div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Jun, classic omelet for table seven. Three eggs.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef! Folded, no color?</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Right. And table nine wants soft scrambled eggs.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">How soft, Chef?</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text"><strong>Scramble them softly.</strong> Low heat, stir constantly.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Heard, Chef! <strong>Scramble them softly.</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2>EXTENSION <span class="kr">· 응용 표현</span></h2>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 1 · <strong>~ eggs for table ~</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex">Two <strong>poached eggs for table</strong> four.</div>
+        <div class="pattern-ex">Soft scrambled <strong>eggs for table</strong> nine.</div>
+        <div class="pattern-ex">Fried <strong>eggs for table</strong> six, sunny-side up.</div>
+        <div class="pattern-ex">Soft-boiled <strong>eggs for table</strong> two.</div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 2 · <strong>Soft / Hard ~</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Soft</strong> scrambled, low heat.</div>
+        <div class="pattern-ex"><strong>Hard</strong> scrambled for table eight.</div>
+        <div class="pattern-ex"><strong>Soft</strong> yolks on the poached eggs.</div>
+        <div class="pattern-ex"><strong>Hard</strong> boiled, eight minutes.</div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 3 · <strong>Add a ~ on top</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Add a</strong> fried egg <strong>on top</strong> of the burger.</div>
+        <div class="pattern-ex"><strong>Add a</strong> poached egg <strong>on top</strong> of the toast.</div>
+        <div class="pattern-ex"><strong>Add a</strong> soft yolk <strong>on top</strong>, please.</div>
+        <div class="pattern-ex"><strong>Add a</strong> sprinkle of chives <strong>on top</strong>.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2>ASK <span class="kr">· 튜터와 이야기하기</span></h2>
+    </div>
+    <div class="ask-box">
+      <div class="ask-item"><div class="ask-q">Q1</div><div class="ask-text">Which egg style is the hardest for you to nail?</div></div>
+      <div class="ask-item"><div class="ask-q">Q2</div><div class="ask-text">Do you serve eggs in Korean breakfast dishes? Which ones?</div></div>
+      <div class="ask-item"><div class="ask-q">Q3</div><div class="ask-text">What's the trick to a perfect poached egg?</div></div>
+      <div class="ask-item"><div class="ask-q">Q4</div><div class="ask-text">Soft scramble or hard scramble — which do you prefer?</div></div>
+      <div class="ask-item"><div class="ask-q">Q5</div><div class="ask-text">Have you ever made a classic French omelet?</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2>MISSION <span class="kr">· 오늘의 미션</span></h2>
+    </div>
+    <div class="mission">
+      <div class="mission-title">
+        <span class="ico">🎯</span>
+        <span>오늘 셰프트에서 꼭 말해보기</span>
+      </div>
+      <div class="checklist">
+        <div class="check-item"><div class="check-box"></div><div>포치드 에그 주문 시 "Two poached eggs." 한 번 발화하기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>스크램블 작업 시 "Scramble them softly." 표현 사용하기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>동료에게 "Order of omelet." 또는 "Add a fried egg on top." 한 번.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>poached egg · scrambled eggs · omelet · soft-boiled · fried egg 중 3개 이상 발화하기.</div></div>
+      </div>
+      <div class="example-box">
+        <div class="example-label">▸ EXAMPLE</div>
+        <div class="example-text">Yes, Chef! Brunch is starting — poaching water ready, gentle simmer with vinegar. Two poached eggs for table four, three minutes, soft yolks. I'll scramble them softly for table nine — low heat, constant stir. And a classic three-egg omelet for table seven, no color, folded, Chef.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-line"></div>
+    <div class="footer-text"><strong>FRIENDING</strong> · Kitchen English for Working Holiday &nbsp;|&nbsp; Unit 22 · Eggs & Breakfast</div>
+  </div>
+
+</div>
+</body>
+</html>

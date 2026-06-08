@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRIENDING+ · 화장품 마케팅 영어 Unit 19 — David Writes a Follow-up Email After the Meeting</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --blue:   #3B9FE5;
+  --purple: #7B5CE5;
+  --pink:   #E5356A;
+  --navy:   #1A2440;
+  --grad:   linear-gradient(135deg, #3B9FE5 0%, #7B5CE5 50%, #E5356A 100%);
+}
+
+body {
+  font-family: 'Nanum Gothic', 'Nunito', sans-serif;
+  background: #f5f5f5;
+  padding: 20px;
+}
+
+.container { max-width: 900px; margin: 0 auto; }
+
+.header-banner {
+  background: var(--grad);
+  color: white;
+  padding: 30px 20px;
+  text-align: center;
+  margin-bottom: 30px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+.header-info { text-align: center; }
+.unit-label {
+  font-family: 'Nunito', sans-serif;
+  font-size: 11pt;
+  letter-spacing: 1px;
+  opacity: 0.9;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+.unit-title {
+  font-family: 'Nunito', sans-serif;
+  font-size: 24pt;
+  font-weight: 900;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+.unit-subtitle {
+  font-size: 13pt;
+  opacity: 0.9;
+  font-weight: 700;
+}
+@media (max-width: 600px) {
+  .header-banner { padding: 20px; }
+  .header-top { flex-direction: column; text-align: center; }
+  .unit-title { font-size: 20pt; }
+}
+
+.situation-section {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  background: white;
+  padding: 20px;
+  border-radius: 6px;
+}
+@media (max-width: 768px) {
+  .situation-section {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .situation-icon { order: -1; }
+}
+.situation-icon { font-size: 40px; flex-shrink: 0; min-width: 50px; }
+.situation-title {
+  font-size: 14pt;
+  font-weight: 900;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+.situation-desc {
+  font-size: 11pt;
+  color: #666;
+  line-height: 1.7;
+  padding-left: 12px;
+  border-left: 3px solid var(--blue);
+  text-align: left;
+}
+
+.section-header {
+  font-family: 'Nunito', sans-serif;
+  font-size: 12pt;
+  color: var(--blue);
+  font-weight: 900;
+  margin: 22px 0 10px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-header .time-badge {
+  font-family: 'Nunito', sans-serif;
+  font-size: 9pt;
+  background: #f0f0f0;
+  color: #999;
+  padding: 3px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+}
+.section-header.purple { color: var(--purple); }
+.section-header.pink   { color: var(--pink); }
+
+.card-box {
+  background: white;
+  border-radius: 6px;
+  padding: 20px 15px;
+  margin-bottom: 15px;
+}
+@media (max-width: 768px) {
+  .card-box { background: transparent; padding: 15px 0; }
+}
+
+.audio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  border: 1px solid #e0e0e0;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all .18s;
+  vertical-align: middle;
+  padding: 0;
+}
+.audio-btn:hover {
+  background: var(--blue);
+  border-color: var(--blue);
+  transform: scale(1.1);
+}
+.audio-btn:hover svg path { fill: #fff; }
+.audio-btn svg { width: 9px; height: 9px; pointer-events: none; }
+.audio-btn svg path { fill: #999; transition: fill .18s; }
+.audio-btn.playing {
+  background: var(--blue);
+  border-color: var(--blue);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.audio-btn.playing svg path { fill: #fff; }
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59,159,229,.4); }
+  50%      { box-shadow: 0 0 0 7px rgba(59,159,229,0); }
+}
+
+.pick-list { display: flex; flex-direction: column; gap: 12px; }
+.pick-item {
+  display: flex;
+  gap: 15px;
+  align-items: flex-start;
+  padding: 12px 15px;
+  background: #f9f9f9;
+  border: 1.5px solid #e0e0e0;
+  border-left: 4px solid var(--blue);
+  border-radius: 4px;
+}
+.pick-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 900;
+  font-size: 12pt;
+  flex-shrink: 0;
+}
+.pick-content { flex: 1; }
+.pick-en {
+  font-family: 'Nunito', sans-serif;
+  font-size: 12pt;
+  font-weight: 400;
+  color: #1a1a1a;
+  line-height: 1.5;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pick-blank {
+  display: inline-block;
+  border-bottom: 1.5px solid #000;
+  min-width: 80px;
+  padding: 0 4px;
+  text-align: center;
+}
+.pick-kr { font-size: 11pt; color: #666; line-height: 1.5; }
+
+.word-bank {
+  margin-top: 12px;
+  padding: 10px 15px;
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.word-chip {
+  font-family: 'Nunito', sans-serif;
+  background: white;
+  border: 1.5px solid var(--blue);
+  color: var(--blue);
+  padding: 5px 12px;
+  border-radius: 16px;
+  font-size: 11pt;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.talk-section-header {
+  font-size: 12pt;
+  color: #666;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-weight: 700;
+}
+
+.dialogue { display: flex; flex-direction: column; gap: 10px; }
+.dialogue-line {
+  padding: 12px 15px;
+  border-radius: 4px;
+  border-left: 2px solid #f0f0f0;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.dialogue-line.buyer { background: white; border-left-color: #e0e0e0; }
+.dialogue-line.david { background: #f8f8f8; border-left-color: var(--purple); }
+.dialogue-main { flex: 1; min-width: 0; }
+.speaker {
+  font-family: 'Nunito', sans-serif;
+  font-size: 10pt;
+  font-weight: 900;
+  color: #666;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.dialogue-line.david .speaker { color: var(--purple); }
+.dialogue-text {
+  font-family: 'Nunito', sans-serif;
+  font-size: 12pt;
+  color: #1a1a1a;
+  line-height: 1.55;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.dialogue-text .text { flex: 1; }
+.scene-spacer { height: 20px; }
+
+.ask-list { display: flex; flex-direction: column; gap: 10px; }
+.ask-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 15px;
+  background: #fff5f8;
+  border-radius: 4px;
+  border-left: 3px solid var(--pink);
+}
+.ask-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--pink);
+  color: white;
+  font-family: 'Nunito', sans-serif;
+  font-size: 10pt;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ask-text {
+  font-family: 'Nunito', sans-serif;
+  font-size: 12pt;
+  font-weight: 400;
+  color: #1a1a1a;
+  line-height: 1.55;
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.ask-text .text { flex: 1; }
+
+.mission-section {
+  background: linear-gradient(135deg, var(--navy) 0%, #2a3458 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 6px;
+  margin-top: 30px;
+  position: relative;
+  overflow: hidden;
+}
+.mission-section::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--grad);
+}
+.mission-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+@media (max-width: 768px) {
+  .mission-head {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .mobile-break { display: block; height: 8px; }
+}
+@media (min-width: 769px) {
+  .mobile-break { display: none; }
+}
+.mission-badge {
+  background: var(--pink);
+  color: white;
+  font-family: 'Nunito', sans-serif;
+  font-size: 10pt;
+  font-weight: 900;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+.mission-title { font-size: 14pt; font-weight: 800; color: white; }
+@media (max-width: 768px) { .mission-title { max-width: 280px; } }
+.mission-desc {
+  font-size: 11pt;
+  color: rgba(255,255,255,.7);
+  margin-bottom: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+.mission-checklist { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12pt;
+  color: rgba(255,255,255,.9);
+  line-height: 1.5;
+}
+.check-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1.5px solid rgba(255,255,255,.3);
+  flex-shrink: 0;
+}
+.mission-example {
+  background: rgba(255,255,255,.06);
+  border-radius: 4px;
+  padding: 14px 15px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 11pt;
+  line-height: 1.7;
+  color: rgba(255,255,255,.9);
+  border-left: 3px solid var(--pink);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.mission-example .ex-content { flex: 1; }
+.mission-example-label {
+  display: block;
+  font-family: 'Nunito', sans-serif;
+  font-size: 9pt;
+  color: rgba(255,255,255,.5);
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+.mission-example .audio-btn {
+  background: rgba(255,255,255,.1);
+  border-color: rgba(255,255,255,.2);
+  margin-top: 2px;
+}
+.mission-example .audio-btn svg path { fill: rgba(255,255,255,.7); }
+
+.footer {
+  margin-top: 40px;
+  padding: 15px 20px;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+  font-family: 'Nunito', sans-serif;
+  font-size: 9pt;
+  color: #999;
+  letter-spacing: 0.05em;
+}
+.grad-line {
+  width: 50px;
+  height: 3px;
+  background: var(--grad);
+  border-radius: 2px;
+  margin: 0 auto 10px;
+}
+.email-note {
+  font-family: 'Nanum Gothic', sans-serif;
+  font-size: 10pt;
+  color: #999;
+  margin-top: 8px;
+  letter-spacing: 0;
+}
+.email-note strong { color: var(--purple); }
+
+@media print {
+  body { background: #fff; padding: 0; }
+  .audio-btn { display: none; }
+  .card-box, .mission-section, .situation-section { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header-banner">
+    <div class="header-top">
+      <div class="header-info">
+        <div class="unit-label">FRIENDING+ · COSMETICS MARKETING ENGLISH</div>
+        <div class="unit-title">David Writes a Follow-up Email After the Meeting</div>
+        <div class="unit-subtitle">민성, 미팅 후속 이메일을 작성하다</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="situation-section">
+    <div class="situation-icon">📧</div>
+    <div>
+      <div class="situation-title">PART 3 · Negotiation & Email · Unit 19</div>
+      <div class="situation-desc">공식 협상이 끝나고 민성(David)은 미팅 내용을 정리해 follow-up 이메일을 보내야 한다. 이메일 작성법의 기초인 Subject Line·인사·요약·다음 단계 구조를 익히고, 협상 결과를 정확히 기록해 향후 분쟁의 여지를 없애는 것이 목표다.</div>
+    </div>
+  </div>
+
+  <!-- 1. 5 PICK -->
+  <div class="section-header">
+    1. 5 PICK · 핵심 문장 채우기
+    <span class="time-badge">3 MIN</span>
+  </div>
+  <div class="card-box">
+    <div class="pick-list">
+
+      <div class="pick-item">
+        <div class="pick-num">1</div>
+        <div class="pick-content">
+          <div class="pick-en">
+            <button class="audio-btn" data-audio="unit19/pick_1.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span>Thank you for the productive <span class="pick-blank">     </span> this morning.</span>
+          </div>
+          <div class="pick-kr">오늘 오전의 생산적인 미팅에 감사드립니다.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">2</div>
+        <div class="pick-content">
+          <div class="pick-en">
+            <button class="audio-btn" data-audio="unit19/pick_2.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span>I wanted to <span class="pick-blank">     </span> the key points we discussed.</span>
+          </div>
+          <div class="pick-kr">논의한 주요 사항을 정리해 드리고자 합니다.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">3</div>
+        <div class="pick-content">
+          <div class="pick-en">
+            <button class="audio-btn" data-audio="unit19/pick_3.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span>Please confirm if my <span class="pick-blank">     </span> is correct.</span>
+          </div>
+          <div class="pick-kr">제 이해가 맞는지 확인 부탁드립니다.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">4</div>
+        <div class="pick-content">
+          <div class="pick-en">
+            <button class="audio-btn" data-audio="unit19/pick_4.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span>I will send you the formal <span class="pick-blank">     </span> by next Friday.</span>
+          </div>
+          <div class="pick-kr">다음 주 금요일까지 공식 계약서를 보내드리겠습니다.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">5</div>
+        <div class="pick-content">
+          <div class="pick-en">
+            <button class="audio-btn" data-audio="unit19/pick_5.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span>Looking forward to <span class="pick-blank">     </span> from you soon.</span>
+          </div>
+          <div class="pick-kr">곧 연락 주시기를 기다리겠습니다.</div>
+        </div>
+      </div>
+    </div>
+    <div class="word-bank">
+      <span class="word-chip">meeting</span>
+      <span class="word-chip">summarize</span>
+      <span class="word-chip">understanding</span>
+      <span class="word-chip">contract</span>
+      <span class="word-chip">hearing</span>
+    </div>
+  </div>
+
+  <!-- 2. TALK -->
+  <div class="section-header purple">
+    2. TALK · 실전 비즈니스 대화
+    <span class="time-badge">9 MIN</span>
+  </div>
+  <div class="card-box">
+
+    <div class="talk-section-header">📧 Scene 1. Planning the Follow-up Email (후속 이메일 구상)</div>
+    <div class="dialogue">
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk1_1.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Sarah, before you leave, I'll send a follow-up email summarizing today's discussion.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk1_2.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Thank you. I always appreciate a written record.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk1_3.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">I'll include the trial order terms, marketing support package, and exclusivity framework.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk1_4.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Perfect. When should I expect it?</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk1_5.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Within two hours after you leave. I want everything fresh while we both remember the details.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk1_6.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">That's professional. What do you need from me?</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk1_7.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Just a quick confirmation that my summary matches your understanding.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk1_8.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Will do. I'll reply by tomorrow morning.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="scene-spacer"></div>
+
+    <div class="talk-section-header">✍️ Scene 2. Email Structure Principles (이메일 구조 원칙)</div>
+    <div class="dialogue">
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk2_1.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Out of curiosity, what's your email style? You seem to send a lot of detailed emails.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk2_2.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">I follow a simple four-part structure. Subject line, greeting, body, and clear next steps.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk2_3.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Tell me about the subject line.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk2_4.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">I make it specific. Instead of 'Meeting Follow-up,' I'd write 'Follow-up: Trial Order Terms & Marketing Support Package.'</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk2_5.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Much clearer. What about the body?</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk2_6.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Three short paragraphs at most. Summary, ask, and timeline.</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk2_7.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">And the close?</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line david">
+        <div class="dialogue-main">
+          <div class="speaker">David</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk2_8.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">Always with a clear next step. Not 'let me know if you have questions,' but something like 'I'll send the contract by Friday.'</span>
+          </div>
+        </div>
+      </div>
+      <div class="dialogue-line buyer">
+        <div class="dialogue-main">
+          <div class="speaker">Buyer</div>
+          <div class="dialogue-text">
+            <button class="audio-btn" data-audio="unit19/talk2_9.mp3" aria-label="play">
+              <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+            </button>
+            <span class="text">That's actionable. I should adopt that style myself.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ASK -->
+  <div class="section-header pink">
+    3. ASK · 튜터와 이야기하기
+    <span class="time-badge">7 MIN</span>
+  </div>
+  <div class="card-box">
+    <div class="ask-list">
+
+      <div class="ask-item">
+        <div class="ask-num">Q1</div>
+        <div class="ask-text">
+          <button class="audio-btn" data-audio="unit19/ask_1.mp3" aria-label="play">
+            <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+          </button>
+          <span class="text">Why is a specific subject line so important in business emails?</span>
+        </div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-num">Q2</div>
+        <div class="ask-text">
+          <button class="audio-btn" data-audio="unit19/ask_2.mp3" aria-label="play">
+            <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+          </button>
+          <span class="text">How do you decide what to include in a follow-up summary?</span>
+        </div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-num">Q3</div>
+        <div class="ask-text">
+          <button class="audio-btn" data-audio="unit19/ask_3.mp3" aria-label="play">
+            <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+          </button>
+          <span class="text">What's the right tone for confirming a verbal agreement in writing?</span>
+        </div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-num">Q4</div>
+        <div class="ask-text">
+          <button class="audio-btn" data-audio="unit19/ask_4.mp3" aria-label="play">
+            <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+          </button>
+          <span class="text">How quickly should you send a follow-up after a major meeting?</span>
+        </div>
+      </div>
+      <div class="ask-item">
+        <div class="ask-num">Q5</div>
+        <div class="ask-text">
+          <button class="audio-btn" data-audio="unit19/ask_5.mp3" aria-label="play">
+            <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+          </button>
+          <span class="text">What's one habit you wish more people followed in business emails?</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. MISSION -->
+  <div class="mission-section">
+    <div class="mission-head">
+      <span class="mission-badge">MISSION</span>
+      <br class="mobile-break">
+      <span class="mission-title">미팅 후속 이메일 4단계 구조로 작성하기</span>
+    </div>
+    <div class="mission-desc">
+      아래 네 가지 내용을 이어서 한 번에 자연스럽게 말해보는 것이 오늘의 목표입니다. <span style="color:rgba(255,255,255,.5)">· 6 MIN</span>
+    </div>
+    <div class="mission-checklist">
+
+      <div class="check-item">
+        <div class="check-box"></div>
+        <span>① 구체적인 Subject Line 만들기</span>
+      </div>
+      <div class="check-item">
+        <div class="check-box"></div>
+        <span>② 미팅 감사 인사로 시작하기</span>
+      </div>
+      <div class="check-item">
+        <div class="check-box"></div>
+        <span>③ 논의한 핵심 사항 요약하기</span>
+      </div>
+      <div class="check-item">
+        <div class="check-box"></div>
+        <span>④ 다음 단계와 시점 명확하게 마무리하기</span>
+      </div>
+    </div>
+    <div class="mission-example">
+      <button class="audio-btn" data-audio="unit19/mission_example.mp3" aria-label="play">
+        <svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg>
+      </button>
+      <div class="ex-content">
+        <span class="mission-example-label">📝 EXAMPLE</span>
+        I follow a simple four-part structure. The subject line is specific — 'Follow-up: Trial Order Terms & Marketing Support Package' is much clearer than just 'Meeting Follow-up.' The body has three short paragraphs at most — summary, ask, and timeline. And I always close with a clear next step, not 'let me know if you have questions,' but something concrete like 'I'll send the contract by Friday.'
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="grad-line"></div>
+    © 2026 FRIENDING+ · COSMETICS MARKETING ENGLISH SERIES · UNIT 19
+    <div class="email-note">📧 이 Unit에 해당하는 실무 이메일 샘플은 <strong>부록 (Email Appendix)</strong>에서 확인하세요.</div>
+  </div>
+
+</div>
+
+<script>
+(function(){
+  const AUDIO_BASE = 'audio/';
+  let currentAudio = null;
+  let currentButton = null;
+
+  document.querySelectorAll('.audio-btn').forEach(btn => {
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      const file = this.getAttribute('data-audio');
+      if (!file) return;
+
+      if (currentButton === this && currentAudio && !currentAudio.paused) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+        return;
+      }
+
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        if (currentButton) currentButton.classList.remove('playing');
+      }
+
+      currentAudio = new Audio(AUDIO_BASE + file);
+      currentButton = this;
+      this.classList.add('playing');
+
+      currentAudio.play().catch(err => {
+        this.classList.remove('playing');
+        const note = document.createElement('div');
+        note.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1A2440;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-family:"Nanum Gothic",sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);';
+        note.textContent = '🔊 음성 파일이 아직 준비되지 않았습니다 (' + file + ')';
+        document.body.appendChild(note);
+        setTimeout(()=>note.remove(), 2500);
+      });
+
+      currentAudio.addEventListener('ended', () => {
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

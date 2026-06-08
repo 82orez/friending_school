@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unit 6 · Boiling & Simmering — Kitchen English for Working Holiday</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Verdana', sans-serif; background: #f5f5f5; color: #1a1a1a; line-height: 1.6; padding: 30px 20px 60px; }
+.page { max-width: 900px; margin: 0 auto; }
+.header { background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%); color: #fff; padding: 30px 32px; border-radius: 6px; margin-bottom: 24px; position: relative; }
+.header-tag { display: inline-block; font-size: 9pt; font-weight: 700; background: rgba(0,0,0,.2); color: #fff; padding: 3px 11px; border-radius: 12px; margin-bottom: 12px; letter-spacing: 0.5px; }
+.header-num { font-size: 10pt; font-weight: 900; opacity: 0.85; margin-bottom: 4px; letter-spacing: 1px; }
+.unit-title-en { font-size: 22pt; font-weight: 900; margin-bottom: 6px; letter-spacing: 0.3px; }
+.unit-title-kr { font-size: 12pt; font-weight: 700; opacity: 0.95; }
+.situation { background: #fff; border: 1px solid #e0e0e0; border-left: 4px solid #ff4757; border-radius: 6px; padding: 18px 22px; margin-bottom: 28px; display: flex; gap: 14px; align-items: flex-start; }
+.situation-icon { font-size: 26px; flex-shrink: 0; margin-top: 2px; }
+.situation-body h3 { font-size: 10pt; font-weight: 900; color: #ff4757; letter-spacing: 1px; margin-bottom: 6px; }
+.situation-body p { font-size: 11pt; color: #334; line-height: 1.7; }
+.section { margin-bottom: 28px; }
+.section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #ff4757; }
+.section-num { width: 30px; height: 30px; border-radius: 50%; background: #ff4757; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12pt; font-weight: 900; flex-shrink: 0; }
+.section-header h2 { font-size: 13pt; font-weight: 900; color: #1a1a1a; }
+.section-header .kr { font-size: 10pt; font-weight: 700; color: #888; margin-left: 4px; }
+.pick-list { display: flex; flex-direction: column; gap: 12px; }
+.pick-item { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 14px 18px; display: flex; gap: 14px; align-items: flex-start; }
+.pick-num { background: #ff4757; color: #fff; font-size: 10pt; font-weight: 900; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+.pick-body { flex: 1; }
+.pick-en { font-size: 12pt; color: #1a1a1a; line-height: 1.7; margin-bottom: 4px; }
+.pick-blank { display: inline-block; min-width: 90px; border-bottom: 2px solid #1a1a1a; padding: 0 8px; text-align: center; font-weight: 700; color: transparent; }
+.pick-kr { font-size: 10pt; color: #888; }
+.word-bank { margin-top: 14px; padding: 14px 16px; background: #fff5f8; border-radius: 6px; border: 1px dashed #ff4757; }
+.word-bank-label { font-size: 9pt; font-weight: 900; color: #ff4757; letter-spacing: 1px; margin-bottom: 8px; }
+.word-bank-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: #fff; border: 1px solid #ff4757; color: #ff4757; font-size: 10pt; font-weight: 700; padding: 4px 12px; border-radius: 14px; font-style: italic; }
+.scene { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 18px 20px; margin-bottom: 14px; }
+.scene-title { font-size: 11pt; font-weight: 900; color: #ff4757; margin-bottom: 4px; }
+.scene-kr { font-size: 9.5pt; color: #888; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; }
+.dialog-line { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; }
+.dialog-line:last-child { margin-bottom: 0; }
+.speaker { font-size: 9pt; font-weight: 900; flex-shrink: 0; min-width: 72px; padding: 3px 9px; border-radius: 4px; text-align: center; margin-top: 2px; }
+.speaker.jun { background: #ff4757; color: #fff; }
+.speaker.other { background: #f0f0f0; color: #555; }
+.line-text { flex: 1; font-size: 11pt; line-height: 1.6; padding: 8px 12px; border-radius: 4px; }
+.dialog-line.jun-line .line-text { background: #f9f9f9; border-left: 3px solid #ff4757; }
+.dialog-line.other-line .line-text { background: #fff; border: 1px solid #e8e8e8; }
+.line-text strong { font-weight: 900; color: #ff4757; }
+.pattern-box { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 16px 18px; margin-bottom: 12px; }
+.pattern-title { font-size: 11pt; font-weight: 900; color: #ff4757; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+.pattern-title strong { color: #1a1a1a; font-weight: 900; }
+.pattern-examples { display: flex; flex-direction: column; gap: 7px; }
+.pattern-ex { font-size: 11pt; color: #334; line-height: 1.5; padding-left: 16px; position: relative; }
+.pattern-ex::before { content: "•"; color: #ff4757; position: absolute; left: 4px; font-weight: 900; }
+.pattern-ex strong { font-weight: 900; color: #ff4757; }
+.ask-box { background: #fff5f8; border-radius: 6px; padding: 18px 22px; }
+.ask-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,71,87,0.15); }
+.ask-item:last-child { border-bottom: none; }
+.ask-q { font-size: 10pt; font-weight: 900; color: #ff4757; flex-shrink: 0; min-width: 28px; }
+.ask-text { font-size: 11pt; color: #334; line-height: 1.6; }
+.mission { background: linear-gradient(135deg, #1a1a1a 0%, #333 100%); color: #fff; border-radius: 6px; padding: 22px 24px; }
+.mission-title { display: flex; align-items: center; gap: 10px; font-size: 12pt; font-weight: 900; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+.mission-title .ico { font-size: 18px; }
+.checklist { display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; }
+.check-item { display: flex; gap: 12px; align-items: flex-start; font-size: 11pt; line-height: 1.6; color: rgba(255,255,255,0.92); }
+.check-box { width: 18px; height: 18px; border: 2px solid #ff4757; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
+.example-box { background: rgba(255,255,255,0.06); border-left: 3px solid #ff4757; border-radius: 4px; padding: 14px 16px; }
+.example-label { font-size: 9pt; font-weight: 900; color: #ff6b7a; letter-spacing: 1px; margin-bottom: 8px; }
+.example-text { font-size: 11pt; line-height: 1.7; color: rgba(255,255,255,0.95); font-style: italic; }
+.footer { margin-top: 36px; text-align: center; }
+.footer-line { height: 3px; border-radius: 2px; background: linear-gradient(135deg, #ff4757 0%, #ff6b7a 100%); margin-bottom: 12px; }
+.footer-text { font-size: 9pt; color: #888; letter-spacing: 0.5px; }
+.footer-text strong { color: #ff4757; font-weight: 900; }
+@media print { body { padding: 0; background: #fff; } .section { break-inside: avoid; } .mission, .scene, .pattern-box, .pick-item { break-inside: avoid; } }
+@media (max-width: 600px) { body { padding: 16px 12px 40px; } .header { padding: 22px 20px; } .unit-title-en { font-size: 18pt; } .unit-title-kr { font-size: 11pt; } .speaker { min-width: 60px; font-size: 8.5pt; } .pick-en, .line-text, .pattern-ex, .ask-text, .check-item { font-size: 10.5pt; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="header">
+    <span class="header-tag">PART 2 · BASIC COOKING METHODS</span>
+    <div class="header-num">UNIT 06</div>
+    <div class="unit-title-en">Boiling & Simmering</div>
+    <div class="unit-title-kr">준, 끓이기와 약불을 익히다</div>
+  </div>
+
+  <div class="situation">
+    <div class="situation-icon">🔥</div>
+    <div class="situation-body">
+      <h3>SITUATION</h3>
+      <p>준은 다양한 끓이기 기법을 배운다. 강한 거품이 올라오는 롤링 보일(rolling boil, 펄펄 끓는 상태)부터 약불에서 잔잔하게 끓는 시머(simmer, 약하게 끓이기)까지 그 차이가 중요하다. 큰 스톡팟(stockpot, 육수용 큰 냄비)에 채소와 뼈를 넣고 천천히 시머링하면 풍부한 육수가 된다. 마지막으로 졸여서(reduce, 졸이기) 농도와 풍미를 진하게 만든다.</p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <h2>5 PICK <span class="kr">· 핵심 문장 채우기</span></h2>
+    </div>
+    <div class="pick-list">
+      <div class="pick-item">
+        <div class="pick-num">1</div>
+        <div class="pick-body">
+          <div class="pick-en">Let it <span class="pick-blank">simmer</span> slowly for two hours.</div>
+          <div class="pick-kr">2시간 동안 약불에서 천천히 끓여라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">2</div>
+        <div class="pick-body">
+          <div class="pick-en">Bring it to a <span class="pick-blank">boil</span> first.</div>
+          <div class="pick-kr">먼저 끓는점까지 올려라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">3</div>
+        <div class="pick-body">
+          <div class="pick-en"><span class="pick-blank">Reduce</span> the sauce by half.</div>
+          <div class="pick-kr">소스를 절반으로 졸여라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">4</div>
+        <div class="pick-body">
+          <div class="pick-en">Put the bones in the big <span class="pick-blank">stockpot</span>.</div>
+          <div class="pick-kr">뼈를 큰 스톡팟에 넣어라.</div>
+        </div>
+      </div>
+      <div class="pick-item">
+        <div class="pick-num">5</div>
+        <div class="pick-body">
+          <div class="pick-en">Wait for a <span class="pick-blank">rolling boil</span> before adding pasta.</div>
+          <div class="pick-kr">파스타 넣기 전에 펄펄 끓을 때까지 기다려라.</div>
+        </div>
+      </div>
+    </div>
+    <div class="word-bank">
+      <div class="word-bank-label">▸ WORD BANK</div>
+      <div class="word-bank-chips">
+        <span class="chip">simmer</span>
+        <span class="chip">boil</span>
+        <span class="chip">reduce</span>
+        <span class="chip">stockpot</span>
+        <span class="chip">rolling boil</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <h2>TALK <span class="kr">· 실전 대화</span></h2>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">Scene 1 — Making Chicken Stock</div>
+      <div class="scene-kr">치킨 스톡 만들기</div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Jun, we need chicken stock today. Use the big stockpot.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef! Bones and vegetables, Chef?</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Right. Roast the bones first. Then water, mirepoix, and herbs.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Should I bring it to a boil first, Chef?</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Chef</div>
+        <div class="line-text">Yes. <strong>Bring it to a boil</strong>, then drop the heat. Let it simmer slowly for four hours.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Heard, Chef! <strong>Let it simmer slowly</strong> for four hours.</div>
+      </div>
+    </div>
+
+    <div class="scene">
+      <div class="scene-title">Scene 2 — Reducing a Sauce</div>
+      <div class="scene-kr">소스 졸이기</div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Jun, the sauce is too thin. Reduce it.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Yes, Chef! How much, Chef?</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">By half. Keep it at a low simmer, not a rolling boil.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Got it, Chef.</div>
+      </div>
+      <div class="dialog-line other-line">
+        <div class="speaker other">Sous Chef</div>
+        <div class="line-text">Stir occasionally so it doesn't burn at the bottom.</div>
+      </div>
+      <div class="dialog-line jun-line">
+        <div class="speaker jun">Jun</div>
+        <div class="line-text">Heard, Chef!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <h2>EXTENSION <span class="kr">· 응용 표현</span></h2>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 1 · <strong>Bring it to a ~</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Bring it to a</strong> boil.</div>
+        <div class="pattern-ex"><strong>Bring it to a</strong> rolling boil first.</div>
+        <div class="pattern-ex"><strong>Bring it to a</strong> gentle simmer.</div>
+        <div class="pattern-ex"><strong>Bring it to a</strong> boil, then reduce the heat.</div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 2 · <strong>Let it ~ slowly</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Let it simmer slowly</strong> for two hours.</div>
+        <div class="pattern-ex"><strong>Let it cook slowly</strong> with the lid on.</div>
+        <div class="pattern-ex"><strong>Let it reduce slowly</strong>, no rush.</div>
+        <div class="pattern-ex"><strong>Let it rest slowly</strong> before serving.</div>
+      </div>
+    </div>
+
+    <div class="pattern-box">
+      <div class="pattern-title">Pattern 3 · <strong>Reduce it by ~</strong></div>
+      <div class="pattern-examples">
+        <div class="pattern-ex"><strong>Reduce it by</strong> half.</div>
+        <div class="pattern-ex"><strong>Reduce it by</strong> a third.</div>
+        <div class="pattern-ex"><strong>Reduce it by</strong> two-thirds for a glaze.</div>
+        <div class="pattern-ex"><strong>Reduce it</strong> until syrupy, Chef.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <h2>ASK <span class="kr">· 튜터와 이야기하기</span></h2>
+    </div>
+    <div class="ask-box">
+      <div class="ask-item"><div class="ask-q">Q1</div><div class="ask-text">How long do you simmer Korean broths like seolleongtang or galbitang?</div></div>
+      <div class="ask-item"><div class="ask-q">Q2</div><div class="ask-text">What's the difference between a rolling boil and a gentle boil for you?</div></div>
+      <div class="ask-item"><div class="ask-q">Q3</div><div class="ask-text">When do you reduce sauces in Korean cooking?</div></div>
+      <div class="ask-item"><div class="ask-q">Q4</div><div class="ask-text">How big is the biggest stockpot you've used?</div></div>
+      <div class="ask-item"><div class="ask-q">Q5</div><div class="ask-text">What flavor do you think a long, slow simmer brings out?</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <h2>MISSION <span class="kr">· 오늘의 미션</span></h2>
+    </div>
+    <div class="mission">
+      <div class="mission-title">
+        <span class="ico">🎯</span>
+        <span>오늘 셰프트에서 꼭 말해보기</span>
+      </div>
+      <div class="checklist">
+        <div class="check-item"><div class="check-box"></div><div>스톡 시작 전 "Bring it to a boil first, Chef?" 확인 질문하기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>약불 조절 시 "Let it simmer slowly." 표현 한 번 발화하기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>졸일 때 "Reduce it by half." 표현 사용하기.</div></div>
+        <div class="check-item"><div class="check-box"></div><div>simmer · boil · reduce · stockpot 중 3개 이상 실제 발화하기.</div></div>
+      </div>
+      <div class="example-box">
+        <div class="example-label">▸ EXAMPLE</div>
+        <div class="example-text">Yes, Chef! I'll roast the bones first, then put them in the big stockpot with mirepoix and herbs. I'll bring it to a boil, then drop the heat and let it simmer slowly for four hours. After straining, I'll reduce the stock by half for a rich, deep flavor, Chef.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-line"></div>
+    <div class="footer-text"><strong>FRIENDING</strong> · Kitchen English for Working Holiday &nbsp;|&nbsp; Unit 06 · Boiling & Simmering</div>
+  </div>
+
+</div>
+</body>
+</html>

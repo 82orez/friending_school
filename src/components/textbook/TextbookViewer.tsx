@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, List } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { saveScrollProgress } from "@/app/textbook/cooking/actions";
+import { saveScrollProgress } from "@/app/textbook/actions";
 
 type Props = {
   html: string;
@@ -37,9 +37,6 @@ export default function TextbookViewer({
   const [scrollRestored, setScrollRestored] = useState(false);
   const lastSentPercentRef = useRef<number | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const prevUnit = unit > 1 ? unit - 1 : null;
-  const nextUnit = unit < totalUnits ? unit + 1 : null;
 
   const resizeIframe = useCallback(() => {
     const iframe = iframeRef.current;
@@ -139,25 +136,25 @@ export default function TextbookViewer({
       </div>
 
       <div className="flex items-center gap-2">
-        {prevUnit && prevHref ? (
+        {prevHref ? (
           <Link
             href={prevHref}
-            aria-label={`이전 Unit ${prevUnit}`}
-            className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-surface focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:outline-none">
+            aria-label="이전 Unit"
+            className="text-ink-soft hover:bg-surface focus-visible:ring-brand/50 inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none">
             <ChevronLeft className="size-4" aria-hidden />
             <span className="hidden sm:inline">이전</span>
           </Link>
         ) : (
-          <span className="inline-flex items-center gap-1 px-3 py-2 text-sm text-muted-fg-faint">
+          <span className="text-muted-fg-faint inline-flex items-center gap-1 px-3 py-2 text-sm">
             <ChevronLeft className="size-4" aria-hidden />
             <span className="hidden sm:inline">이전</span>
           </span>
         )}
-        {nextUnit && nextHref ? (
+        {nextHref ? (
           <Link
             href={nextHref}
-            aria-label={`다음 Unit ${nextUnit}`}
-            className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-surface focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:outline-none">
+            aria-label="다음 Unit"
+            className="text-ink-soft hover:bg-surface focus-visible:ring-brand/50 inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none">
             <span className="hidden sm:inline">다음</span>
             <ChevronRight className="size-4" aria-hidden />
           </Link>

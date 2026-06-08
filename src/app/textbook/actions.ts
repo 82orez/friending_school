@@ -2,11 +2,14 @@
 
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
-import { COOKING_COURSE, COOKING_TOTAL_UNITS } from "@/data/textbook/cooking";
+import { getTextbook } from "@/data/textbook";
 
+// 스크롤 진행률 저장. 진입 가드 순서 고정:
+// (1) course 레지스트리 화이트리스트 (2) unit 유효성(해당 교재의 unit 번호) (3) percent 유효성+clamp (4) getUser
 export async function saveScrollProgress(course: string, unit: number, percent: number, completed: boolean) {
-  if (course !== COOKING_COURSE) return;
-  if (!Number.isInteger(unit) || unit < 1 || unit > COOKING_TOTAL_UNITS) return;
+  const textbook = getTextbook(course);
+  if (!textbook) return;
+  if (!Number.isInteger(unit) || !textbook.units.some((u) => u.unit === unit)) return;
   if (!Number.isFinite(percent)) return;
   const clampedPercent = Math.max(0, Math.min(100, Math.round(percent)));
 
