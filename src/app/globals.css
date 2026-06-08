@@ -54,6 +54,12 @@
   --color-muted-fg-faint: var(--muted-fg-faint);
   --color-rule: var(--rule);
   --color-rule-faint: var(--rule-faint);
+  /* project0607 플랫폼 리디자인 팔레트 (블루→핑크 그라디언트 계열). 기존 brand(red) 토큰과 공존. */
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-blue-soft: var(--accent-blue-soft);
+  --color-accent-blue-ink: var(--accent-blue-ink);
+  --color-cta: var(--cta);
+  --color-progress: var(--progress);
 }
 
 :root {
@@ -98,6 +104,12 @@
   --muted-fg-faint: #999999;
   --rule: #eeeeee;
   --rule-faint: #dddddd;
+  /* project0607 플랫폼 리디자인 팔레트 */
+  --accent-blue: #6b8ff0;
+  --accent-blue-soft: #eef1fd;
+  --accent-blue-ink: #4a6bd4;
+  --cta: #1a4fa0;
+  --progress: #b22222;
 }
 
 .dark {
@@ -148,5 +160,19 @@
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]) {
     cursor: pointer;
+  }
+}
+
+@layer utilities {
+  /* 블루→핑크 브랜드 그라디언트 (배경 / 텍스트 클립). 순수 CSS 속성만 사용해 @apply 제약 회피. */
+  .bg-brand-gradient {
+    background-image: linear-gradient(135deg, #6b8ff0 0%, #f06b9d 100%);
+  }
+  .text-brand-gradient {
+    background-image: linear-gradient(135deg, #6b8ff0 0%, #f06b9d 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
   }
 }

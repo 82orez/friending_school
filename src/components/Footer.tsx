@@ -1,10 +1,12 @@
 export default function Footer() {
   return (
-    <footer id="contact" className="border-t border-[#eee] bg-[#f5f5f5] px-6 py-8 text-center text-xs text-[#999]">
-      <p className="mb-2 font-bold">프렌딩 스쿨</p>
-      <p>청년을 세계로</p>
-      <p className="mt-4">워홀 필수 생존 영어 말하기</p>
-      <p className="mt-6 border-t border-[#ddd] pt-4">© 2024 프렌딩 스쿨. All Rights Reserved.</p>
+    <footer id="contact" className="bg-ink text-white">
+      <div className="mx-auto flex max-w-[1200px] flex-col items-center gap-3 px-5 py-9 text-center md:flex-row md:justify-between md:px-10 md:text-left">
+        <p className="text-base font-bold">
+          <span className="text-brand-gradient">프렌딩 스쿨</span>
+        </p>
+        <p className="text-[13px] text-[#888]">© 2026 청년을세계로. 워홀·해외진출 영어 플랫폼.</p>
+      </div>
     </footer>
   );
 }

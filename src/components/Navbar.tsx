@@ -11,9 +11,18 @@ import { TEXTBOOKS } from "@/data/textbook";
 
 type NavbarUser = { email?: string | null } | null;
 
+// 커리큘럼(과정) 링크 — Phase 2 과정 상세페이지(/courses/<slug>) placeholder.
+const COURSES = [
+  { slug: "workhol", label: "워홀 영어" },
+  { slug: "kitchen", label: "주방 영어" },
+  { slug: "grammar", label: "회화기초 문법" },
+  { slug: "cosmetic", label: "화장품 수출 영어" },
+];
+
 export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
   const [user, setUser] = useState<NavbarUser>(initialUser);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [curriculumOpen, setCurriculumOpen] = useState(false);
   const [textbookOpen, setTextbookOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -22,9 +31,12 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
   const closeMenu = () => setMenuOpen(false);
   const toggleMenu = () => setMenuOpen((prev) => !prev);
 
-  // 슬라이드 메뉴가 닫힐 때 교재 하위 메뉴도 초기화 (다시 열 때 접힌 상태로 시작)
+  // 슬라이드 메뉴가 닫힐 때 하위 아코디언도 초기화 (다시 열 때 접힌 상태로 시작)
   useEffect(() => {
-    if (!menuOpen) setTextbookOpen(false);
+    if (!menuOpen) {
+      setCurriculumOpen(false);
+      setTextbookOpen(false);
+    }
   }, [menuOpen]);
 
   // SSR로 받은 user prop이 갱신되면(로그인 후 revalidatePath로 layout 재실행) state 동기화.
@@ -82,17 +94,14 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
   return (
     <>
       {/* 네비 */}
-      <nav className="border-rule sticky top-0 z-[100] flex items-center border-b bg-white px-6 py-4">
+      <nav className="border-rule sticky top-0 z-[100] flex items-center border-b bg-white px-6 py-3">
         <div className="flex flex-1 items-center justify-start">
           <Link href="/">
-            <Image src="/images/friending_school_logo.png" alt="프렌딩 스쿨 로고" width={107} height={40} priority className="h-10 w-auto" />
+            <Image src="/images/logo.png" alt="청년을 세계로 — 프렌딩 스쿨" width={123} height={36} priority className="h-9 w-auto" />
           </Link>
         </div>
-        <div className="hidden flex-1 justify-center text-3xl font-bold md:flex">
-          <Link href="/">프렌딩 스쿨</Link>
-        </div>
 
-        <div className="flex flex-1 items-center justify-end gap-3">
+        <div className="flex items-center justify-end gap-3">
           {/* 데스크톱 인라인 인증 영역 */}
           <div className="hidden items-center gap-3 md:flex">
             {user ? (
@@ -103,7 +112,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 <form action={logout}>
                   <button
                     type="submit"
-                    className="border-rule-faint text-ink-soft hover:border-brand hover:text-brand focus-visible:ring-brand/50 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                    className="border-rule-faint text-ink-soft hover:border-accent-blue hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
                     로그아웃
                   </button>
                 </form>
@@ -112,7 +121,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
               <>
                 <Link
                   href="/login"
-                  className="text-ink-soft hover:text-brand focus-visible:ring-brand/50 rounded text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                  className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
                   로그인
                 </Link>
                 <Link
@@ -131,7 +140,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
             aria-label={menuOpen ? "메뉴 닫기" : "메뉴 열기"}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
-            className="bg-brand focus-visible:ring-brand/50 flex h-10 w-10 items-center justify-center rounded-full text-xl text-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+            className="bg-accent-blue focus-visible:ring-accent-blue/50 flex h-10 w-10 items-center justify-center rounded-full text-xl text-white focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             ≡
           </button>
         </div>
@@ -151,7 +160,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
         id="mobile-menu"
         role="dialog"
         aria-modal="true"
-        aria-label="모바일 메뉴"
+        aria-label="메뉴"
         aria-hidden={!menuOpen}
         inert={!menuOpen}
         className={`border-rule fixed top-0 z-[200] h-screen w-[280px] border-l bg-white pt-8 transition-[right] duration-300 ease-in-out ${
@@ -162,35 +171,50 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
           type="button"
           onClick={closeMenu}
           aria-label="메뉴 닫기"
-          className="focus-visible:ring-brand/50 absolute top-4 right-6 rounded border-none bg-transparent text-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+          className="focus-visible:ring-accent-blue/50 absolute top-4 right-6 rounded border-none bg-transparent text-2xl focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
           ✕
         </button>
         <ul className="list-none px-6">
+          {/* 커리큘럼 아코디언 */}
           <li className="border-rule border-b py-4">
-            <a
-              href="#curriculum"
-              onClick={closeMenu}
-              className="text-ink-soft focus-visible:ring-brand/50 rounded text-[15px] font-medium no-underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-              커리큘럼
-            </a>
+            <button
+              type="button"
+              onClick={() => setCurriculumOpen((prev) => !prev)}
+              aria-expanded={curriculumOpen}
+              aria-controls="mobile-curriculum-submenu"
+              className="text-ink-soft focus-visible:ring-accent-blue/50 flex w-full items-center justify-between rounded text-[15px] font-bold focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              <span>커리큘럼</span>
+              <ChevronDown aria-hidden className={cn("size-4 transition-transform duration-200", curriculumOpen && "rotate-180")} />
+            </button>
+            <div
+              id="mobile-curriculum-submenu"
+              className={cn(
+                "grid overflow-hidden transition-[grid-template-rows] duration-200 ease-in-out",
+                curriculumOpen ? "mt-1 grid-rows-[1fr]" : "grid-rows-[0fr]",
+              )}>
+              <ul className="min-h-0 list-none">
+                {COURSES.map((c) => (
+                  <li key={c.slug} className="py-2 pl-4">
+                    <Link
+                      href={`/courses/${c.slug}`}
+                      onClick={closeMenu}
+                      className="text-muted-fg hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 block rounded text-[14px] no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                      {c.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </li>
 
-          <li className="border-rule border-b py-4">
-            <a
-              href="#apply"
-              onClick={closeMenu}
-              className="text-ink-soft focus-visible:ring-brand/50 rounded text-[15px] font-medium no-underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-              신청방법
-            </a>
-          </li>
-
+          {/* 교재 보기 아코디언 */}
           <li className="border-rule border-b py-4">
             <button
               type="button"
               onClick={() => setTextbookOpen((prev) => !prev)}
               aria-expanded={textbookOpen}
               aria-controls="mobile-textbook-submenu"
-              className="text-ink-soft focus-visible:ring-brand/50 flex w-full items-center justify-between rounded text-[15px] font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              className="text-ink-soft focus-visible:ring-accent-blue/50 flex w-full items-center justify-between rounded text-[15px] font-bold focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
               <span>교재 보기</span>
               <ChevronDown aria-hidden className={cn("size-4 transition-transform duration-200", textbookOpen && "rotate-180")} />
             </button>
@@ -206,7 +230,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                     <Link
                       href={book.href}
                       onClick={closeMenu}
-                      className="text-muted-fg hover:text-brand focus-visible:ring-brand/50 block rounded text-[14px] no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                      className="text-muted-fg hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 block rounded text-[14px] no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
                       {book.title}
                     </Link>
                   </li>
@@ -227,7 +251,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 <form action={logout}>
                   <button
                     type="submit"
-                    className="border-rule-faint text-ink-soft hover:border-brand hover:text-brand focus-visible:ring-brand/50 w-full rounded-md border px-4 py-2.5 text-[15px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                    className="border-rule-faint text-ink-soft hover:border-accent-blue hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 w-full rounded-md border px-4 py-2.5 text-[15px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
                     로그아웃
                   </button>
                 </form>
@@ -239,7 +263,7 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
                 <Link
                   href="/login"
                   onClick={closeMenu}
-                  className="text-ink-soft focus-visible:ring-brand/50 rounded text-[15px] font-medium no-underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                  className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-medium no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
                   로그인
                 </Link>
               </li>
