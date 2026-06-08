@@ -34,7 +34,9 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 **`SectionCard`** (`src/components/SectionCard.tsx`): 마케팅 카드 div wrapper. variant 3종 — `accent-left`(`border-l-[6px] border-brand bg-surface`, 후회·커리큘럼), `outline`(`border border-rule bg-surface`, 기회·리뷰), `plain`(`bg-surface`, 정보·소개). `rounded/p/text-center`는 호출 측 className. shadcn `Card`(슬롯 포함)는 콘텐츠 컨테이너용으로 별개.
 
 **`ApplyForm`** (`src/components/ApplyForm.tsx`, client): 최종 CTA 본문. controlled 입력 4종(이름·전화·이메일(선택)·희망 날짜/시간=`<Textarea rows={4}>` 자유 형식). grid `grid-cols-1 md:grid-cols-2`, 이메일·날짜는 `md:col-span-2`. 제출 `variant="brand-blue"`, 흰 카드(`bg-white text-ink`). 성공 시 ✓ 박스(`role="status"`)로 교체. 폼 `aria-labelledby="apply-heading"`.
-- ⚠️ **현재 mock**: `handleSubmit`이 `console.log` + `setTimeout(()=>setSubmitted(true),400)`뿐, **실제 저장 미구현**. 운영 전 `"use server"` 액션 + `useActionState` + 서버 검증(`isValidEmail`/전화) + `getOrigin()` 알림/저장 추가. 전환 시 `<form action={formAction}>` + controlled state 유지.
+- ⚠️ **`ApplyForm.tsx`는 현재 orphan**(Phase 1 랜딩 리디자인에서 최종 CTA 섹션 제거 — 미사용 mock). 실제 신청 동선은 과정 상세페이지의 **`CourseApplyForm`** 사용.
+
+**과정 신청 + 마이페이지** (Phase 4): 과정 상세 `CourseApplyForm`(`src/components/course/`, client)이 **`useActionState` + `submitApplication`**(`src/app/courses/actions.ts`)으로 실제 저장. 액션 가드: (1)필수값 (2)`rateLimit(apply:IP, 5/10분)` (3)`isValidEmail` (4)`applications` insert. **`user_id`는 서버 `getUser()`로 주입(위조 차단), 비로그인은 null**. `option`은 select 라벨 문자열 저장. **`/mypage`**(`src/app/mypage/page.tsx`, server): 로그인 가드(`redirect("/login?next=/mypage")`), `applications`를 본인 user_id로 조회 → 웰컴 배너 + 회원정보/신청내역 **네이티브 `<details>` 아코디언**(클라 JS 0). Navbar는 로그인 시 "마이페이지" 링크 노출.
 
 ### 인증 라우트 (Supabase Server Actions)
 
@@ -78,10 +80,11 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 
 ### DB 스키마 (`supabase/`)
 
-마이그레이션은 `db:new`로만 생성(CLI는 timestamp 형식만 인식), Dashboard SQL 직접 실행 금지. link 정보는 `supabase/.temp/`(gitignore, 새 머신은 `npx supabase login` + `link --project-ref`). 적용 마이그레이션 2개:
+마이그레이션은 `db:new`로만 생성(CLI는 timestamp 형식만 인식), Dashboard SQL 직접 실행 금지. link 정보는 `supabase/.temp/`(gitignore, 새 머신은 `npx supabase login` + `link --project-ref`). 적용 마이그레이션 3개:
 - **`20260522065400_create_profiles_and_role_trigger.sql`**: `user_role` ENUM(`admin|teacher|student`); `profiles`(`id` PK FK→auth.users CASCADE, `role` DEFAULT 'student', `created_at`/`updated_at`); RLS + `profiles_select_own`/`_update_own`(`auth.uid()=id`, **INSERT/DELETE 정책 없음**); `handle_new_user()`(SECURITY DEFINER) + `on_auth_user_created` trigger(모든 가입 경로에서 `profiles` insert + `raw_app_meta_data`에 `{role:'student'}` merge); `tg_set_updated_at()` trigger. **backfill 포함**. role 활용은 미구현(저장 인프라만).
 - **`20260523231214_add_reading_progress.sql`**: `reading_progress`(복합 PK `(user_id,course,unit)`, `user_id` FK CASCADE, `course text`, `unit int [1,100]`, `scroll_percent int [0,100] DEFAULT 0`, `completed bool DEFAULT false`, `last_viewed_at`); 인덱스 `(user_id,course)`; RLS + `_select/_insert/_update_own`(`auth.uid()=user_id`, **DELETE 정책 없음**).
-- **타입** `src/types/database.types.ts`: `db:types`로 생성. **`db:push` 후 항상 재생성**(drift 방지). `Database["public"]["Tables"][...]["Row"|"Insert"|"Update"]`.
+- **`20260608233330_add_applications.sql`**: `application_status` ENUM(`신청|확인|완료|취소`); `applications`(`id` uuid PK, `user_id` FK→auth.users **ON DELETE SET NULL**(익명 리드 허용), `course`/`course_title`/`option`/`name`/`phone`/`email`/`memo`, `status` DEFAULT '신청', `admin_note`, `created_at`/`updated_at`); 인덱스 `(user_id)`/`(status)`/`(created_at desc)`; RLS + **`applications_insert`(`to anon,authenticated` `with check (user_id is null or =auth.uid())` — 익명/로그인 제출, user_id 위조 차단)** + `applications_select_own`(본인, mypage). **UPDATE/DELETE 사용자 정책 없음**(상태·admin_note는 admin service_role, Phase 5). `tg_set_updated_at` 재사용.
+- **타입** `src/types/database.types.ts`: `db:types`로 생성. **`db:push` 후 항상 재생성**(drift 방지). `Database["public"]["Tables"][...]["Row"|"Insert"|"Update"]`. (현재 SSR client는 `<Database>` 미적용 → `.from("applications")` 등 untyped.)
 
 ## 주의사항
 

@@ -199,7 +199,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
               </span>
             ))}
           </h2>
-          <CourseApplyForm title={course.applyTitle} options={course.applyOptions} />
+          <CourseApplyForm courseSlug={course.slug} title={course.applyTitle} options={course.applyOptions} />
         </div>
       </section>
     </div>

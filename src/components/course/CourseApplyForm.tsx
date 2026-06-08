@@ -1,34 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { submitApplication, type ApplyState } from "@/app/courses/actions";
 import { type ApplyGroup, type ApplyOption, isApplyGroup } from "@/data/courses";
 
-// 과정 상세페이지 상담 신청폼. ⚠️ mock — Phase 4(applications DB) 액션 연결 전.
-// ApplyForm.tsx 패턴(controlled state + setTimeout 성공 전환)을 미러링 + 과정/횟수 select 추가.
-export default function CourseApplyForm({ title, options }: { title: string; options: ApplyOption[] | ApplyGroup[] }) {
-  const [course, setCourse] = useState("");
+// 과정 상세페이지 상담 신청폼. useActionState + submitApplication 서버 액션으로 실제 저장.
+// 입력은 controlled(React 19 auto-reset & Base UI defaultValue 경고 회피).
+export default function CourseApplyForm({ courseSlug, title, options }: { courseSlug: string; title: string; options: ApplyOption[] | ApplyGroup[] }) {
+  const [state, formAction, pending] = useActionState<ApplyState, FormData>(submitApplication, {});
+  const [option, setOption] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [schedule, setSchedule] = useState("");
-  const [pending, setPending] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setPending(true);
-    console.log("[CourseApplyForm] submission:", { title, course, name, phone, email, schedule });
-    setTimeout(() => {
-      setPending(false);
-      setSubmitted(true);
-    }, 400);
-  };
-
-  if (submitted) {
+  if (state.success) {
     return (
       <div role="status" className="text-ink mx-auto w-full max-w-[560px] rounded-2xl bg-white p-7 text-center md:p-9">
         <CheckCircle2 className="text-cta mx-auto mb-3 h-10 w-10" />
@@ -39,30 +29,38 @@ export default function CourseApplyForm({ title, options }: { title: string; opt
   }
 
   return (
-    <form onSubmit={handleSubmit} className="text-ink mx-auto w-full max-w-[560px] rounded-2xl bg-white p-7 md:p-9">
+    <form action={formAction} aria-describedby={state.error ? "apply-error" : undefined} className="text-ink mx-auto w-full max-w-[560px] rounded-2xl bg-white p-7 md:p-9">
       <p className="text-ink mb-5 text-lg font-bold">{title}</p>
+      <input type="hidden" name="courseSlug" value={courseSlug} />
+
+      {state.error && (
+        <p id="apply-error" role="alert" className="border-brand/30 bg-brand/5 text-brand mb-4 rounded-md border px-3.5 py-2.5 text-sm font-medium">
+          {state.error}
+        </p>
+      )}
 
       <div className="mb-4 flex flex-col gap-1.5">
-        <Label htmlFor="course-select">과정 선택</Label>
+        <Label htmlFor="course-option">과정 선택</Label>
         <select
-          id="course-select"
-          name="course"
+          id="course-option"
+          name="option"
           required
-          value={course}
-          onChange={(e) => setCourse(e.target.value)}
+          value={option}
+          onChange={(e) => setOption(e.target.value)}
+          aria-invalid={!!state.error && !option}
           className="border-rule-faint focus:border-accent-blue h-11 w-full rounded-md border bg-white px-3.5 text-base outline-none">
           <option value="">{isApplyGroup(options[0]) ? "과정을 선택하세요" : "수업 횟수를 선택하세요"}</option>
           {options.map((opt) =>
             isApplyGroup(opt) ? (
               <optgroup key={opt.group} label={opt.group}>
                 {opt.options.map((o) => (
-                  <option key={o.value} value={o.value}>
+                  <option key={o.value} value={o.label}>
                     {o.label}
                   </option>
                 ))}
               </optgroup>
             ) : (
-              <option key={opt.value} value={opt.value}>
+              <option key={opt.value} value={opt.label}>
                 {opt.label}
               </option>
             ),
