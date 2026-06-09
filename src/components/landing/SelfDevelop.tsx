@@ -16,6 +16,9 @@ const TAB_LABELS: Record<string, string> = {
   cosmetic: "화장품 수출 영어",
 };
 
+// landing book.key → 전자책 course(레지스트리). 여기 등록된 교재만 전자책 연동(나머지는 mock placeholder).
+const LINKED_COURSE: Record<string, string> = { workhol: "workhol", kitchen: "kitchen" };
+
 // "Unit 01" → 1, "Unit 25" → 25
 function unitNum(u: BookUnit): number {
   return parseInt(u.n.replace(/\D/g, ""), 10);
@@ -108,24 +111,33 @@ function LinkedUnitCard({
   );
 }
 
-function BookPanel({ book, isLoggedIn, workholCompleted }: { book: Book; isLoggedIn: boolean; workholCompleted: Record<number, boolean> }) {
+function BookPanel({
+  book,
+  isLoggedIn,
+  completedByCourse,
+}: {
+  book: Book;
+  isLoggedIn: boolean;
+  completedByCourse: Record<string, Record<number, boolean>>;
+}) {
   const [open, setOpen] = useState(false);
   const all = [...book.units, ...book.extra];
   const total = all.length;
 
-  // 워홀만 전자책 연동(실제 완료 상태, 수동 토글). 나머지는 mock placeholder.
-  const linked = book.key === "workhol";
-  const textbook = linked ? getTextbook("workhol") : undefined;
+  // LINKED_COURSE에 등록된 교재만 전자책 연동(실제 완료 상태, 수동 토글). 나머지는 mock placeholder.
+  const course = LINKED_COURSE[book.key];
+  const linked = !!course;
+  const textbook = linked ? getTextbook(course) : undefined;
   const freeUnits = textbook?.freeUnits ?? [];
 
   // 완료 상태를 로컬로 관리(낙관적 토글) — 상단 진행바와 카드가 동일 소스 사용.
-  const [completedMap, setCompletedMap] = useState<Record<number, boolean>>(() => ({ ...workholCompleted }));
+  const [completedMap, setCompletedMap] = useState<Record<number, boolean>>(() => ({ ...(course ? (completedByCourse[course] ?? {}) : {}) }));
   const [, startToggle] = useTransition();
 
   const handleToggle = (num: number, next: boolean) => {
     setCompletedMap((prev) => ({ ...prev, [num]: next }));
     startToggle(() => {
-      setUnitCompleted("workhol", num, next).catch(() => setCompletedMap((prev) => ({ ...prev, [num]: !next })));
+      setUnitCompleted(course, num, next).catch(() => setCompletedMap((prev) => ({ ...prev, [num]: !next })));
     });
   };
 
@@ -137,7 +149,7 @@ function BookPanel({ book, isLoggedIn, workholCompleted }: { book: Book; isLogge
       <LinkedUnitCard
         key={u.n}
         unit={u}
-        course="workhol"
+        course={course}
         freeUnits={freeUnits}
         isLoggedIn={isLoggedIn}
         completed={!!completedMap[unitNum(u)]}
@@ -202,7 +214,13 @@ function BookPanel({ book, isLoggedIn, workholCompleted }: { book: Book; isLogge
   );
 }
 
-export default function SelfDevelop({ isLoggedIn, workholCompleted }: { isLoggedIn: boolean; workholCompleted: Record<number, boolean> }) {
+export default function SelfDevelop({
+  isLoggedIn,
+  completedByCourse,
+}: {
+  isLoggedIn: boolean;
+  completedByCourse: Record<string, Record<number, boolean>>;
+}) {
   const [curKey, setCurKey] = useState(BOOKS[0].key);
   const book = BOOKS.find((b) => b.key === curKey) ?? BOOKS[0];
 
@@ -232,7 +250,7 @@ export default function SelfDevelop({ isLoggedIn, workholCompleted }: { isLogged
       </div>
 
       <div className="px-5 md:px-10">
-        <BookPanel key={curKey} book={book} isLoggedIn={isLoggedIn} workholCompleted={workholCompleted} />
+        <BookPanel key={curKey} book={book} isLoggedIn={isLoggedIn} completedByCourse={completedByCourse} />
       </div>
     </>
   );
