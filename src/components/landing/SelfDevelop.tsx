@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useState, useTransition } from "react";
+import Link from "next/link";
+import { CheckCircle2, ChevronDown, Circle, Lock } from "lucide-react";
 import { BOOKS, type Book, type BookUnit } from "@/data/landing";
+import { getTextbook } from "@/data/textbook";
+import { setUnitCompleted } from "@/app/textbook/actions";
 import { cn } from "@/lib/utils";
 
 const TAB_LABELS: Record<string, string> = {
@@ -13,9 +16,14 @@ const TAB_LABELS: Record<string, string> = {
   cosmetic: "화장품 수출 영어",
 };
 
+// "Unit 01" → 1, "Unit 25" → 25
+function unitNum(u: BookUnit): number {
+  return parseInt(u.n.replace(/\D/g, ""), 10);
+}
+
+// 전자책과 미연동된 교재용 placeholder 카드(mock 상태 기반).
 function UnitCard({ unit }: { unit: BookUnit }) {
   const locked = unit.s === "locked";
-  // 유닛 이동은 Phase 3(교재 5종) 이후 연결 — 현재는 placeholder.
   return (
     <div
       className={cn(
@@ -37,12 +45,107 @@ function UnitCard({ unit }: { unit: BookUnit }) {
   );
 }
 
-function BookPanel({ book }: { book: Book }) {
+// 전자책 연동 카드: 본문 클릭 시 /textbook/<course>/<unit>(잠금 시 /login?next=).
+// 로그인 시 우상단에 수동 완료 토글(Link와 형제로 배치 — 중첩 인터랙티브 방지).
+function LinkedUnitCard({
+  unit,
+  course,
+  freeUnits,
+  isLoggedIn,
+  completed,
+  onToggle,
+}: {
+  unit: BookUnit;
+  course: string;
+  freeUnits: number[];
+  isLoggedIn: boolean;
+  completed: boolean;
+  onToggle: (num: number, next: boolean) => void;
+}) {
+  const num = unitNum(unit);
+  const locked = !isLoggedIn && !freeUnits.includes(num);
+  const href = locked ? `/login?next=/textbook/${course}/${num}` : `/textbook/${course}/${num}`;
+
+  return (
+    <div
+      className={cn(
+        "relative rounded-md border transition-[border-color,background-color,transform,box-shadow] duration-150",
+        completed ? "border-progress/40 bg-progress/5" : "border-rule bg-white",
+        locked ? "opacity-60" : "hover:border-progress hover:-translate-y-0.5 hover:shadow-md",
+      )}>
+      <Link
+        href={href}
+        aria-label={`${unit.n} ${unit.t}${unit.sub ? ` — ${unit.sub}` : ""}${locked ? " (로그인 필요)" : ""}`}
+        className="focus-visible:ring-brand/50 block rounded-md p-4 text-center focus-visible:ring-2 focus-visible:outline-none">
+        <p className={cn("mb-2 text-base font-bold", locked ? "text-muted-fg-faint" : "text-progress")}>{unit.n}</p>
+        <p className="text-ink text-[15px] leading-snug font-medium">{unit.t}</p>
+        {unit.sub && <p className="text-muted-fg-faint mt-1 text-[13px] leading-snug">{unit.sub}</p>}
+        {locked && <p className="text-muted-fg-faint mt-2 text-[12px] font-medium">로그인 후 열람</p>}
+      </Link>
+
+      {/* 우상단 상태/토글 */}
+      {locked ? (
+        <Lock aria-label="로그인 필요" className="text-muted-fg-faint absolute top-2.5 right-2.5 size-4" />
+      ) : isLoggedIn ? (
+        <button
+          type="button"
+          onClick={() => onToggle(num, !completed)}
+          aria-pressed={completed}
+          aria-label={completed ? `${unit.n} 학습 완료 취소` : `${unit.n} 학습 완료로 표시`}
+          title={completed ? "학습 완료됨 (클릭 시 취소)" : "학습 완료로 표시"}
+          className={cn(
+            "focus-visible:ring-brand/50 absolute top-2 right-2 inline-flex items-center justify-center rounded-full p-1 transition-colors focus-visible:ring-2 focus-visible:outline-none",
+            completed ? "text-progress" : "text-muted-fg-faint hover:text-progress",
+          )}>
+          {completed ? <CheckCircle2 className="size-5" aria-hidden /> : <Circle className="size-5" aria-hidden />}
+        </button>
+      ) : (
+        <span className="bg-surface text-muted-fg-faint border-rule absolute top-2 right-2 rounded-full border px-1.5 py-0.5 text-[11px] font-bold">
+          시작
+        </span>
+      )}
+    </div>
+  );
+}
+
+function BookPanel({ book, isLoggedIn, workholCompleted }: { book: Book; isLoggedIn: boolean; workholCompleted: Record<number, boolean> }) {
   const [open, setOpen] = useState(false);
   const all = [...book.units, ...book.extra];
   const total = all.length;
-  const done = all.filter((u) => u.s === "done").length;
-  const pct = Math.round((done / total) * 100);
+
+  // 워홀만 전자책 연동(실제 완료 상태, 수동 토글). 나머지는 mock placeholder.
+  const linked = book.key === "workhol";
+  const textbook = linked ? getTextbook("workhol") : undefined;
+  const freeUnits = textbook?.freeUnits ?? [];
+
+  // 완료 상태를 로컬로 관리(낙관적 토글) — 상단 진행바와 카드가 동일 소스 사용.
+  const [completedMap, setCompletedMap] = useState<Record<number, boolean>>(() => ({ ...workholCompleted }));
+  const [, startToggle] = useTransition();
+
+  const handleToggle = (num: number, next: boolean) => {
+    setCompletedMap((prev) => ({ ...prev, [num]: next }));
+    startToggle(() => {
+      setUnitCompleted("workhol", num, next).catch(() => setCompletedMap((prev) => ({ ...prev, [num]: !next })));
+    });
+  };
+
+  const done = linked ? all.filter((u) => completedMap[unitNum(u)]).length : all.filter((u) => u.s === "done").length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  const renderUnit = (u: BookUnit) =>
+    linked ? (
+      <LinkedUnitCard
+        key={u.n}
+        unit={u}
+        course="workhol"
+        freeUnits={freeUnits}
+        isLoggedIn={isLoggedIn}
+        completed={!!completedMap[unitNum(u)]}
+        onToggle={handleToggle}
+      />
+    ) : (
+      <UnitCard key={u.n} unit={u} />
+    );
 
   return (
     <div className="border-rule mx-auto max-w-[1200px] rounded-2xl border bg-white p-6 md:p-9">
@@ -78,20 +181,12 @@ function BookPanel({ book }: { book: Book }) {
       </div>
 
       {/* 기본 유닛 */}
-      <div className="mb-2.5 grid grid-cols-2 gap-2.5 md:grid-cols-4">
-        {book.units.map((u) => (
-          <UnitCard key={u.n} unit={u} />
-        ))}
-      </div>
+      <div className="mb-2.5 grid grid-cols-2 gap-2.5 md:grid-cols-4">{book.units.map(renderUnit)}</div>
 
       {/* 확장 유닛 */}
       <div className={cn("grid overflow-hidden transition-[grid-template-rows] duration-300 ease-in-out", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
         <div className="min-h-0">
-          <div className="mb-2.5 grid grid-cols-2 gap-2.5 md:grid-cols-4">
-            {book.extra.map((u) => (
-              <UnitCard key={u.n} unit={u} />
-            ))}
-          </div>
+          <div className="mb-2.5 grid grid-cols-2 gap-2.5 md:grid-cols-4">{book.extra.map(renderUnit)}</div>
         </div>
       </div>
 
@@ -107,7 +202,7 @@ function BookPanel({ book }: { book: Book }) {
   );
 }
 
-export default function SelfDevelop() {
+export default function SelfDevelop({ isLoggedIn, workholCompleted }: { isLoggedIn: boolean; workholCompleted: Record<number, boolean> }) {
   const [curKey, setCurKey] = useState(BOOKS[0].key);
   const book = BOOKS.find((b) => b.key === curKey) ?? BOOKS[0];
 
@@ -137,7 +232,7 @@ export default function SelfDevelop() {
       </div>
 
       <div className="px-5 md:px-10">
-        <BookPanel key={curKey} book={book} />
+        <BookPanel key={curKey} book={book} isLoggedIn={isLoggedIn} workholCompleted={workholCompleted} />
       </div>
     </>
   );

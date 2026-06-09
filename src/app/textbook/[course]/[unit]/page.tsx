@@ -46,16 +46,16 @@ export default async function TextbookUnitPage({ params }: { params: Promise<Par
   const filePath = path.join(process.cwd(), "content", "textbook", course, unit.htmlFile);
   const html = await fs.readFile(filePath, "utf-8");
 
-  let initialScrollPercent: number | null = null;
+  let initialCompleted = false;
   if (user) {
     const { data } = await supabase
       .from("reading_progress")
-      .select("scroll_percent")
+      .select("completed")
       .eq("user_id", user.id)
       .eq("course", course)
       .eq("unit", unit.unit)
       .maybeSingle();
-    if (data) initialScrollPercent = data.scroll_percent ?? 0;
+    if (data) initialCompleted = data.completed ?? false;
   }
 
   const { prev, next } = getAdjacentUnits(course, unit.unit);
@@ -66,7 +66,7 @@ export default async function TextbookUnitPage({ params }: { params: Promise<Par
       course={course}
       unit={unit.unit}
       totalUnits={Math.max(...textbook.units.map((u) => u.unit))}
-      initialScrollPercent={initialScrollPercent}
+      initialCompleted={initialCompleted}
       isAuthenticated={!!user}
       listHref={`/textbook/${course}`}
       prevHref={prev != null ? `/textbook/${course}/${prev}` : null}

@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return { title: `${textbook.title} — 프렌딩 스쿨`, description: textbook.subtitle };
 }
 
-type ProgressRow = { unit: number; scroll_percent: number; completed: boolean };
+type ProgressRow = { unit: number; completed: boolean };
 
 export default async function TextbookListPage({ params }: { params: Promise<Params> }) {
   const { course } = await params;
@@ -37,7 +37,7 @@ export default async function TextbookListPage({ params }: { params: Promise<Par
   if (user) {
     const { data } = await supabase
       .from("reading_progress")
-      .select("unit, scroll_percent, completed")
+      .select("unit, completed")
       .eq("user_id", user.id)
       .eq("course", course);
     if (data) progressByUnit = new Map(data.map((row) => [row.unit, row as ProgressRow]));
@@ -59,7 +59,6 @@ export default async function TextbookListPage({ params }: { params: Promise<Par
           const progress = progressByUnit.get(u.unit);
           const isLocked = !user && !textbook.freeUnits.includes(u.unit);
           const isCompleted = progress?.completed ?? false;
-          const percent = Math.max(0, Math.min(100, progress?.scroll_percent ?? 0));
           const href = isLocked ? `/login?next=/textbook/${course}/${u.unit}` : `/textbook/${course}/${u.unit}`;
 
           return (
@@ -92,12 +91,9 @@ export default async function TextbookListPage({ params }: { params: Promise<Par
                   {u.situation && <p className="text-muted-fg line-clamp-3 flex-1 text-sm leading-relaxed">{u.situation}</p>}
 
                   {user && (
-                    <div className="mt-auto">
-                      <div className="bg-rule h-1.5 w-full overflow-hidden rounded-full" aria-hidden>
-                        <div className="bg-brand h-full transition-[width]" style={{ width: `${percent}%` }} />
-                      </div>
-                      <p className="text-muted-fg-faint mt-1 text-xs">{isCompleted ? "완료" : percent > 0 ? `${percent}% 진행` : "시작 전"}</p>
-                    </div>
+                    <p className={cn("mt-auto text-xs font-medium", isCompleted ? "text-brand" : "text-muted-fg-faint")}>
+                      {isCompleted ? "학습 완료됨" : "시작 전"}
+                    </p>
                   )}
 
                   {isLocked && <p className="text-muted-fg mt-1 text-xs font-medium">로그인 후 열람</p>}

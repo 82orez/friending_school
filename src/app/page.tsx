@@ -37,6 +37,20 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
     .order("sort_order", { ascending: true });
   const videos: Video[] = dbVideos && dbVideos.length > 0 ? (dbVideos as Video[]) : VIDEOS;
 
+  // 셀프디벨롭(워홀) 교재 진행률: 로그인 시 reading_progress 조회 → 카드 완료/진행% 실연동.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let workholCompleted: Record<number, boolean> = {};
+  if (user) {
+    const { data } = await supabase
+      .from("reading_progress")
+      .select("unit, completed")
+      .eq("user_id", user.id)
+      .eq("course", "workhol");
+    if (data) workholCompleted = Object.fromEntries(data.map((r) => [r.unit, r.completed]));
+  }
+
   return (
     <div className="bg-surface">
       {reset === "success" && <SuccessBanner queryKey="reset" message="비밀번호가 성공적으로 변경되었습니다." />}
@@ -65,7 +79,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           title="현지 영어, 무료로 배워보세요!"
           desc="음성 파일이 포함된 무료 학습 교재, 지금 바로 시작해보세요."
         />
-        <SelfDevelop />
+        <SelfDevelop isLoggedIn={!!user} workholCompleted={workholCompleted} />
       </section>
 
       {/* 3. 호주 현지생존기 (유튜브) */}

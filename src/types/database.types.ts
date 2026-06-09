@@ -88,7 +88,6 @@ export type Database = {
           completed: boolean
           course: string
           last_viewed_at: string
-          scroll_percent: number
           unit: number
           user_id: string
         }
@@ -96,7 +95,6 @@ export type Database = {
           completed?: boolean
           course: string
           last_viewed_at?: string
-          scroll_percent?: number
           unit: number
           user_id: string
         }
@@ -104,7 +102,6 @@ export type Database = {
           completed?: boolean
           course?: string
           last_viewed_at?: string
-          scroll_percent?: number
           unit?: number
           user_id?: string
         }

@@ -63,7 +63,7 @@ export const BOOKS: Book[] = [
     key: "kitchen",
     title: "주방 영어 — 식당 · 카페 · 주방 현장 실전",
     copy: "주방에서 바로 통하는 영어, 워홀러 필수!",
-    tags: [{ t: "유료" }, { t: "음성 포함" }, { t: "24유닛" }],
+    tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }],
     units: [
       { n: "Unit 01", t: "Mise en Place", sub: "준, 미장플라스를 익히다", s: "" },
       { n: "Unit 02", t: "Chopping & Cutting", sub: "준, 기본 칼질을 배우다", s: "" },
@@ -98,7 +98,7 @@ export const BOOKS: Book[] = [
     key: "basic1",
     title: "회화기초 문법 1 — 기초부터 탄탄하게",
     copy: "영어가 처음이라면, 여기서 시작하세요.",
-    tags: [{ t: "유료" }, { t: "음성 포함" }, { t: "24유닛" }],
+    tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }],
     units: [
       { n: "Unit 01", t: "Be동사로 내 상태 말하기", sub: "be동사 — 기분과 상태 표현", s: "" },
       { n: "Unit 02", t: "Be동사로 직업·역할 말하기", sub: "be동사 — 직업과 역할 표현", s: "" },
@@ -133,7 +133,7 @@ export const BOOKS: Book[] = [
     key: "basic2",
     title: "회화기초 문법 2 — 실전 회화 완성",
     copy: "문법 1을 마쳤다면, 이제 실전으로!",
-    tags: [{ t: "유료" }, { t: "음성 포함" }, { t: "24유닛" }],
+    tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }],
     units: [
       { n: "Unit 25", t: "충분해요!", sub: "Enough — 위치에 따라 뜻이 달라요", s: "" },
       { n: "Unit 26", t: "더 ~해요!", sub: "비교급 — -er / more", s: "" },
@@ -168,7 +168,7 @@ export const BOOKS: Book[] = [
     key: "cosmetic",
     title: "화장품 수출 영어 — 글로벌 비즈니스 실전",
     copy: "바이어와 직접 협상하는 비즈니스 영어!",
-    tags: [{ t: "유료" }, { t: "음성 포함" }, { t: "24유닛" }, { t: "기업 추천" }],
+    tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }, { t: "기업 추천" }],
     units: [
       { n: "Unit 01", t: "Greets the First Overseas Buyer", sub: "첫 해외 바이어 맞이하기", s: "" },
       { n: "Unit 02", t: "Gives a Company Tour", sub: "회사 투어 안내하기", s: "" },
