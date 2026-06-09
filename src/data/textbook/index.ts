@@ -1,5 +1,5 @@
 import { BOOKS } from "@/data/landing";
-import { COOKING_COURSE, COOKING_UNITS } from "./cooking";
+import { WORKHOL_COURSE, WORKHOL_UNITS } from "./workhol";
 
 // 전자책 레지스트리. 새 교재 추가: (1) content/textbook/<course>/unit-NN.html,
 // (2) 아래 TEXTBOOK_REGISTRY에 항목 추가(units는 BOOKS에서 파생하거나 직접 작성).
@@ -40,12 +40,12 @@ function unitsFromBook(bookKey: string): TextbookUnit[] {
 
 export const TEXTBOOK_REGISTRY: Textbook[] = [
   {
-    course: COOKING_COURSE, // "cooking" — 기존 워홀 콘텐츠(URL/DB 유지)
-    title: "워홀 실전영어 (요리편)",
+    course: WORKHOL_COURSE, // "workhol" — 워홀 콘텐츠(폴더 content/textbook/workhol)
+    title: "워홀 영어 - 현지에서 쓰는 생존 영어",
     subtitle: "준(Jun)의 호주 워킹홀리데이 24개 Unit. 매일 한 Unit씩 호주 현지 표현을 익혀보세요.",
     eyebrow: "FRIENDING · WORKING HOLIDAY ENGLISH",
     freeUnits: [1],
-    units: COOKING_UNITS,
+    units: WORKHOL_UNITS,
   },
   {
     course: "kitchen",

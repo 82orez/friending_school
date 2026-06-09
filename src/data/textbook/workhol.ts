@@ -1,4 +1,4 @@
-export type CookingUnit = {
+export type WorkholUnit = {
   unit: number;
   title: string;
   titleKr: string;
@@ -6,10 +6,10 @@ export type CookingUnit = {
   htmlFile: string;
 };
 
-export const COOKING_COURSE = "cooking" as const;
-export const COOKING_TOTAL_UNITS = 24;
+export const WORKHOL_COURSE = "workhol" as const;
+export const WORKHOL_TOTAL_UNITS = 24;
 
-export const COOKING_UNITS: CookingUnit[] = [
+export const WORKHOL_UNITS: WorkholUnit[] = [
   {
     unit: 1,
     title: "Jun Buys a SIM Card",
@@ -180,6 +180,6 @@ export const COOKING_UNITS: CookingUnit[] = [
   },
 ];
 
-export function getCookingUnit(unit: number): CookingUnit | undefined {
-  return COOKING_UNITS.find((u) => u.unit === unit);
+export function getWorkholUnit(unit: number): WorkholUnit | undefined {
+  return WORKHOL_UNITS.find((u) => u.unit === unit);
 }
