@@ -48,6 +48,36 @@ export async function emailExists(email: string): Promise<boolean | null> {
   return false;
 }
 
+/**
+ * role='admin'인 사용자들의 이메일 목록을 반환 (신청 알림 수신자).
+ * profiles에서 admin id 조회 → getUserById로 이메일 확보. 실패/없음 시 빈 배열(호출 측 best-effort).
+ */
+export async function getAdminEmails(): Promise<string[]> {
+  let admin;
+  try {
+    admin = createAdminClient();
+  } catch (err) {
+    console.error("[Supabase admin] admin client 생성 실패:", err);
+    return [];
+  }
+  const { data: profiles, error } = await admin.from("profiles").select("id").eq("role", "admin");
+  if (error || !profiles) {
+    console.error("[Supabase admin] admin profiles 조회 실패:", error);
+    return [];
+  }
+  const emails: string[] = [];
+  for (const p of profiles as Array<{ id: string }>) {
+    const { data, error: getErr } = await admin.auth.admin.getUserById(p.id);
+    if (getErr) {
+      console.error("[Supabase admin] getUserById 실패:", getErr);
+      continue;
+    }
+    const email = data?.user?.email;
+    if (email) emails.push(email);
+  }
+  return emails;
+}
+
 export type UserStatus = "confirmed" | "unconfirmed" | "not_found";
 
 /**

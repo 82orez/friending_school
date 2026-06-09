@@ -5,6 +5,8 @@ import { createClient } from "@/utils/supabase/server";
 import { isValidEmail } from "@/lib/email";
 import { formatRetryAfter, getClientIp, rateLimit } from "@/lib/rate-limit";
 import { getCourse } from "@/data/courses";
+import { getAdminEmails } from "@/utils/supabase/admin";
+import { sendApplicationNotification } from "@/lib/mailer";
 
 export type ApplyState = { error?: string; success?: boolean };
 
@@ -47,5 +49,23 @@ export async function submitApplication(_prev: ApplyState, formData: FormData): 
   });
 
   if (error) return { error: "신청 저장 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요." };
+
+  // 관리자 알림 메일 (best-effort) — 실패해도 신청 성공에는 영향 없음.
+  try {
+    const adminEmails = await getAdminEmails();
+    await sendApplicationNotification(adminEmails, {
+      courseTitle: course.title,
+      option,
+      name,
+      phone,
+      email,
+      memo,
+      loggedIn: !!user,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("[submitApplication] 관리자 알림 발송 실패:", err);
+  }
+
   return { success: true };
 }
