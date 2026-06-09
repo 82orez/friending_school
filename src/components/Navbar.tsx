@@ -19,7 +19,7 @@ const COURSES = [
   { slug: "cosmetic", label: "화장품 수출 영어" },
 ];
 
-export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
+export default function Navbar({ user: initialUser, isAdmin = false }: { user: NavbarUser; isAdmin?: boolean }) {
   const [user, setUser] = useState<NavbarUser>(initialUser);
   const [menuOpen, setMenuOpen] = useState(false);
   const [curriculumOpen, setCurriculumOpen] = useState(false);
@@ -106,6 +106,13 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
           <div className="hidden items-center gap-3 md:flex">
             {user ? (
               <>
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="text-brand hover:text-brand/80 focus-visible:ring-brand/50 rounded text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                    관리자
+                  </Link>
+                )}
                 <Link
                   href="/mypage"
                   className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
@@ -247,6 +254,16 @@ export default function Navbar({ user: initialUser }: { user: NavbarUser }) {
           {/* 모바일 인증 섹션 */}
           {user ? (
             <>
+              {isAdmin && (
+                <li className="border-rule border-b py-4">
+                  <Link
+                    href="/admin"
+                    onClick={closeMenu}
+                    className="text-brand focus-visible:ring-brand/50 rounded text-[15px] font-semibold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                    관리자
+                  </Link>
+                </li>
+              )}
               <li className="border-rule border-b py-4">
                 <Link
                   href="/mypage"

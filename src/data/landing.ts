@@ -208,8 +208,9 @@ export type Video = {
   url: string;
   tag: string;
   title: string;
-  desc: string;
-  duration: string;
+  desc?: string; // mock 데이터용 (DB 영상은 description 컬럼 사용)
+  description?: string; // DB(youtube_videos) 컬럼
+  duration?: string; // mock 전용 — DB 영상엔 없음
 };
 
 export const VIDEOS: Video[] = [

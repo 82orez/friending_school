@@ -8,6 +8,7 @@ import AuthHashHandler from "@/components/auth/AuthHashHandler";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/server";
+import { isAdmin } from "@/lib/auth";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -32,11 +33,12 @@ export default async function RootLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const admin = user ? await isAdmin(supabase, user.id) : false;
 
   return (
     <html lang="ko" className={cn("font-sans", geist.variable)}>
       <body className={`${pretendard.variable} bg-white font-sans text-[#1a1a1a] antialiased`}>
-        <Navbar user={user ? { email: user.email } : null} />
+        <Navbar user={user ? { email: user.email } : null} isAdmin={admin} />
         <AuthHashHandler />
         {children}
         <Footer />

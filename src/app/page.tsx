@@ -1,9 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { Calendar } from "lucide-react";
 import SuccessBanner from "@/components/SuccessBanner";
 import SelfDevelop from "@/components/landing/SelfDevelop";
-import { ACTIVITIES, COURSE_CARDS, VIDEOS, getYoutubeId } from "@/data/landing";
+import { createClient } from "@/utils/supabase/server";
+import { ACTIVITIES, COURSE_CARDS, VIDEOS, getYoutubeId, type Video } from "@/data/landing";
 import { cn } from "@/lib/utils";
 
 // 섹션 헤더 (그라디언트 라벨 + 제목 + 설명) — 랜딩 전 섹션 공통.
@@ -25,6 +27,15 @@ const ACTIVITY_BADGE: Record<string, string> = {
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ reset?: string; verified?: string; signup?: string }> }) {
   const { reset, verified, signup } = await searchParams;
+
+  // 유튜브 영상: admin 등록(노출=true) 우선, 비어있으면 mock VIDEOS로 fallback.
+  const supabase = createClient(await cookies());
+  const { data: dbVideos } = await supabase
+    .from("youtube_videos")
+    .select("tag, url, title, description")
+    .eq("is_visible", true)
+    .order("sort_order", { ascending: true });
+  const videos: Video[] = dbVideos && dbVideos.length > 0 ? (dbVideos as Video[]) : VIDEOS;
 
   return (
     <div className="bg-surface">
@@ -75,7 +86,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
         />
         <div className="mx-auto max-w-[1200px] px-5 md:px-10">
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-4">
-            {VIDEOS.map((v, i) => {
+            {videos.map((v, i) => {
               const id = getYoutubeId(v.url);
               return (
                 <a
@@ -92,12 +103,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </div>
-                    <span className="absolute right-2.5 bottom-2 rounded bg-black/60 px-1.5 py-0.5 text-[11px] text-white">{v.duration}</span>
+                    {v.duration && (
+                      <span className="absolute right-2.5 bottom-2 rounded bg-black/60 px-1.5 py-0.5 text-[11px] text-white">{v.duration}</span>
+                    )}
                   </div>
                   <div className="p-3.5">
-                    <span className="bg-accent-blue-soft text-accent-blue-ink mb-1.5 inline-block rounded-full px-2 py-0.5 text-sm">{v.tag}</span>
+                    {v.tag && <span className="bg-accent-blue-soft text-accent-blue-ink mb-1.5 inline-block rounded-full px-2 py-0.5 text-sm">{v.tag}</span>}
                     <p className="text-ink mb-1 text-[15px] leading-snug font-medium">{v.title}</p>
-                    <p className="text-muted-fg-faint text-sm leading-relaxed">{v.desc}</p>
+                    <p className="text-muted-fg-faint text-sm leading-relaxed">{v.description ?? v.desc}</p>
                   </div>
                 </a>
               );
