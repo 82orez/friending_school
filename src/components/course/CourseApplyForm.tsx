@@ -1,14 +1,25 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { CheckCircle2, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { submitApplication, type ApplyState } from "@/app/courses/actions";
 import { type ApplyGroup, type ApplyOption, isApplyGroup } from "@/data/courses";
 
 // 과정 상세페이지 상담 신청폼. useActionState + submitApplication 서버 액션으로 실제 저장.
+// 제출 전 입력 내용 확인 다이얼로그(AlertDialog) 노출 → 확인 시 requestSubmit으로 진행.
 // 입력은 controlled(React 19 auto-reset & Base UI defaultValue 경고 회피).
 export default function CourseApplyForm({ courseSlug, title, options }: { courseSlug: string; title: string; options: ApplyOption[] | ApplyGroup[] }) {
   const [state, formAction, pending] = useActionState<ApplyState, FormData>(submitApplication, {});
@@ -17,6 +28,24 @@ export default function CourseApplyForm({ courseSlug, title, options }: { course
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [schedule, setSchedule] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // 제출 버튼 → 브라우저 기본 검증 통과 시 확인 다이얼로그 노출.
+  const handleReview = () => {
+    const form = formRef.current;
+    if (form && !form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+    setConfirmOpen(true);
+  };
+
+  // 확인 → 다이얼로그 닫고 실제 폼 제출(서버 액션 호출).
+  const handleConfirm = () => {
+    setConfirmOpen(false);
+    formRef.current?.requestSubmit();
+  };
 
   if (state.success) {
     return (
@@ -29,7 +58,7 @@ export default function CourseApplyForm({ courseSlug, title, options }: { course
   }
 
   return (
-    <form action={formAction} aria-describedby={state.error ? "apply-error" : undefined} className="text-ink mx-auto w-full max-w-[560px] rounded-2xl bg-white p-7 md:p-9">
+    <form ref={formRef} action={formAction} aria-describedby={state.error ? "apply-error" : undefined} className="text-ink mx-auto w-full max-w-[560px] rounded-2xl bg-white p-7 md:p-9">
       <p className="text-ink mb-5 text-lg font-bold">{title}</p>
       <input type="hidden" name="courseSlug" value={courseSlug} />
 
@@ -90,12 +119,46 @@ export default function CourseApplyForm({ courseSlug, title, options }: { course
       </div>
 
       <button
-        type="submit"
+        type="button"
+        onClick={handleReview}
         disabled={pending}
         className="bg-cta mt-5 inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full text-base font-bold tracking-wide text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
         {pending && <Loader2 className="size-4 animate-spin" />}
         {pending ? "신청 중" : "상담 신청하기"}
       </button>
+
+      {/* 제출 전 입력 내용 확인 */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>입력하신 내용이 맞나요?</AlertDialogTitle>
+            <AlertDialogDescription>아래 내용으로 상담을 신청합니다. 확인 후 진행해 주세요.</AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <dl className="border-rule text-ink divide-rule divide-y rounded-lg border text-left text-sm">
+            {[
+              ["과정", option],
+              ["이름", name],
+              ["전화번호", phone],
+              ["이메일", email || "(미입력)"],
+              ["희망 날짜/시간", schedule],
+            ].map(([label, value]) => (
+              <div key={label} className="flex gap-3 px-3.5 py-2.5">
+                <dt className="text-muted-fg w-24 shrink-0">{label}</dt>
+                <dd className="flex-1 font-medium break-words whitespace-pre-wrap">{value}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <AlertDialogFooter>
+            {/* base-nova: AlertDialogCancel은 자동 닫힘, AlertDialogAction은 수동 → handleConfirm에서 close */}
+            <AlertDialogCancel>다시 확인</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm} className="bg-cta hover:bg-cta/90 border-transparent text-white">
+              신청하기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }
