@@ -36,7 +36,7 @@ export default async function RootLayout({
   const admin = user ? await isAdmin(supabase, user.id) : false;
 
   return (
-    <html lang="ko" className={cn("font-sans", geist.variable)}>
+    <html lang="ko" data-scroll-behavior="smooth" className={cn("font-sans", geist.variable)}>
       <body className={`${pretendard.variable} bg-white font-sans text-[#1a1a1a] antialiased`}>
         <Navbar user={user ? { email: user.email } : null} isAdmin={admin} />
         <AuthHashHandler />

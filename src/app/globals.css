@@ -155,6 +155,9 @@
   }
   html {
     @apply font-sans;
+  }
+  /* 페이지 내 앵커 스크롤만 smooth — 라우트 네비게이션 시 Next가 끌 수 있도록 CSS 대신 data 속성으로 선언(layout.tsx) */
+  html[data-scroll-behavior="smooth"] {
     scroll-behavior: smooth;
   }
   button:not(:disabled),
