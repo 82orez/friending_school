@@ -4,7 +4,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 
 ## 개요
 
-"프렌딩 스쿨" 워홀 영어 과정 랜딩 페이지. Next.js 16(App Router, Turbopack) + React 19.2 + Tailwind v4. shadcn/ui(`base-nova`/`neutral`), Supabase SSR 인증(이메일 + 카카오 OAuth), 전자책 뷰어 `/textbook/[course]`(레지스트리 기반 교재 5종, 무료 미리보기 외 로그인 필수) 포함.
+**"청년을 세계로"** 워홀·해외진출 영어 통합 플랫폼(브랜드 "프렌딩 스쿨"). 구성: 5섹션 랜딩 + **과정 상세페이지 4종**(`/courses/[slug]`: workhol·kitchen·grammar·cosmetic) + **전자책 뷰어 `/textbook/[course]`**(레지스트리 기반 교재 5종, 무료 미리보기 외 로그인) + **상담신청→마이페이지**(`/mypage`) + **admin 대시보드**(`/admin`: 신청·회원·유튜브). Next.js 16(App Router, Turbopack) + React 19.2 + Tailwind v4. shadcn/ui(`base-nova`/`neutral`), Supabase SSR 인증(이메일 + 카카오 OAuth), 신청 알림 메일(Resend).
 
 ## 명령어
 
@@ -15,26 +15,25 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 
 ## 아키텍처
 
-**랜딩 페이지** `src/app/page.tsx`(서버 컴포넌트, 단일 파일). 섹션은 파일 상단 데이터 배열(`reasons`, `lastReason`, `opportunityCards`, `infoCards`, `reviewsTop`, `reviewBottom`, `units`)을 `.map()`. 카피 수정 시 해당 배열 먼저 편집. `async`로 `searchParams` 받아 `reset=success`/`verified=success`/`login=success` 시 hero 위 녹색 배너. 시맨틱: `<h1>` 1개, 섹션 `<h2>`, 카드 `<h3>`. 카드 컨테이너는 모두 `SectionCard` wrapper. 반응형은 모바일 기본값 + `md:` 분기. CTA 두 곳(히어로 `<a href="#apply">` + 최종 `<section id="apply">`의 `<ApplyForm/>`)은 Navbar "신청방법"과 anchor 공유.
+**랜딩 페이지** `src/app/page.tsx`(async server). **5섹션**: ①히어로(`hero-bg.jpg` 배경 + `text-brand-gradient` "세계로") ②셀프디벨롭(`<SelfDevelop/>` client — 교재 탭 5종/진행바/더보기 아코디언) ③유튜브 생존기(`youtube_videos` 노출분 SSR 조회→비면 mock `VIDEOS` fallback, `getYoutubeId`로 썸네일) ④실전 스피킹(과정카드 4종 → `/courses/<slug>`, 앵커 `#courses`) ⑤액티비티. **데이터는 `src/data/landing.ts`**(`BOOKS`·`VIDEOS`·`COURSE_CARDS`·`ACTIVITIES` — 교재 유닛·과정 커리큘럼이 모두 `BOOKS`에서 파생되는 단일 소스). 카피 수정 시 이 파일 먼저 편집. `searchParams` `reset`/`verified`/`signup=success` 시 `SuccessBanner`. 시맨틱 `<h1>` 1개(히어로)·섹션 `<h2>`. 반응형 모바일 기본 + `md:`. 전체를 `bg-surface` 래퍼로 감싸 흰 카드 대비.
 
 **공통 컴포넌트** `Navbar.tsx`(client, 슬라이드 메뉴)·`Footer.tsx`(server)는 `layout.tsx`에서 children 감쌈.
-- Navbar는 `user: { email? } | null` prop을 SSR로 받고, `onAuthStateChange` 구독 + `pageshow`(bfcache) 리스너로 stale 방지. 로고는 `next/image`(`width=107 height=40`, 원본비 1664:624, `priority`).
-- 모바일 메뉴 항목 3종(순서 고정): `#curriculum`, `#apply`, **"교재 보기"(확장 토글, 항상 맨 아래)**. anchor는 `<a href>`, 라우트는 `<Link href>`, 모두 `onClick={closeMenu}` 필수. "교재 보기"는 `<button>` 토글로 `TEXTBOOKS`(`src/data/textbook/index.ts`)를 펼침(`textbookOpen` state, `aria-expanded/controls`, grid `0fr→1fr` 트릭). 메뉴 닫힐 때 `textbookOpen`도 false 동기화. 새 교재는 `TEXTBOOKS`에 push만 하면 자동 반영.
+- Navbar는 `user: { email? } | null` + `isAdmin` prop을 SSR로 받고(`layout.tsx`가 전달), `onAuthStateChange` 구독 + `pageshow`(bfcache) 리스너로 stale 방지. 로고는 `next/image`(`/images/logo.png`, `width=123 height=36`, `priority`).
+- 슬라이드 메뉴: **커리큘럼 아코디언**(과정 4종 `/courses/<slug>`) + **교재 보기 아코디언**(`TEXTBOOKS` `src/data/textbook/index.ts`) + 인증 영역(로그인 시 **관리자**(admin만)·**마이페이지**·이메일·로그아웃 / 비로그인 시 로그인·회원가입). 두 아코디언 모두 `<button>` 토글(`curriculumOpen`/`textbookOpen` state, `aria-expanded/controls`, grid `0fr→1fr` 트릭), **메뉴 닫힐 때 둘 다 false 동기화**. 라우트는 `<Link>`+`onClick={closeMenu}`. 데스크톱 인라인에도 (관리자)·마이페이지·로그아웃/회원가입. 새 교재는 `TEXTBOOKS`에 추가만 하면 자동 반영.
 - a11y: 햄버거 `aria-expanded`·`aria-controls="mobile-menu"`, 메뉴 `role="dialog"`·`aria-modal`·`aria-hidden`·`inert={!menuOpen}`, `bg-black/40` 오버레이, 열림 시 닫기버튼 포커스·닫힘 시 햄버거 복귀(`triggerRef`/`closeButtonRef`/`prevMenuOpen`), body scroll lock, Esc 닫기. **수정 시 이 체인 유지.**
 - 로그아웃은 `@/app/(auth)/logout/actions`의 `logout()`을 `<form action={logout}>`로 호출.
 
-**루트 레이아웃** `src/app/layout.tsx`(async server): `createClient(await cookies()).auth.getUser()` → `<Navbar user>`. `<AuthHashHandler/>`(`src/components/auth/`)를 마운트해 implicit hash(`#access_token=...`) 토큰을 client에서 `setSession` 후 `/?verified=success` 또는 `/reset-password`로 replace. `lang="ko"`, Pretendard(`next/font/local`, `--font-pretendard`) + Geist(`--font-sans`). **단, `globals.css`의 `@theme inline`이 `--font-sans → --font-pretendard` 매핑이라 `font-sans`는 Pretendard.**
+**루트 레이아웃** `src/app/layout.tsx`(async server): `getUser()` + `isAdmin(supabase,user.id)` → `<Navbar user isAdmin>`. `<AuthHashHandler/>`(`src/components/auth/`)를 마운트해 implicit hash(`#access_token=...`) 토큰을 client에서 `setSession` 후 `/?verified=success` 또는 `/reset-password`로 replace. `lang="ko"`, Pretendard(`next/font/local`, `--font-pretendard`) + Geist(`--font-sans`). **단, `globals.css`의 `@theme inline`이 `--font-sans → --font-pretendard` 매핑이라 `font-sans`는 Pretendard.**
 
-**스타일링** Tailwind v4: `globals.css`의 `@import` + `@theme inline`(별도 config 없음). `@custom-variant dark`. 토큰 두 그룹: (1) shadcn 색상/`--radius-*`(OKLch), (2) **마케팅 시맨틱 색 9종**: `--color-brand`(#ff4757, 메인 CTA), `--color-brand-blue`(#2563eb, **회원가입 동선 전용**), `--color-ink`(#1a1a1a), `--color-ink-soft`(#333), `--color-surface`(#f8f8f8), `--color-muted-fg`(#666), `--color-muted-fg-faint`(#999), `--color-rule`(#eee), `--color-rule-faint`(#ddd). 클래스: `bg-brand`, `text-brand`, `bg-brand/90`(알파 슬래시 OK) 등. **새 코드는 하드코딩 hex 금지, 토큰 클래스 사용**(예외 단발성: #2d2d2d 그래디언트 끝, #ff6b7a, #ffc107 별점, #555, #888). 다크모드 미구현(라이트 전용). `@layer base`: 활성 버튼 `cursor:pointer` 전역 + `html{scroll-behavior:smooth}`.
+**스타일링** Tailwind v4: `globals.css`의 `@import` + `@theme inline`(별도 config 없음). `@custom-variant dark`. 토큰 세 그룹: (1) shadcn 색상/`--radius-*`(OKLch), (2) **마케팅 시맨틱 색**: `--color-brand`(#ff4757, 인증/강조 빨강), `--color-brand-blue`(#2563eb, **회원가입 동선 전용**), `--color-ink`(#1a1a1a), `--color-ink-soft`(#333), `--color-surface`(#f8f8f8), `--color-muted-fg`(#666), `--color-muted-fg-faint`(#999), `--color-rule`(#eee), `--color-rule-faint`(#ddd), (3) **project0607 플랫폼 팔레트(블루→핑크)**: `--color-accent-blue`(#6b8ff0)·`--color-accent-blue-soft`(#eef1fd)·`--color-accent-blue-ink`(#4a6bd4, 링크/탭 강조), `--color-cta`(#1a4fa0, **네이비 — 상담신청 CTA**), `--color-progress`(#b22222). + `@layer utilities`의 **`.bg-brand-gradient`/`.text-brand-gradient`**(블루→핑크 135deg, 히어로 "세계로"·섹션 라벨·탭 active·로고). **새 코드는 하드코딩 hex 금지, 토큰 클래스 사용**(예외 단발성: #E05A6A 신청박스, #ffc107/#F5A623 별점, #aaa 등). 다크모드 미구현. `@layer base`: 활성 버튼 `cursor:pointer` 전역 + `html{scroll-behavior:smooth}`.
 
 **shadcn/ui** `components.json`(`base-nova`/`neutral`/lucide/RSC). UI: `src/components/ui/{button,card,input,label,textarea,alert-dialog,calendar,popover,select}.tsx`. `select.tsx`는 미사용·untracked. `calendar.tsx`/`popover.tsx`도 현재 미사용(날짜 필요 시 `date-fns`(^4) + `react-day-picker`(^10) 재사용, 한국어 `locale={ko}` 필수). `cn()`은 `src/lib/utils.ts`(clsx+tailwind-merge), 항상 사용. 아이콘 `lucide-react`, 프리미티브 `@base-ui/react`, 애니메이션 `tw-animate-css`.
-- **Button variant**: shadcn 기본 + 추가 4종 — `brand`(빨강 primary), `brand-blue`(파랑, **회원가입 동선 전용**: SignupForm 제출·AlertDialogAction "보내기"·ApplyForm 제출), `brand-inverse`(흰, 빨강 배경 위), `kakao`(#FEE500/#191919, `KakaoButton` 전용, 고정 hex). `buttonVariants`로 `<a>`에도 적용.
+- **Button variant**: shadcn 기본 + 추가 4종 — `brand`(빨강 primary), `brand-blue`(파랑, **회원가입 동선 전용**: SignupForm 제출·AlertDialogAction "보내기"), `brand-inverse`(흰, 빨강 배경 위), `kakao`(#FEE500/#191919, `KakaoButton` 전용, 고정 hex). `buttonVariants`로 `<a>`에도 적용. (상담신청 CTA는 variant 아닌 `bg-cta` 네이비 클래스.)
 - ⚠️ **base-nova**: `AlertDialogAction`은 `Close`로 안 감싸져 **클릭해도 모달 자동 안 닫힘** → onClick에서 `setOpen(false)` 또는 controlled 사용. `AlertDialogCancel`은 정상.
 
-**`SectionCard`** (`src/components/SectionCard.tsx`): 마케팅 카드 div wrapper. variant 3종 — `accent-left`(`border-l-[6px] border-brand bg-surface`, 후회·커리큘럼), `outline`(`border border-rule bg-surface`, 기회·리뷰), `plain`(`bg-surface`, 정보·소개). `rounded/p/text-center`는 호출 측 className. shadcn `Card`(슬롯 포함)는 콘텐츠 컨테이너용으로 별개.
+**`SectionCard`** (`src/components/SectionCard.tsx`): 카드 div wrapper. variant 3종 — `accent-left`(`border-l-[6px] border-brand bg-surface`), `outline`(`border border-rule bg-surface`, 현재 전자책 Unit 목록에서 사용), `plain`(`bg-surface`). `rounded/p`는 호출 측 className. shadcn `Card`(슬롯)는 별개.
 
-**`ApplyForm`** (`src/components/ApplyForm.tsx`, client): 최종 CTA 본문. controlled 입력 4종(이름·전화·이메일(선택)·희망 날짜/시간=`<Textarea rows={4}>` 자유 형식). grid `grid-cols-1 md:grid-cols-2`, 이메일·날짜는 `md:col-span-2`. 제출 `variant="brand-blue"`, 흰 카드(`bg-white text-ink`). 성공 시 ✓ 박스(`role="status"`)로 교체. 폼 `aria-labelledby="apply-heading"`.
-- ⚠️ **`ApplyForm.tsx`는 현재 orphan**(Phase 1 랜딩 리디자인에서 최종 CTA 섹션 제거 — 미사용 mock). 실제 신청 동선은 과정 상세페이지의 **`CourseApplyForm`** 사용.
+⚠️ **`ApplyForm.tsx`(`src/components/`)는 현재 orphan**(Phase 1 랜딩 리디자인에서 최종 CTA 섹션 제거 — 미사용 mock). 실제 신청 동선은 과정 상세페이지의 **`CourseApplyForm`** 사용(아래).
 
 **과정 신청 + 마이페이지** (Phase 4): 과정 상세 `CourseApplyForm`(`src/components/course/`, client)이 **`useActionState` + `submitApplication`**(`src/app/courses/actions.ts`)으로 실제 저장. 액션 가드: (1)필수값 (2)`rateLimit(apply:IP, 5/10분)` (3)`isValidEmail` (4)`applications` insert. **`user_id`는 서버 `getUser()`로 주입(위조 차단), 비로그인은 null**. `option`은 select 라벨 문자열 저장. **저장 성공 후 best-effort 관리자 알림 메일**(`src/lib/mailer.ts` `sendApplicationNotification` via Resend) — `getAdminEmails()`(admin.ts, `profiles.role='admin'`→getUserById)로 수신자 조회, **try/catch로 신청 성공과 분리**(메일 실패 무시). 제출 전 **`AlertDialog`(controlled) 입력 확인창** → 확인 시 `requestSubmit()`. **`/mypage`**(`src/app/mypage/page.tsx`, server): 로그인 가드(`redirect("/login?next=/mypage")`), `applications`를 본인 user_id로 조회 → 웰컴 배너 + 회원정보/신청내역 **네이티브 `<details>` 아코디언**(클라 JS 0). Navbar는 로그인 시 "마이페이지"(+admin이면 "관리자") 링크 노출(`layout.tsx`가 `isAdmin` prop 전달).
 
@@ -67,6 +66,8 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 ### 헬퍼
 
 - `src/lib/utils.ts` — `cn()`.
+- `src/lib/auth.ts` — `getUserRole`/`isAdmin(supabase,userId)`(`profiles.role`, app_metadata 대신 profiles 우선).
+- `src/lib/mailer.ts` — `sendApplicationNotification(to[],data)`(Resend, best-effort no-op, `import "server-only"`).
 - `src/lib/origin.ts` — `getOrigin(headers)`: `NEXT_PUBLIC_SITE_URL`→`origin`→`x-forwarded-host`+proto→`host`.
 - `src/lib/email.ts` — `isValidEmail()`(서버측 검증).
 - `src/lib/rate-limit.ts` — in-memory 토큰 버킷 `rateLimit/getClientIp/formatRetryAfter`. **⚠️ 프로세스 메모리라 멀티 인스턴스(Vercel)에선 효과 제한** → 필요 시 Upstash Redis로 함수 내부만 교체.
@@ -75,7 +76,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 ### Supabase SSR
 
 - `client.ts`(`createBrowserClient`) · `server.ts`(`createServerClient`+cookies) · `middleware.ts`(`updateSession()` 매 요청 `getUser()`로 세션 갱신 — **`createServerClient`와 `getUser()` 사이 로직 금지**) · `admin.ts`(`service_role`, 첫 줄 `import "server-only"`).
-- **`admin.ts` export**: `createAdminClient()` + `emailExists()`(@deprecated) + `getUserStatus()`(@deprecated) + **`getUserIdentitySummary(email)`**(권장: `{found:false}` | `{found:true,confirmed,hasPassword,oauthProviders[]}` | `null`). 내부: `listUsers`로 id 찾고 `getUserById(id)` 재호출해 `identities` 안전 확보(listUsers만으론 빈 배열로 옴). 모두 페이지네이션(perPage 1000, ≤50p) — **같은 액션에서 2번 호출 금지**. 에러 시 `null`(호출 측 "일시적 오류" 분기).
+- **`admin.ts` export**: `createAdminClient()` + `emailExists()`(@deprecated) + `getUserStatus()`(@deprecated) + **`getUserIdentitySummary(email)`**(권장: `{found:false}` | `{found:true,confirmed,hasPassword,oauthProviders[]}` | `null`) + **`getAdminEmails()`**(`profiles.role='admin'`→`getUserById`로 이메일, 신청 알림 수신자, 실패 시 `[]`). 내부: `listUsers`로 id 찾고 `getUserById(id)` 재호출해 `identities` 안전 확보(listUsers만으론 빈 배열로 옴). 모두 페이지네이션(perPage 1000, ≤50p) — **같은 액션에서 2번 호출 금지**. 에러 시 `null`(호출 측 "일시적 오류" 분기).
 - `src/proxy.ts` — Next 16 `proxy` 컨벤션(v15 `middleware` 리네임), `updateSession` 호출, `matcher`로 정적 자산 제외. 헬퍼 `middleware.ts` 파일명은 유지.
 - **환경 변수**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`(필수), `SUPABASE_SERVICE_ROLE_KEY`(admin용, **`NEXT_PUBLIC_` 절대 금지**), `NEXT_PUBLIC_SITE_URL`(운영 권장). **`RESEND_API_KEY`**(신청 알림 메일, 미설정 시 발송 no-op) + **`APPLICATION_NOTIFY_FROM`**(선택, 발신 주소 — Resend 인증 도메인; 미설정 시 `onboarding@resend.dev` 테스트 발신).
 - **Dashboard 설정**: Site URL = 운영 도메인, Redirect URLs에 `https://<도메인>/auth/confirm` + `http://localhost:3000/**`. 권장 메일 템플릿: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/`. **카카오**: Kakao Developers에서 앱 생성 → REST 키+Secret → Redirect URI `https://<ref>.supabase.co/auth/v1/callback` → **이메일 "필수동의"**. Supabase Providers>Kakao 활성화 + **"Allow account linking" 활성화**(같은 이메일 이메일/카카오 자동 연결, 비활성 시 콜백 실패).
@@ -102,12 +103,12 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 - **Prettier**: `printWidth:150`, `endOfLine:"crlf"`, `singleQuote:false`, `trailingComma:"all"`, `semi:true`, `tabWidth:2`, `prettier-plugin-tailwindcss`.
 - **버튼 커서 금지**: 전역 규칙 있음 → `cursor-pointer` 추가 금지(`disabled:cursor-not-allowed`만 허용).
 - **색상 토큰 우선**: hex arbitrary value 피하고 시맨틱 토큰 사용.
-- **CTA/anchor**: `#apply` 등 anchor 공유 + `scroll-behavior:smooth`. `<a>` 버튼화는 `buttonVariants()`+`cn()`.
+- **CTA/anchor**: 랜딩 `#courses`, 과정 상세 `#apply-form` 등 anchor + `scroll-behavior:smooth`. `<a>` 버튼화는 `buttonVariants()`+`cn()`.
 - **모바일 메뉴 a11y 회귀 주의**(위 Navbar 항목 체인 유지).
 - **DB 변경은 항상 마이그레이션**: `db:new`→검토→`db:push`. **`db:push`는 destructive** — 직후 `/signup` 회귀 테스트(가입 성공 + `profiles` row + `raw_app_meta_data.role='student'`). 파일명 수동 명명 금지.
 - **⚠️ role은 `app_metadata`에만, `user_metadata` 절대 금지**(후자는 클라가 `updateUser({data})`로 수정 가능 → 권한 우회). role 읽기는 JWT `app_metadata.role` 또는 `profiles.role`만. role 부여 시 `admin.auth.admin.updateUserById(id,{app_metadata:{role}})` + `profiles` update 함께.
 - **profiles RLS 최소(본인 row만)**: admin 전체 조회 정책 미구현 → 필요 시 `createAdminClient()` 우회. 향후 `profiles_admin_all` 정책 추가.
-- **교재 진행률 가드/완료 유지**(위 `cooking/actions.ts` 항목): 화이트리스트+범위 검증 4가드 + read-then-merge 깨지 말 것.
+- **교재 진행률 가드/완료 유지**(위 `src/app/textbook/actions.ts` 항목): 레지스트리 화이트리스트+unit 존재 검증 + read-then-merge 깨지 말 것.
 
 ## 별칭
 
