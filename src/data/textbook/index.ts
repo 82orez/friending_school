@@ -32,7 +32,7 @@ function unitsFromBook(bookKey: string): TextbookUnit[] {
       unit: n,
       title: u.t,
       titleKr: u.sub ?? u.t,
-      situation: u.sub ?? "",
+      situation: u.situation ?? u.sub ?? "",
       htmlFile: `unit-${String(n).padStart(2, "0")}.html`,
     };
   });
