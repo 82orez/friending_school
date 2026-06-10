@@ -17,7 +17,7 @@ const TAB_LABELS: Record<string, string> = {
 };
 
 // landing book.key → 전자책 course(레지스트리). 여기 등록된 교재만 전자책 연동(나머지는 mock placeholder).
-const LINKED_COURSE: Record<string, string> = { workhol: "workhol", kitchen: "kitchen" };
+const LINKED_COURSE: Record<string, string> = { workhol: "workhol", kitchen: "kitchen", basic1: "grammar1" };
 
 // "Unit 01" → 1, "Unit 25" → 25
 function unitNum(u: BookUnit): number {

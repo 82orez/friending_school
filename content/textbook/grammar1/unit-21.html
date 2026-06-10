@@ -1159,16 +1159,14 @@
 </head>
 <body>
 
-<div class="toolbar">
-  <div class="group">
-    <button class="btn active" id="btnColor">Color</button>
-    <button class="btn" id="btnBw">B/W</button>
-  </div>
-  <div class="group">
-    <button class="btn active" id="btnDesktop">Desktop</button>
-    <button class="btn" id="btnMobile">Mobile</button>
-  </div>
-</div>
+<script>
+  (function () {
+    var mq = window.matchMedia("(max-width: 768px)");
+    var apply = function () { document.body.classList.toggle("mobile", mq.matches); };
+    apply();
+    mq.addEventListener("change", apply);
+  })();
+</script>
 
 <main>
 <!-- ════════ PAGE 1 — POINT ════════ -->
@@ -1477,44 +1475,5 @@
   <div class="page-num">6</div>
 </section>
 </main>
-
-<script>
-  const btnColor   = document.getElementById('btnColor');
-  const btnBw      = document.getElementById('btnBw');
-  const btnDesktop = document.getElementById('btnDesktop');
-  const btnMobile  = document.getElementById('btnMobile');
-
-  function setTheme(theme) {
-    const root = document.documentElement;
-    if (theme === 'bw') {
-      root.style.setProperty('--cream-bg','#FFFFFF');
-      root.style.setProperty('--pink','#333333');
-      root.style.setProperty('--orange','#666666');
-      root.style.setProperty('--text','#000000');
-      root.style.setProperty('--border','#CCCCCC');
-      btnColor.classList.remove('active'); btnBw.classList.add('active');
-    } else {
-      root.style.setProperty('--cream-bg','#F5EFE7');
-      root.style.setProperty('--pink','#7A5BA8');
-      root.style.setProperty('--orange','#FF9F43');
-      root.style.setProperty('--text','#333333');
-      root.style.setProperty('--border','#d9d9d9');
-      btnColor.classList.add('active'); btnBw.classList.remove('active');
-    }
-  }
-  function setView(view) {
-    if (view === 'mobile') {
-      document.body.classList.add('mobile');
-      btnDesktop.classList.remove('active'); btnMobile.classList.add('active');
-    } else {
-      document.body.classList.remove('mobile');
-      btnDesktop.classList.add('active'); btnMobile.classList.remove('active');
-    }
-  }
-  btnColor.addEventListener('click',   () => setTheme('color'));
-  btnBw.addEventListener('click',      () => setTheme('bw'));
-  btnDesktop.addEventListener('click', () => setView('desktop'));
-  btnMobile.addEventListener('click',  () => setView('mobile'));
-</script>
 </body>
 </html>
