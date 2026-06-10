@@ -70,7 +70,9 @@ export default async function TextbookListPage({ params }: { params: Promise<Par
                   "focus-visible:ring-brand/50 block h-full rounded-xl transition-shadow focus-visible:ring-2 focus-visible:outline-none",
                   isLocked ? "opacity-80" : "hover:shadow-md",
                 )}>
-                <SectionCard variant="outline" className="flex h-full flex-col gap-3 rounded-xl p-5">
+                <SectionCard
+                  variant="outline"
+                  className={cn("flex h-full flex-col gap-3 rounded-xl p-5", isCompleted && "border-progress/40 bg-progress/5")}>
                   <div className="flex items-center justify-between">
                     <span className="inline-flex items-center gap-2">
                       <span className="bg-brand inline-flex size-7 items-center justify-center rounded-full text-xs font-bold text-white">{u.unit}</span>
