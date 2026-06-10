@@ -17,35 +17,11 @@ const TAB_LABELS: Record<string, string> = {
 };
 
 // landing book.key → 전자책 course(레지스트리). 여기 등록된 교재만 전자책 연동(나머지는 mock placeholder).
-const LINKED_COURSE: Record<string, string> = { workhol: "workhol", kitchen: "kitchen", basic1: "grammar1", basic2: "grammar2" };
+const LINKED_COURSE: Record<string, string> = { workhol: "workhol", kitchen: "kitchen", basic1: "grammar1", basic2: "grammar2", cosmetic: "cosmetic" };
 
 // "Unit 01" → 1, "Unit 25" → 25
 function unitNum(u: BookUnit): number {
   return parseInt(u.n.replace(/\D/g, ""), 10);
-}
-
-// 전자책과 미연동된 교재용 placeholder 카드(mock 상태 기반).
-function UnitCard({ unit }: { unit: BookUnit }) {
-  const locked = unit.s === "locked";
-  return (
-    <div
-      className={cn(
-        "border-rule relative rounded-md border bg-white p-4 text-center transition-[border-color,transform] duration-150",
-        locked ? "opacity-40" : "hover:border-progress cursor-pointer hover:-translate-y-0.5",
-      )}>
-      {unit.s === "done" && (
-        <span className="bg-progress absolute top-2 right-2 rounded-full px-1.5 py-0.5 text-[11px] font-bold text-white">완료</span>
-      )}
-      {!locked && unit.s !== "done" && (
-        <span className="bg-surface text-muted-fg-faint border-rule absolute top-2 right-2 rounded-full border px-1.5 py-0.5 text-[11px] font-bold">
-          시작
-        </span>
-      )}
-      <p className={cn("mb-2 text-base font-bold", locked ? "text-muted-fg-faint" : "text-progress")}>{unit.n}</p>
-      <p className="text-ink text-[15px] leading-snug font-medium">{unit.t}</p>
-      {unit.sub && <p className="text-muted-fg-faint mt-1 text-[13px] leading-snug">{unit.sub}</p>}
-    </div>
-  );
 }
 
 // 전자책 연동 카드: 본문 클릭 시 /textbook/<course>/<unit>(잠금 시 /login?next=).
@@ -124,14 +100,13 @@ function BookPanel({
   const all = [...book.units, ...book.extra];
   const total = all.length;
 
-  // LINKED_COURSE에 등록된 교재만 전자책 연동(실제 완료 상태, 수동 토글). 나머지는 mock placeholder.
+  // 모든 BOOKS는 LINKED_COURSE에 등록되어 전자책 연동(book.key→레지스트리 course). 새 교재 추가 시 LINKED_COURSE에도 등록 필수.
   const course = LINKED_COURSE[book.key];
-  const linked = !!course;
-  const textbook = linked ? getTextbook(course) : undefined;
+  const textbook = getTextbook(course);
   const freeUnits = textbook?.freeUnits ?? [];
 
   // 완료 상태를 로컬로 관리(낙관적 토글) — 상단 진행바와 카드가 동일 소스 사용.
-  const [completedMap, setCompletedMap] = useState<Record<number, boolean>>(() => ({ ...(course ? (completedByCourse[course] ?? {}) : {}) }));
+  const [completedMap, setCompletedMap] = useState<Record<number, boolean>>(() => ({ ...(completedByCourse[course] ?? {}) }));
   const [, startToggle] = useTransition();
 
   const handleToggle = (num: number, next: boolean) => {
@@ -141,23 +116,20 @@ function BookPanel({
     });
   };
 
-  const done = linked ? all.filter((u) => completedMap[unitNum(u)]).length : all.filter((u) => u.s === "done").length;
+  const done = all.filter((u) => completedMap[unitNum(u)]).length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  const renderUnit = (u: BookUnit) =>
-    linked ? (
-      <LinkedUnitCard
-        key={u.n}
-        unit={u}
-        course={course}
-        freeUnits={freeUnits}
-        isLoggedIn={isLoggedIn}
-        completed={!!completedMap[unitNum(u)]}
-        onToggle={handleToggle}
-      />
-    ) : (
-      <UnitCard key={u.n} unit={u} />
-    );
+  const renderUnit = (u: BookUnit) => (
+    <LinkedUnitCard
+      key={u.n}
+      unit={u}
+      course={course}
+      freeUnits={freeUnits}
+      isLoggedIn={isLoggedIn}
+      completed={!!completedMap[unitNum(u)]}
+      onToggle={handleToggle}
+    />
+  );
 
   return (
     <div className="border-rule mx-auto max-w-[1200px] rounded-2xl border bg-white p-6 md:p-9">

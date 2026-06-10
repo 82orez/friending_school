@@ -48,7 +48,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       .from("reading_progress")
       .select("course, unit, completed")
       .eq("user_id", user.id)
-      .in("course", ["workhol", "kitchen", "grammar1", "grammar2"]);
+      .in("course", ["workhol", "kitchen", "grammar1", "grammar2", "cosmetic"]);
     if (data) for (const r of data) (completedByCourse[r.course] ??= {})[r.unit] = r.completed;
   }
 
