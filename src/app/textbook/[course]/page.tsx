@@ -88,7 +88,9 @@ export default async function TextbookListPage({ params }: { params: Promise<Par
                     <p className="text-muted-fg mt-1 text-sm">{u.titleKr}</p>
                   </div>
 
-                  {u.situation && <p className="text-muted-fg line-clamp-3 flex-1 text-sm leading-relaxed">{u.situation}</p>}
+                  {u.situation && u.situation !== u.titleKr && (
+                    <p className="text-muted-fg line-clamp-3 flex-1 text-sm leading-relaxed">{u.situation}</p>
+                  )}
 
                   {user && (
                     <p className={cn("mt-auto text-xs font-medium", isCompleted ? "text-brand" : "text-muted-fg-faint")}>
