@@ -185,9 +185,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       <section className="pb-14">
         <SectionIntro label="원어민 · 세대교감 액티비티" title="영어는 밖에서도 빨리 늘어요!" desc="국내에서도 많은 활동이 있어요. 함께해요." />
         <div className="mx-auto max-w-[1200px] px-5 md:px-10">
-          <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+          <div className="flex flex-col gap-3.5 md:flex-row md:flex-wrap md:justify-center">
             {ACTIVITIES.map((a) => (
-              <div key={a.title} className="border-rule overflow-hidden rounded-2xl border bg-white transition-transform hover:-translate-y-0.5">
+              <div
+                key={a.title}
+                className="border-rule w-full overflow-hidden rounded-2xl border bg-white transition-transform hover:-translate-y-0.5 md:w-[364px]"
+              >
                 <div className="relative h-[110px]">
                   <Image src={a.image} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover" />
                   <div className="absolute inset-0 bg-black/30" />
