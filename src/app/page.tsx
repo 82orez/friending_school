@@ -100,7 +100,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           }
         />
         <div className="mx-auto max-w-[1200px] px-5 md:px-10">
-          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-4">
+          <div className="flex flex-wrap justify-center gap-3.5">
             {videos.map((v, i) => {
               const id = getYoutubeId(v.url);
               return (
@@ -109,7 +109,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
                   href={v.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="border-rule block overflow-hidden rounded-2xl border bg-white transition-transform hover:-translate-y-0.5">
+                  className="border-rule block w-full shrink-0 overflow-hidden rounded-2xl border bg-white transition-transform hover:-translate-y-0.5 sm:w-[calc(50%-0.4375rem)] md:w-[calc(25%-0.65625rem)]">
                   <div
                     className="relative flex aspect-[9/16] items-center justify-center bg-[#222] bg-cover bg-center"
                     style={id ? { backgroundImage: `url('https://img.youtube.com/vi/${id}/maxresdefault.jpg')` } : undefined}>
