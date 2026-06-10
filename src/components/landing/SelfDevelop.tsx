@@ -33,6 +33,8 @@ function LinkedUnitCard({
   isLoggedIn,
   completed,
   onToggle,
+  subtitle,
+  situation,
 }: {
   unit: BookUnit;
   course: string;
@@ -40,6 +42,8 @@ function LinkedUnitCard({
   isLoggedIn: boolean;
   completed: boolean;
   onToggle: (num: number, next: boolean) => void;
+  subtitle?: string;
+  situation?: string;
 }) {
   const num = unitNum(unit);
   const locked = !isLoggedIn && !freeUnits.includes(num);
@@ -54,11 +58,15 @@ function LinkedUnitCard({
       )}>
       <Link
         href={href}
-        aria-label={`${unit.n} ${unit.t}${unit.sub ? ` — ${unit.sub}` : ""}${locked ? " (로그인 필요)" : ""}`}
-        className="focus-visible:ring-brand/50 block rounded-md p-4 text-center focus-visible:ring-2 focus-visible:outline-none">
+        aria-label={`${unit.n} ${unit.t}${subtitle ? ` — ${subtitle}` : ""}${locked ? " (로그인 필요)" : ""}`}
+        className={cn(
+          "focus-visible:ring-brand/50 block rounded-md p-4 focus-visible:ring-2 focus-visible:outline-none",
+          situation ? "text-left" : "text-center",
+        )}>
         <p className={cn("mb-2 text-base font-bold", locked ? "text-muted-fg-faint" : "text-progress")}>{unit.n}</p>
         <p className="text-ink text-[15px] leading-snug font-medium">{unit.t}</p>
-        {unit.sub && <p className="text-muted-fg-faint mt-1 text-[13px] leading-snug">{unit.sub}</p>}
+        {subtitle && <p className="text-muted-fg-faint mt-1 text-[13px] leading-snug">{subtitle}</p>}
+        {situation && <p className="text-muted-fg mt-2 line-clamp-3 text-[13px] leading-relaxed">{situation}</p>}
         {locked && <p className="text-muted-fg-faint mt-2 text-[12px] font-medium">로그인 후 열람</p>}
       </Link>
 
@@ -119,17 +127,26 @@ function BookPanel({
   const done = all.filter((u) => completedMap[unitNum(u)]).length;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  const renderUnit = (u: BookUnit) => (
-    <LinkedUnitCard
-      key={u.n}
-      unit={u}
-      course={course}
-      freeUnits={freeUnits}
-      isLoggedIn={isLoggedIn}
-      completed={!!completedMap[unitNum(u)]}
-      onToggle={handleToggle}
-    />
-  );
+  const renderUnit = (u: BookUnit) => {
+    const num = unitNum(u);
+    const tbUnit = textbook?.units.find((t) => t.unit === num);
+    const subtitle = u.sub ?? tbUnit?.titleKr;
+    // situation이 부제와 다를 때만 노출(= 사실상 워홀). 나머지 교재는 situation===sub라 undefined.
+    const situation = tbUnit?.situation && tbUnit.situation !== subtitle ? tbUnit.situation : undefined;
+    return (
+      <LinkedUnitCard
+        key={u.n}
+        unit={u}
+        course={course}
+        freeUnits={freeUnits}
+        isLoggedIn={isLoggedIn}
+        completed={!!completedMap[num]}
+        onToggle={handleToggle}
+        subtitle={subtitle}
+        situation={situation}
+      />
+    );
+  };
 
   return (
     <div className="border-rule mx-auto max-w-[1200px] rounded-2xl border bg-white p-6 md:p-9">
