@@ -128,11 +128,13 @@ export default function Navbar({
                     Teacher
                   </Link>
                 )}
-                <Link
-                  href="/mypage"
-                  className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-                  마이페이지
-                </Link>
+                {!isTeacher && (
+                  <Link
+                    href="/mypage"
+                    className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                    마이페이지
+                  </Link>
+                )}
                 <span className="text-muted-fg max-w-[140px] truncate text-sm" title={user.email ?? undefined}>
                   {user.email}
                 </span>
@@ -289,14 +291,16 @@ export default function Navbar({
                   </Link>
                 </li>
               )}
-              <li className="border-rule border-b py-4">
-                <Link
-                  href="/mypage"
-                  onClick={closeMenu}
-                  className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-medium no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-                  마이페이지
-                </Link>
-              </li>
+              {!isTeacher && (
+                <li className="border-rule border-b py-4">
+                  <Link
+                    href="/mypage"
+                    onClick={closeMenu}
+                    className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-medium no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                    마이페이지
+                  </Link>
+                </li>
+              )}
               <li className="border-rule border-b py-4">
                 <span className="block truncate text-[13px] text-[#888]" title={user.email ?? undefined}>
                   {user.email}
