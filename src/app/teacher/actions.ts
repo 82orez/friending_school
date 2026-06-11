@@ -38,7 +38,7 @@ function isValidZoomUrl(url: string): boolean {
 
 export async function updateTeacherProfile(_prev: TeacherActionState, formData: FormData): Promise<TeacherActionState> {
   const userId = await requireTeacher();
-  if (!userId) return { error: "권한이 없습니다." };
+  if (!userId) return { error: "You don't have permission." };
 
   const fullName = clean(formData.get("full_name"), 60);
   const headline = clean(formData.get("headline"), 100);
@@ -47,7 +47,7 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
   const zoomUrl = clean(formData.get("zoom_url"), 500);
 
   if (zoomUrl && !isValidZoomUrl(zoomUrl)) {
-    return { error: "Zoom URL 형식이 올바르지 않습니다. (http:// 또는 https://)" };
+    return { error: "Invalid Zoom URL. (must start with http:// or https://)" };
   }
 
   // service_role로 본인 row의 화이트리스트 컬럼만 갱신 (role 등은 절대 미포함).
@@ -56,7 +56,7 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
     .from("profiles")
     .update({ full_name: fullName, headline, bio, phone, zoom_url: zoomUrl })
     .eq("id", userId);
-  if (error) return { error: "저장 중 오류가 발생했습니다." };
+  if (error) return { error: "Something went wrong while saving." };
 
   revalidatePath("/teacher");
   return { ok: true };
@@ -64,16 +64,16 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
 
 export async function updateTeacherAvatar(avatarUrl: string): Promise<TeacherActionState> {
   const userId = await requireTeacher();
-  if (!userId) return { error: "권한이 없습니다." };
+  if (!userId) return { error: "You don't have permission." };
 
   // 본인 폴더(avatars/<uid>/...)의 공개 URL인지 검증 — 임의 URL 저장 차단.
   if (!avatarUrl || !avatarUrl.includes(`/avatars/${userId}/`)) {
-    return { error: "잘못된 이미지 경로입니다." };
+    return { error: "Invalid image path." };
   }
 
   const admin = createAdminClient();
   const { error } = await admin.from("profiles").update({ avatar_url: avatarUrl }).eq("id", userId);
-  if (error) return { error: "이미지 저장 중 오류가 발생했습니다." };
+  if (error) return { error: "Something went wrong while saving the image." };
 
   revalidatePath("/teacher");
   return { ok: true };

@@ -5,6 +5,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AuthHashHandler from "@/components/auth/AuthHashHandler";
+import { Toaster } from "@/components/ui/sonner";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/server";
@@ -44,6 +45,7 @@ export default async function RootLayout({
         <AuthHashHandler />
         {children}
         <Footer />
+        <Toaster />
       </body>
     </html>
   );

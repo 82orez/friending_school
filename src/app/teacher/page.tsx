@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getUserRole } from "@/lib/auth";
 import TeacherProfileForm, { type TeacherProfile } from "@/components/teacher/TeacherProfileForm";
 
-export const metadata: Metadata = { title: "강사 페이지 — 프렌딩 스쿨", robots: { index: false } };
+export const metadata: Metadata = { title: "Teacher — Friending School", robots: { index: false } };
 
 export default async function TeacherPage() {
   const supabase = createClient(await cookies());
@@ -33,7 +33,7 @@ export default async function TeacherPage() {
     phone: profile.phone ?? "",
   };
 
-  const displayName = initial.full_name || user.email?.split("@")[0] || "강사";
+  const displayName = initial.full_name || user.email?.split("@")[0] || "Teacher";
 
   return (
     <div className="bg-surface min-h-screen">
@@ -46,8 +46,8 @@ export default async function TeacherPage() {
         {/* 웰컴 배너 */}
         <div className="bg-brand-gradient mb-5 rounded-2xl px-6 py-7 text-white">
           <p className="text-xs font-bold tracking-[0.1em] opacity-90">FRIENDING SCHOOL · TEACHER</p>
-          <p className="mt-2 text-xl font-bold md:text-2xl">{displayName}님, 강사 프로필을 관리하세요. 🎓</p>
-          <p className="mt-1 text-sm opacity-90">프로필 사진과 소개를 등록하면 학생에게 더 신뢰감을 줄 수 있어요.</p>
+          <p className="mt-2 text-xl font-bold md:text-2xl">Manage your teacher profile, {displayName}. 🎓</p>
+          <p className="mt-1 text-sm opacity-90">Adding a profile photo and bio helps build trust with your students.</p>
         </div>
 
         <TeacherProfileForm userId={user.id} email={user.email ?? ""} initial={initial} />
