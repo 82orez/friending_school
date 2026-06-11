@@ -8,7 +8,7 @@ import AuthHashHandler from "@/components/auth/AuthHashHandler";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/server";
-import { isAdmin } from "@/lib/auth";
+import { getUserRole } from "@/lib/auth";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -33,12 +33,14 @@ export default async function RootLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const admin = user ? await isAdmin(supabase, user.id) : false;
+  const role = user ? await getUserRole(supabase, user.id) : null;
+  const admin = role === "admin";
+  const teacher = role === "teacher";
 
   return (
     <html lang="ko" data-scroll-behavior="smooth" className={cn("font-sans", geist.variable)}>
       <body className={`${pretendard.variable} bg-white font-sans text-[#1a1a1a] antialiased`}>
-        <Navbar user={user ? { email: user.email } : null} isAdmin={admin} />
+        <Navbar user={user ? { email: user.email } : null} isAdmin={admin} isTeacher={teacher} />
         <AuthHashHandler />
         {children}
         <Footer />

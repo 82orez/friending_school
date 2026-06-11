@@ -108,3 +108,32 @@ export async function deleteYoutubeVideo(id: string): Promise<ActionResult> {
   revalidatePath("/");
   return { ok: true };
 }
+
+/* ===== 회원 Role 관리 ===== */
+
+const ASSIGNABLE_ROLES = ["student", "teacher"] as const;
+type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
+
+// student ↔ teacher 변경. admin 회원은 대상에서 제외(잠금 방지). role은 profiles + app_metadata 동기.
+export async function updateMemberRole(userId: string, role: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!userId || !ASSIGNABLE_ROLES.includes(role as AssignableRole)) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+
+  // 대상이 admin이면 변경 거부 (admin 잠금/강등 방지).
+  const { data: current } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+  if ((current as { role?: string } | null)?.role === "admin") {
+    return { ok: false, error: "관리자 계정의 역할은 변경할 수 없습니다." };
+  }
+
+  const { error: profileError } = await admin.from("profiles").update({ role }).eq("id", userId);
+  if (profileError) return { ok: false, error: "역할 변경 중 오류가 발생했습니다." };
+
+  // app_metadata.role 동기 (role 읽기는 profiles 우선이나, JWT 일관성 위해 함께 갱신)
+  const { error: authError } = await admin.auth.admin.updateUserById(userId, { app_metadata: { role } });
+  if (authError) return { ok: false, error: "역할 동기화 중 오류가 발생했습니다." };
+
+  revalidatePath("/admin/members");
+  return { ok: true };
+}

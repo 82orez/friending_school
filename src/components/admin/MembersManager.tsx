@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { Loader2, Search } from "lucide-react";
+import { updateMemberRole } from "@/app/admin/actions";
 import { cn } from "@/lib/utils";
 
 export type AdminMember = {
@@ -26,20 +27,38 @@ const ROLE_BADGE: Record<string, string> = {
 
 export default function MembersManager({ members }: { members: AdminMember[] }) {
   const [query, setQuery] = useState("");
+  const [rows, setRows] = useState(members);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   const thisMonth = useMemo(() => {
     const now = new Date();
-    return members.filter((m) => {
+    return rows.filter((m) => {
       const d = new Date(m.created_at);
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     }).length;
-  }, [members]);
+  }, [rows]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return members;
-    return members.filter((m) => m.email.toLowerCase().includes(q));
-  }, [members, query]);
+    if (!q) return rows;
+    return rows.filter((m) => m.email.toLowerCase().includes(q));
+  }, [rows, query]);
+
+  const handleRoleChange = (id: string, role: string) => {
+    const prev = rows.find((m) => m.id === id)?.role;
+    if (!prev || prev === role) return;
+    setRows((rs) => rs.map((m) => (m.id === id ? { ...m, role } : m)));
+    setPendingId(id);
+    startTransition(async () => {
+      const res = await updateMemberRole(id, role);
+      if (res.error) {
+        setRows((rs) => rs.map((m) => (m.id === id ? { ...m, role: prev } : m)));
+        alert(res.error);
+      }
+      setPendingId(null);
+    });
+  };
 
   return (
     <div>
@@ -79,7 +98,27 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
               <li key={m.id} className="border-rule flex items-center gap-3 border-b px-4 py-3.5 last:border-b-0 md:px-6">
                 <span className="text-muted-fg-faint w-7 shrink-0 text-center text-xs">{filtered.length - i}</span>
                 <span className="text-ink min-w-0 flex-1 truncate text-sm font-medium">{m.email}</span>
-                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", ROLE_BADGE[m.role] ?? ROLE_BADGE.student)}>{m.role}</span>
+                {m.role === "admin" ? (
+                  <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", ROLE_BADGE.admin)}>admin</span>
+                ) : (
+                  <span className="relative shrink-0">
+                    <select
+                      value={m.role}
+                      onChange={(e) => handleRoleChange(m.id, e.target.value)}
+                      disabled={pendingId === m.id}
+                      aria-label={`${m.email} 역할 변경`}
+                      className={cn(
+                        "border-rule focus-visible:ring-accent-blue/40 rounded-full border bg-white py-0.5 pr-7 pl-2.5 text-xs font-bold focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50",
+                        m.role === "teacher" ? "text-accent-blue-ink" : "text-muted-fg",
+                      )}>
+                      <option value="student">student</option>
+                      <option value="teacher">teacher</option>
+                    </select>
+                    {pendingId === m.id && (
+                      <Loader2 aria-hidden className="text-muted-fg-faint absolute top-1/2 right-1.5 size-3.5 -translate-y-1/2 animate-spin" />
+                    )}
+                  </span>
+                )}
                 <span className="text-muted-fg-faint shrink-0 text-xs">{formatDate(m.created_at)}</span>
               </li>
             ))}

@@ -11,3 +11,7 @@ export async function getUserRole(supabase: SupabaseClient, userId: string): Pro
 export async function isAdmin(supabase: SupabaseClient, userId: string): Promise<boolean> {
   return (await getUserRole(supabase, userId)) === "admin";
 }
+
+export async function isTeacher(supabase: SupabaseClient, userId: string): Promise<boolean> {
+  return (await getUserRole(supabase, userId)) === "teacher";
+}

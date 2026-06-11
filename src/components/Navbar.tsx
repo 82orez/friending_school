@@ -19,7 +19,15 @@ const COURSES = [
   { slug: "cosmetic", label: "화장품 수출 영어" },
 ];
 
-export default function Navbar({ user: initialUser, isAdmin = false }: { user: NavbarUser; isAdmin?: boolean }) {
+export default function Navbar({
+  user: initialUser,
+  isAdmin = false,
+  isTeacher = false,
+}: {
+  user: NavbarUser;
+  isAdmin?: boolean;
+  isTeacher?: boolean;
+}) {
   const [user, setUser] = useState<NavbarUser>(initialUser);
   const [menuOpen, setMenuOpen] = useState(false);
   const [curriculumOpen, setCurriculumOpen] = useState(false);
@@ -111,6 +119,13 @@ export default function Navbar({ user: initialUser, isAdmin = false }: { user: N
                     href="/admin"
                     className="text-brand hover:text-brand/80 focus-visible:ring-brand/50 rounded text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
                     관리자
+                  </Link>
+                )}
+                {isTeacher && (
+                  <Link
+                    href="/teacher"
+                    className="text-accent-blue-ink hover:text-accent-blue focus-visible:ring-accent-blue/50 rounded text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                    강사 페이지
                   </Link>
                 )}
                 <Link
@@ -261,6 +276,16 @@ export default function Navbar({ user: initialUser, isAdmin = false }: { user: N
                     onClick={closeMenu}
                     className="text-brand focus-visible:ring-brand/50 rounded text-[15px] font-semibold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
                     관리자
+                  </Link>
+                </li>
+              )}
+              {isTeacher && (
+                <li className="border-rule border-b py-4">
+                  <Link
+                    href="/teacher"
+                    onClick={closeMenu}
+                    className="text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-semibold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                    강사 페이지
                   </Link>
                 </li>
               )}
