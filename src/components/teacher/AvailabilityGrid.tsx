@@ -39,6 +39,7 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
   const [saved, setSaved] = useState<Set<string>>(initialKeys); // 마지막 저장 스냅샷(dirty 판정용)
   const [isPending, startTransition] = useTransition();
   const [confirmClear, setConfirmClear] = useState(false);
+  const [confirmSave, setConfirmSave] = useState(false);
 
   const draggingRef = useRef(false);
   const dragModeRef = useRef<"add" | "remove">("add");
@@ -159,7 +160,7 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
 
       {!readOnly && (
         <div className="mt-4 flex items-center gap-3">
-          <Button type="button" variant="brand" disabled={isPending || !dirty} onClick={handleSave}>
+          <Button type="button" variant="brand" disabled={isPending || !dirty} onClick={() => setConfirmSave(true)}>
             {isPending ? (
               <>
                 <Loader2 className="animate-spin" />
@@ -174,6 +175,27 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
           </Button>
           <p className="text-muted-fg-faint text-xs">Click or drag cells to mark your available 30-minute slots.</p>
         </div>
+      )}
+
+      {!readOnly && (
+        <AlertDialog open={confirmSave} onOpenChange={setConfirmSave}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>가능 시간을 저장할까요?</AlertDialogTitle>
+              <AlertDialogDescription>현재 선택한 주간 가능 시간으로 시간표가 업데이트됩니다.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setConfirmSave(false);
+                  handleSave();
+                }}>
+                저장
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
       {!readOnly && (

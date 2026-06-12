@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ChevronDown } from "lucide-react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
@@ -56,14 +57,19 @@ export default async function TeacherPage() {
 
         <TeacherProfileForm userId={user.id} email={user.email ?? ""} initial={initial} />
 
-        {/* 주간 가능 시간 */}
-        <section className="border-rule mt-5 rounded-2xl border bg-white p-6">
-          <h2 className="text-ink text-lg font-bold">Weekly Availability</h2>
-          <p className="text-muted-fg mt-1 text-sm">Mark the 30-minute time slots when you're available to teach.</p>
-          <div className="mt-4">
-            <AvailabilityGrid initialSlots={initialSlots} />
+        {/* 주간 가능 시간 (기본 접힘 — 수정 시에만 펼침) */}
+        <details className="border-rule group mt-5 overflow-hidden rounded-2xl border bg-white">
+          <summary className="flex cursor-pointer items-center justify-between px-6 py-5 [&::-webkit-details-marker]:hidden">
+            <h2 className="text-ink text-lg font-bold">Weekly Availability</h2>
+            <ChevronDown aria-hidden className="text-muted-fg-faint size-5 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="border-rule border-t px-6 py-5">
+            <p className="text-muted-fg text-sm">Mark the 30-minute time slots when you're available to teach.</p>
+            <div className="mt-4">
+              <AvailabilityGrid initialSlots={initialSlots} />
+            </div>
           </div>
-        </section>
+        </details>
       </div>
     </div>
   );
