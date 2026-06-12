@@ -112,9 +112,13 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
           {ROW_MINS.map((min) => {
             const onHour = min % 60 === 0;
             return (
-              <div key={min} className={cn("flex border-t", onHour ? "border-rule" : "border-rule-faint")}>
-                <div className="text-muted-fg-faint sticky left-0 z-10 w-14 shrink-0 bg-white pr-1.5 text-right text-[10px] leading-7">
-                  {onHour ? fmtTime(min) : ""}
+              <div key={min} className={cn("flex border-t", onHour ? "border-muted-fg-faint border-t-2 border-solid" : "border-rule-faint border-dotted")}>
+                <div
+                  className={cn(
+                    "sticky left-0 z-10 w-14 shrink-0 bg-white pr-1.5 text-right text-[10px] leading-7",
+                    onHour ? "text-muted-fg font-semibold" : "text-muted-fg-faint",
+                  )}>
+                  {fmtTime(min)}
                 </div>
                 {DISPLAY_DAYS.map((day) => {
                   const on = selected.has(slotKey(day, min));
