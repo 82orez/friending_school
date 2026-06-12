@@ -5,6 +5,16 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { updateTeacherAvailability, type AvailabilitySlot } from "@/app/teacher/actions";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 // 그리드 표시 범위(06:00~24:00, 30분)는 여기에만 — DB는 범위 비종속이라 변경 시 이 상수만 수정.
@@ -28,6 +38,7 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
   const [selected, setSelected] = useState<Set<string>>(initialKeys);
   const [saved, setSaved] = useState<Set<string>>(initialKeys); // 마지막 저장 스냅샷(dirty 판정용)
   const [isPending, startTransition] = useTransition();
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const draggingRef = useRef(false);
   const dragModeRef = useRef<"add" | "remove">("add");
@@ -158,8 +169,32 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
               "Save"
             )}
           </Button>
+          <Button type="button" variant="outline" disabled={isPending || selected.size === 0} onClick={() => setConfirmClear(true)}>
+            Clear all
+          </Button>
           <p className="text-muted-fg-faint text-xs">Click or drag cells to mark your available 30-minute slots.</p>
         </div>
+      )}
+
+      {!readOnly && (
+        <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>전체 시간표를 초기화할까요?</AlertDialogTitle>
+              <AlertDialogDescription>선택한 가능 시간이 모두 해제됩니다. 저장(Save)을 눌러야 실제로 반영됩니다.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setSelected(new Set());
+                  setConfirmClear(false);
+                }}>
+                초기화
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );
