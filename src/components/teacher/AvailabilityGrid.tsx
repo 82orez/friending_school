@@ -26,7 +26,7 @@ for (let m = START_HOUR * 60; m < END_HOUR * 60; m += SLOT_MIN) ROW_MINS.push(m)
 
 // 표시 순서 월~일 → 저장 day(0=일) 매핑.
 const DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
-const DAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const slotKey = (day: number, min: number) => `${day}-${min}`;
 const fmtTime = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
@@ -199,18 +199,18 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
         <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>저장하지 않고 닫을까요?</AlertDialogTitle>
-              <AlertDialogDescription>저장하지 않은 변경사항이 있습니다. 닫으면 변경 내용이 사라집니다.</AlertDialogDescription>
+              <AlertDialogTitle>Close without saving?</AlertDialogTitle>
+              <AlertDialogDescription>You have unsaved changes. Closing will discard them.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   setSelected(new Set(saved));
                   setConfirmClose(false);
                   collapse();
                 }}>
-                저장하지 않고 닫기
+                Discard and close
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -221,17 +221,17 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
         <AlertDialog open={confirmSave} onOpenChange={setConfirmSave}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>가능 시간을 저장할까요?</AlertDialogTitle>
-              <AlertDialogDescription>현재 선택한 주간 가능 시간으로 시간표가 업데이트됩니다.</AlertDialogDescription>
+              <AlertDialogTitle>Save your availability?</AlertDialogTitle>
+              <AlertDialogDescription>Your schedule will be updated with the time slots you've selected.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   setConfirmSave(false);
                   handleSave();
                 }}>
-                저장
+                Save
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -242,17 +242,17 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
         <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>전체 시간표를 초기화할까요?</AlertDialogTitle>
-              <AlertDialogDescription>선택한 가능 시간이 모두 해제됩니다. 저장(Save)을 눌러야 실제로 반영됩니다.</AlertDialogDescription>
+              <AlertDialogTitle>Clear the entire schedule?</AlertDialogTitle>
+              <AlertDialogDescription>All selected time slots will be cleared. You must click Save to apply the change.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
                   setSelected(new Set());
                   setConfirmClear(false);
                 }}>
-                초기화
+                Clear all
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
