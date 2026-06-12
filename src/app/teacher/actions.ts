@@ -40,7 +40,8 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
   const userId = await requireTeacher();
   if (!userId) return { error: "You don't have permission." };
 
-  const fullName = clean(formData.get("full_name"), 60);
+  const firstName = clean(formData.get("first_name"), 40);
+  const lastName = clean(formData.get("last_name"), 40);
   const headline = clean(formData.get("headline"), 100);
   const bio = clean(formData.get("bio"), 2000);
   const phone = clean(formData.get("phone"), 30);
@@ -54,7 +55,7 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
   const admin = createAdminClient();
   const { error } = await admin
     .from("profiles")
-    .update({ full_name: fullName, headline, bio, phone, zoom_url: zoomUrl })
+    .update({ first_name: firstName, last_name: lastName, headline, bio, phone, zoom_url: zoomUrl })
     .eq("id", userId);
   if (error) return { error: "Something went wrong while saving." };
 

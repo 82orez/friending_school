@@ -67,9 +67,11 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
+          first_name: string | null
           full_name: string | null
           headline: string | null
           id: string
+          last_name: string | null
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -79,9 +81,11 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          first_name?: string | null
           full_name?: string | null
           headline?: string | null
           id: string
+          last_name?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -91,9 +95,11 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          first_name?: string | null
           full_name?: string | null
           headline?: string | null
           id?: string
+          last_name?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string

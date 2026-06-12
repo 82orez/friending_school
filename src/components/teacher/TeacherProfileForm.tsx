@@ -13,7 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 export type TeacherProfile = {
-  full_name: string;
+  first_name: string;
+  last_name: string;
   avatar_url: string;
   zoom_url: string;
   bio: string;
@@ -26,7 +27,8 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 export default function TeacherProfileForm({ userId, email, initial }: { userId: string; email: string; initial: TeacherProfile }) {
   // 텍스트 폼 (useActionState)
   const [state, formAction, pending] = useActionState<TeacherActionState, FormData>(updateTeacherProfile, {});
-  const [fullName, setFullName] = useState(initial.full_name);
+  const [firstName, setFirstName] = useState(initial.first_name);
+  const [lastName, setLastName] = useState(initial.last_name);
   const [headline, setHeadline] = useState(initial.headline);
   const [bio, setBio] = useState(initial.bio);
   const [phone, setPhone] = useState(initial.phone);
@@ -136,9 +138,15 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
             <Input value={email} disabled readOnly className="bg-surface text-muted-fg" />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="full_name">Display Name</Label>
-            <Input id="full_name" name="full_name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g. Jane Kim" maxLength={60} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="first_name">First Name</Label>
+              <Input id="first_name" name="first_name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="e.g. Jane" maxLength={40} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="last_name">Last Name</Label>
+              <Input id="last_name" name="last_name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="e.g. Kim" maxLength={40} />
+            </div>
           </div>
 
           <div className="grid gap-2">

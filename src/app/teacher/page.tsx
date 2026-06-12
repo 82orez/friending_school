@@ -21,13 +21,14 @@ export default async function TeacherPage() {
 
   const { data } = await supabase
     .from("profiles")
-    .select("full_name, avatar_url, zoom_url, bio, headline, phone")
+    .select("first_name, last_name, avatar_url, zoom_url, bio, headline, phone")
     .eq("id", user.id)
     .maybeSingle();
 
   const profile = (data ?? {}) as Partial<TeacherProfile>;
   const initial: TeacherProfile = {
-    full_name: profile.full_name ?? "",
+    first_name: profile.first_name ?? "",
+    last_name: profile.last_name ?? "",
     avatar_url: profile.avatar_url ?? "",
     zoom_url: profile.zoom_url ?? "",
     bio: profile.bio ?? "",
@@ -38,7 +39,8 @@ export default async function TeacherPage() {
   const { data: availRows } = await supabase.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", user.id);
   const initialSlots = (availRows ?? []).map((r) => ({ day: r.day_of_week, min: r.start_min }));
 
-  const displayName = initial.full_name || user.email?.split("@")[0] || "Teacher";
+  // 친근한 호칭은 이름(first) 우선, 없으면 이메일 로컬파트.
+  const displayName = initial.first_name || user.email?.split("@")[0] || "Teacher";
 
   return (
     <div className="bg-surface min-h-screen">
