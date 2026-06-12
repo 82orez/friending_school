@@ -139,6 +139,10 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
               </div>
             );
           })}
+          {/* 24:00 마감선 */}
+          <div className="border-muted-fg-faint flex border-t-2 border-solid">
+            <div className="text-muted-fg sticky left-0 z-10 w-14 shrink-0 bg-white pr-1.5 text-right text-[10px] leading-4 font-semibold">24:00</div>
+          </div>
         </div>
       </div>
 
