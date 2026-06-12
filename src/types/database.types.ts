@@ -125,6 +125,30 @@ export type Database = {
         }
         Relationships: []
       }
+      teacher_availability: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          start_min: number
+          teacher_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          start_min: number
+          teacher_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          start_min?: number
+          teacher_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       youtube_videos: {
         Row: {
           created_at: string

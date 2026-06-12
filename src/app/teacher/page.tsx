@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { getUserRole } from "@/lib/auth";
 import TeacherProfileForm, { type TeacherProfile } from "@/components/teacher/TeacherProfileForm";
+import AvailabilityGrid from "@/components/teacher/AvailabilityGrid";
 
 export const metadata: Metadata = { title: "Teacher — Friending School", robots: { index: false } };
 
@@ -33,6 +34,9 @@ export default async function TeacherPage() {
     phone: profile.phone ?? "",
   };
 
+  const { data: availRows } = await supabase.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", user.id);
+  const initialSlots = (availRows ?? []).map((r) => ({ day: r.day_of_week, min: r.start_min }));
+
   const displayName = initial.full_name || user.email?.split("@")[0] || "Teacher";
 
   return (
@@ -51,6 +55,15 @@ export default async function TeacherPage() {
         </div>
 
         <TeacherProfileForm userId={user.id} email={user.email ?? ""} initial={initial} />
+
+        {/* 주간 가능 시간 */}
+        <section className="border-rule mt-5 rounded-2xl border bg-white p-6">
+          <h2 className="text-ink text-lg font-bold">Weekly Availability</h2>
+          <p className="text-muted-fg mt-1 text-sm">Mark the 30-minute time slots when you're available to teach.</p>
+          <div className="mt-4">
+            <AvailabilityGrid initialSlots={initialSlots} />
+          </div>
+        </section>
       </div>
     </div>
   );

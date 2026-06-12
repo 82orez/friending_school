@@ -62,6 +62,46 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
   return { ok: true };
 }
 
+export type AvailabilitySlot = { day: number; min: number };
+
+// 강사 주간 가용 시간 저장 — 편집은 전체 그리드 교체(delete 후 bulk insert).
+// 슬롯은 { day: 0~6(0=일), min: 자정 기준 분(30의 배수) } 배열. service_role로 본인 row만 갱신.
+export async function updateTeacherAvailability(slots: AvailabilitySlot[]): Promise<TeacherActionState> {
+  const userId = await requireTeacher();
+  if (!userId) return { error: "You don't have permission." };
+  if (!Array.isArray(slots) || slots.length > 7 * 48) return { error: "Invalid request." };
+
+  // 검증 + 중복 제거(key "day-min").
+  const seen = new Set<string>();
+  const rows: { teacher_id: string; day_of_week: number; start_min: number }[] = [];
+  for (const s of slots) {
+    const day = Number(s?.day);
+    const min = Number(s?.min);
+    if (!Number.isInteger(day) || day < 0 || day > 6) return { error: "Invalid request." };
+    if (!Number.isInteger(min) || min < 0 || min > 1439 || min % 30 !== 0) return { error: "Invalid request." };
+    const key = `${day}-${min}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({ teacher_id: userId, day_of_week: day, start_min: min });
+  }
+
+  const admin = createAdminClient();
+  // 1) 본인 슬롯 전체 삭제.
+  const { error: delErr } = await admin.from("teacher_availability").delete().eq("teacher_id", userId);
+  if (delErr) return { error: "Something went wrong while saving." };
+  // 2) 빈 선택이면 여기서 종료(전부 비움).
+  if (rows.length === 0) {
+    revalidatePath("/teacher");
+    return { ok: true };
+  }
+  // 3) bulk insert.
+  const { error: insErr } = await admin.from("teacher_availability").insert(rows);
+  if (insErr) return { error: "Something went wrong while saving." };
+
+  revalidatePath("/teacher");
+  return { ok: true };
+}
+
 export async function updateTeacherAvatar(avatarUrl: string): Promise<TeacherActionState> {
   const userId = await requireTeacher();
   if (!userId) return { error: "You don't have permission." };

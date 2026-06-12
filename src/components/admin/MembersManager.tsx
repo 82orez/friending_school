@@ -4,6 +4,16 @@ import { useMemo, useState, useTransition } from "react";
 import { Loader2, Search } from "lucide-react";
 import { updateMemberRole } from "@/app/admin/actions";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export type AdminMember = {
   id: string;
@@ -29,6 +39,7 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState(members);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{ id: string; email: string; from: string; to: string } | null>(null);
   const [, startTransition] = useTransition();
 
   const thisMonth = useMemo(() => {
@@ -45,15 +56,22 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
     return rows.filter((m) => m.email.toLowerCase().includes(q));
   }, [rows, query]);
 
-  const handleRoleChange = (id: string, role: string) => {
-    const prev = rows.find((m) => m.id === id)?.role;
-    if (!prev || prev === role) return;
-    setRows((rs) => rs.map((m) => (m.id === id ? { ...m, role } : m)));
+  const requestRoleChange = (id: string, role: string) => {
+    const member = rows.find((m) => m.id === id);
+    if (!member || member.role === role) return;
+    setConfirm({ id, email: member.email, from: member.role, to: role });
+  };
+
+  const applyRoleChange = () => {
+    if (!confirm) return;
+    const { id, from, to } = confirm;
+    setConfirm(null);
+    setRows((rs) => rs.map((m) => (m.id === id ? { ...m, role: to } : m)));
     setPendingId(id);
     startTransition(async () => {
-      const res = await updateMemberRole(id, role);
+      const res = await updateMemberRole(id, to);
       if (res.error) {
-        setRows((rs) => rs.map((m) => (m.id === id ? { ...m, role: prev } : m)));
+        setRows((rs) => rs.map((m) => (m.id === id ? { ...m, role: from } : m)));
         alert(res.error);
       }
       setPendingId(null);
@@ -104,7 +122,7 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
                   <span className="relative shrink-0">
                     <select
                       value={m.role}
-                      onChange={(e) => handleRoleChange(m.id, e.target.value)}
+                      onChange={(e) => requestRoleChange(m.id, e.target.value)}
                       disabled={pendingId === m.id}
                       aria-label={`${m.email} 역할 변경`}
                       className={cn(
@@ -125,6 +143,26 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
           </ul>
         )}
       </div>
+
+      <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>역할을 변경하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirm && (
+                <>
+                  <span className="text-ink font-semibold">{confirm.email}</span> 회원의 역할을 <span className="font-semibold">{confirm.from}</span>
+                  에서 <span className="font-semibold">{confirm.to}</span>(으)로 변경합니다.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={applyRoleChange}>변경</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
