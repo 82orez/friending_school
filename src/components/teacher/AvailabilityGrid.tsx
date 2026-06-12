@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { updateTeacherAvailability, type AvailabilitySlot } from "@/app/teacher/actions";
 import { Button } from "@/components/ui/button";
@@ -40,7 +40,9 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
   const [isPending, startTransition] = useTransition();
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
+  const [confirmClose, setConfirmClose] = useState(false);
 
+  const rootRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const dragModeRef = useRef<"add" | "remove">("add");
 
@@ -107,8 +109,15 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
     });
   };
 
+  const collapse = () => {
+    const details = rootRef.current?.closest("details");
+    if (!details) return;
+    details.open = false;
+    details.querySelector("summary")?.scrollIntoView({ block: "nearest" });
+  };
+
   return (
-    <div>
+    <div ref={rootRef}>
       <div className="overflow-x-auto">
         <div className="min-w-[520px] select-none" onPointerMove={onGridMove}>
           {/* 요일 헤더 */}
@@ -175,6 +184,37 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
           </Button>
           <p className="text-muted-fg-faint text-xs">Click or drag cells to mark your available 30-minute slots.</p>
         </div>
+      )}
+
+      {!readOnly && (
+        <div className="mt-5 flex justify-end">
+          <Button type="button" variant="outline" onClick={() => (dirty ? setConfirmClose(true) : collapse())}>
+            <ChevronUp />
+            Close
+          </Button>
+        </div>
+      )}
+
+      {!readOnly && (
+        <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>저장하지 않고 닫을까요?</AlertDialogTitle>
+              <AlertDialogDescription>저장하지 않은 변경사항이 있습니다. 닫으면 변경 내용이 사라집니다.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setSelected(new Set(saved));
+                  setConfirmClose(false);
+                  collapse();
+                }}>
+                저장하지 않고 닫기
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
 
       {!readOnly && (
