@@ -92,6 +92,23 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
 
   const dirty = !readOnly && (selected.size !== saved.size || Array.from(selected).some((k) => !saved.has(k)));
 
+  // 헤더(summary) 클릭으로 접을 때도 Close 버튼과 동일하게 미저장 변경 경고.
+  // 펼친 상태(open)에서 dirty면 네이티브 토글을 막고 확인 모달을 띄움.
+  useEffect(() => {
+    if (readOnly) return;
+    const details = rootRef.current?.closest("details");
+    const summary = details?.querySelector("summary");
+    if (!details || !summary) return;
+    const onSummaryClick = (e: Event) => {
+      if (details.open && dirty) {
+        e.preventDefault();
+        setConfirmClose(true);
+      }
+    };
+    summary.addEventListener("click", onSummaryClick);
+    return () => summary.removeEventListener("click", onSummaryClick);
+  }, [dirty, readOnly]);
+
   const handleSave = () => {
     const snapshot = new Set(selected);
     const slots: AvailabilitySlot[] = Array.from(selected).map((k) => {
