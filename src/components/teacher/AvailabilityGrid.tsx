@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ChevronUp, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { updateTeacherAvailability, type AvailabilitySlot } from "@/app/teacher/actions";
 import { Button } from "@/components/ui/button";
@@ -33,17 +33,23 @@ const fmtTime = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0"
 
 type Slot = { day: number; min: number };
 
-export default function AvailabilityGrid({ initialSlots, readOnly = false }: { initialSlots: Slot[]; readOnly?: boolean }) {
+export default function AvailabilityGrid({
+  initialSlots,
+  readOnly = false,
+  onDirtyChange,
+}: {
+  initialSlots: Slot[];
+  readOnly?: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const initialKeys = () => new Set(initialSlots.map((s) => slotKey(s.day, s.min)));
   const [selected, setSelected] = useState<Set<string>>(initialKeys);
   const [saved, setSaved] = useState<Set<string>>(initialKeys); // 마지막 저장 스냅샷(dirty 판정용)
   const [isPending, startTransition] = useTransition();
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
-  const [confirmClose, setConfirmClose] = useState(false);
   const [confirmRevert, setConfirmRevert] = useState(false);
 
-  const rootRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
   const dragModeRef = useRef<"add" | "remove">("add");
 
@@ -93,22 +99,10 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
 
   const dirty = !readOnly && (selected.size !== saved.size || Array.from(selected).some((k) => !saved.has(k)));
 
-  // 헤더(summary) 클릭으로 접을 때도 Close 버튼과 동일하게 미저장 변경 경고.
-  // 펼친 상태(open)에서 dirty면 네이티브 토글을 막고 확인 모달을 띄움.
+  // 미저장 변경 여부를 부모(모달 래퍼)에 통지 — 닫기 가드에 사용.
   useEffect(() => {
-    if (readOnly) return;
-    const details = rootRef.current?.closest("details");
-    const summary = details?.querySelector("summary");
-    if (!details || !summary) return;
-    const onSummaryClick = (e: Event) => {
-      if (details.open && dirty) {
-        e.preventDefault();
-        setConfirmClose(true);
-      }
-    };
-    summary.addEventListener("click", onSummaryClick);
-    return () => summary.removeEventListener("click", onSummaryClick);
-  }, [dirty, readOnly]);
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   const handleSave = () => {
     const snapshot = new Set(selected);
@@ -127,15 +121,8 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
     });
   };
 
-  const collapse = () => {
-    const details = rootRef.current?.closest("details");
-    if (!details) return;
-    details.open = false;
-    details.querySelector("summary")?.scrollIntoView({ block: "nearest" });
-  };
-
   return (
-    <div ref={rootRef}>
+    <div>
       <div className="max-h-[65vh] overflow-auto">
         <div className="min-w-[520px] select-none" onPointerMove={onGridMove}>
           {/* 요일 헤더 (스크롤 시 상단 고정) */}
@@ -208,39 +195,8 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
       )}
 
       {!readOnly && (
-        <div className="mt-5 flex justify-end">
-          <Button type="button" variant="outline" onClick={() => (dirty ? setConfirmClose(true) : collapse())}>
-            <ChevronUp />
-            Close
-          </Button>
-        </div>
-      )}
-
-      {!readOnly && (
-        <AlertDialog open={confirmClose} onOpenChange={setConfirmClose}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Close without saving?</AlertDialogTitle>
-              <AlertDialogDescription>You have unsaved changes. Closing will discard them.</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
-                  setSelected(new Set(saved));
-                  setConfirmClose(false);
-                  collapse();
-                }}>
-                Discard and close
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
-
-      {!readOnly && (
         <AlertDialog open={confirmSave} onOpenChange={setConfirmSave}>
-          <AlertDialogContent>
+          <AlertDialogContent className="z-[130]">
             <AlertDialogHeader>
               <AlertDialogTitle>Save your availability?</AlertDialogTitle>
               <AlertDialogDescription>Your schedule will be updated with the time slots you've selected.</AlertDialogDescription>
@@ -261,7 +217,7 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
 
       {!readOnly && (
         <AlertDialog open={confirmClear} onOpenChange={setConfirmClear}>
-          <AlertDialogContent>
+          <AlertDialogContent className="z-[130]">
             <AlertDialogHeader>
               <AlertDialogTitle>Clear the entire schedule?</AlertDialogTitle>
               <AlertDialogDescription>All selected time slots will be cleared. You must click Save to apply the change.</AlertDialogDescription>
@@ -282,7 +238,7 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
 
       {!readOnly && (
         <AlertDialog open={confirmRevert} onOpenChange={setConfirmRevert}>
-          <AlertDialogContent>
+          <AlertDialogContent className="z-[130]">
             <AlertDialogHeader>
               <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
               <AlertDialogDescription>Your edits will be reverted to the last saved state.</AlertDialogDescription>
