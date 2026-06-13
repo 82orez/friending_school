@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { cn } from "@/lib/utils";
+import StudentProfileForm from "@/components/mypage/StudentProfileForm";
 
 export const metadata: Metadata = { title: "마이페이지 — 프렌딩 스쿨" };
 
@@ -48,7 +49,9 @@ export default async function MyPage() {
     .order("created_at", { ascending: false });
   const applications = (data ?? []) as ApplicationRow[];
 
-  const displayName = applications[0]?.name ?? user.email?.split("@")[0] ?? "회원";
+  const { data: profile } = await supabase.from("profiles").select("first_name, phone").eq("id", user.id).maybeSingle();
+
+  const displayName = profile?.first_name || applications[0]?.name || user.email?.split("@")[0] || "회원";
   const joinedAt = user.created_at ? formatDate(user.created_at) : "-";
 
   return (
@@ -84,6 +87,9 @@ export default async function MyPage() {
               <dd className="text-ink text-sm font-medium">{joinedAt}</dd>
             </div>
           </dl>
+          <div className="px-6 pb-6">
+            <StudentProfileForm initialName={profile?.first_name ?? ""} initialPhone={profile?.phone ?? ""} />
+          </div>
         </details>
 
         {/* 신청 내역 */}
