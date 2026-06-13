@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
-import { Camera, Loader2, UserRound, Video } from "lucide-react";
+import { Camera, Loader2, Pencil, UserRound, Video } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { updateTeacherAvatar, updateTeacherProfile, type TeacherActionState } from "@/app/teacher/actions";
@@ -24,6 +24,9 @@ export type TeacherProfile = {
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 
+// 보기 모드(disabled)에서 값이 흐려지지 않도록 텍스트를 진하게(disabled: 변형은 편집 모드엔 미적용).
+const VIEW_TEXT = "disabled:opacity-100 disabled:text-ink";
+
 export default function TeacherProfileForm({ userId, email, initial }: { userId: string; email: string; initial: TeacherProfile }) {
   // 텍스트 폼 (useActionState)
   const [state, formAction, pending] = useActionState<TeacherActionState, FormData>(updateTeacherProfile, {});
@@ -34,6 +37,27 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
   const [phone, setPhone] = useState(initial.phone);
   const [zoomUrl, setZoomUrl] = useState(initial.zoom_url);
 
+  // 보기/편집 모드 — 편집 모드에서만 Teacher Info 필드 수정 가능.
+  const [editing, setEditing] = useState(false);
+  // 편집 진입 시점 스냅샷(Cancel 시 복원).
+  const snapshotRef = useRef({ firstName, lastName, headline, bio, phone, zoomUrl });
+
+  const startEditing = () => {
+    snapshotRef.current = { firstName, lastName, headline, bio, phone, zoomUrl };
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    const s = snapshotRef.current;
+    setFirstName(s.firstName);
+    setLastName(s.lastName);
+    setHeadline(s.headline);
+    setBio(s.bio);
+    setPhone(s.phone);
+    setZoomUrl(s.zoomUrl);
+    setEditing(false);
+  };
+
   // 아바타 (즉시 업로드 + 저장)
   const [avatarUrl, setAvatarUrl] = useState(initial.avatar_url);
   const [uploading, startUpload] = useTransition();
@@ -41,8 +65,10 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
 
   // 텍스트 폼 액션 결과 → 토스트. 초기 {} 상태는 ok/error 모두 falsy라 마운트 시 토스트 없음.
   useEffect(() => {
-    if (state.ok) toast.success("Saved.");
-    else if (state.error) toast.error(state.error);
+    if (state.ok) {
+      toast.success("Saved.");
+      setEditing(false); // 저장 성공 → 보기 모드로
+    } else if (state.error) toast.error(state.error);
   }, [state]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,13 +169,33 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
               <Label htmlFor="first_name">
                 First Name <span className="text-brand">*</span>
               </Label>
-              <Input id="first_name" name="first_name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="e.g. Jane" maxLength={40} required />
+              <Input
+                id="first_name"
+                name="first_name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="e.g. Jane"
+                maxLength={40}
+                required
+                disabled={!editing}
+                className={VIEW_TEXT}
+              />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="last_name">
                 Last Name <span className="text-brand">*</span>
               </Label>
-              <Input id="last_name" name="last_name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="e.g. Kim" maxLength={40} required />
+              <Input
+                id="last_name"
+                name="last_name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="e.g. Kim"
+                maxLength={40}
+                required
+                disabled={!editing}
+                className={VIEW_TEXT}
+              />
             </div>
           </div>
 
@@ -165,6 +211,8 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
               placeholder="e.g. Working Holiday & Kitchen English instructor"
               maxLength={100}
               required
+              disabled={!editing}
+              className={VIEW_TEXT}
             />
           </div>
 
@@ -181,6 +229,8 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
               rows={5}
               maxLength={2000}
               required
+              disabled={!editing}
+              className={VIEW_TEXT}
             />
           </div>
 
@@ -188,7 +238,16 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
             <Label htmlFor="phone">
               Phone <span className="text-muted-fg-faint font-normal">(optional)</span>
             </Label>
-            <Input id="phone" name="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. 010-1234-5678" maxLength={30} />
+            <Input
+              id="phone"
+              name="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g. 010-1234-5678"
+              maxLength={30}
+              disabled={!editing}
+              className={VIEW_TEXT}
+            />
           </div>
 
           <div className="grid gap-2">
@@ -204,16 +263,30 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
               placeholder="https://zoom.us/j/..."
               maxLength={500}
               required
+              disabled={!editing}
+              className={VIEW_TEXT}
             />
             <p className="text-muted-fg-faint text-xs">Your personal Zoom link for live classes with students. Live-class integration is coming soon.</p>
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end">
-          <Button type="submit" variant="brand" disabled={pending} className={cn(pending && "opacity-90")}>
-            {pending && <Loader2 className="animate-spin" aria-hidden />}
-            {pending ? "Saving" : "Save"}
-          </Button>
+        <div className="mt-6 flex justify-end gap-3">
+          {editing ? (
+            <>
+              <Button type="button" variant="outline" onClick={cancelEditing} disabled={pending}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="brand" disabled={pending} className={cn(pending && "opacity-90")}>
+                {pending && <Loader2 className="animate-spin" aria-hidden />}
+                {pending ? "Saving" : "Save"}
+              </Button>
+            </>
+          ) : (
+            <Button type="button" variant="brand" onClick={startEditing}>
+              <Pencil className="size-4" aria-hidden />
+              Edit
+            </Button>
+          )}
         </div>
       </form>
     </div>
