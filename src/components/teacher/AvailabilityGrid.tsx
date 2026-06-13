@@ -169,7 +169,7 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
                       className={cn(
                         "border-rule-faint h-7 flex-1 border-l first:border-l-0",
                         !readOnly && "touch-none",
-                        on ? (readOnly ? "bg-accent-blue-soft" : "bg-progress") : !readOnly && "bg-white hover:bg-progress/10",
+                        on ? (readOnly ? "bg-accent-blue/40" : "bg-progress") : !readOnly && "bg-white hover:bg-progress/10",
                       )}
                     />
                   );
