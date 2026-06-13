@@ -41,6 +41,7 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [confirmRevert, setConfirmRevert] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
@@ -135,10 +136,10 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
 
   return (
     <div ref={rootRef}>
-      <div className="overflow-x-auto">
+      <div className="max-h-[65vh] overflow-auto">
         <div className="min-w-[520px] select-none" onPointerMove={onGridMove}>
-          {/* 요일 헤더 */}
-          <div className="border-rule flex border-b">
+          {/* 요일 헤더 (스크롤 시 상단 고정) */}
+          <div className="border-rule sticky top-0 z-20 flex border-b bg-white">
             <div className="sticky left-0 z-10 w-14 shrink-0 bg-white" />
             {DISPLAY_DAYS.map((day, i) => (
               <div key={day} className="text-muted-fg flex-1 py-1.5 text-center text-xs font-bold">
@@ -195,6 +196,9 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
             ) : (
               "Save"
             )}
+          </Button>
+          <Button type="button" variant="outline" disabled={isPending || !dirty} onClick={() => setConfirmRevert(true)}>
+            Revert
           </Button>
           <Button type="button" variant="outline" disabled={isPending || selected.size === 0} onClick={() => setConfirmClear(true)}>
             Clear all
@@ -270,6 +274,27 @@ export default function AvailabilityGrid({ initialSlots, readOnly = false }: { i
                   setConfirmClear(false);
                 }}>
                 Clear all
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {!readOnly && (
+        <AlertDialog open={confirmRevert} onOpenChange={setConfirmRevert}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+              <AlertDialogDescription>Your edits will be reverted to the last saved state.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setSelected(new Set(saved));
+                  setConfirmRevert(false);
+                }}>
+                Revert
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
