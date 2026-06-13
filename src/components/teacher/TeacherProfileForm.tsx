@@ -140,17 +140,23 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="first_name">First Name</Label>
-              <Input id="first_name" name="first_name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="e.g. Jane" maxLength={40} />
+              <Label htmlFor="first_name">
+                First Name <span className="text-brand">*</span>
+              </Label>
+              <Input id="first_name" name="first_name" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="e.g. Jane" maxLength={40} required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="last_name">Last Name</Label>
-              <Input id="last_name" name="last_name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="e.g. Kim" maxLength={40} />
+              <Label htmlFor="last_name">
+                Last Name <span className="text-brand">*</span>
+              </Label>
+              <Input id="last_name" name="last_name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="e.g. Kim" maxLength={40} required />
             </div>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="headline">Headline</Label>
+            <Label htmlFor="headline">
+              Headline <span className="text-brand">*</span>
+            </Label>
             <Input
               id="headline"
               name="headline"
@@ -158,11 +164,14 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
               onChange={(e) => setHeadline(e.target.value)}
               placeholder="e.g. Working Holiday & Kitchen English instructor"
               maxLength={100}
+              required
             />
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="bio">About / Bio</Label>
+            <Label htmlFor="bio">
+              About / Bio <span className="text-brand">*</span>
+            </Label>
             <Textarea
               id="bio"
               name="bio"
@@ -171,6 +180,7 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
               placeholder="Share your experience, teaching style, and anything students should know."
               rows={5}
               maxLength={2000}
+              required
             />
           </div>
 
@@ -183,7 +193,7 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
 
           <div className="grid gap-2">
             <Label htmlFor="zoom_url" className="flex items-center gap-1.5">
-              <Video className="text-accent-blue-ink size-4" aria-hidden /> Zoom URL
+              <Video className="text-accent-blue-ink size-4" aria-hidden /> Zoom URL <span className="text-brand">*</span>
             </Label>
             <Input
               id="zoom_url"
@@ -193,6 +203,7 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
               onChange={(e) => setZoomUrl(e.target.value)}
               placeholder="https://zoom.us/j/..."
               maxLength={500}
+              required
             />
             <p className="text-muted-fg-faint text-xs">Your personal Zoom link for live classes with students. Live-class integration is coming soon.</p>
           </div>

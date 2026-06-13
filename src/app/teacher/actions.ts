@@ -47,7 +47,12 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
   const phone = clean(formData.get("phone"), 30);
   const zoomUrl = clean(formData.get("zoom_url"), 500);
 
-  if (zoomUrl && !isValidZoomUrl(zoomUrl)) {
+  // 전화번호를 제외한 항목은 필수 (clean()이 공백-only를 null로 만들어 우회 차단).
+  if (!firstName || !lastName || !headline || !bio || !zoomUrl) {
+    return { error: "Please fill in all required fields." };
+  }
+
+  if (!isValidZoomUrl(zoomUrl)) {
     return { error: "Invalid Zoom URL. (must start with http:// or https://)" };
   }
 
