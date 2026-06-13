@@ -135,9 +135,6 @@ export default function Navbar({
                     마이페이지
                   </Link>
                 )}
-                <span className="text-muted-fg max-w-[140px] truncate text-sm" title={user.email ?? undefined}>
-                  {user.email}
-                </span>
                 <form action={logout}>
                   <button
                     type="submit"
