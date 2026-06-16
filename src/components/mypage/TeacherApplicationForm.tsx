@@ -76,13 +76,12 @@ export default function TeacherApplicationForm({ initialName, initialPhone }: { 
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="ta-phone">
-            전화번호 <span className="text-brand">*</span>
+            전화번호 <span className="text-muted-fg-faint font-normal">(선택)</span>
           </Label>
           <Input
             id="ta-phone"
             name="phone"
             type="tel"
-            required
             pattern="[0-9\-\s]+"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -163,7 +162,7 @@ export default function TeacherApplicationForm({ initialName, initialPhone }: { 
           <dl className="border-rule text-ink divide-rule divide-y rounded-lg border text-left text-sm">
             {[
               ["이름", name],
-              ["전화번호", phone],
+              ["전화번호", phone || "(미입력)"],
               ["한 줄 소개", headline || "(미입력)"],
               ["자기소개·지원 동기", intro],
               ["경력", experience || "(미입력)"],

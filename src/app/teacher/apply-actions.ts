@@ -29,7 +29,7 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
   if (role === "teacher" || role === "admin") return { error: "이미 강사 권한이 있는 계정입니다." };
 
   if (name.length < 2) return { error: "이름을 정확히 입력해 주세요." };
-  if (!/^[0-9\-\s]{7,}$/.test(phone)) return { error: "전화번호를 정확히 입력해 주세요." };
+  if (phone && !/^[0-9\-\s]{7,}$/.test(phone)) return { error: "전화번호를 정확히 입력해 주세요." };
   if (intro.length < 10) return { error: "자기소개·지원 동기를 10자 이상 입력해 주세요." };
 
   const ip = getClientIp(await headers());
@@ -43,7 +43,7 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
   const { error } = await supabase.from("teacher_applications").insert({
     user_id: user.id,
     name,
-    phone,
+    phone: phone || null,
     headline: headline || null,
     intro,
     experience: experience || null,

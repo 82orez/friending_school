@@ -140,7 +140,7 @@ export type Database = {
           id: string
           intro: string
           name: string
-          phone: string
+          phone: string | null
           status: Database["public"]["Enums"]["teacher_application_status"]
           updated_at: string
           user_id: string
@@ -153,7 +153,7 @@ export type Database = {
           id?: string
           intro: string
           name: string
-          phone: string
+          phone?: string | null
           status?: Database["public"]["Enums"]["teacher_application_status"]
           updated_at?: string
           user_id: string
@@ -166,7 +166,7 @@ export type Database = {
           id?: string
           intro?: string
           name?: string
-          phone?: string
+          phone?: string | null
           status?: Database["public"]["Enums"]["teacher_application_status"]
           updated_at?: string
           user_id?: string
