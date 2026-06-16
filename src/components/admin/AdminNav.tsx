@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const ITEMS = [
   { href: "/admin", label: "📋 신청 관리" },
   { href: "/admin/members", label: "👥 회원 관리" },
+  { href: "/admin/teacher-requests", label: "🧑‍🏫 강사 신청" },
   { href: "/admin/youtube", label: "🎬 유튜브 관리" },
   { href: "/admin/availability", label: "🗓 강사 시간표" },
 ];
@@ -14,7 +15,7 @@ const ITEMS = [
 export default function AdminNav() {
   const pathname = usePathname();
   return (
-    <nav className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav className="flex [scrollbar-width:none] gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
       {ITEMS.map((item) => {
         const active = pathname === item.href;
         return (
@@ -25,7 +26,8 @@ export default function AdminNav() {
             className={cn(
               "shrink-0 rounded-full border px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors",
               active ? "bg-ink border-ink text-white" : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-            )}>
+            )}
+          >
             {item.label}
           </Link>
         );

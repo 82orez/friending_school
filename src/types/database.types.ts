@@ -131,6 +131,48 @@ export type Database = {
         }
         Relationships: []
       }
+      teacher_applications: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          experience: string | null
+          headline: string | null
+          id: string
+          intro: string
+          name: string
+          phone: string
+          status: Database["public"]["Enums"]["teacher_application_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          experience?: string | null
+          headline?: string | null
+          id?: string
+          intro: string
+          name: string
+          phone: string
+          status?: Database["public"]["Enums"]["teacher_application_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          experience?: string | null
+          headline?: string | null
+          id?: string
+          intro?: string
+          name?: string
+          phone?: string
+          status?: Database["public"]["Enums"]["teacher_application_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       teacher_availability: {
         Row: {
           created_at: string
@@ -200,6 +242,7 @@ export type Database = {
     }
     Enums: {
       application_status: "신청" | "확인" | "완료" | "취소"
+      teacher_application_status: "신청" | "승인" | "거절"
       user_role: "admin" | "teacher" | "student"
     }
     CompositeTypes: {
@@ -329,6 +372,7 @@ export const Constants = {
   public: {
     Enums: {
       application_status: ["신청", "확인", "완료", "취소"],
+      teacher_application_status: ["신청", "승인", "거절"],
       user_role: ["admin", "teacher", "student"],
     },
   },

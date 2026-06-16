@@ -114,12 +114,10 @@ export async function deleteYoutubeVideo(id: string): Promise<ActionResult> {
 const ASSIGNABLE_ROLES = ["student", "teacher"] as const;
 type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
 
-// student ↔ teacher 변경. admin 회원은 대상에서 제외(잠금 방지). role은 profiles + app_metadata 동기.
-export async function updateMemberRole(userId: string, role: string): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
-  if (!userId || !ASSIGNABLE_ROLES.includes(role as AssignableRole)) return { ok: false, error: "잘못된 요청입니다." };
-
-  const admin = createAdminClient();
+// student ↔ teacher 변경 공용 헬퍼. admin 회원은 대상에서 제외(잠금 방지). role은 profiles + app_metadata 동기.
+// ⚠️ requireAdmin()은 호출 측에서 먼저 통과시킬 것 — 이 함수는 service_role 쓰기만 담당.
+async function setUserRole(admin: ReturnType<typeof createAdminClient>, userId: string, role: AssignableRole): Promise<ActionResult> {
+  if (!userId) return { ok: false, error: "잘못된 요청입니다." };
 
   // 대상이 admin이면 변경 거부 (admin 잠금/강등 방지).
   const { data: current } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
@@ -134,6 +132,65 @@ export async function updateMemberRole(userId: string, role: string): Promise<Ac
   const { error: authError } = await admin.auth.admin.updateUserById(userId, { app_metadata: { role } });
   if (authError) return { ok: false, error: "역할 동기화 중 오류가 발생했습니다." };
 
-  revalidatePath("/admin/members");
+  return { ok: true };
+}
+
+// 강사 자격 회수 (teacher → student). teacher-requests 화면의 "현재 강사" 목록에서 호출.
+export async function revokeTeacher(userId: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const admin = createAdminClient();
+  const res = await setUserRole(admin, userId, "student");
+  if (!res.ok) return res;
+  revalidatePath("/admin/teacher-requests");
+  return { ok: true };
+}
+
+/* ===== 강사 지원 관리 ===== */
+
+// 강사 지원 승인 → role=teacher 동기 + 신청 상태 '승인' + profiles 빈 필드 best-effort prefill.
+export async function approveTeacherApplication(id: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: app } = await admin.from("teacher_applications").select("id, user_id, name, headline, intro, status").eq("id", id).maybeSingle();
+  if (!app) return { ok: false, error: "지원 내역을 찾을 수 없습니다." };
+
+  const a = app as { user_id: string; name: string; headline: string | null; intro: string | null };
+
+  const roleRes = await setUserRole(admin, a.user_id, "teacher");
+  if (!roleRes.ok) return roleRes;
+
+  const { error: statusError } = await admin.from("teacher_applications").update({ status: "승인" }).eq("id", id);
+  if (statusError) return { ok: false, error: "상태 변경 중 오류가 발생했습니다." };
+
+  // profiles 빈 필드만 채움(기존 값 보존). first_name←name, headline←headline, bio←intro.
+  const { data: profile } = await admin.from("profiles").select("first_name, headline, bio").eq("id", a.user_id).maybeSingle();
+  const p = (profile ?? {}) as { first_name?: string | null; headline?: string | null; bio?: string | null };
+  const prefill: Record<string, string> = {};
+  if (!p.first_name && a.name) prefill.first_name = a.name;
+  if (!p.headline && a.headline) prefill.headline = a.headline;
+  if (!p.bio && a.intro) prefill.bio = a.intro;
+  if (Object.keys(prefill).length > 0) {
+    await admin.from("profiles").update(prefill).eq("id", a.user_id);
+  }
+
+  revalidatePath("/admin/teacher-requests");
+  return { ok: true };
+}
+
+// 강사 지원 거절 (상태 '거절' + 관리자 메모). role 변경 없음.
+export async function rejectTeacherApplication(id: string, adminNote: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("teacher_applications")
+    .update({ status: "거절", admin_note: adminNote || null })
+    .eq("id", id);
+  if (error) return { ok: false, error: "저장 중 오류가 발생했습니다." };
+
+  revalidatePath("/admin/teacher-requests");
   return { ok: true };
 }
