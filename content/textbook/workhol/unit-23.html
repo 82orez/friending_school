@@ -519,6 +519,59 @@
             border-radius: 2px;
             margin: 0 auto 10px;
         }
+        /* ═══ 음성 듣기 버튼 ═══ */
+        .audio-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all .18s;
+            vertical-align: middle;
+            padding: 0;
+        }
+        .audio-btn:hover {
+            background: #ff4757;
+            border-color: #ff4757;
+            transform: scale(1.1);
+        }
+        .audio-btn:hover svg path { fill: #fff; }
+        .audio-btn svg { width: 9px; height: 9px; pointer-events: none; }
+        .audio-btn svg path { fill: #999; transition: fill .18s; }
+        .audio-btn.playing {
+            background: #ff4757;
+            border-color: #ff4757;
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+        .audio-btn.playing svg path { fill: #fff; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,71,87,.4); }
+            50%      { box-shadow: 0 0 0 7px rgba(255,71,87,0); }
+        }
+        /* 대화: 화자 라벨 옆에 버튼 정렬 */
+        .speaker-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 3px;
+        }
+        .speaker-row .speaker { margin-bottom: 0; }
+        /* EXTENSION: 문장과 버튼 한 줄 정렬 */
+        .ext-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ext-item .ext-sentence { flex: 1; }
+        /* ASK: 질문과 버튼 한 줄 정렬 */
+        .ask-item .audio-btn { margin-left: auto; align-self: center; }
+        @media print {
+            .audio-btn { display: none; }
+        }
 </style>
 </head>
 <body>
@@ -601,23 +654,38 @@
         <div class="talk-section-header">📍 Scene 1 · Small Talk (스몰토크)</div>
         <div class="dialogue">
             <div class="dialogue-line staff">
-                <div class="speaker">Sam</div>
+                <div class="speaker-row">
+                    <div class="speaker">Sam</div>
+                    <button class="audio-btn" data-audio="unit23/talk_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Hey Jun, how was your weekend?</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit23/talk_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">It was good. I cooked some Korean food. How about you?</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Sam</div>
+                <div class="speaker-row">
+                    <div class="speaker">Sam</div>
+                    <button class="audio-btn" data-audio="unit23/talk_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Just relaxed at home. Have you ever tried Vegemite?</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit23/talk_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Yes, once. It was... interesting!</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Sam</div>
+                <div class="speaker-row">
+                    <div class="speaker">Sam</div>
+                    <button class="audio-btn" data-audio="unit23/talk_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Haha, that's funny! Most people hate it.</div>
             </div>
         </div>
@@ -625,27 +693,45 @@
         <div class="talk-section-header">📍 Scene 2 · Talking About Korean Food (한국 음식 이야기)</div>
         <div class="dialogue">
             <div class="dialogue-line staff">
-                <div class="speaker">Sam</div>
+                <div class="speaker-row">
+                    <div class="speaker">Sam</div>
+                    <button class="audio-btn" data-audio="unit23/talk_6.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">What Korean food do you recommend?</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit23/talk_7.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text"><strong>You should try kimchi</strong>. It's spicy and sour.</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Sam</div>
+                <div class="speaker-row">
+                    <div class="speaker">Sam</div>
+                    <button class="audio-btn" data-audio="unit23/talk_8.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Sounds good. What else?</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit23/talk_9.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Korean BBQ! It's really popular.</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Sam</div>
+                <div class="speaker-row">
+                    <div class="speaker">Sam</div>
+                    <button class="audio-btn" data-audio="unit23/talk_10.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Let's eat together sometime.</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit23/talk_11.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Sure! I'll take you to a Korean restaurant.</div>
             </div>
         </div>
@@ -659,10 +745,10 @@
                 <span class="ext-pattern-num">1</span>How was your ~?
             </div>
             <div class="ext-list">
-                <div class="ext-item">How was your weekend?</div>
-                <div class="ext-item">How was your day?</div>
-                <div class="ext-item">How was your shift?</div>
-                <div class="ext-item">How was your trip?</div>
+                <div class="ext-item"><span class="ext-sentence">How was your weekend?</span><button class="audio-btn" data-audio="unit23/ext_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">How was your day?</span><button class="audio-btn" data-audio="unit23/ext_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">How was your shift?</span><button class="audio-btn" data-audio="unit23/ext_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">How was your trip?</span><button class="audio-btn" data-audio="unit23/ext_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
         <div class="ext-group">
@@ -670,10 +756,10 @@
                 <span class="ext-pattern-num">2</span>Have you ever tried ~?
             </div>
             <div class="ext-list">
-                <div class="ext-item">Have you ever tried kimchi?</div>
-                <div class="ext-item">Have you ever tried bibimbap?</div>
-                <div class="ext-item">Have you ever tried Korean BBQ?</div>
-                <div class="ext-item">Have you ever tried Vegemite?</div>
+                <div class="ext-item"><span class="ext-sentence">Have you ever tried kimchi?</span><button class="audio-btn" data-audio="unit23/ext_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Have you ever tried bibimbap?</span><button class="audio-btn" data-audio="unit23/ext_6.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Have you ever tried Korean BBQ?</span><button class="audio-btn" data-audio="unit23/ext_7.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Have you ever tried Vegemite?</span><button class="audio-btn" data-audio="unit23/ext_8.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
         <div class="ext-group">
@@ -681,10 +767,10 @@
                 <span class="ext-pattern-num">3</span>You should try ~
             </div>
             <div class="ext-list">
-                <div class="ext-item"><strong>You should try</strong> kimchi.</div>
-                <div class="ext-item"><strong>You should try</strong> Korean food.</div>
-                <div class="ext-item"><strong>You should try</strong> this restaurant.</div>
-                <div class="ext-item"><strong>You should try</strong> cooking it.</div>
+                <div class="ext-item"><span class="ext-sentence"><strong>You should try</strong> kimchi.</span><button class="audio-btn" data-audio="unit23/ext_9.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence"><strong>You should try</strong> Korean food.</span><button class="audio-btn" data-audio="unit23/ext_10.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence"><strong>You should try</strong> this restaurant.</span><button class="audio-btn" data-audio="unit23/ext_11.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence"><strong>You should try</strong> cooking it.</span><button class="audio-btn" data-audio="unit23/ext_12.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
     </div>
@@ -696,22 +782,27 @@
             <div class="ask-item">
                 <div class="ask-num">Q1</div>
                 <div class="ask-text">What do you talk about with coworkers?</div>
+                <button class="audio-btn" data-audio="unit23/ask_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q2</div>
                 <div class="ask-text">What's your favorite Korean food to recommend?</div>
+                <button class="audio-btn" data-audio="unit23/ask_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q3</div>
                 <div class="ask-text">Do you joke around with your team?</div>
+                <button class="audio-btn" data-audio="unit23/ask_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q4</div>
                 <div class="ask-text">Have you tried Australian food? What did you think?</div>
+                <button class="audio-btn" data-audio="unit23/ask_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q5</div>
                 <div class="ask-text">Is small talk hard in English? Why?</div>
+                <button class="audio-btn" data-audio="unit23/ask_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
         </div>
     </div>
@@ -758,6 +849,58 @@
         © 2025 FRIENDING · WORKING HOLIDAY ENGLISH SERIES · UNIT 23
     </div>
 </div>
+
+<script>
+(function(){
+  const AUDIO_BASE = '__AUDIO_BASE__workhol/';
+  let currentAudio = null;
+  let currentButton = null;
+
+  document.querySelectorAll('.audio-btn').forEach(btn => {
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      const file = this.getAttribute('data-audio');
+      if (!file) return;
+
+      // 같은 버튼 다시 누르면 정지
+      if (currentButton === this && currentAudio && !currentAudio.paused) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+        return;
+      }
+
+      // 다른 음성 재생 중이면 중지
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        if (currentButton) currentButton.classList.remove('playing');
+      }
+
+      currentAudio = new Audio(AUDIO_BASE + file);
+      currentButton = this;
+      this.classList.add('playing');
+
+      currentAudio.play().catch(err => {
+        this.classList.remove('playing');
+        const note = document.createElement('div');
+        note.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-family:Verdana,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);';
+        note.textContent = '🔊 음성 파일이 아직 준비되지 않았습니다 (' + file + ')';
+        document.body.appendChild(note);
+        setTimeout(()=>note.remove(), 2500);
+      });
+
+      currentAudio.addEventListener('ended', () => {
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+      });
+    });
+  });
+})();
+</script>
 
 </body>
 </html>

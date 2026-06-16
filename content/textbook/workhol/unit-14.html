@@ -519,6 +519,59 @@
             border-radius: 2px;
             margin: 0 auto 10px;
         }
+        /* ═══ 음성 듣기 버튼 ═══ */
+        .audio-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all .18s;
+            vertical-align: middle;
+            padding: 0;
+        }
+        .audio-btn:hover {
+            background: #ff4757;
+            border-color: #ff4757;
+            transform: scale(1.1);
+        }
+        .audio-btn:hover svg path { fill: #fff; }
+        .audio-btn svg { width: 9px; height: 9px; pointer-events: none; }
+        .audio-btn svg path { fill: #999; transition: fill .18s; }
+        .audio-btn.playing {
+            background: #ff4757;
+            border-color: #ff4757;
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+        .audio-btn.playing svg path { fill: #fff; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,71,87,.4); }
+            50%      { box-shadow: 0 0 0 7px rgba(255,71,87,0); }
+        }
+        /* 대화: 화자 라벨 옆에 버튼 정렬 */
+        .speaker-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 3px;
+        }
+        .speaker-row .speaker { margin-bottom: 0; }
+        /* EXTENSION: 문장과 버튼 한 줄 정렬 */
+        .ext-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ext-item .ext-sentence { flex: 1; }
+        /* ASK: 질문과 버튼 한 줄 정렬 */
+        .ask-item .audio-btn { margin-left: auto; align-self: center; }
+        @media print {
+            .audio-btn { display: none; }
+        }
 </style>
 </head>
 <body>
@@ -601,43 +654,73 @@
         <div class="talk-section-header">📍 Talking About Career (경력 설명)</div>
         <div class="dialogue">
             <div class="dialogue-line staff">
-                <div class="speaker">Chef</div>
+                <div class="speaker-row">
+                    <div class="speaker">Chef</div>
+                    <button class="audio-btn" data-audio="unit14/talk_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Tell me more about your cooking experience.</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit14/talk_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text"><strong>I worked in Korea for three years</strong>.</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Chef</div>
+                <div class="speaker-row">
+                    <div class="speaker">Chef</div>
+                    <button class="audio-btn" data-audio="unit14/talk_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">What kind of food did you make?</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit14/talk_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text"><strong>I make Korean and Western food</strong>.</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Chef</div>
+                <div class="speaker-row">
+                    <div class="speaker">Chef</div>
+                    <button class="audio-btn" data-audio="unit14/talk_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Did you study cooking?</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit14/talk_6.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Yes, <strong>I studied at a cooking school</strong> for two years.</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Chef</div>
+                <div class="speaker-row">
+                    <div class="speaker">Chef</div>
+                    <button class="audio-btn" data-audio="unit14/talk_7.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">What dishes are you good at?</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit14/talk_8.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text"><strong>I'm good at pasta and meat dishes</strong>.</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Chef</div>
+                <div class="speaker-row">
+                    <div class="speaker">Chef</div>
+                    <button class="audio-btn" data-audio="unit14/talk_9.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Great. We make Italian food here.</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit14/talk_10.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text"><strong>I want to learn more here</strong>.</div>
             </div>
         </div>
@@ -651,10 +734,10 @@
                 <span class="ext-pattern-num">1</span>I worked in ~ for ~ years
             </div>
             <div class="ext-list">
-                <div class="ext-item">I worked in Korea for three years.</div>
-                <div class="ext-item">I worked in Seoul for two years.</div>
-                <div class="ext-item">I worked in a hotel for five years.</div>
-                <div class="ext-item">I worked in a small restaurant for one year.</div>
+                <div class="ext-item"><span class="ext-sentence">I worked in Korea for three years.</span><button class="audio-btn" data-audio="unit14/ext_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">I worked in Seoul for two years.</span><button class="audio-btn" data-audio="unit14/ext_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">I worked in a hotel for five years.</span><button class="audio-btn" data-audio="unit14/ext_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">I worked in a small restaurant for one year.</span><button class="audio-btn" data-audio="unit14/ext_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
         <div class="ext-group">
@@ -662,10 +745,10 @@
                 <span class="ext-pattern-num">2</span>I can make ~
             </div>
             <div class="ext-list">
-                <div class="ext-item"><strong>I can make</strong> Korean food.</div>
-                <div class="ext-item"><strong>I can make</strong> pasta.</div>
-                <div class="ext-item"><strong>I can make</strong> desserts.</div>
-                <div class="ext-item"><strong>I can make</strong> many dishes.</div>
+                <div class="ext-item"><span class="ext-sentence"><strong>I can make</strong> Korean food.</span><button class="audio-btn" data-audio="unit14/ext_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence"><strong>I can make</strong> pasta.</span><button class="audio-btn" data-audio="unit14/ext_6.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence"><strong>I can make</strong> desserts.</span><button class="audio-btn" data-audio="unit14/ext_7.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence"><strong>I can make</strong> many dishes.</span><button class="audio-btn" data-audio="unit14/ext_8.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
         <div class="ext-group">
@@ -673,10 +756,10 @@
                 <span class="ext-pattern-num">3</span>I'm good at ~
             </div>
             <div class="ext-list">
-                <div class="ext-item"><strong>I'm good at</strong> pasta.</div>
-                <div class="ext-item"><strong>I'm good at</strong> meat dishes.</div>
-                <div class="ext-item"><strong>I'm good at</strong> Korean BBQ.</div>
-                <div class="ext-item"><strong>I'm good at</strong> sauces.</div>
+                <div class="ext-item"><span class="ext-sentence"><strong>I'm good at</strong> pasta.</span><button class="audio-btn" data-audio="unit14/ext_9.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence"><strong>I'm good at</strong> meat dishes.</span><button class="audio-btn" data-audio="unit14/ext_10.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence"><strong>I'm good at</strong> Korean BBQ.</span><button class="audio-btn" data-audio="unit14/ext_11.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence"><strong>I'm good at</strong> sauces.</span><button class="audio-btn" data-audio="unit14/ext_12.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
     </div>
@@ -688,22 +771,27 @@
             <div class="ask-item">
                 <div class="ask-num">Q1</div>
                 <div class="ask-text">What food are you best at making?</div>
+                <button class="audio-btn" data-audio="unit14/ask_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q2</div>
                 <div class="ask-text">Where did you learn to cook?</div>
+                <button class="audio-btn" data-audio="unit14/ask_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q3</div>
                 <div class="ask-text">What was your favorite kitchen to work in?</div>
+                <button class="audio-btn" data-audio="unit14/ask_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q4</div>
                 <div class="ask-text">What food do you want to learn?</div>
+                <button class="audio-btn" data-audio="unit14/ask_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q5</div>
                 <div class="ask-text">Do you cook at home in Australia?</div>
+                <button class="audio-btn" data-audio="unit14/ask_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
         </div>
     </div>
@@ -750,6 +838,58 @@
         © 2025 FRIENDING · WORKING HOLIDAY ENGLISH SERIES · UNIT 14
     </div>
 </div>
+
+<script>
+(function(){
+  const AUDIO_BASE = '__AUDIO_BASE__workhol/';
+  let currentAudio = null;
+  let currentButton = null;
+
+  document.querySelectorAll('.audio-btn').forEach(btn => {
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      const file = this.getAttribute('data-audio');
+      if (!file) return;
+
+      // 같은 버튼 다시 누르면 정지
+      if (currentButton === this && currentAudio && !currentAudio.paused) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+        return;
+      }
+
+      // 다른 음성 재생 중이면 중지
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        if (currentButton) currentButton.classList.remove('playing');
+      }
+
+      currentAudio = new Audio(AUDIO_BASE + file);
+      currentButton = this;
+      this.classList.add('playing');
+
+      currentAudio.play().catch(err => {
+        this.classList.remove('playing');
+        const note = document.createElement('div');
+        note.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-family:Verdana,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);';
+        note.textContent = '🔊 음성 파일이 아직 준비되지 않았습니다 (' + file + ')';
+        document.body.appendChild(note);
+        setTimeout(()=>note.remove(), 2500);
+      });
+
+      currentAudio.addEventListener('ended', () => {
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+      });
+    });
+  });
+})();
+</script>
 
 </body>
 </html>

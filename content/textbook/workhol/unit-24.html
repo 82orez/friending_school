@@ -519,6 +519,59 @@
             border-radius: 2px;
             margin: 0 auto 10px;
         }
+        /* ═══ 음성 듣기 버튼 ═══ */
+        .audio-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all .18s;
+            vertical-align: middle;
+            padding: 0;
+        }
+        .audio-btn:hover {
+            background: #ff4757;
+            border-color: #ff4757;
+            transform: scale(1.1);
+        }
+        .audio-btn:hover svg path { fill: #fff; }
+        .audio-btn svg { width: 9px; height: 9px; pointer-events: none; }
+        .audio-btn svg path { fill: #999; transition: fill .18s; }
+        .audio-btn.playing {
+            background: #ff4757;
+            border-color: #ff4757;
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+        .audio-btn.playing svg path { fill: #fff; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,71,87,.4); }
+            50%      { box-shadow: 0 0 0 7px rgba(255,71,87,0); }
+        }
+        /* 대화: 화자 라벨 옆에 버튼 정렬 */
+        .speaker-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 3px;
+        }
+        .speaker-row .speaker { margin-bottom: 0; }
+        /* EXTENSION: 문장과 버튼 한 줄 정렬 */
+        .ext-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ext-item .ext-sentence { flex: 1; }
+        /* ASK: 질문과 버튼 한 줄 정렬 */
+        .ask-item .audio-btn { margin-left: auto; align-self: center; }
+        @media print {
+            .audio-btn { display: none; }
+        }
 </style>
 </head>
 <body>
@@ -601,19 +654,31 @@
         <div class="talk-section-header">📍 Scene 1 · Asking About Pay Rate (시급 질문)</div>
         <div class="dialogue">
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit24/talk_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Excuse me, what's the hourly rate?</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Manager</div>
+                <div class="speaker-row">
+                    <div class="speaker">Manager</div>
+                    <button class="audio-btn" data-audio="unit24/talk_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">It's $25 per hour.</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit24/talk_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text"><strong>Can I see my payslip</strong>?</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Manager</div>
+                <div class="speaker-row">
+                    <div class="speaker">Manager</div>
+                    <button class="audio-btn" data-audio="unit24/talk_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Sure, I'll send it to your email.</div>
             </div>
         </div>
@@ -621,31 +686,52 @@
         <div class="talk-section-header">📍 Scene 2 · Checking the Hours (근무시간 확인)</div>
         <div class="dialogue">
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit24/talk_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text"><strong>My hours seem wrong</strong>. I worked 40 hours, not 35.</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Manager</div>
+                <div class="speaker-row">
+                    <div class="speaker">Manager</div>
+                    <button class="audio-btn" data-audio="unit24/talk_6.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Let me check the system... You're right. I'll fix it.</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit24/talk_7.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Thank you. <strong>When is payday</strong>?</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Manager</div>
+                <div class="speaker-row">
+                    <div class="speaker">Manager</div>
+                    <button class="audio-btn" data-audio="unit24/talk_8.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Payday is every Thursday.</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit24/talk_9.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">And do I get paid for overtime?</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Manager</div>
+                <div class="speaker-row">
+                    <div class="speaker">Manager</div>
+                    <button class="audio-btn" data-audio="unit24/talk_10.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Yes, overtime is 1.5 times the normal rate.</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit24/talk_11.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Okay, thank you for explaining.</div>
             </div>
         </div>
@@ -659,10 +745,10 @@
                 <span class="ext-pattern-num">1</span>What's the ~ rate?
             </div>
             <div class="ext-list">
-                <div class="ext-item">What's the hourly rate?</div>
-                <div class="ext-item">What's the weekend rate?</div>
-                <div class="ext-item">What's the overtime rate?</div>
-                <div class="ext-item">What's the holiday rate?</div>
+                <div class="ext-item"><span class="ext-sentence">What's the hourly rate?</span><button class="audio-btn" data-audio="unit24/ext_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">What's the weekend rate?</span><button class="audio-btn" data-audio="unit24/ext_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">What's the overtime rate?</span><button class="audio-btn" data-audio="unit24/ext_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">What's the holiday rate?</span><button class="audio-btn" data-audio="unit24/ext_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
         <div class="ext-group">
@@ -670,10 +756,10 @@
                 <span class="ext-pattern-num">2</span>Can I see ~?
             </div>
             <div class="ext-list">
-                <div class="ext-item">Can I see my payslip?</div>
-                <div class="ext-item">Can I see my hours?</div>
-                <div class="ext-item">Can I see the schedule?</div>
-                <div class="ext-item">Can I see my contract?</div>
+                <div class="ext-item"><span class="ext-sentence">Can I see my payslip?</span><button class="audio-btn" data-audio="unit24/ext_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Can I see my hours?</span><button class="audio-btn" data-audio="unit24/ext_6.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Can I see the schedule?</span><button class="audio-btn" data-audio="unit24/ext_7.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Can I see my contract?</span><button class="audio-btn" data-audio="unit24/ext_8.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
         <div class="ext-group">
@@ -681,10 +767,10 @@
                 <span class="ext-pattern-num">3</span>When is ~?
             </div>
             <div class="ext-list">
-                <div class="ext-item">When is payday?</div>
-                <div class="ext-item">When is my next shift?</div>
-                <div class="ext-item">When is the meeting?</div>
-                <div class="ext-item">When is the deadline?</div>
+                <div class="ext-item"><span class="ext-sentence">When is payday?</span><button class="audio-btn" data-audio="unit24/ext_9.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">When is my next shift?</span><button class="audio-btn" data-audio="unit24/ext_10.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">When is the meeting?</span><button class="audio-btn" data-audio="unit24/ext_11.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">When is the deadline?</span><button class="audio-btn" data-audio="unit24/ext_12.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
     </div>
@@ -696,22 +782,27 @@
             <div class="ask-item">
                 <div class="ask-num">Q1</div>
                 <div class="ask-text">How much do you earn per hour now?</div>
+                <button class="audio-btn" data-audio="unit24/ask_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q2</div>
                 <div class="ask-text">Do you check your payslip every week?</div>
+                <button class="audio-btn" data-audio="unit24/ask_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q3</div>
                 <div class="ask-text">Have you ever worked overtime?</div>
+                <button class="audio-btn" data-audio="unit24/ask_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q4</div>
                 <div class="ask-text">When do you usually get paid in Australia?</div>
+                <button class="audio-btn" data-audio="unit24/ask_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q5</div>
                 <div class="ask-text">What would you do if your pay was wrong?</div>
+                <button class="audio-btn" data-audio="unit24/ask_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
         </div>
     </div>
@@ -758,6 +849,58 @@
         © 2025 FRIENDING · WORKING HOLIDAY ENGLISH SERIES · UNIT 24
     </div>
 </div>
+
+<script>
+(function(){
+  const AUDIO_BASE = '__AUDIO_BASE__workhol/';
+  let currentAudio = null;
+  let currentButton = null;
+
+  document.querySelectorAll('.audio-btn').forEach(btn => {
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      const file = this.getAttribute('data-audio');
+      if (!file) return;
+
+      // 같은 버튼 다시 누르면 정지
+      if (currentButton === this && currentAudio && !currentAudio.paused) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+        return;
+      }
+
+      // 다른 음성 재생 중이면 중지
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        if (currentButton) currentButton.classList.remove('playing');
+      }
+
+      currentAudio = new Audio(AUDIO_BASE + file);
+      currentButton = this;
+      this.classList.add('playing');
+
+      currentAudio.play().catch(err => {
+        this.classList.remove('playing');
+        const note = document.createElement('div');
+        note.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-family:Verdana,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);';
+        note.textContent = '🔊 음성 파일이 아직 준비되지 않았습니다 (' + file + ')';
+        document.body.appendChild(note);
+        setTimeout(()=>note.remove(), 2500);
+      });
+
+      currentAudio.addEventListener('ended', () => {
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+      });
+    });
+  });
+})();
+</script>
 
 </body>
 </html>

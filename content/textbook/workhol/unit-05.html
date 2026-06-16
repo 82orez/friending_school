@@ -519,6 +519,59 @@
             border-radius: 2px;
             margin: 0 auto 10px;
         }
+        /* ═══ 음성 듣기 버튼 ═══ */
+        .audio-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all .18s;
+            vertical-align: middle;
+            padding: 0;
+        }
+        .audio-btn:hover {
+            background: #ff4757;
+            border-color: #ff4757;
+            transform: scale(1.1);
+        }
+        .audio-btn:hover svg path { fill: #fff; }
+        .audio-btn svg { width: 9px; height: 9px; pointer-events: none; }
+        .audio-btn svg path { fill: #999; transition: fill .18s; }
+        .audio-btn.playing {
+            background: #ff4757;
+            border-color: #ff4757;
+            animation: pulse 1.2s ease-in-out infinite;
+        }
+        .audio-btn.playing svg path { fill: #fff; }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255,71,87,.4); }
+            50%      { box-shadow: 0 0 0 7px rgba(255,71,87,0); }
+        }
+        /* 대화: 화자 라벨 옆에 버튼 정렬 */
+        .speaker-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 3px;
+        }
+        .speaker-row .speaker { margin-bottom: 0; }
+        /* EXTENSION: 문장과 버튼 한 줄 정렬 */
+        .ext-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ext-item .ext-sentence { flex: 1; }
+        /* ASK: 질문과 버튼 한 줄 정렬 */
+        .ask-item .audio-btn { margin-left: auto; align-self: center; }
+        @media print {
+            .audio-btn { display: none; }
+        }
 </style>
 </head>
 <body>
@@ -601,19 +654,31 @@
         <div class="talk-section-header">📍 Scene 1 · Looking for an Item (물건 찾기)</div>
         <div class="dialogue">
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit05/talk_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Excuse me, where can I find ramen?</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Staff</div>
+                <div class="speaker-row">
+                    <div class="speaker">Staff</div>
+                    <button class="audio-btn" data-audio="unit05/talk_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">It's in aisle 7, with the Asian food.</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit05/talk_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Thank you. Do you have Korean rice?</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Staff</div>
+                <div class="speaker-row">
+                    <div class="speaker">Staff</div>
+                    <button class="audio-btn" data-audio="unit05/talk_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Yes, it's on the same shelf.</div>
             </div>
         </div>
@@ -621,27 +686,45 @@
         <div class="talk-section-header">📍 Scene 2 · At the Checkout (계산대에서)</div>
         <div class="dialogue">
             <div class="dialogue-line staff">
-                <div class="speaker">Cashier</div>
+                <div class="speaker-row">
+                    <div class="speaker">Cashier</div>
+                    <button class="audio-btn" data-audio="unit05/talk_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Hi, did you find everything?</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit05/talk_6.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Yes, thanks. <strong>How much is this</strong>?</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Cashier</div>
+                <div class="speaker-row">
+                    <div class="speaker">Cashier</div>
+                    <button class="audio-btn" data-audio="unit05/talk_7.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">That's $4.50.</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit05/talk_8.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Okay, I'll take it. <strong>Can I pay by card</strong>?</div>
             </div>
             <div class="dialogue-line staff">
-                <div class="speaker">Cashier</div>
+                <div class="speaker-row">
+                    <div class="speaker">Cashier</div>
+                    <button class="audio-btn" data-audio="unit05/talk_9.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Sure. Tap or insert your card, please.</div>
             </div>
             <div class="dialogue-line jun">
-                <div class="speaker">Jun</div>
+                <div class="speaker-row">
+                    <div class="speaker">Jun</div>
+                    <button class="audio-btn" data-audio="unit05/talk_10.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
+                </div>
                 <div class="dialogue-text">Here you go.</div>
             </div>
         </div>
@@ -655,10 +738,10 @@
                 <span class="ext-pattern-num">1</span>Where can I find ~?
             </div>
             <div class="ext-list">
-                <div class="ext-item">Where can I find ramen?</div>
-                <div class="ext-item">Where can I find milk?</div>
-                <div class="ext-item">Where can I find the bread?</div>
-                <div class="ext-item">Where can I find Korean food?</div>
+                <div class="ext-item"><span class="ext-sentence">Where can I find ramen?</span><button class="audio-btn" data-audio="unit05/ext_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Where can I find milk?</span><button class="audio-btn" data-audio="unit05/ext_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Where can I find the bread?</span><button class="audio-btn" data-audio="unit05/ext_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Where can I find Korean food?</span><button class="audio-btn" data-audio="unit05/ext_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
         <div class="ext-group">
@@ -666,10 +749,10 @@
                 <span class="ext-pattern-num">2</span>How much is ~?
             </div>
             <div class="ext-list">
-                <div class="ext-item">How much is this?</div>
-                <div class="ext-item">How much is the rice?</div>
-                <div class="ext-item">How much is one pack?</div>
-                <div class="ext-item">How much is it in total?</div>
+                <div class="ext-item"><span class="ext-sentence">How much is this?</span><button class="audio-btn" data-audio="unit05/ext_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">How much is the rice?</span><button class="audio-btn" data-audio="unit05/ext_6.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">How much is one pack?</span><button class="audio-btn" data-audio="unit05/ext_7.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">How much is it in total?</span><button class="audio-btn" data-audio="unit05/ext_8.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
         <div class="ext-group">
@@ -677,10 +760,10 @@
                 <span class="ext-pattern-num">3</span>Can I pay ~?
             </div>
             <div class="ext-list">
-                <div class="ext-item">Can I pay by card?</div>
-                <div class="ext-item">Can I pay in cash?</div>
-                <div class="ext-item">Can I pay later?</div>
-                <div class="ext-item">Can I pay with my phone?</div>
+                <div class="ext-item"><span class="ext-sentence">Can I pay by card?</span><button class="audio-btn" data-audio="unit05/ext_9.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Can I pay in cash?</span><button class="audio-btn" data-audio="unit05/ext_10.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Can I pay later?</span><button class="audio-btn" data-audio="unit05/ext_11.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
+                <div class="ext-item"><span class="ext-sentence">Can I pay with my phone?</span><button class="audio-btn" data-audio="unit05/ext_12.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button></div>
             </div>
         </div>
     </div>
@@ -692,22 +775,27 @@
             <div class="ask-item">
                 <div class="ask-num">Q1</div>
                 <div class="ask-text">Where do you usually do your grocery shopping?</div>
+                <button class="audio-btn" data-audio="unit05/ask_1.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q2</div>
                 <div class="ask-text">What Korean food do you miss most in Australia?</div>
+                <button class="audio-btn" data-audio="unit05/ask_2.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q3</div>
                 <div class="ask-text">Do you cook at home or eat out more?</div>
+                <button class="audio-btn" data-audio="unit05/ask_3.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q4</div>
                 <div class="ask-text">What's your favorite ingredient to buy?</div>
+                <button class="audio-btn" data-audio="unit05/ask_4.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
             <div class="ask-item">
                 <div class="ask-num">Q5</div>
                 <div class="ask-text">Do you prefer paying in cash or by card?</div>
+                <button class="audio-btn" data-audio="unit05/ask_5.mp3" aria-label="play"><svg viewBox="0 0 12 12"><path d="M3 2 L9 6 L3 10 Z"/></svg></button>
             </div>
         </div>
     </div>
@@ -754,6 +842,58 @@
         © 2025 FRIENDING · WORKING HOLIDAY ENGLISH SERIES · UNIT 5
     </div>
 </div>
+
+<script>
+(function(){
+  const AUDIO_BASE = '__AUDIO_BASE__workhol/';
+  let currentAudio = null;
+  let currentButton = null;
+
+  document.querySelectorAll('.audio-btn').forEach(btn => {
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      const file = this.getAttribute('data-audio');
+      if (!file) return;
+
+      // 같은 버튼 다시 누르면 정지
+      if (currentButton === this && currentAudio && !currentAudio.paused) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+        return;
+      }
+
+      // 다른 음성 재생 중이면 중지
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+        if (currentButton) currentButton.classList.remove('playing');
+      }
+
+      currentAudio = new Audio(AUDIO_BASE + file);
+      currentButton = this;
+      this.classList.add('playing');
+
+      currentAudio.play().catch(err => {
+        this.classList.remove('playing');
+        const note = document.createElement('div');
+        note.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 18px;border-radius:8px;font-size:12px;font-family:Verdana,sans-serif;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2);';
+        note.textContent = '🔊 음성 파일이 아직 준비되지 않았습니다 (' + file + ')';
+        document.body.appendChild(note);
+        setTimeout(()=>note.remove(), 2500);
+      });
+
+      currentAudio.addEventListener('ended', () => {
+        this.classList.remove('playing');
+        currentAudio = null;
+        currentButton = null;
+      });
+    });
+  });
+})();
+</script>
 
 </body>
 </html>

@@ -44,7 +44,13 @@ export default async function TextbookUnitPage({ params }: { params: Promise<Par
   }
 
   const filePath = path.join(process.cwd(), "content", "textbook", course, unit.htmlFile);
-  const html = await fs.readFile(filePath, "utf-8");
+  let html = await fs.readFile(filePath, "utf-8");
+
+  // 문장별 음성 버튼(__AUDIO_BASE__ 토큰)을 Supabase Storage 공개 URL로 치환.
+  // 토큰 미포함 교재 HTML에는 무영향. iframe srcDoc은 상대 URL을 부모 라우트 기준으로
+  // 해석하므로 절대 URL이 필요. (현재 workhol 교재만 토큰 포함)
+  const audioBase = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/textbook-audio/`;
+  html = html.replaceAll("__AUDIO_BASE__", audioBase);
 
   let initialCompleted = false;
   if (user) {
