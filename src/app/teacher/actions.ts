@@ -42,13 +42,12 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
 
   const firstName = clean(formData.get("first_name"), 40);
   const lastName = clean(formData.get("last_name"), 40);
-  const headline = clean(formData.get("headline"), 100);
   const bio = clean(formData.get("bio"), 2000);
   const phone = clean(formData.get("phone"), 30);
   const zoomUrl = clean(formData.get("zoom_url"), 500);
 
   // 전화번호를 제외한 항목은 필수 (clean()이 공백-only를 null로 만들어 우회 차단).
-  if (!firstName || !lastName || !headline || !bio || !zoomUrl) {
+  if (!firstName || !lastName || !bio || !zoomUrl) {
     return { error: "Please fill in all required fields." };
   }
 
@@ -60,7 +59,7 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
   const admin = createAdminClient();
   const { error } = await admin
     .from("profiles")
-    .update({ first_name: firstName, last_name: lastName, headline, bio, phone, zoom_url: zoomUrl })
+    .update({ first_name: firstName, last_name: lastName, bio, phone, zoom_url: zoomUrl })
     .eq("id", userId);
   if (error) return { error: "Something went wrong while saving." };
 

@@ -18,7 +18,6 @@ export type TeacherProfile = {
   avatar_url: string;
   zoom_url: string;
   bio: string;
-  headline: string;
   phone: string;
 };
 
@@ -32,7 +31,6 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
   const [state, formAction, pending] = useActionState<TeacherActionState, FormData>(updateTeacherProfile, {});
   const [firstName, setFirstName] = useState(initial.first_name);
   const [lastName, setLastName] = useState(initial.last_name);
-  const [headline, setHeadline] = useState(initial.headline);
   const [bio, setBio] = useState(initial.bio);
   const [phone, setPhone] = useState(initial.phone);
   const [zoomUrl, setZoomUrl] = useState(initial.zoom_url);
@@ -40,10 +38,10 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
   // 보기/편집 모드 — 편집 모드에서만 Teacher Info 필드 수정 가능.
   const [editing, setEditing] = useState(false);
   // 편집 진입 시점 스냅샷(Cancel 시 복원).
-  const snapshotRef = useRef({ firstName, lastName, headline, bio, phone, zoomUrl });
+  const snapshotRef = useRef({ firstName, lastName, bio, phone, zoomUrl });
 
   const startEditing = () => {
-    snapshotRef.current = { firstName, lastName, headline, bio, phone, zoomUrl };
+    snapshotRef.current = { firstName, lastName, bio, phone, zoomUrl };
     setEditing(true);
   };
 
@@ -51,7 +49,6 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
     const s = snapshotRef.current;
     setFirstName(s.firstName);
     setLastName(s.lastName);
-    setHeadline(s.headline);
     setBio(s.bio);
     setPhone(s.phone);
     setZoomUrl(s.zoomUrl);
@@ -197,23 +194,6 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
                 className={VIEW_TEXT}
               />
             </div>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="headline">
-              Headline <span className="text-brand">*</span>
-            </Label>
-            <Input
-              id="headline"
-              name="headline"
-              value={headline}
-              onChange={(e) => setHeadline(e.target.value)}
-              placeholder="e.g. Working Holiday & Kitchen English instructor"
-              maxLength={100}
-              required
-              disabled={!editing}
-              className={VIEW_TEXT}
-            />
           </div>
 
           <div className="grid gap-2">
