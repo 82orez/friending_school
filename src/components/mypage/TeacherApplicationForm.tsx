@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import Image from "next/image";
 import { Camera, Loader2, UserRound, Video } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/utils/supabase/client";
+import { cleanupOldAvatars, uploadAvatar } from "@/lib/avatar";
 import { submitTeacherApplication, type TeacherApplyState } from "@/app/teacher/apply-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,15 +73,10 @@ export default function TeacherApplicationForm({
     const prev = avatarUrl;
     startUpload(async () => {
       try {
-        const supabase = createClient();
-        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `${userId}/avatar-${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-        if (uploadError) throw uploadError;
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("avatars").getPublicUrl(path);
+        const { publicUrl, path } = await uploadAvatar(file, userId);
         setAvatarUrl(publicUrl);
+        // 제출 전이라 업로드 직후 이전 파일 정리(best-effort).
+        await cleanupOldAvatars(userId, path);
         toast.success("Photo uploaded.");
       } catch {
         setAvatarUrl(prev);

@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import Image from "next/image";
 import { Camera, Loader2, Pencil, UserRound, Video } from "lucide-react";
 import { toast } from "sonner";
-import { createClient } from "@/utils/supabase/client";
+import { cleanupOldAvatars, uploadAvatar } from "@/lib/avatar";
 import { updateTeacherAvatar, updateTeacherProfile, type TeacherActionState } from "@/app/teacher/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,15 +88,7 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
     const prev = avatarUrl;
     startUpload(async () => {
       try {
-        const supabase = createClient();
-        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `${userId}/avatar-${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-        if (uploadError) throw uploadError;
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("avatars").getPublicUrl(path);
+        const { publicUrl, path } = await uploadAvatar(file, userId);
 
         // 낙관적 미리보기
         setAvatarUrl(publicUrl);
@@ -107,6 +99,8 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
           toast.error(res.error);
         } else {
           toast.success("Photo updated.");
+          // DB 반영 성공 후 이전 파일 정리(best-effort).
+          await cleanupOldAvatars(userId, path);
         }
       } catch {
         setAvatarUrl(prev);
