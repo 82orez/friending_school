@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Footer() {
   return (
     <footer id="contact" className="bg-ink text-white">
@@ -5,7 +7,12 @@ export default function Footer() {
         <p className="text-base font-bold">
           <span className="text-brand-gradient">프렌딩 스쿨</span>
         </p>
-        <p className="text-[13px] text-[#888]">© 2026 청년을세계로. 워홀·해외진출 영어 플랫폼.</p>
+        <div className="flex flex-col items-center gap-2 md:flex-row md:gap-6">
+          <Link href="/teacher/apply" className="text-[13px] text-[#888] transition-colors hover:text-white">
+            Become a Teacher
+          </Link>
+          <p className="text-[13px] text-[#888]">© 2026 청년을세계로. 워홀·해외진출 영어 플랫폼.</p>
+        </div>
       </div>
     </footer>
   );

@@ -4,39 +4,10 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
-import { getUserRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import StudentProfileForm from "@/components/mypage/StudentProfileForm";
-import TeacherApplicationForm from "@/components/mypage/TeacherApplicationForm";
 
 export const metadata: Metadata = { title: "마이페이지 — 프렌딩 스쿨" };
-
-type TeacherApplicationRow = {
-  id: string;
-  name: string;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-  bio: string;
-  experience: string | null;
-  zoom_url: string | null;
-  avatar_url: string | null;
-  status: "신청" | "승인" | "거절";
-  admin_note: string | null;
-  created_at: string;
-};
-
-const TEACHER_STATUS_BADGE: Record<TeacherApplicationRow["status"], string> = {
-  신청: "bg-[#FFF7E6] text-[#B97400]",
-  승인: "bg-[#E1F5EE] text-[#0F6E56]",
-  거절: "bg-brand/10 text-brand",
-};
-
-const TEACHER_STATUS_LABEL: Record<TeacherApplicationRow["status"], string> = {
-  신청: "Under review",
-  승인: "Approved",
-  거절: "Rejected",
-};
 
 type ApplicationRow = {
   id: string;
@@ -78,23 +49,7 @@ export default async function MyPage() {
     .order("created_at", { ascending: false });
   const applications = (data ?? []) as ApplicationRow[];
 
-  const { data: profile } = await supabase.from("profiles").select("first_name, last_name, phone, avatar_url").eq("id", user.id).maybeSingle();
-
-  const role = await getUserRole(supabase, user.id);
-  const isStudent = role !== "teacher" && role !== "admin";
-
-  // 강사 지원 섹션은 학생에게만 노출 — 본인 최신 지원 1건 조회.
-  let teacherApp: TeacherApplicationRow | null = null;
-  if (isStudent) {
-    const { data: taData } = await supabase
-      .from("teacher_applications")
-      .select("id, name, first_name, last_name, phone, bio, experience, zoom_url, avatar_url, status, admin_note, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    teacherApp = (taData as TeacherApplicationRow | null) ?? null;
-  }
+  const { data: profile } = await supabase.from("profiles").select("first_name, phone").eq("id", user.id).maybeSingle();
 
   const displayName = profile?.first_name || applications[0]?.name || user.email?.split("@")[0] || "회원";
   const joinedAt = user.created_at ? formatDate(user.created_at) : "-";
@@ -136,72 +91,6 @@ export default async function MyPage() {
             <StudentProfileForm initialName={profile?.first_name ?? ""} initialPhone={profile?.phone ?? ""} />
           </div>
         </details>
-
-        {/* 강사 지원 (학생만) */}
-        {isStudent && (
-          <details className="border-rule group mb-5 overflow-hidden rounded-2xl border bg-white" open={teacherApp?.status !== "신청"}>
-            <summary className="flex cursor-pointer items-center justify-between px-6 py-5 [&::-webkit-details-marker]:hidden">
-              <span className="text-ink flex items-center gap-2 text-base font-bold">
-                <span aria-hidden>🧑‍🏫</span> Become a Teacher
-              </span>
-              <div className="flex items-center gap-2">
-                {teacherApp && (
-                  <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", TEACHER_STATUS_BADGE[teacherApp.status])}>
-                    {TEACHER_STATUS_LABEL[teacherApp.status]}
-                  </span>
-                )}
-                <ChevronDown aria-hidden className="text-muted-fg-faint size-5 transition-transform group-open:rotate-180" />
-              </div>
-            </summary>
-
-            <div className="border-rule border-t px-6 py-6">
-              {teacherApp?.status === "신청" ? (
-                <div>
-                  <p className="text-muted-fg text-sm">
-                    Your teacher application has been received and is under review. The result will be shown on this page.
-                  </p>
-                  <dl className="bg-surface border-rule mt-4 rounded-xl border px-4 py-2 text-sm">
-                    {[
-                      ["First name", teacherApp.first_name ?? "-"],
-                      ["Last name", teacherApp.last_name ?? "-"],
-                      ["Phone", teacherApp.phone ?? "-"],
-                      ["Bio", teacherApp.bio],
-                      ["Experience", teacherApp.experience ?? "-"],
-                      ["Zoom URL", teacherApp.zoom_url ?? "-"],
-                      ["Applied on", formatDate(teacherApp.created_at)],
-                    ].map(([label, value]) => (
-                      <div key={label} className="border-rule flex justify-between gap-4 border-b py-2.5 last:border-b-0">
-                        <dt className="text-muted-fg shrink-0 text-sm">{label}</dt>
-                        <dd className="text-ink text-right text-sm font-medium break-words whitespace-pre-wrap">{value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </div>
-              ) : (
-                <>
-                  {teacherApp?.status === "거절" && (
-                    <div className="border-brand/30 bg-brand/5 mb-5 rounded-lg border px-4 py-3">
-                      <p className="text-brand text-sm font-bold">Your previous application was not approved.</p>
-                      {teacherApp.admin_note && <p className="text-ink mt-1 text-sm whitespace-pre-wrap">Reason: {teacherApp.admin_note}</p>}
-                      <p className="text-muted-fg mt-1 text-xs">You can revise your details and apply again.</p>
-                    </div>
-                  )}
-                  <p className="text-muted-fg mb-4 text-sm">
-                    If you'd like to teach at Friending School, please fill in the information below to apply. Your teacher page opens once an
-                    admin approves your application.
-                  </p>
-                  <TeacherApplicationForm
-                    userId={user.id}
-                    initialFirstName={profile?.first_name ?? ""}
-                    initialLastName={profile?.last_name ?? ""}
-                    initialPhone={profile?.phone ?? ""}
-                    initialAvatarUrl={profile?.avatar_url ?? ""}
-                  />
-                </>
-              )}
-            </div>
-          </details>
-        )}
 
         {/* 신청 내역 */}
         <section className="border-rule overflow-hidden rounded-2xl border bg-white">

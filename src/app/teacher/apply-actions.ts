@@ -78,6 +78,6 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
     console.error("[submitTeacherApplication] 관리자 알림 발송 실패:", err);
   }
 
-  revalidatePath("/mypage");
+  revalidatePath("/teacher/apply");
   return { success: true };
 }
