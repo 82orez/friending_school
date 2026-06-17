@@ -117,7 +117,7 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
           <span aria-hidden>📷</span> Profile Photo <span className="text-brand">*</span>
         </h2>
         <div className="flex items-center gap-5">
-          <div className="bg-surface border-rule relative size-24 shrink-0 overflow-hidden rounded-full border">
+          <div className="bg-surface border-rule relative size-24 shrink-0 overflow-hidden rounded-2xl border">
             {avatarUrl ? (
               <Image src={avatarUrl} alt="Profile photo" fill sizes="96px" className="object-cover" />
             ) : (

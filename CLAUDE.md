@@ -77,6 +77,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 - `src/lib/origin.ts` — `getOrigin(headers)`: `NEXT_PUBLIC_SITE_URL`→`origin`→`x-forwarded-host`+proto→`host`.
 - `src/lib/email.ts` — `isValidEmail()`(서버측 검증).
 - `src/lib/url.ts` — `isValidZoomUrl()`(http/https 검증, 강사 프로필·강사 지원 폼 공유).
+- `src/lib/avatar.ts` — `uploadAvatar(file,uid)`→`{publicUrl,path}` + `cleanupOldAvatars(uid,keepPath)`(본인 폴더 누적 파일 정리, best-effort). 강사 프로필·강사 신청폼 공유(브라우저 client 전용).
 - `src/lib/rate-limit.ts` — in-memory 토큰 버킷 `rateLimit/getClientIp/formatRetryAfter`. **⚠️ 프로세스 메모리라 멀티 인스턴스(Vercel)에선 효과 제한** → 필요 시 Upstash Redis로 함수 내부만 교체.
 - `src/hooks/use-caps-lock.ts` — `useCapsLockWarning()`, `capsLockHandlers` spread.
 

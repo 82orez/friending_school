@@ -121,7 +121,7 @@ export default function TeacherApplicationForm({
           Profile photo <span className="text-brand">*</span>
         </Label>
         <div className="flex items-center gap-4">
-          <div className="bg-surface border-rule relative size-20 shrink-0 overflow-hidden rounded-full border">
+          <div className="bg-surface border-rule relative size-20 shrink-0 overflow-hidden rounded-2xl border">
             {avatarUrl ? (
               <Image src={avatarUrl} alt="Profile photo" fill sizes="80px" className="object-cover" />
             ) : (

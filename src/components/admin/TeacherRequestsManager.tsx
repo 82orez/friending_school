@@ -268,7 +268,7 @@ function ApplicationRow({
               alt={`${row.name} profile photo`}
               width={64}
               height={64}
-              className="border-rule mb-3 size-16 rounded-full border object-cover"
+              className="border-rule mb-3 size-16 rounded-2xl border object-cover"
             />
           )}
           <dl className="mb-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm">
