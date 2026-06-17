@@ -11,7 +11,7 @@ export default async function AdminTeacherRequestsPage() {
 
   const { data: appsData } = await admin
     .from("teacher_applications")
-    .select("id, user_id, name, phone, headline, intro, experience, status, admin_note, created_at")
+    .select("id, user_id, name, phone, intro, experience, status, admin_note, created_at")
     .order("created_at", { ascending: false });
 
   const applications: TeacherApplication[] = ((appsData ?? []) as Omit<TeacherApplication, "email">[])

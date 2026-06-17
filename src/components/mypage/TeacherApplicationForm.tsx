@@ -21,18 +21,26 @@ import {
 
 // /mypage "강사 지원" 섹션의 상세 지원 양식. useActionState + submitTeacherApplication.
 // 제출 전 AlertDialog 확인 → requestSubmit (CourseApplyForm 패턴). controlled inputs.
-export default function TeacherApplicationForm({ initialName, initialPhone }: { initialName: string; initialPhone: string }) {
+export default function TeacherApplicationForm({
+  initialFirstName,
+  initialLastName,
+  initialPhone,
+}: {
+  initialFirstName: string;
+  initialLastName: string;
+  initialPhone: string;
+}) {
   const [state, formAction, pending] = useActionState<TeacherApplyState, FormData>(submitTeacherApplication, {});
-  const [name, setName] = useState(initialName);
+  const [firstName, setFirstName] = useState(initialFirstName);
+  const [lastName, setLastName] = useState(initialLastName);
   const [phone, setPhone] = useState(initialPhone);
-  const [headline, setHeadline] = useState("");
   const [intro, setIntro] = useState("");
   const [experience, setExperience] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state.success) toast.success("강사 지원이 접수되었습니다.");
+    if (state.success) toast.success("Your teacher application has been submitted.");
     else if (state.error) toast.error(state.error);
   }, [state]);
 
@@ -60,54 +68,54 @@ export default function TeacherApplicationForm({ initialName, initialPhone }: { 
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="grid gap-1.5">
-          <Label htmlFor="ta-name">
-            이름 <span className="text-brand">*</span>
+          <Label htmlFor="ta-first-name">
+            First name <span className="text-brand">*</span>
           </Label>
           <Input
-            id="ta-name"
-            name="name"
+            id="ta-first-name"
+            name="first_name"
             required
-            minLength={2}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="홍길동"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="John"
             maxLength={40}
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="ta-phone">
-            전화번호 <span className="text-muted-fg-faint font-normal">(선택)</span>
+          <Label htmlFor="ta-last-name">
+            Last name <span className="text-brand">*</span>
           </Label>
           <Input
-            id="ta-phone"
-            name="phone"
-            type="tel"
-            pattern="[0-9\-\s]+"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="010-1234-5678"
-            maxLength={30}
+            id="ta-last-name"
+            name="last_name"
+            required
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="Doe"
+            maxLength={40}
           />
         </div>
       </div>
 
       <div className="grid gap-1.5">
-        <Label htmlFor="ta-headline">
-          한 줄 소개 <span className="text-muted-fg-faint font-normal">(선택)</span>
+        <Label htmlFor="ta-phone">
+          Phone <span className="text-muted-fg-faint font-normal">(optional)</span>
         </Label>
         <Input
-          id="ta-headline"
-          name="headline"
-          value={headline}
-          onChange={(e) => setHeadline(e.target.value)}
-          placeholder="예: 호주 워홀 5년차 영어 튜터"
-          maxLength={120}
+          id="ta-phone"
+          name="phone"
+          type="tel"
+          pattern="[0-9\-\s]+"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="010-1234-5678"
+          maxLength={30}
         />
       </div>
 
       <div className="grid gap-1.5">
         <Label htmlFor="ta-intro">
-          자기소개 · 지원 동기 <span className="text-brand">*</span>
+          About &amp; motivation <span className="text-brand">*</span>
         </Label>
         <Textarea
           id="ta-intro"
@@ -117,7 +125,7 @@ export default function TeacherApplicationForm({ initialName, initialPhone }: { 
           rows={4}
           value={intro}
           onChange={(e) => setIntro(e.target.value)}
-          placeholder="강사로 지원하는 동기와 본인 소개를 자유롭게 적어 주세요. (10자 이상)"
+          placeholder="Tell us about yourself and why you'd like to teach. (at least 10 characters)"
           className="min-h-[100px]"
           maxLength={2000}
         />
@@ -125,7 +133,7 @@ export default function TeacherApplicationForm({ initialName, initialPhone }: { 
 
       <div className="grid gap-1.5">
         <Label htmlFor="ta-experience">
-          강의 · 관련 경력 <span className="text-muted-fg-faint font-normal">(선택)</span>
+          Teaching &amp; related experience <span className="text-muted-fg-faint font-normal">(optional)</span>
         </Label>
         <Textarea
           id="ta-experience"
@@ -133,7 +141,7 @@ export default function TeacherApplicationForm({ initialName, initialPhone }: { 
           rows={3}
           value={experience}
           onChange={(e) => setExperience(e.target.value)}
-          placeholder="강의 경력, 자격증, 관련 경험 등을 적어 주세요."
+          placeholder="Teaching experience, certifications, relevant background, etc."
           className="min-h-[80px]"
           maxLength={2000}
         />
@@ -144,10 +152,10 @@ export default function TeacherApplicationForm({ initialName, initialPhone }: { 
           {pending ? (
             <>
               <Loader2 className="animate-spin" />
-              제출 중
+              Submitting
             </>
           ) : (
-            "강사 지원하기"
+            "Apply to teach"
           )}
         </Button>
       </div>
@@ -155,17 +163,17 @@ export default function TeacherApplicationForm({ initialName, initialPhone }: { 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>입력하신 내용으로 지원할까요?</AlertDialogTitle>
-            <AlertDialogDescription>아래 내용으로 강사 지원을 접수합니다. 확인 후 진행해 주세요.</AlertDialogDescription>
+            <AlertDialogTitle>Apply with this information?</AlertDialogTitle>
+            <AlertDialogDescription>Your teacher application will be submitted with the details below. Please review before continuing.</AlertDialogDescription>
           </AlertDialogHeader>
 
           <dl className="border-rule text-ink divide-rule divide-y rounded-lg border text-left text-sm">
             {[
-              ["이름", name],
-              ["전화번호", phone || "(미입력)"],
-              ["한 줄 소개", headline || "(미입력)"],
-              ["자기소개·지원 동기", intro],
-              ["경력", experience || "(미입력)"],
+              ["First name", firstName],
+              ["Last name", lastName],
+              ["Phone", phone || "(not provided)"],
+              ["About & motivation", intro],
+              ["Experience", experience || "(not provided)"],
             ].map(([label, value]) => (
               <div key={label} className="flex gap-3 px-3.5 py-2.5">
                 <dt className="text-muted-fg w-28 shrink-0">{label}</dt>
@@ -175,9 +183,9 @@ export default function TeacherApplicationForm({ initialName, initialPhone }: { 
           </dl>
 
           <AlertDialogFooter>
-            <AlertDialogCancel>다시 확인</AlertDialogCancel>
+            <AlertDialogCancel>Review again</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirm} variant="brand">
-              지원하기
+              Apply
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

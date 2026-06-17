@@ -21,7 +21,6 @@ export type TeacherApplication = {
   name: string;
   phone: string;
   email: string;
-  headline: string | null;
   intro: string;
   experience: string | null;
   status: "신청" | "승인" | "거절";
@@ -264,7 +263,6 @@ function ApplicationRow({
             {[
               ["이메일", row.email],
               ["전화", row.phone],
-              ["한 줄 소개", row.headline ?? "-"],
               ["자기소개·지원 동기", row.intro],
               ["경력", row.experience ?? "-"],
             ].map(([label, value]) => (

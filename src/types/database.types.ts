@@ -136,9 +136,10 @@ export type Database = {
           admin_note: string | null
           created_at: string
           experience: string | null
-          headline: string | null
+          first_name: string | null
           id: string
           intro: string
+          last_name: string | null
           name: string
           phone: string | null
           status: Database["public"]["Enums"]["teacher_application_status"]
@@ -149,9 +150,10 @@ export type Database = {
           admin_note?: string | null
           created_at?: string
           experience?: string | null
-          headline?: string | null
+          first_name?: string | null
           id?: string
           intro: string
+          last_name?: string | null
           name: string
           phone?: string | null
           status?: Database["public"]["Enums"]["teacher_application_status"]
@@ -162,9 +164,10 @@ export type Database = {
           admin_note?: string | null
           created_at?: string
           experience?: string | null
-          headline?: string | null
+          first_name?: string | null
           id?: string
           intro?: string
+          last_name?: string | null
           name?: string
           phone?: string | null
           status?: Database["public"]["Enums"]["teacher_application_status"]

@@ -69,7 +69,6 @@ function buildText(d: ApplicationEmailData): string {
 export type TeacherApplicationEmailData = {
   name: string;
   phone: string;
-  headline: string;
   intro: string;
   experience: string;
   email: string;
@@ -80,7 +79,6 @@ function buildTeacherHtml(d: TeacherApplicationEmailData): string {
   const rows: [string, string][] = [
     ["이름", d.name],
     ["전화번호", d.phone],
-    ["한 줄 소개", d.headline || "-"],
     ["자기소개·지원 동기", d.intro || "-"],
     ["경력", d.experience || "-"],
     ["이메일", d.email || "(미입력)"],
@@ -108,7 +106,6 @@ function buildTeacherText(d: TeacherApplicationEmailData): string {
     "",
     `이름: ${d.name}`,
     `전화번호: ${d.phone}`,
-    `한 줄 소개: ${d.headline || "-"}`,
     `자기소개·지원 동기: ${d.intro || "-"}`,
     `경력: ${d.experience || "-"}`,
     `이메일: ${d.email || "(미입력)"}`,

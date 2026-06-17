@@ -153,10 +153,20 @@ export async function approveTeacherApplication(id: string): Promise<ActionResul
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { data: app } = await admin.from("teacher_applications").select("id, user_id, name, headline, intro, status").eq("id", id).maybeSingle();
+  const { data: app } = await admin
+    .from("teacher_applications")
+    .select("id, user_id, name, first_name, last_name, intro, status")
+    .eq("id", id)
+    .maybeSingle();
   if (!app) return { ok: false, error: "지원 내역을 찾을 수 없습니다." };
 
-  const a = app as { user_id: string; name: string; headline: string | null; intro: string | null };
+  const a = app as {
+    user_id: string;
+    name: string;
+    first_name: string | null;
+    last_name: string | null;
+    intro: string | null;
+  };
 
   const roleRes = await setUserRole(admin, a.user_id, "teacher");
   if (!roleRes.ok) return roleRes;
@@ -164,12 +174,12 @@ export async function approveTeacherApplication(id: string): Promise<ActionResul
   const { error: statusError } = await admin.from("teacher_applications").update({ status: "승인" }).eq("id", id);
   if (statusError) return { ok: false, error: "상태 변경 중 오류가 발생했습니다." };
 
-  // profiles 빈 필드만 채움(기존 값 보존). first_name←name, headline←headline, bio←intro.
-  const { data: profile } = await admin.from("profiles").select("first_name, headline, bio").eq("id", a.user_id).maybeSingle();
-  const p = (profile ?? {}) as { first_name?: string | null; headline?: string | null; bio?: string | null };
+  // profiles 빈 필드만 채움(기존 값 보존). first_name/last_name←지원서, bio←intro.
+  const { data: profile } = await admin.from("profiles").select("first_name, last_name, bio").eq("id", a.user_id).maybeSingle();
+  const p = (profile ?? {}) as { first_name?: string | null; last_name?: string | null; bio?: string | null };
   const prefill: Record<string, string> = {};
-  if (!p.first_name && a.name) prefill.first_name = a.name;
-  if (!p.headline && a.headline) prefill.headline = a.headline;
+  if (!p.first_name && (a.first_name || a.name)) prefill.first_name = a.first_name || a.name;
+  if (!p.last_name && a.last_name) prefill.last_name = a.last_name;
   if (!p.bio && a.intro) prefill.bio = a.intro;
   if (Object.keys(prefill).length > 0) {
     await admin.from("profiles").update(prefill).eq("id", a.user_id);

@@ -13,9 +13,10 @@ export type TeacherApplyState = { error?: string; success?: boolean };
 // 강사 지원 저장. 가드 순서: (1) 로그인 (2) role 확인 (3) 필수값 (4) rateLimit (5) 중복 신청 (6) insert.
 // user_id는 서버에서 getUser()로 주입(클라 위조 차단). RLS insert 정책(user_id=auth.uid())도 이중 보호.
 export async function submitTeacherApplication(_prev: TeacherApplyState, formData: FormData): Promise<TeacherApplyState> {
-  const name = String(formData.get("name") ?? "").trim();
+  const firstName = String(formData.get("first_name") ?? "").trim();
+  const lastName = String(formData.get("last_name") ?? "").trim();
+  const name = [firstName, lastName].filter(Boolean).join(" ");
   const phone = String(formData.get("phone") ?? "").trim();
-  const headline = String(formData.get("headline") ?? "").trim();
   const intro = String(formData.get("intro") ?? "").trim();
   const experience = String(formData.get("experience") ?? "").trim();
 
@@ -23,32 +24,33 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "로그인이 필요합니다." };
+  if (!user) return { error: "Please sign in first." };
 
   const role = await getUserRole(supabase, user.id);
-  if (role === "teacher" || role === "admin") return { error: "이미 강사 권한이 있는 계정입니다." };
+  if (role === "teacher" || role === "admin") return { error: "This account already has teacher access." };
 
-  if (name.length < 2) return { error: "이름을 정확히 입력해 주세요." };
-  if (phone && !/^[0-9\-\s]{7,}$/.test(phone)) return { error: "전화번호를 정확히 입력해 주세요." };
-  if (intro.length < 10) return { error: "자기소개·지원 동기를 10자 이상 입력해 주세요." };
+  if (!firstName || !lastName) return { error: "Please enter both your first and last name." };
+  if (phone && !/^[0-9\-\s]{7,}$/.test(phone)) return { error: "Please enter a valid phone number." };
+  if (intro.length < 10) return { error: "Please write at least 10 characters for your introduction and motivation." };
 
   const ip = getClientIp(await headers());
   const rl = rateLimit(`teacher-apply:${ip}`, 5, 10 * 60_000);
-  if (!rl.allowed) return { error: `요청이 너무 많아요. ${formatRetryAfter(rl.retryAfterSec)} 다시 시도해 주세요.` };
+  if (!rl.allowed) return { error: `Too many requests. Please try again in ${formatRetryAfter(rl.retryAfterSec)}.` };
 
   // 이미 심사 중('신청')인 지원이 있으면 차단 (부분 유니크 인덱스로 이중 보호).
   const { data: pending } = await supabase.from("teacher_applications").select("id").eq("user_id", user.id).eq("status", "신청").maybeSingle();
-  if (pending) return { error: "이미 심사 중인 지원이 있습니다." };
+  if (pending) return { error: "You already have an application under review." };
 
   const { error } = await supabase.from("teacher_applications").insert({
     user_id: user.id,
     name,
+    first_name: firstName,
+    last_name: lastName,
     phone: phone || null,
-    headline: headline || null,
     intro,
     experience: experience || null,
   });
-  if (error) return { error: "지원 저장 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요." };
+  if (error) return { error: "Something went wrong while saving your application. Please try again later." };
 
   // 관리자 알림 메일 (best-effort) — 실패해도 지원 성공에는 영향 없음.
   try {
@@ -56,7 +58,6 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
     await sendTeacherApplicationNotification(adminEmails, {
       name,
       phone,
-      headline,
       intro,
       experience,
       email: user.email ?? "",
