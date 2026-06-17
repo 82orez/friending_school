@@ -258,7 +258,7 @@ export default function TeacherApplicationForm({
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent className="grid-rows-[auto_minmax(0,1fr)_auto] max-h-[85vh] sm:max-w-md">
+        <AlertDialogContent className="grid-rows-[auto_minmax(0,1fr)_auto] max-h-[85vh] sm:max-w-2xl! lg:max-w-4xl!">
           <AlertDialogHeader>
             <AlertDialogTitle>Apply with this information?</AlertDialogTitle>
             <AlertDialogDescription>Your teacher application will be submitted with the details below. Please review before continuing.</AlertDialogDescription>
@@ -275,8 +275,8 @@ export default function TeacherApplicationForm({
               ["Photo", "Uploaded"],
             ].map(([label, value]) => (
               <div key={label} className="flex gap-3 px-3.5 py-2.5">
-                <dt className="text-muted-fg w-28 shrink-0">{label}</dt>
-                <dd className="flex-1 font-medium break-words whitespace-pre-wrap">{value}</dd>
+                <dt className="text-muted-fg w-28 shrink-0 sm:w-36">{label}</dt>
+                <dd className="min-w-0 flex-1 font-medium break-words whitespace-pre-wrap">{value}</dd>
               </div>
             ))}
           </dl>
