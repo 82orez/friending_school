@@ -184,7 +184,7 @@ function buildResultHtml(title: string, bodyHtml: string): string {
   return `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
     <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 12px">${escapeHtml(title)}</h2>
     ${bodyHtml}
-    <p style="font-size:12px;color:#999;margin:20px 0 0">프렌딩 스쿨</p>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
   </div>`;
 }
 
@@ -211,32 +211,32 @@ async function sendResultEmail(to: string[], subject: string, html: string, text
  * 지원자에게 강사 지원 승인 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
  */
 export async function sendTeacherApprovalNotification(to: string[], data: { name: string; teacherUrl: string }): Promise<void> {
-  const greeting = data.name ? `${data.name}님, ` : "";
+  const greeting = data.name ? `Hi ${data.name}, ` : "";
   const html = buildResultHtml(
-    "강사 지원이 승인되었습니다 🎉",
-    `<p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 16px">${escapeHtml(greeting)}프렌딩 스쿨 강사 지원이 승인되었습니다. 이제 강사 페이지에서 프로필과 수업 가능 시간을 관리하실 수 있습니다.</p>
-     <a href="${escapeHtml(data.teacherUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">강사 페이지로 이동</a>`,
+    "Your teacher application has been approved 🎉",
+    `<p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 16px">${escapeHtml(greeting)}your application to teach at Friending School has been approved. You can now manage your profile and availability on your teacher page.</p>
+     <a href="${escapeHtml(data.teacherUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to teacher page</a>`,
   );
-  const text = `${greeting}프렌딩 스쿨 강사 지원이 승인되었습니다.\n강사 페이지: ${data.teacherUrl}`;
-  await sendResultEmail(to, "[프렌딩 스쿨] 강사 지원이 승인되었습니다", html, text);
+  const text = `${greeting}your application to teach at Friending School has been approved.\nTeacher page: ${data.teacherUrl}`;
+  await sendResultEmail(to, "[Friending School] Your teacher application has been approved", html, text);
 }
 
 /**
  * 지원자에게 강사 지원 거절(결과) 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
  */
 export async function sendTeacherRejectionNotification(to: string[], data: { name: string; reason: string; applyUrl: string }): Promise<void> {
-  const greeting = data.name ? `${data.name}님, ` : "";
+  const greeting = data.name ? `Hi ${data.name}, ` : "";
   const reasonHtml = data.reason
-    ? `<p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 8px"><strong>사유</strong></p>
+    ? `<p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 8px"><strong>Reason</strong></p>
        <p style="font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap;background:#f8f8f8;border:1px solid #eee;border-radius:8px;padding:12px;margin:0 0 16px">${escapeHtml(data.reason)}</p>`
     : "";
   const html = buildResultHtml(
-    "강사 지원 결과 안내",
-    `<p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 16px">${escapeHtml(greeting)}아쉽게도 이번 강사 지원은 승인되지 않았습니다.</p>
+    "Your teacher application result",
+    `<p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 16px">${escapeHtml(greeting)}unfortunately your teacher application was not approved this time.</p>
      ${reasonHtml}
-     <p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 16px">내용을 보완해 다시 지원하실 수 있습니다.</p>
-     <a href="${escapeHtml(data.applyUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">강사 지원 페이지로 이동</a>`,
+     <p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 16px">You're welcome to revise your details and apply again.</p>
+     <a href="${escapeHtml(data.applyUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to teacher application</a>`,
   );
-  const text = `${greeting}이번 강사 지원은 승인되지 않았습니다.${data.reason ? `\n사유: ${data.reason}` : ""}\n내용을 보완해 다시 지원하실 수 있습니다.\n강사 지원: ${data.applyUrl}`;
-  await sendResultEmail(to, "[프렌딩 스쿨] 강사 지원 결과 안내", html, text);
+  const text = `${greeting}unfortunately your teacher application was not approved this time.${data.reason ? `\nReason: ${data.reason}` : ""}\nYou're welcome to revise your details and apply again.\nTeacher application: ${data.applyUrl}`;
+  await sendResultEmail(to, "[Friending School] Your teacher application result", html, text);
 }

@@ -46,6 +46,7 @@ export default function TeacherApplicationForm({
   const [experience, setExperience] = useState("");
   const [zoomUrl, setZoomUrl] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [finalOpen, setFinalOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   // 프로필 사진 — 브라우저에서 본인 폴더로 즉시 업로드, publicUrl을 hidden 필드로 제출.
@@ -99,7 +100,9 @@ export default function TeacherApplicationForm({
     setConfirmOpen(true);
   };
 
-  const handleConfirm = () => {
+  // 리뷰 다이얼로그의 Apply → 비가역 최종 확인창을 한 번 더 띄움.
+  const handleFinalConfirm = () => {
+    setFinalOpen(false);
     setConfirmOpen(false);
     formRef.current?.requestSubmit();
   };
@@ -260,8 +263,8 @@ export default function TeacherApplicationForm({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="grid-rows-[auto_minmax(0,1fr)_auto] max-h-[85vh] sm:max-w-2xl! lg:max-w-4xl!">
           <AlertDialogHeader>
-            <AlertDialogTitle>Apply with this information?</AlertDialogTitle>
-            <AlertDialogDescription>Your teacher application will be submitted with the details below. Please review before continuing.</AlertDialogDescription>
+            <AlertDialogTitle>Review your application</AlertDialogTitle>
+            <AlertDialogDescription>Please review your details below before submitting.</AlertDialogDescription>
           </AlertDialogHeader>
 
           <dl className="border-rule text-ink divide-rule divide-y overflow-y-auto rounded-lg border text-left text-sm">
@@ -283,8 +286,26 @@ export default function TeacherApplicationForm({
 
           <AlertDialogFooter>
             <AlertDialogCancel>Review again</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm} variant="brand">
+            <AlertDialogAction onClick={() => setFinalOpen(true)} variant="brand">
               Apply
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 최종 확인 — 제출 비가역 경고 */}
+      <AlertDialog open={finalOpen} onOpenChange={setFinalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Submit your application?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to submit? Once submitted, your application cannot be edited.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go back</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFinalConfirm} variant="brand">
+              Yes, submit
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
