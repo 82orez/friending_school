@@ -44,7 +44,7 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
   return (
     <div>
       <h1 className="text-ink text-2xl font-extrabold">회원 관리</h1>
-      <p className="text-muted-fg mt-1 text-sm">가입 회원 목록입니다. 강사 권한은 「강사 신청」 탭에서 승인/회수합니다.</p>
+      <p className="text-muted-fg mt-1 text-sm">가입 회원 목록입니다. 강사 권한은 「강사 관리」 탭에서 승인/회수합니다.</p>
 
       <div className="mt-5 grid grid-cols-2 gap-3">
         <div className="border-rule rounded-xl border bg-white p-5">

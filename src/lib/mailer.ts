@@ -98,7 +98,7 @@ function buildTeacherHtml(d: TeacherApplicationEmailData): string {
     <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">새 강사 지원이 접수되었습니다</h2>
     <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(d.name)}</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
-    <p style="font-size:12px;color:#999;margin:16px 0 0">프렌딩 스쿨 관리자 알림 · 관리자 페이지(강사 신청)에서 승인/거절할 수 있습니다.</p>
+    <p style="font-size:12px;color:#999;margin:16px 0 0">프렌딩 스쿨 관리자 알림 · 관리자 페이지(강사 관리)에서 승인/거절할 수 있습니다.</p>
   </div>`;
 }
 

@@ -102,7 +102,7 @@ export default function TeacherRequestsManager({
 
   return (
     <div>
-      <h1 className="text-ink text-2xl font-extrabold">강사 신청</h1>
+      <h1 className="text-ink text-2xl font-extrabold">강사 관리</h1>
       <p className="text-muted-fg mt-1 text-sm">강사 지원을 승인/거절하고, 현재 강사 자격을 회수합니다.</p>
 
       <div className="mt-5 grid grid-cols-3 gap-3">
