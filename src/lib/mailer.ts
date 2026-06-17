@@ -224,7 +224,7 @@ export async function sendTeacherApprovalNotification(to: string[], data: { name
 /**
  * 지원자에게 강사 지원 거절(결과) 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
  */
-export async function sendTeacherRejectionNotification(to: string[], data: { name: string; reason: string; mypageUrl: string }): Promise<void> {
+export async function sendTeacherRejectionNotification(to: string[], data: { name: string; reason: string; applyUrl: string }): Promise<void> {
   const greeting = data.name ? `${data.name}님, ` : "";
   const reasonHtml = data.reason
     ? `<p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 8px"><strong>사유</strong></p>
@@ -235,8 +235,8 @@ export async function sendTeacherRejectionNotification(to: string[], data: { nam
     `<p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 16px">${escapeHtml(greeting)}아쉽게도 이번 강사 지원은 승인되지 않았습니다.</p>
      ${reasonHtml}
      <p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 16px">내용을 보완해 다시 지원하실 수 있습니다.</p>
-     <a href="${escapeHtml(data.mypageUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">마이페이지로 이동</a>`,
+     <a href="${escapeHtml(data.applyUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">강사 지원 페이지로 이동</a>`,
   );
-  const text = `${greeting}이번 강사 지원은 승인되지 않았습니다.${data.reason ? `\n사유: ${data.reason}` : ""}\n내용을 보완해 다시 지원하실 수 있습니다.\n마이페이지: ${data.mypageUrl}`;
+  const text = `${greeting}이번 강사 지원은 승인되지 않았습니다.${data.reason ? `\n사유: ${data.reason}` : ""}\n내용을 보완해 다시 지원하실 수 있습니다.\n강사 지원: ${data.applyUrl}`;
   await sendResultEmail(to, "[프렌딩 스쿨] 강사 지원 결과 안내", html, text);
 }

@@ -218,7 +218,7 @@ export async function rejectTeacherApplication(id: string, adminNote: string): P
     const contact = await getApplicantContact(admin, id);
     if (contact) {
       const origin = getOrigin(await headers());
-      await sendTeacherRejectionNotification([contact.email], { name: contact.name, reason: adminNote || "", mypageUrl: `${origin}/mypage` });
+      await sendTeacherRejectionNotification([contact.email], { name: contact.name, reason: adminNote || "", applyUrl: `${origin}/teacher/apply` });
     }
   } catch (err) {
     console.error("[rejectTeacherApplication] 거절 알림 발송 실패:", err);
