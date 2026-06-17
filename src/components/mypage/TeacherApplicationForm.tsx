@@ -258,13 +258,13 @@ export default function TeacherApplicationForm({
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent className="sm:max-w-md">
+        <AlertDialogContent className="grid-rows-[auto_minmax(0,1fr)_auto] max-h-[85vh] sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Apply with this information?</AlertDialogTitle>
             <AlertDialogDescription>Your teacher application will be submitted with the details below. Please review before continuing.</AlertDialogDescription>
           </AlertDialogHeader>
 
-          <dl className="border-rule text-ink divide-rule divide-y rounded-lg border text-left text-sm">
+          <dl className="border-rule text-ink divide-rule divide-y overflow-y-auto rounded-lg border text-left text-sm">
             {[
               ["First name", firstName],
               ["Last name", lastName],
