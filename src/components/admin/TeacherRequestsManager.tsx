@@ -314,7 +314,7 @@ function ApplicationRow({
 
           {isPending ? (
             <>
-              <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">🔒 관리자 NOTE (거절 사유 — 거절 시 필수)</label>
+              <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">거절 사유 - 신청자에게 표시됨. 영어로 작성.</label>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
