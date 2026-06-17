@@ -111,39 +111,37 @@ export async function deleteYoutubeVideo(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-/* ===== 회원 Role 관리 ===== */
+/* ===== 강사 삭제 ===== */
 
-const ASSIGNABLE_ROLES = ["student", "teacher"] as const;
-type AssignableRole = (typeof ASSIGNABLE_ROLES)[number];
-
-// student ↔ teacher 변경 공용 헬퍼. admin 회원은 대상에서 제외(잠금 방지). role은 profiles + app_metadata 동기.
-// ⚠️ requireAdmin()은 호출 측에서 먼저 통과시킬 것 — 이 함수는 service_role 쓰기만 담당.
-async function setUserRole(admin: ReturnType<typeof createAdminClient>, userId: string, role: AssignableRole): Promise<ActionResult> {
+// 강사 계정 전체 삭제 (teacher-requests "현재 강사" 목록에서 호출). 되돌리기(→student)는 데이터가 지저분해져 폐지.
+// auth 계정 삭제 → FK cascade로 profiles·teacher_applications·teacher_availability·reading_progress 일괄 제거.
+// applications(상담신청)은 on delete set null이라 익명 리드로 보존. 아바타 Storage 파일은 cascade 비대상이라 명시 정리.
+export async function deleteTeacher(userId: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   if (!userId) return { ok: false, error: "잘못된 요청입니다." };
 
-  // 대상이 admin이면 변경 거부 (admin 잠금/강등 방지).
+  const admin = createAdminClient();
+
+  // admin 계정 삭제 방지 (방어).
   const { data: current } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
   if ((current as { role?: string } | null)?.role === "admin") {
-    return { ok: false, error: "관리자 계정의 역할은 변경할 수 없습니다." };
+    return { ok: false, error: "관리자 계정은 삭제할 수 없습니다." };
   }
 
-  const { error: profileError } = await admin.from("profiles").update({ role }).eq("id", userId);
-  if (profileError) return { ok: false, error: "역할 변경 중 오류가 발생했습니다." };
+  // 아바타 Storage 정리 (best-effort) — cascade 비대상이라 명시 삭제.
+  try {
+    const { data: files } = await admin.storage.from("avatars").list(userId);
+    const paths = (files ?? []).map((f) => `${userId}/${f.name}`);
+    if (paths.length > 0) await admin.storage.from("avatars").remove(paths);
+  } catch (err) {
+    console.error("[deleteTeacher] 아바타 정리 실패:", err);
+  }
 
-  // app_metadata.role 동기 (role 읽기는 profiles 우선이나, JWT 일관성 위해 함께 갱신)
-  const { error: authError } = await admin.auth.admin.updateUserById(userId, { app_metadata: { role } });
-  if (authError) return { ok: false, error: "역할 동기화 중 오류가 발생했습니다." };
+  const { error } = await admin.auth.admin.deleteUser(userId);
+  if (error) return { ok: false, error: "강사 삭제 중 오류가 발생했습니다." };
 
-  return { ok: true };
-}
-
-// 강사 자격 회수 (teacher → student). teacher-requests 화면의 "현재 강사" 목록에서 호출.
-export async function revokeTeacher(userId: string): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
-  const admin = createAdminClient();
-  const res = await setUserRole(admin, userId, "student");
-  if (!res.ok) return res;
   revalidatePath("/admin/teacher-requests");
+  revalidatePath("/teacher");
   return { ok: true };
 }
 

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ChevronDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { approveTeacherApplication, rejectTeacherApplication, revokeTeacher } from "@/app/admin/actions";
+import { approveTeacherApplication, rejectTeacherApplication, deleteTeacher } from "@/app/admin/actions";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,8 +76,8 @@ export default function TeacherRequestsManager({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | Status>("all");
   const [openId, setOpenId] = useState<string | null>(null);
-  const [revokeTarget, setRevokeTarget] = useState<CurrentTeacher | null>(null);
-  const [revoking, startRevoke] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<CurrentTeacher | null>(null);
+  const [deleting, startDelete] = useTransition();
 
   const pending = useMemo(() => rows.filter((r) => r.status === "신청").length, [rows]);
 
@@ -90,15 +90,17 @@ export default function TeacherRequestsManager({
     });
   }, [rows, query, filter]);
 
-  const confirmRevoke = () => {
-    if (!revokeTarget) return;
-    const target = revokeTarget;
-    setRevokeTarget(null);
-    startRevoke(async () => {
-      const res = await revokeTeacher(target.id);
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const target = deleteTarget;
+    setDeleteTarget(null);
+    startDelete(async () => {
+      const res = await deleteTeacher(target.id);
       if (res.ok) {
         setTeachers((prev) => prev.filter((t) => t.id !== target.id));
-        toast.success("강사 자격을 회수했습니다.");
+        // cascade로 지원 행도 사라지므로 목록에서 함께 제거.
+        setRows((prev) => prev.filter((r) => r.user_id !== target.id));
+        toast.success("강사를 삭제했습니다.");
       } else {
         toast.error(res.error ?? "오류가 발생했습니다.");
       }
@@ -167,7 +169,7 @@ export default function TeacherRequestsManager({
 
       {/* 현재 강사 */}
       <h2 className="text-ink mt-10 text-lg font-extrabold">현재 강사</h2>
-      <p className="text-muted-fg mt-1 text-sm">강사 자격을 회수하면 해당 회원은 학생으로 되돌아갑니다.</p>
+      <p className="text-muted-fg mt-1 text-sm">강사를 삭제하면 계정과 모든 데이터가 영구 삭제되며 되돌릴 수 없습니다.</p>
       <div className="border-rule mt-4 overflow-hidden rounded-xl border bg-white">
         {teachers.length === 0 ? (
           <p className="text-muted-fg px-6 py-12 text-center text-sm">현재 강사가 없습니다.</p>
@@ -181,11 +183,11 @@ export default function TeacherRequestsManager({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setRevokeTarget(t)}
-                  disabled={revoking}
+                  onClick={() => setDeleteTarget(t)}
+                  disabled={deleting}
                   className="border-brand/40 text-brand hover:bg-brand/5 shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60"
                 >
-                  자격 회수
+                  강사 삭제
                 </button>
               </li>
             ))}
@@ -193,23 +195,24 @@ export default function TeacherRequestsManager({
         )}
       </div>
 
-      {/* 회수 확인 */}
-      <AlertDialog open={revokeTarget !== null} onOpenChange={(open) => !open && setRevokeTarget(null)}>
+      {/* 삭제 확인 */}
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>강사 자격을 회수하시겠습니까?</AlertDialogTitle>
+            <AlertDialogTitle>강사를 삭제하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
-              {revokeTarget && (
+              {deleteTarget && (
                 <>
-                  <span className="text-ink font-semibold">{revokeTarget.name || revokeTarget.email}</span> 회원을 학생으로 되돌립니다.
+                  <span className="text-ink font-semibold">{deleteTarget.name || deleteTarget.email}</span> 계정과 모든 데이터(프로필·지원 내역·수업
+                  가능 시간 등)가 영구 삭제되며 되돌릴 수 없습니다.
                 </>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRevoke} variant="brand">
-              회수
+            <AlertDialogAction onClick={confirmDelete} variant="brand">
+              삭제
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
