@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { getUserRole } from "@/lib/auth";
+import { isValidZoomUrl } from "@/lib/url";
 
 export type TeacherActionState = { ok?: boolean; error?: string };
 
@@ -27,15 +28,6 @@ function clean(value: FormDataEntryValue | null, max: number): string | null {
   return trimmed.slice(0, max);
 }
 
-function isValidZoomUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    return u.protocol === "http:" || u.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 export async function updateTeacherProfile(_prev: TeacherActionState, formData: FormData): Promise<TeacherActionState> {
   const userId = await requireTeacher();
   if (!userId) return { error: "You don't have permission." };
@@ -43,11 +35,12 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
   const firstName = clean(formData.get("first_name"), 40);
   const lastName = clean(formData.get("last_name"), 40);
   const bio = clean(formData.get("bio"), 2000);
+  const experience = clean(formData.get("experience"), 2000);
   const phone = clean(formData.get("phone"), 30);
   const zoomUrl = clean(formData.get("zoom_url"), 500);
 
   // 전화번호를 제외한 항목은 필수 (clean()이 공백-only를 null로 만들어 우회 차단).
-  if (!firstName || !lastName || !bio || !zoomUrl) {
+  if (!firstName || !lastName || !bio || !experience || !zoomUrl) {
     return { error: "Please fill in all required fields." };
   }
 
@@ -59,7 +52,7 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
   const admin = createAdminClient();
   const { error } = await admin
     .from("profiles")
-    .update({ first_name: firstName, last_name: lastName, bio, phone, zoom_url: zoomUrl })
+    .update({ first_name: firstName, last_name: lastName, bio, experience, phone, zoom_url: zoomUrl })
     .eq("id", userId);
   if (error) return { error: "Something went wrong while saving." };
 

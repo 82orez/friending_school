@@ -155,7 +155,7 @@ export async function approveTeacherApplication(id: string): Promise<ActionResul
   const admin = createAdminClient();
   const { data: app } = await admin
     .from("teacher_applications")
-    .select("id, user_id, name, first_name, last_name, intro, status")
+    .select("id, user_id, name, first_name, last_name, bio, experience, phone, zoom_url, avatar_url, status")
     .eq("id", id)
     .maybeSingle();
   if (!app) return { ok: false, error: "지원 내역을 찾을 수 없습니다." };
@@ -165,7 +165,11 @@ export async function approveTeacherApplication(id: string): Promise<ActionResul
     name: string;
     first_name: string | null;
     last_name: string | null;
-    intro: string | null;
+    bio: string | null;
+    experience: string | null;
+    phone: string | null;
+    zoom_url: string | null;
+    avatar_url: string | null;
   };
 
   const roleRes = await setUserRole(admin, a.user_id, "teacher");
@@ -174,18 +178,21 @@ export async function approveTeacherApplication(id: string): Promise<ActionResul
   const { error: statusError } = await admin.from("teacher_applications").update({ status: "승인" }).eq("id", id);
   if (statusError) return { ok: false, error: "상태 변경 중 오류가 발생했습니다." };
 
-  // profiles 빈 필드만 채움(기존 값 보존). first_name/last_name←지원서, bio←intro.
-  const { data: profile } = await admin.from("profiles").select("first_name, last_name, bio").eq("id", a.user_id).maybeSingle();
-  const p = (profile ?? {}) as { first_name?: string | null; last_name?: string | null; bio?: string | null };
-  const prefill: Record<string, string> = {};
-  if (!p.first_name && (a.first_name || a.name)) prefill.first_name = a.first_name || a.name;
-  if (!p.last_name && a.last_name) prefill.last_name = a.last_name;
-  if (!p.bio && a.intro) prefill.bio = a.intro;
-  if (Object.keys(prefill).length > 0) {
-    await admin.from("profiles").update(prefill).eq("id", a.user_id);
-  }
+  // 강사 프로필을 신청서 내용으로 채움(덮어쓰기). 필수(first/last/bio)는 항상,
+  // 선택(experience/phone/zoom_url/avatar_url)은 값 있을 때만 set(빈값 clobber 방지).
+  const fill: Record<string, string> = {
+    first_name: a.first_name || a.name,
+    last_name: a.last_name ?? "",
+    bio: a.bio ?? "",
+  };
+  if (a.experience) fill.experience = a.experience;
+  if (a.phone) fill.phone = a.phone;
+  if (a.zoom_url) fill.zoom_url = a.zoom_url;
+  if (a.avatar_url) fill.avatar_url = a.avatar_url;
+  await admin.from("profiles").update(fill).eq("id", a.user_id);
 
   revalidatePath("/admin/teacher-requests");
+  revalidatePath("/teacher");
   return { ok: true };
 }
 

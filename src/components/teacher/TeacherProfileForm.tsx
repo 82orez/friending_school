@@ -18,6 +18,7 @@ export type TeacherProfile = {
   avatar_url: string;
   zoom_url: string;
   bio: string;
+  experience: string;
   phone: string;
 };
 
@@ -32,16 +33,17 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
   const [firstName, setFirstName] = useState(initial.first_name);
   const [lastName, setLastName] = useState(initial.last_name);
   const [bio, setBio] = useState(initial.bio);
+  const [experience, setExperience] = useState(initial.experience);
   const [phone, setPhone] = useState(initial.phone);
   const [zoomUrl, setZoomUrl] = useState(initial.zoom_url);
 
   // 보기/편집 모드 — 편집 모드에서만 Teacher Info 필드 수정 가능.
   const [editing, setEditing] = useState(false);
   // 편집 진입 시점 스냅샷(Cancel 시 복원).
-  const snapshotRef = useRef({ firstName, lastName, bio, phone, zoomUrl });
+  const snapshotRef = useRef({ firstName, lastName, bio, experience, phone, zoomUrl });
 
   const startEditing = () => {
-    snapshotRef.current = { firstName, lastName, bio, phone, zoomUrl };
+    snapshotRef.current = { firstName, lastName, bio, experience, phone, zoomUrl };
     setEditing(true);
   };
 
@@ -50,6 +52,7 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
     setFirstName(s.firstName);
     setLastName(s.lastName);
     setBio(s.bio);
+    setExperience(s.experience);
     setPhone(s.phone);
     setZoomUrl(s.zoomUrl);
     setEditing(false);
@@ -117,7 +120,7 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
       {/* 프로필 사진 */}
       <section className="border-rule rounded-2xl border bg-white p-6">
         <h2 className="text-ink mb-4 flex items-center gap-2 text-base font-bold">
-          <span aria-hidden>📷</span> Profile Photo
+          <span aria-hidden>📷</span> Profile Photo <span className="text-brand">*</span>
         </h2>
         <div className="flex items-center gap-5">
           <div className="bg-surface border-rule relative size-24 shrink-0 overflow-hidden rounded-full border">
@@ -150,7 +153,17 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
       </section>
 
       {/* 기본 정보 폼 */}
-      <form action={formAction} className="border-rule rounded-2xl border bg-white p-6">
+      <form
+        action={formAction}
+        onSubmit={(e) => {
+          // 프로필 사진은 별도 업로드(폼 외부)라 native 검증 불가 → 없으면 저장 차단.
+          if (!avatarUrl) {
+            e.preventDefault();
+            toast.error("Please upload a profile photo.");
+          }
+        }}
+        className="border-rule rounded-2xl border bg-white p-6"
+      >
         <h2 className="text-ink mb-4 flex items-center gap-2 text-base font-bold">
           <span aria-hidden>👤</span> Teacher Info
         </h2>
@@ -207,6 +220,24 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
               onChange={(e) => setBio(e.target.value)}
               placeholder="Share your experience, teaching style, and anything students should know."
               rows={5}
+              maxLength={2000}
+              required
+              disabled={!editing}
+              className={VIEW_TEXT}
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="experience">
+              Teaching &amp; related experience <span className="text-brand">*</span>
+            </Label>
+            <Textarea
+              id="experience"
+              name="experience"
+              value={experience}
+              onChange={(e) => setExperience(e.target.value)}
+              placeholder="Teaching experience, certifications, relevant background, etc."
+              rows={3}
               maxLength={2000}
               required
               disabled={!editing}

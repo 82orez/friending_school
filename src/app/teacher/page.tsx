@@ -20,7 +20,7 @@ export default async function TeacherPage() {
 
   const { data } = await supabase
     .from("profiles")
-    .select("first_name, last_name, avatar_url, zoom_url, bio, phone")
+    .select("first_name, last_name, avatar_url, zoom_url, bio, experience, phone")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -31,6 +31,7 @@ export default async function TeacherPage() {
     avatar_url: profile.avatar_url ?? "",
     zoom_url: profile.zoom_url ?? "",
     bio: profile.bio ?? "",
+    experience: profile.experience ?? "",
     phone: profile.phone ?? "",
   };
 

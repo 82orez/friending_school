@@ -1,8 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import Image from "next/image";
+import { Camera, Loader2, UserRound, Video } from "lucide-react";
 import { toast } from "sonner";
+import { createClient } from "@/utils/supabase/client";
 import { submitTeacherApplication, type TeacherApplyState } from "@/app/teacher/apply-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,35 +21,84 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// /mypage "강사 지원" 섹션의 상세 지원 양식. useActionState + submitTeacherApplication.
-// 제출 전 AlertDialog 확인 → requestSubmit (CourseApplyForm 패턴). controlled inputs.
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
+
+// /mypage "강사 지원" 섹션의 상세 지원 양식. 강사 프로필(/teacher)과 동일 필드.
+// useActionState + submitTeacherApplication. 제출 전 AlertDialog 확인 → requestSubmit. controlled inputs.
 export default function TeacherApplicationForm({
+  userId,
   initialFirstName,
   initialLastName,
   initialPhone,
+  initialAvatarUrl,
 }: {
+  userId: string;
   initialFirstName: string;
   initialLastName: string;
   initialPhone: string;
+  initialAvatarUrl: string;
 }) {
   const [state, formAction, pending] = useActionState<TeacherApplyState, FormData>(submitTeacherApplication, {});
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
   const [phone, setPhone] = useState(initialPhone);
-  const [intro, setIntro] = useState("");
+  const [bio, setBio] = useState("");
   const [experience, setExperience] = useState("");
+  const [zoomUrl, setZoomUrl] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // 프로필 사진 — 브라우저에서 본인 폴더로 즉시 업로드, publicUrl을 hidden 필드로 제출.
+  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
+  const [uploading, startUpload] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (state.success) toast.success("Your teacher application has been submitted.");
     else if (state.error) toast.error(state.error);
   }, [state]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // 같은 파일 재선택 허용
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Only image files can be uploaded.");
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      toast.error("Image must be 5MB or smaller.");
+      return;
+    }
+    const prev = avatarUrl;
+    startUpload(async () => {
+      try {
+        const supabase = createClient();
+        const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+        const path = `${userId}/avatar-${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+        if (uploadError) throw uploadError;
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("avatars").getPublicUrl(path);
+        setAvatarUrl(publicUrl);
+        toast.success("Photo uploaded.");
+      } catch {
+        setAvatarUrl(prev);
+        toast.error("Image upload failed. Please try again.");
+      }
+    });
+  };
+
   const handleReview = () => {
     const form = formRef.current;
     if (form && !form.checkValidity()) {
       form.reportValidity();
+      return;
+    }
+    // 아바타는 hidden 필드라 native 검증이 안 됨 → 수동 확인.
+    if (!avatarUrl) {
+      toast.error("Please upload a profile photo.");
       return;
     }
     setConfirmOpen(true);
@@ -65,6 +116,40 @@ export default function TeacherApplicationForm({
           {state.error}
         </p>
       )}
+
+      {/* 제출 시 함께 저장되는 아바타 publicUrl */}
+      <input type="hidden" name="avatar_url" value={avatarUrl} />
+
+      {/* 프로필 사진 */}
+      <div className="grid gap-1.5">
+        <Label>
+          Profile photo <span className="text-brand">*</span>
+        </Label>
+        <div className="flex items-center gap-4">
+          <div className="bg-surface border-rule relative size-20 shrink-0 overflow-hidden rounded-full border">
+            {avatarUrl ? (
+              <Image src={avatarUrl} alt="Profile photo" fill sizes="80px" className="object-cover" />
+            ) : (
+              <span className="text-muted-fg-faint flex h-full items-center justify-center">
+                <UserRound className="size-8" aria-hidden />
+              </span>
+            )}
+            {uploading && (
+              <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
+                <Loader2 className="size-5 animate-spin" aria-hidden />
+              </span>
+            )}
+          </div>
+          <div>
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" aria-hidden />
+            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              {uploading ? <Loader2 className="animate-spin" aria-hidden /> : <Camera className="size-4" aria-hidden />}
+              Change Photo
+            </Button>
+            <p className="text-muted-fg-faint mt-2 text-xs">JPG or PNG, up to 5MB. Square images recommended.</p>
+          </div>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="grid gap-1.5">
@@ -114,18 +199,18 @@ export default function TeacherApplicationForm({
       </div>
 
       <div className="grid gap-1.5">
-        <Label htmlFor="ta-intro">
-          About &amp; motivation <span className="text-brand">*</span>
+        <Label htmlFor="ta-bio">
+          About / Bio <span className="text-brand">*</span>
         </Label>
         <Textarea
-          id="ta-intro"
-          name="intro"
+          id="ta-bio"
+          name="bio"
           required
           minLength={10}
           rows={4}
-          value={intro}
-          onChange={(e) => setIntro(e.target.value)}
-          placeholder="Tell us about yourself and why you'd like to teach. (at least 10 characters)"
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          placeholder="Share your experience, teaching style, and anything students should know. (at least 10 characters)"
           className="min-h-[100px]"
           maxLength={2000}
         />
@@ -133,17 +218,34 @@ export default function TeacherApplicationForm({
 
       <div className="grid gap-1.5">
         <Label htmlFor="ta-experience">
-          Teaching &amp; related experience <span className="text-muted-fg-faint font-normal">(optional)</span>
+          Teaching &amp; related experience <span className="text-brand">*</span>
         </Label>
         <Textarea
           id="ta-experience"
           name="experience"
+          required
           rows={3}
           value={experience}
           onChange={(e) => setExperience(e.target.value)}
           placeholder="Teaching experience, certifications, relevant background, etc."
           className="min-h-[80px]"
           maxLength={2000}
+        />
+      </div>
+
+      <div className="grid gap-1.5">
+        <Label htmlFor="ta-zoom-url" className="flex items-center gap-1.5">
+          <Video className="text-accent-blue-ink size-4" aria-hidden /> Zoom URL <span className="text-brand">*</span>
+        </Label>
+        <Input
+          id="ta-zoom-url"
+          name="zoom_url"
+          type="url"
+          required
+          value={zoomUrl}
+          onChange={(e) => setZoomUrl(e.target.value)}
+          placeholder="https://zoom.us/j/..."
+          maxLength={500}
         />
       </div>
 
@@ -172,8 +274,10 @@ export default function TeacherApplicationForm({
               ["First name", firstName],
               ["Last name", lastName],
               ["Phone", phone || "(not provided)"],
-              ["About & motivation", intro],
-              ["Experience", experience || "(not provided)"],
+              ["Bio", bio],
+              ["Experience", experience],
+              ["Zoom URL", zoomUrl],
+              ["Photo", "Uploaded"],
             ].map(([label, value]) => (
               <div key={label} className="flex gap-3 px-3.5 py-2.5">
                 <dt className="text-muted-fg w-28 shrink-0">{label}</dt>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Image from "next/image";
 import { ChevronDown, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { approveTeacherApplication, rejectTeacherApplication, revokeTeacher } from "@/app/admin/actions";
@@ -21,8 +22,10 @@ export type TeacherApplication = {
   name: string;
   phone: string;
   email: string;
-  intro: string;
+  bio: string;
   experience: string | null;
+  zoom_url: string | null;
+  avatar_url: string | null;
   status: "신청" | "승인" | "거절";
   admin_note: string | null;
   created_at: string;
@@ -259,12 +262,22 @@ function ApplicationRow({
 
       {open && (
         <div className="bg-surface border-rule border-t px-4 py-4 md:px-6">
+          {row.avatar_url && (
+            <Image
+              src={row.avatar_url}
+              alt={`${row.name} profile photo`}
+              width={64}
+              height={64}
+              className="border-rule mb-3 size-16 rounded-full border object-cover"
+            />
+          )}
           <dl className="mb-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm">
             {[
               ["이메일", row.email],
               ["전화", row.phone],
-              ["자기소개·지원 동기", row.intro],
+              ["자기소개(Bio)", row.bio],
               ["경력", row.experience ?? "-"],
+              ["Zoom URL", row.zoom_url ?? "-"],
             ].map(([label, value]) => (
               <div key={label} className="flex gap-2">
                 <dt className="text-muted-fg-faint w-32 shrink-0">{label}</dt>

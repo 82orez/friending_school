@@ -7,6 +7,7 @@ import { getUserRole } from "@/lib/auth";
 import { formatRetryAfter, getClientIp, rateLimit } from "@/lib/rate-limit";
 import { getAdminEmails } from "@/utils/supabase/admin";
 import { sendTeacherApplicationNotification } from "@/lib/mailer";
+import { isValidZoomUrl } from "@/lib/url";
 
 export type TeacherApplyState = { error?: string; success?: boolean };
 
@@ -17,8 +18,10 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
   const lastName = String(formData.get("last_name") ?? "").trim();
   const name = [firstName, lastName].filter(Boolean).join(" ");
   const phone = String(formData.get("phone") ?? "").trim();
-  const intro = String(formData.get("intro") ?? "").trim();
+  const bio = String(formData.get("bio") ?? "").trim();
   const experience = String(formData.get("experience") ?? "").trim();
+  const zoomUrl = String(formData.get("zoom_url") ?? "").trim();
+  const avatarUrl = String(formData.get("avatar_url") ?? "").trim();
 
   const supabase = createClient(await cookies());
   const {
@@ -31,7 +34,12 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
 
   if (!firstName || !lastName) return { error: "Please enter both your first and last name." };
   if (phone && !/^[0-9\-\s]{7,}$/.test(phone)) return { error: "Please enter a valid phone number." };
-  if (intro.length < 10) return { error: "Please write at least 10 characters for your introduction and motivation." };
+  if (bio.length < 10) return { error: "Please write at least 10 characters for your bio." };
+  if (!experience) return { error: "Please enter your teaching and related experience." };
+  if (!isValidZoomUrl(zoomUrl)) return { error: "Please enter a valid Zoom URL. (must start with http:// or https://)" };
+  // 아바타 필수 + 본인 폴더(avatars/<uid>/)의 공개 URL인지 검증.
+  if (!avatarUrl) return { error: "Please upload a profile photo." };
+  if (!avatarUrl.includes(`/avatars/${user.id}/`)) return { error: "Invalid image path." };
 
   const ip = getClientIp(await headers());
   const rl = rateLimit(`teacher-apply:${ip}`, 5, 10 * 60_000);
@@ -47,8 +55,10 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
     first_name: firstName,
     last_name: lastName,
     phone: phone || null,
-    intro,
-    experience: experience || null,
+    bio,
+    experience,
+    zoom_url: zoomUrl,
+    avatar_url: avatarUrl,
   });
   if (error) return { error: "Something went wrong while saving your application. Please try again later." };
 
@@ -58,8 +68,9 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
     await sendTeacherApplicationNotification(adminEmails, {
       name,
       phone,
-      intro,
+      bio,
       experience,
+      zoomUrl,
       email: user.email ?? "",
       createdAt: new Date().toISOString(),
     });

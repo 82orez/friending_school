@@ -67,6 +67,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
+          experience: string | null
           first_name: string | null
           full_name: string | null
           id: string
@@ -80,6 +81,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          experience?: string | null
           first_name?: string | null
           full_name?: string | null
           id: string
@@ -93,6 +95,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          experience?: string | null
           first_name?: string | null
           full_name?: string | null
           id?: string
@@ -131,45 +134,51 @@ export type Database = {
       teacher_applications: {
         Row: {
           admin_note: string | null
+          avatar_url: string | null
+          bio: string
           created_at: string
           experience: string | null
           first_name: string | null
           id: string
-          intro: string
           last_name: string | null
           name: string
           phone: string | null
           status: Database["public"]["Enums"]["teacher_application_status"]
           updated_at: string
           user_id: string
+          zoom_url: string | null
         }
         Insert: {
           admin_note?: string | null
+          avatar_url?: string | null
+          bio: string
           created_at?: string
           experience?: string | null
           first_name?: string | null
           id?: string
-          intro: string
           last_name?: string | null
           name: string
           phone?: string | null
           status?: Database["public"]["Enums"]["teacher_application_status"]
           updated_at?: string
           user_id: string
+          zoom_url?: string | null
         }
         Update: {
           admin_note?: string | null
+          avatar_url?: string | null
+          bio?: string
           created_at?: string
           experience?: string | null
           first_name?: string | null
           id?: string
-          intro?: string
           last_name?: string | null
           name?: string
           phone?: string | null
           status?: Database["public"]["Enums"]["teacher_application_status"]
           updated_at?: string
           user_id?: string
+          zoom_url?: string | null
         }
         Relationships: []
       }

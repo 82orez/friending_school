@@ -69,8 +69,9 @@ function buildText(d: ApplicationEmailData): string {
 export type TeacherApplicationEmailData = {
   name: string;
   phone: string;
-  intro: string;
+  bio: string;
   experience: string;
+  zoomUrl: string;
   email: string;
   createdAt: string;
 };
@@ -78,9 +79,10 @@ export type TeacherApplicationEmailData = {
 function buildTeacherHtml(d: TeacherApplicationEmailData): string {
   const rows: [string, string][] = [
     ["이름", d.name],
-    ["전화번호", d.phone],
-    ["자기소개·지원 동기", d.intro || "-"],
+    ["전화번호", d.phone || "-"],
+    ["자기소개(Bio)", d.bio || "-"],
     ["경력", d.experience || "-"],
+    ["Zoom URL", d.zoomUrl || "-"],
     ["이메일", d.email || "(미입력)"],
     ["신청 일시", new Date(d.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })],
   ];
@@ -105,9 +107,10 @@ function buildTeacherText(d: TeacherApplicationEmailData): string {
     "새 강사 지원이 접수되었습니다.",
     "",
     `이름: ${d.name}`,
-    `전화번호: ${d.phone}`,
-    `자기소개·지원 동기: ${d.intro || "-"}`,
+    `전화번호: ${d.phone || "-"}`,
+    `자기소개(Bio): ${d.bio || "-"}`,
     `경력: ${d.experience || "-"}`,
+    `Zoom URL: ${d.zoomUrl || "-"}`,
     `이메일: ${d.email || "(미입력)"}`,
     `신청 일시: ${new Date(d.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`,
   ].join("\n");

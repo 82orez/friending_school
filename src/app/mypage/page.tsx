@@ -17,8 +17,10 @@ type TeacherApplicationRow = {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
-  intro: string;
+  bio: string;
   experience: string | null;
+  zoom_url: string | null;
+  avatar_url: string | null;
   status: "신청" | "승인" | "거절";
   admin_note: string | null;
   created_at: string;
@@ -76,7 +78,7 @@ export default async function MyPage() {
     .order("created_at", { ascending: false });
   const applications = (data ?? []) as ApplicationRow[];
 
-  const { data: profile } = await supabase.from("profiles").select("first_name, last_name, phone").eq("id", user.id).maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("first_name, last_name, phone, avatar_url").eq("id", user.id).maybeSingle();
 
   const role = await getUserRole(supabase, user.id);
   const isStudent = role !== "teacher" && role !== "admin";
@@ -86,7 +88,7 @@ export default async function MyPage() {
   if (isStudent) {
     const { data: taData } = await supabase
       .from("teacher_applications")
-      .select("id, name, first_name, last_name, phone, intro, experience, status, admin_note, created_at")
+      .select("id, name, first_name, last_name, phone, bio, experience, zoom_url, avatar_url, status, admin_note, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -163,8 +165,9 @@ export default async function MyPage() {
                       ["First name", teacherApp.first_name ?? "-"],
                       ["Last name", teacherApp.last_name ?? "-"],
                       ["Phone", teacherApp.phone ?? "-"],
-                      ["About & motivation", teacherApp.intro],
+                      ["Bio", teacherApp.bio],
                       ["Experience", teacherApp.experience ?? "-"],
+                      ["Zoom URL", teacherApp.zoom_url ?? "-"],
                       ["Applied on", formatDate(teacherApp.created_at)],
                     ].map(([label, value]) => (
                       <div key={label} className="border-rule flex justify-between gap-4 border-b py-2.5 last:border-b-0">
@@ -188,9 +191,11 @@ export default async function MyPage() {
                     admin approves your application.
                   </p>
                   <TeacherApplicationForm
+                    userId={user.id}
                     initialFirstName={profile?.first_name ?? ""}
                     initialLastName={profile?.last_name ?? ""}
                     initialPhone={profile?.phone ?? ""}
+                    initialAvatarUrl={profile?.avatar_url ?? ""}
                   />
                 </>
               )}
