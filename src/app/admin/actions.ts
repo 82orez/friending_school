@@ -1,10 +1,12 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isAdmin } from "@/lib/auth";
+import { getOrigin } from "@/lib/origin";
+import { sendTeacherApprovalNotification, sendTeacherRejectionNotification } from "@/lib/mailer";
 
 export type ActionResult = { ok: boolean; error?: string };
 
@@ -147,66 +149,82 @@ export async function revokeTeacher(userId: string): Promise<ActionResult> {
 
 /* ===== 강사 지원 관리 ===== */
 
-// 강사 지원 승인 → role=teacher 동기 + 신청 상태 '승인' + profiles 빈 필드 best-effort prefill.
+// 지원자 이메일 + 이름 조회 (알림 메일용). 실패 시 null.
+async function getApplicantContact(
+  admin: ReturnType<typeof createAdminClient>,
+  appId: string,
+): Promise<{ email: string; name: string } | null> {
+  const { data: app } = await admin.from("teacher_applications").select("user_id, name").eq("id", appId).maybeSingle();
+  const row = app as { user_id: string; name: string } | null;
+  if (!row) return null;
+  const { data: userRes } = await admin.auth.admin.getUserById(row.user_id);
+  const email = userRes?.user?.email;
+  if (!email) return null;
+  return { email, name: row.name ?? "" };
+}
+
+// 강사 지원 승인 → RPC로 role 부여 + 프로필 채움 + 상태 '승인'을 원자적으로 처리(상태 가드 포함).
 export async function approveTeacherApplication(id: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { data: app } = await admin
-    .from("teacher_applications")
-    .select("id, user_id, name, first_name, last_name, bio, experience, phone, zoom_url, avatar_url, status")
-    .eq("id", id)
-    .maybeSingle();
-  if (!app) return { ok: false, error: "지원 내역을 찾을 수 없습니다." };
+  const { data: result, error } = await admin.rpc("approve_teacher_application", { p_app_id: id });
+  if (error) return { ok: false, error: "승인 처리 중 오류가 발생했습니다." };
+  switch (result) {
+    case "ok":
+      break;
+    case "not_found":
+      return { ok: false, error: "지원 내역을 찾을 수 없습니다." };
+    case "not_pending":
+      return { ok: false, error: "이미 처리된 지원입니다. 목록을 새로고침해 주세요." };
+    case "is_admin":
+      return { ok: false, error: "관리자 계정은 강사로 전환할 수 없습니다." };
+    default:
+      return { ok: false, error: "승인 처리 중 오류가 발생했습니다." };
+  }
 
-  const a = app as {
-    user_id: string;
-    name: string;
-    first_name: string | null;
-    last_name: string | null;
-    bio: string | null;
-    experience: string | null;
-    phone: string | null;
-    zoom_url: string | null;
-    avatar_url: string | null;
-  };
-
-  const roleRes = await setUserRole(admin, a.user_id, "teacher");
-  if (!roleRes.ok) return roleRes;
-
-  const { error: statusError } = await admin.from("teacher_applications").update({ status: "승인" }).eq("id", id);
-  if (statusError) return { ok: false, error: "상태 변경 중 오류가 발생했습니다." };
-
-  // 강사 프로필을 신청서 내용으로 채움(덮어쓰기). 필수(first/last/bio)는 항상,
-  // 선택(experience/phone/zoom_url/avatar_url)은 값 있을 때만 set(빈값 clobber 방지).
-  const fill: Record<string, string> = {
-    first_name: a.first_name || a.name,
-    last_name: a.last_name ?? "",
-    bio: a.bio ?? "",
-  };
-  if (a.experience) fill.experience = a.experience;
-  if (a.phone) fill.phone = a.phone;
-  if (a.zoom_url) fill.zoom_url = a.zoom_url;
-  if (a.avatar_url) fill.avatar_url = a.avatar_url;
-  await admin.from("profiles").update(fill).eq("id", a.user_id);
+  // 지원자 승인 알림 메일 (best-effort) — 실패해도 승인은 유효.
+  try {
+    const contact = await getApplicantContact(admin, id);
+    if (contact) {
+      const origin = getOrigin(await headers());
+      await sendTeacherApprovalNotification([contact.email], { name: contact.name, teacherUrl: `${origin}/teacher` });
+    }
+  } catch (err) {
+    console.error("[approveTeacherApplication] 승인 알림 발송 실패:", err);
+  }
 
   revalidatePath("/admin/teacher-requests");
   revalidatePath("/teacher");
   return { ok: true };
 }
 
-// 강사 지원 거절 (상태 '거절' + 관리자 메모). role 변경 없음.
+// 강사 지원 거절 (상태 '거절' + 관리자 메모). 상태 가드: '신청'만 거절 가능. role 변경 없음.
 export async function rejectTeacherApplication(id: string, adminNote: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { error } = await admin
+  const { data, error } = await admin
     .from("teacher_applications")
     .update({ status: "거절", admin_note: adminNote || null })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("status", "신청")
+    .select("id");
   if (error) return { ok: false, error: "저장 중 오류가 발생했습니다." };
+  if (!data || data.length === 0) return { ok: false, error: "이미 처리된 지원입니다. 목록을 새로고침해 주세요." };
+
+  // 지원자 거절 알림 메일 (best-effort) — 실패해도 거절은 유효.
+  try {
+    const contact = await getApplicantContact(admin, id);
+    if (contact) {
+      const origin = getOrigin(await headers());
+      await sendTeacherRejectionNotification([contact.email], { name: contact.name, reason: adminNote || "", mypageUrl: `${origin}/mypage` });
+    }
+  } catch (err) {
+    console.error("[rejectTeacherApplication] 거절 알림 발송 실패:", err);
+  }
 
   revalidatePath("/admin/teacher-requests");
   return { ok: true };

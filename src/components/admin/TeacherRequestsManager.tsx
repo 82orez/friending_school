@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import { ChevronDown, Loader2, Search } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { approveTeacherApplication, rejectTeacherApplication, revokeTeacher } from "@/app/admin/actions";
 import {
@@ -20,7 +21,7 @@ export type TeacherApplication = {
   id: string;
   user_id: string;
   name: string;
-  phone: string;
+  phone: string | null;
   email: string;
   bio: string;
   experience: string | null;
@@ -85,7 +86,7 @@ export default function TeacherRequestsManager({
     return rows.filter((r) => {
       if (filter !== "all" && r.status !== filter) return false;
       if (!q) return true;
-      return r.name.toLowerCase().includes(q) || r.phone.includes(q) || r.email.toLowerCase().includes(q);
+      return r.name.toLowerCase().includes(q) || (r.phone ?? "").includes(q) || r.email.toLowerCase().includes(q);
     });
   }, [rows, query, filter]);
 
@@ -95,8 +96,12 @@ export default function TeacherRequestsManager({
     setRevokeTarget(null);
     startRevoke(async () => {
       const res = await revokeTeacher(target.id);
-      if (res.ok) setTeachers((prev) => prev.filter((t) => t.id !== target.id));
-      else alert(res.error ?? "오류가 발생했습니다.");
+      if (res.ok) {
+        setTeachers((prev) => prev.filter((t) => t.id !== target.id));
+        toast.success("강사 자격을 회수했습니다.");
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
     });
   };
 
@@ -153,6 +158,7 @@ export default function TeacherRequestsManager({
                 open={openId === r.id}
                 onToggle={() => setOpenId(openId === r.id ? null : r.id)}
                 onUpdated={(updated) => setRows((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
+                onApproved={(teacher) => setTeachers((prev) => (prev.some((t) => t.id === teacher.id) ? prev : [...prev, teacher]))}
               />
             ))}
           </ul>
@@ -217,30 +223,46 @@ function ApplicationRow({
   open,
   onToggle,
   onUpdated,
+  onApproved,
 }: {
   row: TeacherApplication;
   open: boolean;
   onToggle: () => void;
   onUpdated: (updated: TeacherApplication) => void;
+  onApproved: (teacher: CurrentTeacher) => void;
 }) {
   const [note, setNote] = useState(row.admin_note ?? "");
   const [pending, startTransition] = useTransition();
   const [confirmApprove, setConfirmApprove] = useState(false);
+  const isPending = row.status === "신청";
 
   const approve = () => {
     setConfirmApprove(false);
     startTransition(async () => {
       const res = await approveTeacherApplication(row.id);
-      if (res.ok) onUpdated({ ...row, status: "승인" });
-      else alert(res.error ?? "오류가 발생했습니다.");
+      if (res.ok) {
+        onUpdated({ ...row, status: "승인" });
+        onApproved({ id: row.user_id, email: row.email, name: row.name });
+        toast.success("강사로 승인했습니다.");
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
     });
   };
 
   const reject = () => {
+    if (!note.trim()) {
+      toast.error("거절 사유를 입력해 주세요.");
+      return;
+    }
     startTransition(async () => {
       const res = await rejectTeacherApplication(row.id, note);
-      if (res.ok) onUpdated({ ...row, status: "거절", admin_note: note || null });
-      else alert(res.error ?? "오류가 발생했습니다.");
+      if (res.ok) {
+        onUpdated({ ...row, status: "거절", admin_note: note || null });
+        toast.success("지원을 거절했습니다.");
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
     });
   };
 
@@ -252,7 +274,8 @@ function ApplicationRow({
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-ink truncate text-sm font-bold">
-            {row.name} <span className="text-muted-fg-faint font-normal">· {row.phone}</span>
+            {row.name}
+            {row.phone && <span className="text-muted-fg-faint font-normal"> · {row.phone}</span>}
           </p>
           <p className="text-muted-fg truncate text-xs">{row.email}</p>
         </div>
@@ -286,34 +309,45 @@ function ApplicationRow({
             ))}
           </dl>
 
-          <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">🔒 관리자 NOTE (거절 사유 등)</label>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
-            placeholder="거절 사유 등 관리자 메모를 입력하세요..."
-            className="border-rule-faint focus:border-accent-blue mb-3 w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-          />
+          {isPending ? (
+            <>
+              <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">🔒 관리자 NOTE (거절 사유 — 거절 시 필수)</label>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={2}
+                placeholder="거절 사유 등 관리자 메모를 입력하세요..."
+                className="border-rule-faint focus:border-accent-blue mb-3 w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              />
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setConfirmApprove(true)}
-              disabled={pending || row.status === "승인"}
-              className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            >
-              {pending && <Loader2 className="size-3.5 animate-spin" />}
-              승인 (강사 전환)
-            </button>
-            <button
-              type="button"
-              onClick={reject}
-              disabled={pending || row.status === "거절"}
-              className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50"
-            >
-              거절
-            </button>
-          </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmApprove(true)}
+                  disabled={pending}
+                  className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {pending && <Loader2 className="size-3.5 animate-spin" />}
+                  승인 (강사 전환)
+                </button>
+                <button
+                  type="button"
+                  onClick={reject}
+                  disabled={pending}
+                  className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50"
+                >
+                  거절
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="text-muted-fg text-sm">
+              {row.status === "승인"
+                ? "✅ 승인되어 강사로 전환되었습니다. 자격 회수는 아래 「현재 강사」에서 처리합니다."
+                : "❌ 거절된 지원입니다."}
+              {row.status === "거절" && row.admin_note && <span className="whitespace-pre-wrap"> · 사유: {row.admin_note}</span>}
+            </p>
+          )}
         </div>
       )}
 

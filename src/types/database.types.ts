@@ -247,7 +247,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      approve_teacher_application: {
+        Args: { p_app_id: string }
+        Returns: string
+      }
     }
     Enums: {
       application_status: "신청" | "확인" | "완료" | "취소"
