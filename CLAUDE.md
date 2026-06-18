@@ -85,7 +85,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 
 ### Supabase SSR
 
-- `client.ts`(`createBrowserClient`) · `server.ts`(`createServerClient`+cookies) · `middleware.ts`(`updateSession()` 매 요청 `getUser()`로 세션 갱신 — **`createServerClient`와 `getUser()` 사이 로직 금지**) · `admin.ts`(`service_role`, 첫 줄 `import "server-only"`).
+- **경로 `src/utils/supabase/`** — `client.ts`(`createBrowserClient`) · `server.ts`(`createServerClient`+cookies) · `middleware.ts`(`updateSession()` 매 요청 `getUser()`로 세션 갱신 — **`createServerClient`와 `getUser()` 사이 로직 금지**) · `admin.ts`(`service_role`, 첫 줄 `import "server-only"`).
 - **`admin.ts` export**: `createAdminClient()` + `emailExists()`(@deprecated) + `getUserStatus()`(@deprecated) + **`getUserIdentitySummary(email)`**(권장: `{found:false}` | `{found:true,confirmed,hasPassword,oauthProviders[]}` | `null`) + **`getAdminEmails()`**(`profiles.role='admin'`→`getUserById`로 이메일, 신청 알림 수신자, 실패 시 `[]`). 내부: `listUsers`로 id 찾고 `getUserById(id)` 재호출해 `identities` 안전 확보(listUsers만으론 빈 배열로 옴). 모두 페이지네이션(perPage 1000, ≤50p) — **같은 액션에서 2번 호출 금지**. 에러 시 `null`(호출 측 "일시적 오류" 분기).
 - `src/proxy.ts` — Next 16 `proxy` 컨벤션(v15 `middleware` 리네임), `updateSession` 호출, `matcher`로 정적 자산 제외. 헬퍼 `middleware.ts` 파일명은 유지.
 - **환경 변수**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`(필수), `SUPABASE_SERVICE_ROLE_KEY`(admin용, **`NEXT_PUBLIC_` 절대 금지**), `NEXT_PUBLIC_SITE_URL`(운영 권장). **`RESEND_API_KEY`**(신청 알림 메일, 미설정 시 발송 no-op) + **`APPLICATION_NOTIFY_FROM`**(선택, 발신 주소 — Resend 인증 도메인; 미설정 시 `onboarding@resend.dev` 테스트 발신).

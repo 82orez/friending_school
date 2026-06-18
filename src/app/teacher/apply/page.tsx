@@ -108,9 +108,10 @@ export default async function TeacherApplyPage() {
                     ["Zoom URL", teacherApp.zoom_url ?? "-"],
                     ["Applied on", formatDate(teacherApp.created_at)],
                   ].map(([label, value]) => (
-                    <div key={label} className="border-rule flex justify-between gap-4 border-b py-2.5 last:border-b-0">
-                      <dt className="text-muted-fg shrink-0 text-sm">{label}</dt>
-                      <dd className="text-ink text-right text-sm font-medium break-words whitespace-pre-wrap">{value}</dd>
+                    // 짧은 값·문단형 모두 동일 레이아웃: 라벨 고정 폭 좌측 열 + 값 좌측 정렬(제출 전 Review 다이얼로그와 일치).
+                    <div key={label} className="border-rule flex gap-4 border-b py-2.5 last:border-b-0">
+                      <dt className="text-muted-fg w-28 shrink-0 text-sm sm:w-36">{label}</dt>
+                      <dd className="text-ink min-w-0 flex-1 text-left text-sm font-medium break-words whitespace-pre-wrap">{value}</dd>
                     </div>
                   ))}
                 </dl>
