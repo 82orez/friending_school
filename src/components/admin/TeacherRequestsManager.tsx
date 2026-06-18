@@ -236,11 +236,14 @@ function ApplicationRow({
 }) {
   const [note, setNote] = useState(row.admin_note ?? "");
   const [pending, startTransition] = useTransition();
+  const [busyAction, setBusyAction] = useState<null | "approve" | "reject">(null);
   const [confirmApprove, setConfirmApprove] = useState(false);
+  const [confirmReject, setConfirmReject] = useState(false);
   const isPending = row.status === "신청";
 
   const approve = () => {
     setConfirmApprove(false);
+    setBusyAction("approve");
     startTransition(async () => {
       const res = await approveTeacherApplication(row.id);
       if (res.ok) {
@@ -250,14 +253,22 @@ function ApplicationRow({
       } else {
         toast.error(res.error ?? "오류가 발생했습니다.");
       }
+      setBusyAction(null);
     });
   };
 
-  const reject = () => {
+  // 거절 버튼 → 사유 검증 후 confirm 다이얼로그 오픈.
+  const askReject = () => {
     if (!note.trim()) {
       toast.error("거절 사유를 입력해 주세요.");
       return;
     }
+    setConfirmReject(true);
+  };
+
+  const reject = () => {
+    setConfirmReject(false);
+    setBusyAction("reject");
     startTransition(async () => {
       const res = await rejectTeacherApplication(row.id, note);
       if (res.ok) {
@@ -266,6 +277,7 @@ function ApplicationRow({
       } else {
         toast.error(res.error ?? "오류가 발생했습니다.");
       }
+      setBusyAction(null);
     });
   };
 
@@ -330,15 +342,16 @@ function ApplicationRow({
                   disabled={pending}
                   className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
-                  {pending && <Loader2 className="size-3.5 animate-spin" />}
+                  {busyAction === "approve" && <Loader2 className="size-3.5 animate-spin" />}
                   승인 (강사 전환)
                 </button>
                 <button
                   type="button"
-                  onClick={reject}
+                  onClick={askReject}
                   disabled={pending}
                   className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50"
                 >
+                  {busyAction === "reject" && <Loader2 className="size-3.5 animate-spin" />}
                   거절
                 </button>
               </div>
@@ -367,6 +380,24 @@ function ApplicationRow({
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction onClick={approve} className="bg-cta hover:bg-cta/90 border-transparent text-white">
               승인
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmReject} onOpenChange={setConfirmReject}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>강사 지원을 거절하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="text-ink font-semibold">{row.name}</span>({row.email}) 회원의 지원을 거절합니다. 입력한 거절 사유는 신청자에게
+              메일로 전달됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={reject} className="bg-brand hover:bg-brand/90 border-transparent text-white">
+              거절
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
