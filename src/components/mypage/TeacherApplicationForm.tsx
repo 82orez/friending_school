@@ -23,28 +23,35 @@ import {
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 
-// /mypage "강사 지원" 섹션의 상세 지원 양식. 강사 프로필(/teacher)과 동일 필드.
+// /teacher/apply 페이지의 강사 지원 양식. 강사 프로필(/teacher)과 동일 필드.
 // useActionState + submitTeacherApplication. 제출 전 AlertDialog 확인 → requestSubmit. controlled inputs.
+// 거절 후 재신청 시 이전 지원서 값(initialBio/Experience/ZoomUrl 등)으로 프리필 — 재입력 부담 방지.
 export default function TeacherApplicationForm({
   userId,
   initialFirstName,
   initialLastName,
   initialPhone,
   initialAvatarUrl,
+  initialBio = "",
+  initialExperience = "",
+  initialZoomUrl = "",
 }: {
   userId: string;
   initialFirstName: string;
   initialLastName: string;
   initialPhone: string;
   initialAvatarUrl: string;
+  initialBio?: string;
+  initialExperience?: string;
+  initialZoomUrl?: string;
 }) {
   const [state, formAction, pending] = useActionState<TeacherApplyState, FormData>(submitTeacherApplication, {});
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
   const [phone, setPhone] = useState(initialPhone);
-  const [bio, setBio] = useState("");
-  const [experience, setExperience] = useState("");
-  const [zoomUrl, setZoomUrl] = useState("");
+  const [bio, setBio] = useState(initialBio);
+  const [experience, setExperience] = useState(initialExperience);
+  const [zoomUrl, setZoomUrl] = useState(initialZoomUrl);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [finalOpen, setFinalOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);

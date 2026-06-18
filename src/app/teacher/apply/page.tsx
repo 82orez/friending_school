@@ -128,12 +128,16 @@ export default async function TeacherApplyPage() {
                   If you'd like to teach at Friending School, please fill in the information below to apply. Your teacher page opens once an admin
                   approves your application.
                 </p>
+                {/* 거절 후 재신청이면 이전 지원서 값으로 프리필(폼 초기화 방지), 첫 지원이면 프로필 값. */}
                 <TeacherApplicationForm
                   userId={user.id}
-                  initialFirstName={profile?.first_name ?? ""}
-                  initialLastName={profile?.last_name ?? ""}
-                  initialPhone={profile?.phone ?? ""}
-                  initialAvatarUrl={profile?.avatar_url ?? ""}
+                  initialFirstName={teacherApp?.first_name ?? profile?.first_name ?? ""}
+                  initialLastName={teacherApp?.last_name ?? profile?.last_name ?? ""}
+                  initialPhone={teacherApp?.phone ?? profile?.phone ?? ""}
+                  initialAvatarUrl={teacherApp?.avatar_url ?? profile?.avatar_url ?? ""}
+                  initialBio={teacherApp?.bio ?? ""}
+                  initialExperience={teacherApp?.experience ?? ""}
+                  initialZoomUrl={teacherApp?.zoom_url ?? ""}
                 />
               </>
             )}
