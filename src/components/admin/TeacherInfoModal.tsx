@@ -6,6 +6,15 @@ import { X } from "lucide-react";
 import AvailabilityGrid from "@/components/teacher/AvailabilityGrid";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 
+// 아바타 미설정 시 폴백 이니셜(이름 우선, 없으면 이메일 앞글자).
+function initials(name: string, email: string): string {
+  const source = name.trim() || email.trim();
+  if (!source) return "?";
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return source.slice(0, 2).toUpperCase();
+}
+
 export default function TeacherInfoModal({ teacher, onClose }: { teacher: CurrentTeacher | null; onClose: () => void }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -53,15 +62,27 @@ export default function TeacherInfoModal({ teacher, onClose }: { teacher: Curren
         </div>
 
         <div className="overflow-auto px-6 py-5">
-          {teacher.avatarUrl && (
-            <Image
-              src={teacher.avatarUrl}
-              alt={`${title} profile photo`}
-              width={64}
-              height={64}
-              className="border-rule mb-4 size-16 rounded-2xl border object-cover"
-            />
-          )}
+          <div className="mb-5 flex items-center gap-4">
+            {teacher.avatarUrl ? (
+              <Image
+                src={teacher.avatarUrl}
+                alt={`${title} profile photo`}
+                width={80}
+                height={80}
+                className="border-rule size-20 rounded-2xl border object-cover"
+              />
+            ) : (
+              <div
+                aria-hidden="true"
+                className="border-rule bg-surface text-muted-fg-faint flex size-20 shrink-0 items-center justify-center rounded-2xl border text-2xl font-bold">
+                {initials(teacher.name, teacher.email)}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-ink truncate text-base font-bold">{teacher.name || teacher.email}</p>
+              <p className="text-muted-fg-faint truncate text-xs">{teacher.email}</p>
+            </div>
+          </div>
 
           <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm">
             {(
