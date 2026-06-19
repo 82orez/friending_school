@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Camera, Loader2, UserRound, Video } from "lucide-react";
 import { toast } from "sonner";
 import { cleanupOldAvatars, uploadAvatar } from "@/lib/avatar";
-import { NATIONALITIES, nationalityLabel } from "@/data/nationalities";
+import { NATIONALITIES, nationalityLabelEn } from "@/data/nationalities";
 import { GENDERS, genderLabelEn } from "@/data/genders";
 import { submitTeacherApplication, type TeacherApplyState } from "@/app/teacher/apply-actions";
 import { Button } from "@/components/ui/button";
@@ -227,7 +227,7 @@ export default function TeacherApplicationForm({
           <option value="">Select your nationality</option>
           {NATIONALITIES.map((n) => (
             <option key={n.name} value={n.name}>
-              {n.flag} {n.name}
+              {n.flag} {n.en}
             </option>
           ))}
         </select>
@@ -331,7 +331,7 @@ export default function TeacherApplicationForm({
               ["First name", firstName],
               ["Last name", lastName],
               ["Phone", phone || "(not provided)"],
-              ["Nationality", nationalityLabel(nationality)],
+              ["Nationality", nationalityLabelEn(nationality)],
               ["Gender", genderLabelEn(gender)],
               ["Bio", bio],
               ["Experience", experience],

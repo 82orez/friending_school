@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { getUserRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { nationalityLabel } from "@/data/nationalities";
+import { nationalityLabelEn } from "@/data/nationalities";
 import { genderLabelEn } from "@/data/genders";
 import TeacherApplicationForm from "@/components/mypage/TeacherApplicationForm";
 
@@ -111,7 +111,7 @@ export default async function TeacherApplyPage() {
                     ["First name", teacherApp.first_name ?? "-"],
                     ["Last name", teacherApp.last_name ?? "-"],
                     ["Phone", teacherApp.phone ?? "-"],
-                    ["Nationality", nationalityLabel(teacherApp.nationality)],
+                    ["Nationality", nationalityLabelEn(teacherApp.nationality)],
                     ["Gender", genderLabelEn(teacherApp.gender)],
                     ["Bio", teacherApp.bio],
                     ["Experience", teacherApp.experience ?? "-"],

@@ -279,7 +279,7 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
               <option value="">Select your nationality</option>
               {NATIONALITIES.map((n) => (
                 <option key={n.name} value={n.name}>
-                  {n.flag} {n.name}
+                  {n.flag} {n.en}
                 </option>
               ))}
             </select>
