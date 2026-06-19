@@ -6,6 +6,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { getUserRole } from "@/lib/auth";
 import { isValidZoomUrl } from "@/lib/url";
+import { NATIONALITY_NAMES } from "@/data/nationalities";
 
 export type TeacherActionState = { ok?: boolean; error?: string };
 
@@ -37,11 +38,17 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
   const bio = clean(formData.get("bio"), 2000);
   const experience = clean(formData.get("experience"), 2000);
   const phone = clean(formData.get("phone"), 30);
+  const nationality = clean(formData.get("nationality"), 60);
   const zoomUrl = clean(formData.get("zoom_url"), 500);
 
   // 전화번호를 제외한 항목은 필수 (clean()이 공백-only를 null로 만들어 우회 차단).
-  if (!firstName || !lastName || !bio || !experience || !zoomUrl) {
+  if (!firstName || !lastName || !bio || !experience || !nationality || !zoomUrl) {
     return { error: "Please fill in all required fields." };
+  }
+
+  // 국적은 화이트리스트 값만 허용(임의 문자열 차단).
+  if (!NATIONALITY_NAMES.includes(nationality)) {
+    return { error: "Please select your nationality." };
   }
 
   if (!isValidZoomUrl(zoomUrl)) {
@@ -52,7 +59,7 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
   const admin = createAdminClient();
   const { error } = await admin
     .from("profiles")
-    .update({ first_name: firstName, last_name: lastName, bio, experience, phone, zoom_url: zoomUrl })
+    .update({ first_name: firstName, last_name: lastName, bio, experience, phone, nationality, zoom_url: zoomUrl })
     .eq("id", userId);
   if (error) return { error: "Something went wrong while saving." };
 

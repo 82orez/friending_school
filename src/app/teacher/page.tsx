@@ -20,7 +20,7 @@ export default async function TeacherPage() {
 
   const { data } = await supabase
     .from("profiles")
-    .select("first_name, last_name, avatar_url, zoom_url, bio, experience, phone")
+    .select("first_name, last_name, avatar_url, zoom_url, bio, experience, phone, nationality")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -33,6 +33,7 @@ export default async function TeacherPage() {
     bio: profile.bio ?? "",
     experience: profile.experience ?? "",
     phone: profile.phone ?? "",
+    nationality: profile.nationality ?? "",
   };
 
   const { data: availRows } = await supabase.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", user.id);

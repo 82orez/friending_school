@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Camera, Loader2, UserRound, Video } from "lucide-react";
 import { toast } from "sonner";
 import { cleanupOldAvatars, uploadAvatar } from "@/lib/avatar";
+import { NATIONALITIES, nationalityLabel } from "@/data/nationalities";
 import { submitTeacherApplication, type TeacherApplyState } from "@/app/teacher/apply-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ export default function TeacherApplicationForm({
   initialLastName,
   initialPhone,
   initialAvatarUrl,
+  initialNationality = "",
   initialBio = "",
   initialExperience = "",
   initialZoomUrl = "",
@@ -41,6 +43,7 @@ export default function TeacherApplicationForm({
   initialLastName: string;
   initialPhone: string;
   initialAvatarUrl: string;
+  initialNationality?: string;
   initialBio?: string;
   initialExperience?: string;
   initialZoomUrl?: string;
@@ -49,6 +52,7 @@ export default function TeacherApplicationForm({
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
   const [phone, setPhone] = useState(initialPhone);
+  const [nationality, setNationality] = useState(initialNationality);
   const [bio, setBio] = useState(initialBio);
   const [experience, setExperience] = useState(initialExperience);
   const [zoomUrl, setZoomUrl] = useState(initialZoomUrl);
@@ -204,6 +208,28 @@ export default function TeacherApplicationForm({
       </div>
 
       <div className="grid gap-1.5">
+        <Label htmlFor="ta-nationality">
+          Nationality <span className="text-brand">*</span>
+        </Label>
+        <select
+          id="ta-nationality"
+          name="nationality"
+          required
+          value={nationality}
+          onChange={(e) => setNationality(e.target.value)}
+          aria-invalid={!!state.error && !nationality}
+          className="border-rule-faint focus:border-accent-blue h-11 w-full rounded-md border bg-white px-3.5 text-base outline-none"
+        >
+          <option value="">Select your nationality</option>
+          {NATIONALITIES.map((n) => (
+            <option key={n.name} value={n.name}>
+              {n.flag} {n.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="grid gap-1.5">
         <Label htmlFor="ta-bio">
           About / Bio <span className="text-brand">*</span>
         </Label>
@@ -268,7 +294,7 @@ export default function TeacherApplicationForm({
       </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent className="grid-rows-[auto_minmax(0,1fr)_auto] max-h-[85vh] sm:max-w-2xl! lg:max-w-4xl!">
+        <AlertDialogContent className="max-h-[85vh] grid-rows-[auto_minmax(0,1fr)_auto] sm:max-w-2xl! lg:max-w-4xl!">
           <AlertDialogHeader>
             <AlertDialogTitle>Review your application</AlertDialogTitle>
             <AlertDialogDescription>Please review your details below before submitting.</AlertDialogDescription>
@@ -279,6 +305,7 @@ export default function TeacherApplicationForm({
               ["First name", firstName],
               ["Last name", lastName],
               ["Phone", phone || "(not provided)"],
+              ["Nationality", nationalityLabel(nationality)],
               ["Bio", bio],
               ["Experience", experience],
               ["Zoom URL", zoomUrl],
@@ -305,9 +332,7 @@ export default function TeacherApplicationForm({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Submit your application?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to submit? Once submitted, your application cannot be edited.
-            </AlertDialogDescription>
+            <AlertDialogDescription>Are you sure you want to submit? Once submitted, your application cannot be edited.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Go back</AlertDialogCancel>

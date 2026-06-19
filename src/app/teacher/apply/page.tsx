@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { getUserRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { nationalityLabel } from "@/data/nationalities";
 import TeacherApplicationForm from "@/components/mypage/TeacherApplicationForm";
 
 export const metadata: Metadata = { title: "강사 지원 — 프렌딩 스쿨" };
@@ -14,6 +15,7 @@ type TeacherApplicationRow = {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  nationality: string | null;
   bio: string;
   experience: string | null;
   zoom_url: string | null;
@@ -54,12 +56,16 @@ export default async function TeacherApplyPage() {
   if (role === "teacher") redirect("/teacher");
   if (role === "admin") redirect("/");
 
-  const { data: profile } = await supabase.from("profiles").select("first_name, last_name, phone, avatar_url").eq("id", user.id).maybeSingle();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("first_name, last_name, phone, nationality, avatar_url")
+    .eq("id", user.id)
+    .maybeSingle();
 
   // 본인 최신 지원 1건 조회.
   const { data: taData } = await supabase
     .from("teacher_applications")
-    .select("id, name, first_name, last_name, phone, bio, experience, zoom_url, avatar_url, status, admin_note, created_at")
+    .select("id, name, first_name, last_name, phone, nationality, bio, experience, zoom_url, avatar_url, status, admin_note, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -103,6 +109,7 @@ export default async function TeacherApplyPage() {
                     ["First name", teacherApp.first_name ?? "-"],
                     ["Last name", teacherApp.last_name ?? "-"],
                     ["Phone", teacherApp.phone ?? "-"],
+                    ["Nationality", nationalityLabel(teacherApp.nationality)],
                     ["Bio", teacherApp.bio],
                     ["Experience", teacherApp.experience ?? "-"],
                     ["Zoom URL", teacherApp.zoom_url ?? "-"],
@@ -135,6 +142,7 @@ export default async function TeacherApplyPage() {
                   initialFirstName={teacherApp?.first_name ?? profile?.first_name ?? ""}
                   initialLastName={teacherApp?.last_name ?? profile?.last_name ?? ""}
                   initialPhone={teacherApp?.phone ?? profile?.phone ?? ""}
+                  initialNationality={teacherApp?.nationality ?? profile?.nationality ?? ""}
                   initialAvatarUrl={teacherApp?.avatar_url ?? profile?.avatar_url ?? ""}
                   initialBio={teacherApp?.bio ?? ""}
                   initialExperience={teacherApp?.experience ?? ""}

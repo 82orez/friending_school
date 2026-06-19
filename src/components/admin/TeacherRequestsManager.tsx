@@ -6,6 +6,7 @@ import { ChevronDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { approveTeacherApplication, rejectTeacherApplication, deleteTeacher } from "@/app/admin/actions";
+import { nationalityLabel } from "@/data/nationalities";
 import TeacherInfoModal from "@/components/admin/TeacherInfoModal";
 import TeacherAvailabilityFinder from "@/components/admin/TeacherAvailabilityFinder";
 import {
@@ -24,6 +25,7 @@ export type TeacherApplication = {
   user_id: string;
   name: string;
   phone: string | null;
+  nationality: string | null;
   email: string;
   bio: string;
   experience: string | null;
@@ -39,6 +41,7 @@ export type CurrentTeacher = {
   email: string;
   name: string;
   phone: string | null;
+  nationality: string | null;
   bio: string | null;
   experience: string | null;
   zoomUrl: string | null;
@@ -278,6 +281,7 @@ function ApplicationRow({
           email: row.email,
           name: row.name,
           phone: row.phone,
+          nationality: row.nationality,
           bio: row.bio,
           experience: row.experience,
           zoomUrl: row.zoom_url,
@@ -348,6 +352,7 @@ function ApplicationRow({
             {[
               ["이메일", row.email],
               ["전화", row.phone],
+              ["국적", nationalityLabel(row.nationality)],
               ["자기소개(Bio)", row.bio],
               ["경력", row.experience ?? "-"],
               ["Zoom URL", row.zoom_url ?? "-"],
@@ -393,9 +398,7 @@ function ApplicationRow({
             </>
           ) : (
             <p className="text-muted-fg text-sm">
-              {row.status === "승인"
-                ? "✅ 승인되어 강사로 전환되었습니다. 자격 회수는 아래 「현재 강사」에서 처리합니다."
-                : "❌ 거절된 지원입니다."}
+              {row.status === "승인" ? "✅ 승인되어 강사로 전환되었습니다. 자격 회수는 아래 「현재 강사」에서 처리합니다." : "❌ 거절된 지원입니다."}
               {row.status === "거절" && row.admin_note && <span className="whitespace-pre-wrap"> · 사유: {row.admin_note}</span>}
             </p>
           )}
@@ -425,8 +428,8 @@ function ApplicationRow({
           <AlertDialogHeader>
             <AlertDialogTitle>강사 지원을 거절하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="text-ink font-semibold">{row.name}</span>({row.email}) 회원의 지원을 거절합니다. 입력한 거절 사유는 신청자에게
-              메일로 전달됩니다.
+              <span className="text-ink font-semibold">{row.name}</span>({row.email}) 회원의 지원을 거절합니다. 입력한 거절 사유는 신청자에게 메일로
+              전달됩니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

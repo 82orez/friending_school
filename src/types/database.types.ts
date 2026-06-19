@@ -72,6 +72,7 @@ export type Database = {
           full_name: string | null
           id: string
           last_name: string | null
+          nationality: string | null
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -86,6 +87,7 @@ export type Database = {
           full_name?: string | null
           id: string
           last_name?: string | null
+          nationality?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -100,6 +102,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           last_name?: string | null
+          nationality?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -142,6 +145,7 @@ export type Database = {
           id: string
           last_name: string | null
           name: string
+          nationality: string | null
           phone: string | null
           status: Database["public"]["Enums"]["teacher_application_status"]
           updated_at: string
@@ -158,6 +162,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           name: string
+          nationality?: string | null
           phone?: string | null
           status?: Database["public"]["Enums"]["teacher_application_status"]
           updated_at?: string
@@ -174,6 +179,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           name?: string
+          nationality?: string | null
           phone?: string | null
           status?: Database["public"]["Enums"]["teacher_application_status"]
           updated_at?: string
