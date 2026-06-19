@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 
@@ -58,6 +59,14 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
     if (startMin > nextMaxStart) setStartMin(nextMaxStart);
   };
 
+  // 검색 조건 초기화 — 요일 선택 해제 + 기본 횟수/시작시간 복원.
+  const isDefault = selectedDays.size === 0 && count === 1 && startMin === 9 * 60;
+  const handleReset = () => {
+    setSelectedDays(new Set());
+    setCount(1);
+    setStartMin(9 * 60);
+  };
+
   const inputReady = selectedDays.size > 0;
 
   const matches = useMemo(() => {
@@ -75,7 +84,18 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
 
   return (
     <div className="border-rule rounded-xl border bg-white p-5">
-      <h2 className="text-ink text-lg font-extrabold">수업 가능 시간으로 강사 찾기</h2>
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-ink text-lg font-extrabold">수업 가능 시간으로 강사 찾기</h2>
+        <button
+          type="button"
+          onClick={handleReset}
+          disabled={isDefault}
+          className="border-rule text-muted-fg hover:bg-surface inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-50"
+        >
+          <RotateCcw className="size-3.5" aria-hidden />
+          초기화
+        </button>
+      </div>
       <p className="text-muted-fg mt-1 text-sm">
         원하는 요일·요일당 수업 횟수·시작 시간을 선택하면, 해당 시간 전체가 비어 있는 강사를 보여줍니다. (1회 = 30분, 종료 시각 자동 계산)
       </p>
