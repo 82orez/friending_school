@@ -19,14 +19,31 @@ export default async function AdminTeacherRequestsPage() {
     // 신청(미처리) → 거절 → 승인 순, 같은 그룹 내 최신순(원본이 created desc)
     .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
 
-  const { data: teacherProfiles } = await admin.from("profiles").select("id, first_name, last_name").eq("role", "teacher");
-  const currentTeachers: CurrentTeacher[] = ((teacherProfiles ?? []) as { id: string; first_name: string | null; last_name: string | null }[]).map(
-    (p) => ({
-      id: p.id,
-      email: emailById.get(p.id) ?? "(이메일 없음)",
-      name: [p.first_name, p.last_name].filter(Boolean).join(" "),
-    }),
-  );
+  const { data: teacherProfiles } = await admin
+    .from("profiles")
+    .select("id, first_name, last_name, avatar_url, zoom_url, bio, experience, phone")
+    .eq("role", "teacher");
+  const currentTeachers: CurrentTeacher[] = (
+    (teacherProfiles ?? []) as {
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+      avatar_url: string | null;
+      zoom_url: string | null;
+      bio: string | null;
+      experience: string | null;
+      phone: string | null;
+    }[]
+  ).map((p) => ({
+    id: p.id,
+    email: emailById.get(p.id) ?? "(이메일 없음)",
+    name: [p.first_name, p.last_name].filter(Boolean).join(" "),
+    phone: p.phone,
+    bio: p.bio,
+    experience: p.experience,
+    zoomUrl: p.zoom_url,
+    avatarUrl: p.avatar_url,
+  }));
 
   return <TeacherRequestsManager applications={applications} currentTeachers={currentTeachers} />;
 }

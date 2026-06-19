@@ -36,6 +36,11 @@ export type CurrentTeacher = {
   id: string;
   email: string;
   name: string;
+  phone: string | null;
+  bio: string | null;
+  experience: string | null;
+  zoomUrl: string | null;
+  avatarUrl: string | null;
 };
 
 const STATUSES = ["신청", "승인", "거절"] as const;
@@ -76,6 +81,7 @@ export default function TeacherRequestsManager({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | Status>("all");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [infoTarget, setInfoTarget] = useState<CurrentTeacher | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CurrentTeacher | null>(null);
   const [deleting, startDelete] = useTransition();
 
@@ -183,6 +189,13 @@ export default function TeacherRequestsManager({
                 </div>
                 <button
                   type="button"
+                  onClick={() => setInfoTarget(t)}
+                  className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
+                >
+                  정보 보기
+                </button>
+                <button
+                  type="button"
                   onClick={() => setDeleteTarget(t)}
                   disabled={deleting}
                   className="border-brand/40 text-brand hover:bg-brand/5 shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60"
@@ -194,6 +207,45 @@ export default function TeacherRequestsManager({
           </ul>
         )}
       </div>
+
+      {/* 강사 정보 보기 */}
+      <AlertDialog open={infoTarget !== null} onOpenChange={(open) => !open && setInfoTarget(null)}>
+        <AlertDialogContent className="text-left sm:max-w-md">
+          <AlertDialogHeader className="sm:items-start sm:text-left">
+            <AlertDialogTitle>{infoTarget?.name || infoTarget?.email || "강사 정보"}</AlertDialogTitle>
+          </AlertDialogHeader>
+          {infoTarget && (
+            <>
+              {infoTarget.avatarUrl && (
+                <Image
+                  src={infoTarget.avatarUrl}
+                  alt={`${infoTarget.name || infoTarget.email} profile photo`}
+                  width={64}
+                  height={64}
+                  className="border-rule size-16 rounded-2xl border object-cover"
+                />
+              )}
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm">
+                {[
+                  ["이메일", infoTarget.email],
+                  ["전화", infoTarget.phone ?? "-"],
+                  ["자기소개(Bio)", infoTarget.bio ?? "-"],
+                  ["경력", infoTarget.experience ?? "-"],
+                  ["Zoom URL", infoTarget.zoomUrl ?? "-"],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex gap-2">
+                    <dt className="text-muted-fg-faint w-28 shrink-0">{label}</dt>
+                    <dd className="text-ink break-words whitespace-pre-wrap">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>닫기</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 삭제 확인 */}
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -248,7 +300,16 @@ function ApplicationRow({
       const res = await approveTeacherApplication(row.id);
       if (res.ok) {
         onUpdated({ ...row, status: "승인" });
-        onApproved({ id: row.user_id, email: row.email, name: row.name });
+        onApproved({
+          id: row.user_id,
+          email: row.email,
+          name: row.name,
+          phone: row.phone,
+          bio: row.bio,
+          experience: row.experience,
+          zoomUrl: row.zoom_url,
+          avatarUrl: row.avatar_url,
+        });
         toast.success("강사로 승인했습니다.");
       } else {
         toast.error(res.error ?? "오류가 발생했습니다.");
