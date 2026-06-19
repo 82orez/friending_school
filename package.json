@@ -10,7 +10,9 @@
     "db:new": "supabase migration new",
     "db:list": "supabase migration list",
     "db:diff": "supabase db diff --linked",
-    "db:types": "supabase gen types typescript --linked --schema public > src/types/database.types.ts"
+    "db:types": "supabase gen types typescript --linked --schema public > src/types/database.types.ts",
+    "seed:teachers": "node scripts/seed-teachers.mjs",
+    "seed:teachers:clean": "node scripts/seed-teachers.mjs --clean"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
