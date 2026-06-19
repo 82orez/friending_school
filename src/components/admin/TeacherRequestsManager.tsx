@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { approveTeacherApplication, rejectTeacherApplication, deleteTeacher } from "@/app/admin/actions";
 import TeacherInfoModal from "@/components/admin/TeacherInfoModal";
+import TeacherAvailabilityFinder from "@/components/admin/TeacherAvailabilityFinder";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -174,6 +175,11 @@ export default function TeacherRequestsManager({
             ))}
           </ul>
         )}
+      </div>
+
+      {/* 수업 가능 시간으로 강사 찾기 */}
+      <div className="mt-10">
+        <TeacherAvailabilityFinder teachers={teachers} onView={setInfoTarget} />
       </div>
 
       {/* 현재 강사 */}
