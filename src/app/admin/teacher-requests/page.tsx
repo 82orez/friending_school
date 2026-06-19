@@ -23,6 +23,19 @@ export default async function AdminTeacherRequestsPage() {
     .from("profiles")
     .select("id, first_name, last_name, avatar_url, zoom_url, bio, experience, phone")
     .eq("role", "teacher");
+
+  // 현재 강사 가용 시간 일괄 조회 후 teacher_id별 그룹핑.
+  const teacherIds = (teacherProfiles ?? []).map((t: { id: string }) => t.id);
+  const slotsByTeacher = new Map<string, { day: number; min: number }[]>();
+  if (teacherIds.length > 0) {
+    const { data: slotRows } = await admin.from("teacher_availability").select("teacher_id, day_of_week, start_min").in("teacher_id", teacherIds);
+    for (const r of slotRows ?? []) {
+      const list = slotsByTeacher.get(r.teacher_id) ?? [];
+      list.push({ day: r.day_of_week, min: r.start_min });
+      slotsByTeacher.set(r.teacher_id, list);
+    }
+  }
+
   const currentTeachers: CurrentTeacher[] = (
     (teacherProfiles ?? []) as {
       id: string;
@@ -43,6 +56,7 @@ export default async function AdminTeacherRequestsPage() {
     experience: p.experience,
     zoomUrl: p.zoom_url,
     avatarUrl: p.avatar_url,
+    slots: slotsByTeacher.get(p.id) ?? [],
   }));
 
   return <TeacherRequestsManager applications={applications} currentTeachers={currentTeachers} />;
