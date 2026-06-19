@@ -9,7 +9,6 @@ const ITEMS = [
   { href: "/admin/members", label: "👥 회원 관리" },
   { href: "/admin/teacher-requests", label: "🧑‍🏫 강사 관리" },
   { href: "/admin/youtube", label: "🎬 유튜브 관리" },
-  { href: "/admin/availability", label: "🗓 강사 시간표" },
 ];
 
 export default function AdminNav() {
