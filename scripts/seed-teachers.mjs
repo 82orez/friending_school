@@ -150,23 +150,53 @@ async function findUserByEmail(email) {
   return null;
 }
 
+// --- deterministic PRNG seeded by teacher index (stable across re-runs) ---
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 // --- build a varied weekly availability pattern for teacher index i ---
+// Random days/time-windows/lengths per teacher, but deterministic (idempotent re-runs).
 function slotsForTeacher(i) {
-  const rows = [];
-  // Weekday (Mon–Fri) evening block, start shifts a little per teacher.
-  const eveningStart = 18 * 60 + (i % 4) * 30; // 18:00 / 18:30 / 19:00 / 19:30
-  for (let day = 1; day <= 5; day++) {
-    for (let k = 0; k < 4; k++) {
-      const start = eveningStart + k * 30;
-      if (start <= 1410) rows.push({ day_of_week: day, start_min: start });
-    }
+  const rng = mulberry32((i + 1) * 0x9e3779b1);
+  const randInt = (min, max) => min + Math.floor(rng() * (max - min + 1)); // inclusive
+  // 06:00 ~ 23:30 in 30-min steps → start_min 360..1410.
+  const FIRST = 360;
+  const LAST = 1410;
+
+  // Shuffle the 7 days and take 3–6 active days (mixes weekdays/weekends per teacher).
+  const days = [0, 1, 2, 3, 4, 5, 6];
+  for (let j = days.length - 1; j > 0; j--) {
+    const k = Math.floor(rng() * (j + 1));
+    [days[j], days[k]] = [days[k], days[j]];
   }
-  // Weekend (Sat=6, Sun=0) morning block.
-  const morningStart = 9 * 60 + (i % 3) * 30; // 09:00 / 09:30 / 10:00
-  for (const day of [6, 0]) {
-    for (let k = 0; k < 5; k++) {
-      const start = morningStart + k * 30;
-      if (start <= 1410) rows.push({ day_of_week: day, start_min: start });
+  const activeDays = days.slice(0, randInt(3, 6));
+
+  const seen = new Set();
+  const rows = [];
+  for (const day of activeDays) {
+    const blocks = randInt(1, 2); // 1–2 time windows that day
+    for (let b = 0; b < blocks; b++) {
+      const len = randInt(2, 8); // 2–8 slots = 1–4 hours
+      // Block start anywhere that still fits within the day's range.
+      const maxStart = LAST - (len - 1) * 30;
+      const steps = Math.floor((maxStart - FIRST) / 30);
+      const start = FIRST + randInt(0, Math.max(0, steps)) * 30;
+      for (let s = 0; s < len; s++) {
+        const min = start + s * 30;
+        if (min > LAST) break;
+        const key = `${day}-${min}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        rows.push({ day_of_week: day, start_min: min });
+      }
     }
   }
   return rows;

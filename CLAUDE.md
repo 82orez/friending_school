@@ -12,7 +12,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 - shadcn 추가: `npx shadcn@latest add <component>` (v4.7.0, `components.json` 따름)
 - DB: `db:new <name>`(마이그레이션 파일 생성) · `db:push`(원격 적용, **destructive**) · `db:list`(적용 이력 비교) · `db:diff`(`--linked`) · `db:types`(→ `src/types/database.types.ts`, 첫 실행 전 `mkdir -p src/types`)
 - lint/test 스크립트 없음(테스트 프레임워크 미설치). Supabase CLI는 `devDependencies`에 있어 `npx supabase ...` 사용.
-- **dev 시드**: `seed:teachers`(`scripts/seed-teachers.mjs`, service_role) — fake 강사 12명 생성(`auth.admin.createUser` email_confirm→`profiles` role=teacher 승격+필드+`app_metadata.role` 동기→`teacher_availability` 패턴 슬롯, avatar는 null). 이메일 `teacher-NN@seed.friendingschool.test`(공통 비번 `SeedTeacher!123`)로 식별, **멱등**(재실행=재사용+슬롯 교체). `seed:teachers:clean`=해당 도메인 계정 일괄 `deleteUser`(cascade). ⚠️ 원격/service_role이라 **사용자가 직접 실행**(Claude 403).
+- **dev 시드**: `seed:teachers`(`scripts/seed-teachers.mjs`, service_role) — fake 강사 12명 생성(`auth.admin.createUser` email_confirm→`profiles` role=teacher 승격+필드+`app_metadata.role` 동기→`teacher_availability` 강사별 무작위·결정적 슬롯, avatar는 null). 이메일 `teacher-NN@seed.friendingschool.test`(공통 비번 `SeedTeacher!123`)로 식별, **멱등**(재실행=재사용+슬롯 교체). `seed:teachers:clean`=해당 도메인 계정 일괄 `deleteUser`(cascade). ⚠️ 원격/service_role이라 **사용자가 직접 실행**(Claude 403).
 
 ## 아키텍처
 
