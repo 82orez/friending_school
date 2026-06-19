@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { approveTeacherApplication, rejectTeacherApplication, deleteTeacher } from "@/app/admin/actions";
 import { nationalityLabel } from "@/data/nationalities";
+import { genderLabelKo } from "@/data/genders";
 import TeacherInfoModal from "@/components/admin/TeacherInfoModal";
 import TeacherAvailabilityFinder from "@/components/admin/TeacherAvailabilityFinder";
 import {
@@ -26,6 +27,7 @@ export type TeacherApplication = {
   name: string;
   phone: string | null;
   nationality: string | null;
+  gender: string | null;
   email: string;
   bio: string;
   experience: string | null;
@@ -42,6 +44,7 @@ export type CurrentTeacher = {
   name: string;
   phone: string | null;
   nationality: string | null;
+  gender: string | null;
   bio: string | null;
   experience: string | null;
   zoomUrl: string | null;
@@ -282,6 +285,7 @@ function ApplicationRow({
           name: row.name,
           phone: row.phone,
           nationality: row.nationality,
+          gender: row.gender,
           bio: row.bio,
           experience: row.experience,
           zoomUrl: row.zoom_url,
@@ -353,6 +357,7 @@ function ApplicationRow({
               ["이메일", row.email],
               ["전화", row.phone],
               ["국적", nationalityLabel(row.nationality)],
+              ["성별", genderLabelKo(row.gender)],
               ["자기소개(Bio)", row.bio],
               ["경력", row.experience ?? "-"],
               ["Zoom URL", row.zoom_url ?? "-"],

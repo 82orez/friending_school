@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { cleanupOldAvatars, uploadAvatar } from "@/lib/avatar";
 import { updateTeacherAvatar, updateTeacherProfile, type TeacherActionState } from "@/app/teacher/actions";
 import { NATIONALITIES } from "@/data/nationalities";
+import { GENDERS } from "@/data/genders";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,7 @@ export type TeacherProfile = {
   experience: string;
   phone: string;
   nationality: string;
+  gender: string;
 };
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
@@ -38,15 +40,16 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
   const [experience, setExperience] = useState(initial.experience);
   const [phone, setPhone] = useState(initial.phone);
   const [nationality, setNationality] = useState(initial.nationality);
+  const [gender, setGender] = useState(initial.gender);
   const [zoomUrl, setZoomUrl] = useState(initial.zoom_url);
 
   // 보기/편집 모드 — 편집 모드에서만 Teacher Info 필드 수정 가능.
   const [editing, setEditing] = useState(false);
   // 편집 진입 시점 스냅샷(Cancel 시 복원).
-  const snapshotRef = useRef({ firstName, lastName, bio, experience, phone, nationality, zoomUrl });
+  const snapshotRef = useRef({ firstName, lastName, bio, experience, phone, nationality, gender, zoomUrl });
 
   const startEditing = () => {
-    snapshotRef.current = { firstName, lastName, bio, experience, phone, nationality, zoomUrl };
+    snapshotRef.current = { firstName, lastName, bio, experience, phone, nationality, gender, zoomUrl };
     setEditing(true);
   };
 
@@ -58,6 +61,7 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
     setExperience(s.experience);
     setPhone(s.phone);
     setNationality(s.nationality);
+    setGender(s.gender);
     setZoomUrl(s.zoomUrl);
     setEditing(false);
   };
@@ -276,6 +280,32 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
               {NATIONALITIES.map((n) => (
                 <option key={n.name} value={n.name}>
                   {n.flag} {n.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="gender">
+              Gender <span className="text-brand">*</span>
+            </Label>
+            <select
+              id="gender"
+              name="gender"
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              required
+              disabled={!editing}
+              className={cn(
+                "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
+                "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+                "disabled:text-ink disabled:opacity-100",
+              )}
+            >
+              <option value="">Select your gender</option>
+              {GENDERS.map((g) => (
+                <option key={g.value} value={g.value}>
+                  {g.en}
                 </option>
               ))}
             </select>

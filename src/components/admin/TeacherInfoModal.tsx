@@ -5,6 +5,7 @@ import Image from "next/image";
 import { X } from "lucide-react";
 import AvailabilityGrid from "@/components/teacher/AvailabilityGrid";
 import { nationalityLabel } from "@/data/nationalities";
+import { genderLabelKo } from "@/data/genders";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 
 // 아바타 미설정 시 폴백 이니셜(이름 우선, 없으면 이메일 앞글자).
@@ -94,6 +95,7 @@ export default function TeacherInfoModal({ teacher, onClose }: { teacher: Curren
                 ["이메일", teacher.email],
                 ["전화", teacher.phone ?? "-"],
                 ["국적", nationalityLabel(teacher.nationality)],
+                ["성별", genderLabelKo(teacher.gender)],
                 ["자기소개(Bio)", teacher.bio ?? "-"],
                 ["경력", teacher.experience ?? "-"],
                 ["Zoom URL", teacher.zoomUrl ?? "-"],

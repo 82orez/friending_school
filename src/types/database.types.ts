@@ -70,6 +70,7 @@ export type Database = {
           experience: string | null
           first_name: string | null
           full_name: string | null
+          gender: string | null
           id: string
           last_name: string | null
           nationality: string | null
@@ -85,6 +86,7 @@ export type Database = {
           experience?: string | null
           first_name?: string | null
           full_name?: string | null
+          gender?: string | null
           id: string
           last_name?: string | null
           nationality?: string | null
@@ -100,6 +102,7 @@ export type Database = {
           experience?: string | null
           first_name?: string | null
           full_name?: string | null
+          gender?: string | null
           id?: string
           last_name?: string | null
           nationality?: string | null
@@ -142,6 +145,7 @@ export type Database = {
           created_at: string
           experience: string | null
           first_name: string | null
+          gender: string | null
           id: string
           last_name: string | null
           name: string
@@ -159,6 +163,7 @@ export type Database = {
           created_at?: string
           experience?: string | null
           first_name?: string | null
+          gender?: string | null
           id?: string
           last_name?: string | null
           name: string
@@ -176,6 +181,7 @@ export type Database = {
           created_at?: string
           experience?: string | null
           first_name?: string | null
+          gender?: string | null
           id?: string
           last_name?: string | null
           name?: string

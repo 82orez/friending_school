@@ -11,7 +11,7 @@ export default async function AdminTeacherRequestsPage() {
 
   const { data: appsData } = await admin
     .from("teacher_applications")
-    .select("id, user_id, name, phone, nationality, bio, experience, zoom_url, avatar_url, status, admin_note, created_at")
+    .select("id, user_id, name, phone, nationality, gender, bio, experience, zoom_url, avatar_url, status, admin_note, created_at")
     .order("created_at", { ascending: false });
 
   const applications: TeacherApplication[] = ((appsData ?? []) as Omit<TeacherApplication, "email">[])
@@ -21,7 +21,7 @@ export default async function AdminTeacherRequestsPage() {
 
   const { data: teacherProfiles } = await admin
     .from("profiles")
-    .select("id, first_name, last_name, avatar_url, zoom_url, bio, experience, phone, nationality")
+    .select("id, first_name, last_name, avatar_url, zoom_url, bio, experience, phone, nationality, gender")
     .eq("role", "teacher");
 
   // 현재 강사 가용 시간 일괄 조회 후 teacher_id별 그룹핑.
@@ -47,6 +47,7 @@ export default async function AdminTeacherRequestsPage() {
       experience: string | null;
       phone: string | null;
       nationality: string | null;
+      gender: string | null;
     }[]
   ).map((p) => ({
     id: p.id,
@@ -54,6 +55,7 @@ export default async function AdminTeacherRequestsPage() {
     name: [p.first_name, p.last_name].filter(Boolean).join(" "),
     phone: p.phone,
     nationality: p.nationality,
+    gender: p.gender,
     bio: p.bio,
     experience: p.experience,
     zoomUrl: p.zoom_url,

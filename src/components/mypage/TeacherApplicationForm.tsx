@@ -6,6 +6,7 @@ import { Camera, Loader2, UserRound, Video } from "lucide-react";
 import { toast } from "sonner";
 import { cleanupOldAvatars, uploadAvatar } from "@/lib/avatar";
 import { NATIONALITIES, nationalityLabel } from "@/data/nationalities";
+import { GENDERS, genderLabelEn } from "@/data/genders";
 import { submitTeacherApplication, type TeacherApplyState } from "@/app/teacher/apply-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ export default function TeacherApplicationForm({
   initialPhone,
   initialAvatarUrl,
   initialNationality = "",
+  initialGender = "",
   initialBio = "",
   initialExperience = "",
   initialZoomUrl = "",
@@ -44,6 +46,7 @@ export default function TeacherApplicationForm({
   initialPhone: string;
   initialAvatarUrl: string;
   initialNationality?: string;
+  initialGender?: string;
   initialBio?: string;
   initialExperience?: string;
   initialZoomUrl?: string;
@@ -53,6 +56,7 @@ export default function TeacherApplicationForm({
   const [lastName, setLastName] = useState(initialLastName);
   const [phone, setPhone] = useState(initialPhone);
   const [nationality, setNationality] = useState(initialNationality);
+  const [gender, setGender] = useState(initialGender);
   const [bio, setBio] = useState(initialBio);
   const [experience, setExperience] = useState(initialExperience);
   const [zoomUrl, setZoomUrl] = useState(initialZoomUrl);
@@ -230,6 +234,28 @@ export default function TeacherApplicationForm({
       </div>
 
       <div className="grid gap-1.5">
+        <Label htmlFor="ta-gender">
+          Gender <span className="text-brand">*</span>
+        </Label>
+        <select
+          id="ta-gender"
+          name="gender"
+          required
+          value={gender}
+          onChange={(e) => setGender(e.target.value)}
+          aria-invalid={!!state.error && !gender}
+          className="border-rule-faint focus:border-accent-blue h-11 w-full rounded-md border bg-white px-3.5 text-base outline-none"
+        >
+          <option value="">Select your gender</option>
+          {GENDERS.map((g) => (
+            <option key={g.value} value={g.value}>
+              {g.en}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="grid gap-1.5">
         <Label htmlFor="ta-bio">
           About / Bio <span className="text-brand">*</span>
         </Label>
@@ -306,6 +332,7 @@ export default function TeacherApplicationForm({
               ["Last name", lastName],
               ["Phone", phone || "(not provided)"],
               ["Nationality", nationalityLabel(nationality)],
+              ["Gender", genderLabelEn(gender)],
               ["Bio", bio],
               ["Experience", experience],
               ["Zoom URL", zoomUrl],

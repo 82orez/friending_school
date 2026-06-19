@@ -9,6 +9,7 @@ import { getAdminEmails } from "@/utils/supabase/admin";
 import { sendTeacherApplicationNotification } from "@/lib/mailer";
 import { isValidZoomUrl } from "@/lib/url";
 import { NATIONALITY_NAMES } from "@/data/nationalities";
+import { GENDER_VALUES } from "@/data/genders";
 
 export type TeacherApplyState = { error?: string; success?: boolean };
 
@@ -20,6 +21,7 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
   const name = [firstName, lastName].filter(Boolean).join(" ");
   const phone = String(formData.get("phone") ?? "").trim();
   const nationality = String(formData.get("nationality") ?? "").trim();
+  const gender = String(formData.get("gender") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
   const experience = String(formData.get("experience") ?? "").trim();
   const zoomUrl = String(formData.get("zoom_url") ?? "").trim();
@@ -37,6 +39,7 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
   if (!firstName || !lastName) return { error: "Please enter both your first and last name." };
   if (phone && !/^[0-9\-\s]{7,}$/.test(phone)) return { error: "Please enter a valid phone number." };
   if (!NATIONALITY_NAMES.includes(nationality)) return { error: "Please select your nationality." };
+  if (!GENDER_VALUES.includes(gender)) return { error: "Please select your gender." };
   if (bio.length < 10) return { error: "Please write at least 10 characters for your bio." };
   if (!experience) return { error: "Please enter your teaching and related experience." };
   if (!isValidZoomUrl(zoomUrl)) return { error: "Please enter a valid Zoom URL. (must start with http:// or https://)" };
@@ -59,6 +62,7 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
     last_name: lastName,
     phone: phone || null,
     nationality,
+    gender,
     bio,
     experience,
     zoom_url: zoomUrl,
