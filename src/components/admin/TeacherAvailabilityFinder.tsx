@@ -15,16 +15,28 @@ const SLOT_MIN = 30;
 
 const START_OPTIONS: number[] = []; // 360 ~ 1410
 for (let m = START_MIN; m < END_MIN; m += SLOT_MIN) START_OPTIONS.push(m);
-const END_OPTIONS: number[] = []; // 390 ~ 1440
-for (let m = START_MIN + SLOT_MIN; m <= END_MIN; m += SLOT_MIN) END_OPTIONS.push(m);
+
+// 수업 횟수 — 1회=30분, 1~8회(30분~4시간).
+const MAX_COUNT = 8;
+const COUNT_OPTIONS: number[] = [];
+for (let n = 1; n <= MAX_COUNT; n++) COUNT_OPTIONS.push(n);
 
 const fmtTime = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 const slotKey = (day: number, min: number) => `${day}-${min}`;
 
+// 분 → 한국어 길이 표기(30분 / 1시간 / 1시간 30분).
+const formatDuration = (min: number) => {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m}분`;
+  if (m === 0) return `${h}시간`;
+  return `${h}시간 ${m}분`;
+};
+
 export default function TeacherAvailabilityFinder({ teachers, onView }: { teachers: CurrentTeacher[]; onView: (t: CurrentTeacher) => void }) {
   const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set());
   const [startMin, setStartMin] = useState(9 * 60); // 09:00
-  const [endMin, setEndMin] = useState(10 * 60); // 10:00
+  const [count, setCount] = useState(1); // 수업 횟수 (1회=30분)
 
   const toggleDay = (day: number) =>
     setSelectedDays((prev) => {
@@ -34,8 +46,19 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
       return next;
     });
 
-  const rangeValid = endMin > startMin;
-  const inputReady = selectedDays.size > 0 && rangeValid;
+  // 종료시각은 시작 + 횟수×30분으로 자동 계산. 종료가 24:00을 넘지 않도록 시작 옵션을 제한.
+  const endMin = startMin + count * SLOT_MIN;
+  const maxStartMin = END_MIN - count * SLOT_MIN;
+  const validStartOptions = START_OPTIONS.filter((m) => m <= maxStartMin);
+
+  // 수업 횟수 변경 시 종료가 24:00을 넘으면 시작을 가능한 마지막 슬롯으로 당김.
+  const handleCountChange = (next: number) => {
+    setCount(next);
+    const nextMaxStart = END_MIN - next * SLOT_MIN;
+    if (startMin > nextMaxStart) setStartMin(nextMaxStart);
+  };
+
+  const inputReady = selectedDays.size > 0;
 
   const matches = useMemo(() => {
     if (!inputReady) return [];
@@ -53,7 +76,9 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
   return (
     <div className="border-rule rounded-xl border bg-white p-5">
       <h2 className="text-ink text-lg font-extrabold">수업 가능 시간으로 강사 찾기</h2>
-      <p className="text-muted-fg mt-1 text-sm">원하는 요일과 시간대를 선택하면, 해당 시간 전체가 비어 있는 강사를 보여줍니다. (30분 단위)</p>
+      <p className="text-muted-fg mt-1 text-sm">
+        원하는 요일·요일당 수업 횟수·시작 시간을 선택하면, 해당 시간 전체가 비어 있는 강사를 보여줍니다. (1회 = 30분, 종료 시각 자동 계산)
+      </p>
 
       {/* 요일 선택 */}
       <div className="mt-4">
@@ -70,7 +95,8 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
                 className={cn(
                   "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
                   on ? "bg-ink border-ink text-white" : "border-rule text-muted-fg bg-white",
-                )}>
+                )}
+              >
                 {DAY_LABELS[i]}
               </button>
             );
@@ -78,15 +104,30 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
         </div>
       </div>
 
-      {/* 시간 범위 */}
+      {/* 수업 횟수 + 시작 시간 → 종료 자동 계산 */}
       <div className="mt-4 flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-muted-fg-faint text-xs font-semibold">요일당 수업 횟수</span>
+          <select
+            value={count}
+            onChange={(e) => handleCountChange(Number(e.target.value))}
+            className="border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none"
+          >
+            {COUNT_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}회 ({formatDuration(n * SLOT_MIN)})
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="flex flex-col gap-1">
           <span className="text-muted-fg-faint text-xs font-semibold">시작</span>
           <select
             value={startMin}
             onChange={(e) => setStartMin(Number(e.target.value))}
-            className="border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none">
-            {START_OPTIONS.map((m) => (
+            className="border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none"
+          >
+            {validStartOptions.map((m) => (
               <option key={m} value={m}>
                 {fmtTime(m)}
               </option>
@@ -94,21 +135,14 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
           </select>
         </label>
         <span className="text-muted-fg-faint pb-2.5 text-sm">~</span>
-        <label className="flex flex-col gap-1">
-          <span className="text-muted-fg-faint text-xs font-semibold">종료</span>
-          <select
-            value={endMin}
-            onChange={(e) => setEndMin(Number(e.target.value))}
-            className="border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none">
-            {END_OPTIONS.map((m) => (
-              <option key={m} value={m}>
-                {fmtTime(m)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-col gap-1">
+          <span className="text-muted-fg-faint text-xs font-semibold">종료 (자동)</span>
+          <div className="border-rule bg-surface text-ink flex h-10 items-center rounded-md border px-3 text-sm font-medium">{fmtTime(endMin)}</div>
+        </div>
       </div>
-      {!rangeValid && <p className="text-brand mt-2 text-xs">종료 시각은 시작 시각보다 뒤여야 합니다.</p>}
+      <p className="text-muted-fg-faint mt-2 text-xs">
+        총 {formatDuration(count * SLOT_MIN)} · {fmtTime(startMin)} ~ {fmtTime(endMin)}
+      </p>
 
       {/* 결과 */}
       <div className="mt-5">
@@ -129,7 +163,8 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
                   <button
                     type="button"
                     onClick={() => onView(t)}
-                    className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
+                    className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
+                  >
                     정보 보기
                   </button>
                 </li>
