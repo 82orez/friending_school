@@ -48,6 +48,8 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
 
 // --- fake teacher roster (mostly native-speaker names + a couple of Korean) ---
+// nationality는 저장 키(한국어 국가명, src/data/nationalities.ts와 일치), gender는 코드(male/female).
+// 9개국 전부 + 양 성별을 골고루 커버해 admin/강사 화면 표시를 검증할 수 있게 분산.
 const TEACHERS = [
   {
     firstName: "Sarah",
@@ -55,6 +57,8 @@ const TEACHERS = [
     bio: "Certified TEFL instructor from Sydney with a love for conversational, real-world English.",
     experience: "5 years teaching ESL across Australia and online.",
     phone: "010-2000-0001",
+    nationality: "호주",
+    gender: "female",
   },
   {
     firstName: "Michael",
@@ -62,6 +66,8 @@ const TEACHERS = [
     bio: "Friendly Canadian tutor focused on pronunciation and natural everyday speaking.",
     experience: "7 years of one-on-one and group lessons.",
     phone: "010-2000-0002",
+    nationality: "캐나다",
+    gender: "male",
   },
   {
     firstName: "Emily",
@@ -69,6 +75,8 @@ const TEACHERS = [
     bio: "I help learners build confidence for working holidays and job interviews abroad.",
     experience: "4 years specializing in business and travel English.",
     phone: "010-2000-0003",
+    nationality: "필리핀",
+    gender: "female",
   },
   {
     firstName: "James",
@@ -76,6 +84,8 @@ const TEACHERS = [
     bio: "Patient teacher from London who makes grammar simple and practical.",
     experience: "8 years teaching grammar and writing.",
     phone: "010-2000-0004",
+    nationality: "영국",
+    gender: "male",
   },
   {
     firstName: "Olivia",
@@ -83,6 +93,8 @@ const TEACHERS = [
     bio: "Enthusiastic about kitchen and hospitality English for cafe and restaurant work.",
     experience: "3 years coaching hospitality staff.",
     phone: "010-2000-0005",
+    nationality: "뉴질랜드",
+    gender: "female",
   },
   {
     firstName: "Daniel",
@@ -90,6 +102,8 @@ const TEACHERS = [
     bio: "Bilingual tutor who keeps lessons fun, relaxed, and goal-oriented.",
     experience: "6 years of conversation-focused teaching.",
     phone: "010-2000-0006",
+    nationality: "미국",
+    gender: "male",
   },
   {
     firstName: "Sophia",
@@ -97,6 +111,8 @@ const TEACHERS = [
     bio: "Specializing in cosmetics and beauty-industry English for overseas careers.",
     experience: "5 years in beauty-sector English coaching.",
     phone: "010-2000-0007",
+    nationality: "아일랜드",
+    gender: "female",
   },
   {
     firstName: "William",
@@ -104,6 +120,8 @@ const TEACHERS = [
     bio: "Down-to-earth instructor helping students prepare for life abroad.",
     experience: "9 years teaching across three countries.",
     phone: "010-2000-0008",
+    nationality: "남아프리카 공화국",
+    gender: "male",
   },
   {
     firstName: "Jessica",
@@ -111,6 +129,8 @@ const TEACHERS = [
     bio: "I focus on fluency and listening so you can keep up in fast conversations.",
     experience: "4 years of immersive speaking classes.",
     phone: "010-2000-0009",
+    nationality: "캐나다",
+    gender: "female",
   },
   {
     firstName: "Ethan",
@@ -118,6 +138,8 @@ const TEACHERS = [
     bio: "Easygoing American tutor who tailors every lesson to your goals.",
     experience: "6 years online and in-person teaching.",
     phone: "010-2000-0010",
+    nationality: "미국",
+    gender: "male",
   },
   {
     firstName: "Jiwoo",
@@ -125,6 +147,8 @@ const TEACHERS = [
     bio: "Korean-English bilingual coach bridging the gap for first-time travelers.",
     experience: "5 years guiding Korean learners abroad.",
     phone: "010-2000-0011",
+    nationality: "대한민국",
+    gender: "female",
   },
   {
     firstName: "Minjun",
@@ -132,6 +156,8 @@ const TEACHERS = [
     bio: "I make speaking practice approachable, especially for nervous beginners.",
     experience: "4 years of beginner conversation classes.",
     phone: "010-2000-0012",
+    nationality: "대한민국",
+    gender: "male",
   },
 ];
 
@@ -232,6 +258,8 @@ async function seedOne(i) {
       experience: t.experience,
       zoom_url: zoomFor(i),
       phone: t.phone,
+      nationality: t.nationality,
+      gender: t.gender,
     })
     .eq("id", userId);
   if (profErr) throw profErr;
