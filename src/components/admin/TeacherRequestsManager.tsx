@@ -193,35 +193,55 @@ export default function TeacherRequestsManager({
       {/* 현재 강사 */}
       <h2 className="text-ink mt-10 text-lg font-extrabold">현재 강사</h2>
       <p className="text-muted-fg mt-1 text-sm">강사를 삭제하면 계정과 모든 데이터가 영구 삭제되며 되돌릴 수 없습니다.</p>
-      <div className="border-rule mt-4 overflow-hidden rounded-xl border bg-white">
+      <div className="border-rule mt-4 overflow-x-auto rounded-xl border bg-white">
         {teachers.length === 0 ? (
           <p className="text-muted-fg px-6 py-12 text-center text-sm">현재 강사가 없습니다.</p>
         ) : (
-          <ul className="list-none">
-            {teachers.map((t) => (
-              <li key={t.id} className="border-rule flex items-center gap-3 border-b px-4 py-3.5 last:border-b-0 md:px-6">
-                <div className="min-w-0 flex-1">
-                  <p className="text-ink truncate text-sm font-bold">{t.name || t.email}</p>
-                  {t.name && <p className="text-muted-fg truncate text-xs">{t.email}</p>}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setInfoTarget(t)}
-                  className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
-                >
-                  정보 보기
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteTarget(t)}
-                  disabled={deleting}
-                  className="border-brand/40 text-brand hover:bg-brand/5 shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60"
-                >
-                  강사 삭제
-                </button>
-              </li>
-            ))}
-          </ul>
+          <table className="w-full min-w-[640px] border-collapse text-sm">
+            <thead>
+              <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
+                <th className="px-4 py-2.5 md:px-6">이름</th>
+                <th className="px-4 py-2.5">센터</th>
+                <th className="px-4 py-2.5">국적</th>
+                <th className="px-4 py-2.5">성별</th>
+                <th className="px-4 py-2.5 text-right md:px-6">
+                  <span className="sr-only">관리</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {teachers.map((t) => (
+                <tr key={t.id} className="border-rule border-b last:border-b-0">
+                  <td className="px-4 py-3.5 align-middle md:px-6">
+                    <p className="text-ink font-bold">{t.name || t.email}</p>
+                    {t.name && <p className="text-muted-fg text-xs">{t.email}</p>}
+                  </td>
+                  <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{t.centerName ?? "None"}</td>
+                  <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{nationalityLabel(t.nationality)}</td>
+                  <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{genderLabelKo(t.gender)}</td>
+                  <td className="px-4 py-3.5 align-middle md:px-6">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setInfoTarget(t)}
+                        className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
+                      >
+                        정보 보기
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteTarget(t)}
+                        disabled={deleting}
+                        className="border-brand/40 text-brand hover:bg-brand/5 shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60"
+                      >
+                        강사 삭제
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
