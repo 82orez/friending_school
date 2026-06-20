@@ -96,6 +96,7 @@ export default function TeacherInfoModal({ teacher, onClose }: { teacher: Curren
                 ["전화", teacher.phone ?? "-"],
                 ["국적", nationalityLabel(teacher.nationality)],
                 ["성별", genderLabelKo(teacher.gender)],
+                ["센터", teacher.centerName ?? "None"],
                 ["자기소개(Bio)", teacher.bio ?? "-"],
                 ["경력", teacher.experience ?? "-"],
                 ["Zoom URL", teacher.zoomUrl ?? "-"],

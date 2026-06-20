@@ -9,19 +9,29 @@ export default async function AdminTeacherRequestsPage() {
   const { data: usersData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   const emailById = new Map((usersData?.users ?? []).map((u) => [u.id, u.email ?? "(이메일 없음)"]));
 
+  // 센터 id→이름 매핑(신청서·프로필의 center_id 표시용).
+  const { data: centersData } = await admin.from("centers").select("id, name");
+  const centerNameById = new Map(((centersData ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]));
+
   const { data: appsData } = await admin
     .from("teacher_applications")
-    .select("id, user_id, name, phone, nationality, gender, bio, experience, zoom_url, avatar_url, status, admin_note, created_at")
+    .select("id, user_id, name, phone, nationality, gender, center_id, bio, experience, zoom_url, avatar_url, status, admin_note, created_at")
     .order("created_at", { ascending: false });
 
-  const applications: TeacherApplication[] = ((appsData ?? []) as Omit<TeacherApplication, "email">[])
-    .map((a) => ({ ...a, email: emailById.get(a.user_id) ?? "(이메일 없음)" }))
+  const applications: TeacherApplication[] = (
+    (appsData ?? []) as (Omit<TeacherApplication, "email" | "center_name"> & { center_id: string | null })[]
+  )
+    .map((a) => ({
+      ...a,
+      email: emailById.get(a.user_id) ?? "(이메일 없음)",
+      center_name: a.center_id ? (centerNameById.get(a.center_id) ?? null) : null,
+    }))
     // 신청(미처리) → 거절 → 승인 순, 같은 그룹 내 최신순(원본이 created desc)
     .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
 
   const { data: teacherProfiles } = await admin
     .from("profiles")
-    .select("id, first_name, last_name, avatar_url, zoom_url, bio, experience, phone, nationality, gender")
+    .select("id, first_name, last_name, avatar_url, zoom_url, bio, experience, phone, nationality, gender, center_id")
     .eq("role", "teacher");
 
   // 현재 강사 가용 시간 일괄 조회 후 teacher_id별 그룹핑.
@@ -48,6 +58,7 @@ export default async function AdminTeacherRequestsPage() {
       phone: string | null;
       nationality: string | null;
       gender: string | null;
+      center_id: string | null;
     }[]
   ).map((p) => ({
     id: p.id,
@@ -56,6 +67,7 @@ export default async function AdminTeacherRequestsPage() {
     phone: p.phone,
     nationality: p.nationality,
     gender: p.gender,
+    centerName: p.center_id ? (centerNameById.get(p.center_id) ?? null) : null,
     bio: p.bio,
     experience: p.experience,
     zoomUrl: p.zoom_url,

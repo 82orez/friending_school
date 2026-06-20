@@ -49,7 +49,8 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistS
 
 // --- fake teacher roster (mostly native-speaker names + a couple of Korean) ---
 // nationality는 저장 키(한국어 국가명, src/data/nationalities.ts와 일치), gender는 코드(male/female).
-// 9개국 전부 + 양 성별을 골고루 커버해 admin/강사 화면 표시를 검증할 수 있게 분산.
+// center는 센터 이름(Lani/Sebu/null) — seed() 시작 시 centers 테이블에서 id로 resolve. null=미지정(None).
+// 9개국 전부 + 양 성별 + Lani/Sebu/None을 골고루 커버해 admin/강사 화면 표시를 검증할 수 있게 분산.
 const TEACHERS = [
   {
     firstName: "Sarah",
@@ -59,6 +60,7 @@ const TEACHERS = [
     phone: "010-2000-0001",
     nationality: "호주",
     gender: "female",
+    center: "Lani",
   },
   {
     firstName: "Michael",
@@ -68,6 +70,7 @@ const TEACHERS = [
     phone: "010-2000-0002",
     nationality: "캐나다",
     gender: "male",
+    center: "Sebu",
   },
   {
     firstName: "Emily",
@@ -77,6 +80,7 @@ const TEACHERS = [
     phone: "010-2000-0003",
     nationality: "필리핀",
     gender: "female",
+    center: "Lani",
   },
   {
     firstName: "James",
@@ -86,6 +90,7 @@ const TEACHERS = [
     phone: "010-2000-0004",
     nationality: "영국",
     gender: "male",
+    center: "Sebu",
   },
   {
     firstName: "Olivia",
@@ -95,6 +100,7 @@ const TEACHERS = [
     phone: "010-2000-0005",
     nationality: "뉴질랜드",
     gender: "female",
+    center: "Lani",
   },
   {
     firstName: "Daniel",
@@ -104,6 +110,7 @@ const TEACHERS = [
     phone: "010-2000-0006",
     nationality: "미국",
     gender: "male",
+    center: "Sebu",
   },
   {
     firstName: "Sophia",
@@ -113,6 +120,7 @@ const TEACHERS = [
     phone: "010-2000-0007",
     nationality: "아일랜드",
     gender: "female",
+    center: "Lani",
   },
   {
     firstName: "William",
@@ -122,6 +130,7 @@ const TEACHERS = [
     phone: "010-2000-0008",
     nationality: "남아프리카 공화국",
     gender: "male",
+    center: null,
   },
   {
     firstName: "Jessica",
@@ -131,6 +140,7 @@ const TEACHERS = [
     phone: "010-2000-0009",
     nationality: "캐나다",
     gender: "female",
+    center: "Sebu",
   },
   {
     firstName: "Ethan",
@@ -140,6 +150,7 @@ const TEACHERS = [
     phone: "010-2000-0010",
     nationality: "미국",
     gender: "male",
+    center: "Lani",
   },
   {
     firstName: "Jiwoo",
@@ -149,6 +160,7 @@ const TEACHERS = [
     phone: "010-2000-0011",
     nationality: "대한민국",
     gender: "female",
+    center: "Sebu",
   },
   {
     firstName: "Minjun",
@@ -158,6 +170,7 @@ const TEACHERS = [
     phone: "010-2000-0012",
     nationality: "대한민국",
     gender: "male",
+    center: null,
   },
 ];
 
@@ -228,6 +241,9 @@ function slotsForTeacher(i) {
   return rows;
 }
 
+// 센터 이름 → id 매핑 (seed() 시작 시 1회 채움). 마이그레이션 시드(Lani/Sebu) 기준.
+let centerIdByName = new Map();
+
 async function seedOne(i) {
   const email = emailFor(i);
   const t = TEACHERS[i];
@@ -260,6 +276,7 @@ async function seedOne(i) {
       phone: t.phone,
       nationality: t.nationality,
       gender: t.gender,
+      center_id: t.center ? (centerIdByName.get(t.center) ?? null) : null,
     })
     .eq("id", userId);
   if (profErr) throw profErr;
@@ -282,6 +299,9 @@ async function seedOne(i) {
 
 async function seed() {
   console.log(`Seeding ${TEACHERS.length} fake teachers (@${FAKE_DOMAIN})...`);
+  // 센터 이름→id 매핑 채우기 (없으면 모든 teacher center=null).
+  const { data: centerRows } = await supabase.from("centers").select("id, name");
+  centerIdByName = new Map((centerRows ?? []).map((c) => [c.name, c.id]));
   for (let i = 0; i < TEACHERS.length; i++) {
     try {
       await seedOne(i);

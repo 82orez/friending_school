@@ -62,10 +62,35 @@ export type Database = {
         }
         Relationships: []
       }
+      centers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           bio: string | null
+          center_id: string | null
           created_at: string
           experience: string | null
           first_name: string | null
@@ -82,6 +107,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
+          center_id?: string | null
           created_at?: string
           experience?: string | null
           first_name?: string | null
@@ -98,6 +124,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bio?: string | null
+          center_id?: string | null
           created_at?: string
           experience?: string | null
           first_name?: string | null
@@ -111,7 +138,15 @@ export type Database = {
           updated_at?: string
           zoom_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reading_progress: {
         Row: {
@@ -142,6 +177,7 @@ export type Database = {
           admin_note: string | null
           avatar_url: string | null
           bio: string
+          center_id: string | null
           created_at: string
           experience: string | null
           first_name: string | null
@@ -160,6 +196,7 @@ export type Database = {
           admin_note?: string | null
           avatar_url?: string | null
           bio: string
+          center_id?: string | null
           created_at?: string
           experience?: string | null
           first_name?: string | null
@@ -178,6 +215,7 @@ export type Database = {
           admin_note?: string | null
           avatar_url?: string | null
           bio?: string
+          center_id?: string | null
           created_at?: string
           experience?: string | null
           first_name?: string | null
@@ -192,7 +230,15 @@ export type Database = {
           user_id?: string
           zoom_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "teacher_applications_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       teacher_availability: {
         Row: {

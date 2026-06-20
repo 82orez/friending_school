@@ -111,6 +111,59 @@ export async function deleteYoutubeVideo(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+/* ===== 센터 관리 ===== */
+
+// 센터 추가/수정/삭제 시 드롭다운·표시가 쓰이는 경로를 함께 갱신.
+function revalidateCenterConsumers() {
+  revalidatePath("/admin/centers");
+  revalidatePath("/teacher/apply");
+  revalidatePath("/teacher");
+  revalidatePath("/admin/teacher-requests");
+}
+
+export async function addCenter(name: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const clean = name?.trim();
+  if (!clean) return { ok: false, error: "센터 이름은 필수입니다." };
+
+  const admin = createAdminClient();
+  // 새 센터는 목록 끝으로 (sort_order 자동 증가).
+  const { data: maxRow } = await admin.from("centers").select("sort_order").order("sort_order", { ascending: false }).limit(1).maybeSingle();
+  const nextOrder = ((maxRow as { sort_order?: number } | null)?.sort_order ?? 0) + 1;
+
+  const { error } = await admin.from("centers").insert({ name: clean, sort_order: nextOrder });
+  if (error) return { ok: false, error: "등록 중 오류가 발생했습니다." };
+
+  revalidateCenterConsumers();
+  return { ok: true };
+}
+
+export async function updateCenter(id: string, name: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const clean = name?.trim();
+  if (!id || !clean) return { ok: false, error: "센터 이름은 필수입니다." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("centers").update({ name: clean }).eq("id", id);
+  if (error) return { ok: false, error: "수정 중 오류가 발생했습니다." };
+
+  revalidateCenterConsumers();
+  return { ok: true };
+}
+
+export async function deleteCenter(id: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  // FK on delete set null이라 참조 중인 강사 신청서·프로필은 자동으로 center_id가 비워짐("None").
+  const admin = createAdminClient();
+  const { error } = await admin.from("centers").delete().eq("id", id);
+  if (error) return { ok: false, error: "삭제 중 오류가 발생했습니다." };
+
+  revalidateCenterConsumers();
+  return { ok: true };
+}
+
 /* ===== 강사 삭제 ===== */
 
 // 강사 계정 전체 삭제 (teacher-requests "현재 강사" 목록에서 호출). 되돌리기(→student)는 데이터가 지저분해져 폐지.
@@ -148,10 +201,7 @@ export async function deleteTeacher(userId: string): Promise<ActionResult> {
 /* ===== 강사 지원 관리 ===== */
 
 // 지원자 이메일 + 이름 조회 (알림 메일용). 실패 시 null.
-async function getApplicantContact(
-  admin: ReturnType<typeof createAdminClient>,
-  appId: string,
-): Promise<{ email: string; name: string } | null> {
+async function getApplicantContact(admin: ReturnType<typeof createAdminClient>, appId: string): Promise<{ email: string; name: string } | null> {
   const { data: app } = await admin.from("teacher_applications").select("user_id, name").eq("id", appId).maybeSingle();
   const row = app as { user_id: string; name: string } | null;
   if (!row) return null;

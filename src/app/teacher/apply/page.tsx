@@ -18,6 +18,7 @@ type TeacherApplicationRow = {
   phone: string | null;
   nationality: string | null;
   gender: string | null;
+  center_id: string | null;
   bio: string;
   experience: string | null;
   zoom_url: string | null;
@@ -60,14 +61,21 @@ export default async function TeacherApplyPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("first_name, last_name, phone, nationality, gender, avatar_url")
+    .select("first_name, last_name, phone, nationality, gender, center_id, avatar_url")
     .eq("id", user.id)
     .maybeSingle();
+
+  // 센터 목록(드롭다운·이름 표시).
+  const { data: centersData } = await supabase.from("centers").select("id, name").order("sort_order", { ascending: true });
+  const centers = (centersData ?? []) as { id: string; name: string }[];
+  const centerNameById = new Map(centers.map((c) => [c.id, c.name]));
 
   // 본인 최신 지원 1건 조회.
   const { data: taData } = await supabase
     .from("teacher_applications")
-    .select("id, name, first_name, last_name, phone, nationality, gender, bio, experience, zoom_url, avatar_url, status, admin_note, created_at")
+    .select(
+      "id, name, first_name, last_name, phone, nationality, gender, center_id, bio, experience, zoom_url, avatar_url, status, admin_note, created_at",
+    )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -113,6 +121,7 @@ export default async function TeacherApplyPage() {
                     ["Phone", teacherApp.phone ?? "-"],
                     ["Nationality", nationalityLabelEn(teacherApp.nationality)],
                     ["Gender", genderLabelEn(teacherApp.gender)],
+                    ["Center", teacherApp.center_id ? (centerNameById.get(teacherApp.center_id) ?? "None") : "None"],
                     ["Bio", teacherApp.bio],
                     ["Experience", teacherApp.experience ?? "-"],
                     ["Zoom URL", teacherApp.zoom_url ?? "-"],
@@ -147,6 +156,8 @@ export default async function TeacherApplyPage() {
                   initialPhone={teacherApp?.phone ?? profile?.phone ?? ""}
                   initialNationality={teacherApp?.nationality ?? profile?.nationality ?? ""}
                   initialGender={teacherApp?.gender ?? profile?.gender ?? ""}
+                  initialCenterId={teacherApp?.center_id ?? profile?.center_id ?? ""}
+                  centers={centers}
                   initialAvatarUrl={teacherApp?.avatar_url ?? profile?.avatar_url ?? ""}
                   initialBio={teacherApp?.bio ?? ""}
                   initialExperience={teacherApp?.experience ?? ""}

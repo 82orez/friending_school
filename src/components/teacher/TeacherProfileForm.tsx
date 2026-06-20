@@ -24,6 +24,7 @@ export type TeacherProfile = {
   phone: string;
   nationality: string;
   gender: string;
+  center_id: string;
 };
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
@@ -31,7 +32,17 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 // 보기 모드(disabled)에서 값이 흐려지지 않도록 텍스트를 진하게(disabled: 변형은 편집 모드엔 미적용).
 const VIEW_TEXT = "disabled:opacity-100 disabled:text-ink";
 
-export default function TeacherProfileForm({ userId, email, initial }: { userId: string; email: string; initial: TeacherProfile }) {
+export default function TeacherProfileForm({
+  userId,
+  email,
+  initial,
+  centers,
+}: {
+  userId: string;
+  email: string;
+  initial: TeacherProfile;
+  centers: { id: string; name: string }[];
+}) {
   // 텍스트 폼 (useActionState)
   const [state, formAction, pending] = useActionState<TeacherActionState, FormData>(updateTeacherProfile, {});
   const [firstName, setFirstName] = useState(initial.first_name);
@@ -41,15 +52,16 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
   const [phone, setPhone] = useState(initial.phone);
   const [nationality, setNationality] = useState(initial.nationality);
   const [gender, setGender] = useState(initial.gender);
+  const [centerId, setCenterId] = useState(initial.center_id);
   const [zoomUrl, setZoomUrl] = useState(initial.zoom_url);
 
   // 보기/편집 모드 — 편집 모드에서만 Teacher Info 필드 수정 가능.
   const [editing, setEditing] = useState(false);
   // 편집 진입 시점 스냅샷(Cancel 시 복원).
-  const snapshotRef = useRef({ firstName, lastName, bio, experience, phone, nationality, gender, zoomUrl });
+  const snapshotRef = useRef({ firstName, lastName, bio, experience, phone, nationality, gender, centerId, zoomUrl });
 
   const startEditing = () => {
-    snapshotRef.current = { firstName, lastName, bio, experience, phone, nationality, gender, zoomUrl };
+    snapshotRef.current = { firstName, lastName, bio, experience, phone, nationality, gender, centerId, zoomUrl };
     setEditing(true);
   };
 
@@ -62,6 +74,7 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
     setPhone(s.phone);
     setNationality(s.nationality);
     setGender(s.gender);
+    setCenterId(s.centerId);
     setZoomUrl(s.zoomUrl);
     setEditing(false);
   };
@@ -306,6 +319,29 @@ export default function TeacherProfileForm({ userId, email, initial }: { userId:
               {GENDERS.map((g) => (
                 <option key={g.value} value={g.value}>
                   {g.en}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="center_id">Center</Label>
+            <select
+              id="center_id"
+              name="center_id"
+              value={centerId}
+              onChange={(e) => setCenterId(e.target.value)}
+              disabled={!editing}
+              className={cn(
+                "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
+                "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
+                "disabled:text-ink disabled:opacity-100",
+              )}
+            >
+              <option value="">None</option>
+              {centers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>

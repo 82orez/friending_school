@@ -28,6 +28,7 @@ export type TeacherApplication = {
   phone: string | null;
   nationality: string | null;
   gender: string | null;
+  center_name: string | null;
   email: string;
   bio: string;
   experience: string | null;
@@ -45,6 +46,7 @@ export type CurrentTeacher = {
   phone: string | null;
   nationality: string | null;
   gender: string | null;
+  centerName: string | null;
   bio: string | null;
   experience: string | null;
   zoomUrl: string | null;
@@ -286,6 +288,7 @@ function ApplicationRow({
           phone: row.phone,
           nationality: row.nationality,
           gender: row.gender,
+          centerName: row.center_name,
           bio: row.bio,
           experience: row.experience,
           zoomUrl: row.zoom_url,
@@ -358,6 +361,7 @@ function ApplicationRow({
               ["전화", row.phone],
               ["국적", nationalityLabel(row.nationality)],
               ["성별", genderLabelKo(row.gender)],
+              ["센터", row.center_name ?? "None"],
               ["자기소개(Bio)", row.bio],
               ["경력", row.experience ?? "-"],
               ["Zoom URL", row.zoom_url ?? "-"],

@@ -36,6 +36,8 @@ export default function TeacherApplicationForm({
   initialAvatarUrl,
   initialNationality = "",
   initialGender = "",
+  initialCenterId = "",
+  centers,
   initialBio = "",
   initialExperience = "",
   initialZoomUrl = "",
@@ -47,6 +49,8 @@ export default function TeacherApplicationForm({
   initialAvatarUrl: string;
   initialNationality?: string;
   initialGender?: string;
+  initialCenterId?: string;
+  centers: { id: string; name: string }[];
   initialBio?: string;
   initialExperience?: string;
   initialZoomUrl?: string;
@@ -57,6 +61,7 @@ export default function TeacherApplicationForm({
   const [phone, setPhone] = useState(initialPhone);
   const [nationality, setNationality] = useState(initialNationality);
   const [gender, setGender] = useState(initialGender);
+  const [centerId, setCenterId] = useState(initialCenterId);
   const [bio, setBio] = useState(initialBio);
   const [experience, setExperience] = useState(initialExperience);
   const [zoomUrl, setZoomUrl] = useState(initialZoomUrl);
@@ -256,6 +261,24 @@ export default function TeacherApplicationForm({
       </div>
 
       <div className="grid gap-1.5">
+        <Label htmlFor="ta-center">Center</Label>
+        <select
+          id="ta-center"
+          name="center_id"
+          value={centerId}
+          onChange={(e) => setCenterId(e.target.value)}
+          className="border-rule-faint focus:border-accent-blue h-11 w-full rounded-md border bg-white px-3.5 text-base outline-none"
+        >
+          <option value="">None</option>
+          {centers.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="grid gap-1.5">
         <Label htmlFor="ta-bio">
           About / Bio <span className="text-brand">*</span>
         </Label>
@@ -333,6 +356,7 @@ export default function TeacherApplicationForm({
               ["Phone", phone || "(not provided)"],
               ["Nationality", nationalityLabelEn(nationality)],
               ["Gender", genderLabelEn(gender)],
+              ["Center", centers.find((c) => c.id === centerId)?.name ?? "None"],
               ["Bio", bio],
               ["Experience", experience],
               ["Zoom URL", zoomUrl],

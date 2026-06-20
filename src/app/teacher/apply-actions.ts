@@ -10,6 +10,7 @@ import { sendTeacherApplicationNotification } from "@/lib/mailer";
 import { isValidZoomUrl } from "@/lib/url";
 import { NATIONALITY_NAMES } from "@/data/nationalities";
 import { GENDER_VALUES } from "@/data/genders";
+import { resolveCenterId } from "@/lib/center";
 
 export type TeacherApplyState = { error?: string; success?: boolean };
 
@@ -55,6 +56,9 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
   const { data: pending } = await supabase.from("teacher_applications").select("id").eq("user_id", user.id).eq("status", "신청").maybeSingle();
   if (pending) return { error: "You already have an application under review." };
 
+  // 센터는 선택 — 유효한 center id가 아니면 null("None").
+  const centerId = await resolveCenterId(supabase, formData.get("center_id"));
+
   const { error } = await supabase.from("teacher_applications").insert({
     user_id: user.id,
     name,
@@ -63,6 +67,7 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
     phone: phone || null,
     nationality,
     gender,
+    center_id: centerId,
     bio,
     experience,
     zoom_url: zoomUrl,

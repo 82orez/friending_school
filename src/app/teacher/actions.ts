@@ -8,6 +8,7 @@ import { getUserRole } from "@/lib/auth";
 import { isValidZoomUrl } from "@/lib/url";
 import { NATIONALITY_NAMES } from "@/data/nationalities";
 import { GENDER_VALUES } from "@/data/genders";
+import { resolveCenterId } from "@/lib/center";
 
 export type TeacherActionState = { ok?: boolean; error?: string };
 
@@ -62,9 +63,11 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
 
   // service_role로 본인 row의 화이트리스트 컬럼만 갱신 (role 등은 절대 미포함).
   const admin = createAdminClient();
+  // 센터는 선택 — 유효한 center id가 아니면 null("None").
+  const centerId = await resolveCenterId(admin, formData.get("center_id"));
   const { error } = await admin
     .from("profiles")
-    .update({ first_name: firstName, last_name: lastName, bio, experience, phone, nationality, gender, zoom_url: zoomUrl })
+    .update({ first_name: firstName, last_name: lastName, bio, experience, phone, nationality, gender, center_id: centerId, zoom_url: zoomUrl })
     .eq("id", userId);
   if (error) return { error: "Something went wrong while saving." };
 

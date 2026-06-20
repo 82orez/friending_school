@@ -20,7 +20,7 @@ export default async function TeacherPage() {
 
   const { data } = await supabase
     .from("profiles")
-    .select("first_name, last_name, avatar_url, zoom_url, bio, experience, phone, nationality, gender")
+    .select("first_name, last_name, avatar_url, zoom_url, bio, experience, phone, nationality, gender, center_id")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -35,7 +35,12 @@ export default async function TeacherPage() {
     phone: profile.phone ?? "",
     nationality: profile.nationality ?? "",
     gender: profile.gender ?? "",
+    center_id: profile.center_id ?? "",
   };
+
+  // 센터 드롭다운 목록.
+  const { data: centersData } = await supabase.from("centers").select("id, name").order("sort_order", { ascending: true });
+  const centers = (centersData ?? []) as { id: string; name: string }[];
 
   const { data: availRows } = await supabase.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", user.id);
   const initialSlots = (availRows ?? []).map((r) => ({ day: r.day_of_week, min: r.start_min }));
@@ -58,7 +63,7 @@ export default async function TeacherPage() {
           <p className="mt-1 text-sm opacity-90">Adding a profile photo and bio helps build trust with your students.</p>
         </div>
 
-        <TeacherProfileForm userId={user.id} email={user.email ?? ""} initial={initial} />
+        <TeacherProfileForm userId={user.id} email={user.email ?? ""} initial={initial} centers={centers} />
 
         {/* 주간 가능 시간 — 요약 카드 + 모달 편집 */}
         <AvailabilityModal initialSlots={initialSlots} />
