@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import CurrentTeacherTable from "@/components/admin/CurrentTeacherTable";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 
 // 표시 순서 월~일 → 저장 day(0=일) 매핑. AvailabilityGrid와 값 일치.
@@ -173,23 +174,7 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
         ) : (
           <>
             <p className="text-ink mb-2 text-sm font-bold">{matches.length}명 가능</p>
-            <ul className="border-rule list-none overflow-hidden rounded-lg border">
-              {matches.map((t) => (
-                <li key={t.id} className="border-rule flex items-center gap-3 border-b px-4 py-3 last:border-b-0">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-ink truncate text-sm font-bold">{t.name || t.email}</p>
-                    {t.name && <p className="text-muted-fg truncate text-xs">{t.email}</p>}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onView(t)}
-                    className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
-                  >
-                    정보 보기
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <CurrentTeacherTable teachers={matches} onView={onView} className="rounded-lg" />
           </>
         )}
       </div>

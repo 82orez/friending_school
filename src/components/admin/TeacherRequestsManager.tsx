@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState, useTransition } from "react";
 import Image from "next/image";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Loader2, Search } from "lucide-react";
+import { ChevronDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { approveTeacherApplication, rejectTeacherApplication, deleteTeacher } from "@/app/admin/actions";
@@ -10,6 +10,7 @@ import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 import TeacherInfoModal from "@/components/admin/TeacherInfoModal";
 import TeacherAvailabilityFinder from "@/components/admin/TeacherAvailabilityFinder";
+import CurrentTeacherTable from "@/components/admin/CurrentTeacherTable";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,16 +55,6 @@ export type CurrentTeacher = {
   slots: { day: number; min: number }[];
 };
 
-type SortKey = "name" | "center" | "nationality" | "gender";
-
-// 정렬 비교값은 원본 값 기준(국기 이모지·라벨이 순서에 영향 주지 않도록).
-const SORT_VALUE: Record<SortKey, (t: CurrentTeacher) => string> = {
-  name: (t) => t.name || t.email,
-  center: (t) => t.centerName ?? "",
-  nationality: (t) => t.nationality ?? "",
-  gender: (t) => t.gender ?? "",
-};
-
 const STATUSES = ["신청", "승인", "거절"] as const;
 type Status = (typeof STATUSES)[number];
 
@@ -106,24 +97,6 @@ export default function TeacherRequestsManager({
   const closeInfo = useCallback(() => setInfoTarget(null), []);
   const [deleteTarget, setDeleteTarget] = useState<CurrentTeacher | null>(null);
   const [deleting, startDelete] = useTransition();
-  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
-
-  const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
-
-  const sortedTeachers = useMemo(() => {
-    if (!sort) return teachers;
-    const val = (t: CurrentTeacher) => SORT_VALUE[sort.key](t).trim();
-    return [...teachers].sort((a, b) => {
-      const av = val(a);
-      const bv = val(b);
-      // 빈 값은 항상 마지막으로.
-      if (!av && !bv) return 0;
-      if (!av) return 1;
-      if (!bv) return -1;
-      const cmp = av.localeCompare(bv, "ko");
-      return sort.dir === "asc" ? cmp : -cmp;
-    });
-  }, [teachers, sort]);
 
   const pending = useMemo(() => rows.filter((r) => r.status === "신청").length, [rows]);
 
@@ -221,57 +194,13 @@ export default function TeacherRequestsManager({
       {/* 현재 강사 */}
       <h2 className="text-ink mt-10 text-lg font-extrabold">현재 강사</h2>
       <p className="text-muted-fg mt-1 text-sm">강사를 삭제하면 계정과 모든 데이터가 영구 삭제되며 되돌릴 수 없습니다.</p>
-      <div className="border-rule mt-4 overflow-x-auto rounded-xl border bg-white">
-        {teachers.length === 0 ? (
+      {teachers.length === 0 ? (
+        <div className="border-rule mt-4 overflow-hidden rounded-xl border bg-white">
           <p className="text-muted-fg px-6 py-12 text-center text-sm">현재 강사가 없습니다.</p>
-        ) : (
-          <table className="w-full min-w-[640px] border-collapse text-sm">
-            <thead>
-              <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
-                <SortHeader label="이름" sortKey="name" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
-                <SortHeader label="센터" sortKey="center" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-                <SortHeader label="국적" sortKey="nationality" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-                <SortHeader label="성별" sortKey="gender" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-                <th className="px-4 py-2.5 text-right md:px-6">
-                  <span className="sr-only">관리</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedTeachers.map((t) => (
-                <tr key={t.id} className="border-rule border-b last:border-b-0">
-                  <td className="px-4 py-3.5 align-middle md:px-6">
-                    <p className="text-ink font-bold">{t.name || t.email}</p>
-                    {t.name && <p className="text-muted-fg text-xs">{t.email}</p>}
-                  </td>
-                  <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{t.centerName ?? "None"}</td>
-                  <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{nationalityLabel(t.nationality)}</td>
-                  <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{genderLabelKo(t.gender)}</td>
-                  <td className="px-4 py-3.5 align-middle md:px-6">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setInfoTarget(t)}
-                        className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
-                      >
-                        정보 보기
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(t)}
-                        disabled={deleting}
-                        className="border-brand/40 text-brand hover:bg-brand/5 shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60"
-                      >
-                        강사 삭제
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+        </div>
+      ) : (
+        <CurrentTeacherTable teachers={teachers} onView={setInfoTarget} onDelete={setDeleteTarget} deleting={deleting} className="mt-4" />
+      )}
 
       {/* 강사 정보 보기 */}
       <TeacherInfoModal teacher={infoTarget} onClose={closeInfo} />
@@ -299,31 +228,6 @@ export default function TeacherRequestsManager({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-function SortHeader({
-  label,
-  sortKey,
-  sort,
-  onSort,
-  className,
-}: {
-  label: string;
-  sortKey: SortKey;
-  sort: { key: SortKey; dir: "asc" | "desc" } | null;
-  onSort: (key: SortKey) => void;
-  className?: string;
-}) {
-  const active = sort?.key === sortKey;
-  const Icon = active ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
-  return (
-    <th className={className} aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
-      <button type="button" onClick={() => onSort(sortKey)} className="hover:text-ink inline-flex items-center gap-1 font-semibold transition-colors">
-        {label}
-        <Icon aria-hidden className={cn("size-3.5", active ? "text-ink" : "text-muted-fg-faint/60")} />
-      </button>
-    </th>
   );
 }
 
