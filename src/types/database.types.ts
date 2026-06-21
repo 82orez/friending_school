@@ -67,6 +67,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          price_per_session: number | null
           sort_order: number
           updated_at: string
         }
@@ -74,6 +75,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          price_per_session?: number | null
           sort_order?: number
           updated_at?: string
         }
@@ -81,6 +83,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          price_per_session?: number | null
           sort_order?: number
           updated_at?: string
         }

@@ -21,14 +21,17 @@ export type AdminCenter = {
   name: string;
   sort_order: number;
   created_at: string;
+  price_per_session: number | null;
 };
 
 // 강사 신청폼·프로필의 센터 드롭다운을 채우는 마스터 데이터. YoutubeManager CRUD 패턴 축약(필드=name 1개).
 export default function CentersManager({ centers }: { centers: AdminCenter[] }) {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<AdminCenter | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -47,6 +50,7 @@ export default function CentersManager({ centers }: { centers: AdminCenter[] }) 
   const startEdit = (c: AdminCenter) => {
     setEditingId(c.id);
     setEditName(c.name);
+    setEditPrice(c.price_per_session == null ? "" : String(c.price_per_session));
   };
 
   return (
@@ -71,13 +75,28 @@ export default function CentersManager({ centers }: { centers: AdminCenter[] }) 
               className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
             />
           </div>
+          <div className="sm:w-44">
+            <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">1회당 단가(원)</label>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="예: 30000"
+              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+            />
+          </div>
           <button
             type="button"
             disabled={pending || !name.trim()}
             onClick={() =>
               run(
-                () => addCenter(name),
-                () => setName(""),
+                () => addCenter(name, price),
+                () => {
+                  setName("");
+                  setPrice("");
+                },
               )
             }
             className="bg-ink inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
@@ -93,64 +112,103 @@ export default function CentersManager({ centers }: { centers: AdminCenter[] }) 
         {centers.length === 0 ? (
           <p className="text-muted-fg px-6 py-12 text-center text-sm">등록된 센터가 없습니다.</p>
         ) : (
-          <ul className="list-none">
-            {centers.map((c, i) => (
-              <li key={c.id} className="border-rule border-b p-4 last:border-b-0 md:px-6">
-                {editingId === c.id ? (
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <input
-                      type="text"
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      maxLength={100}
-                      className="border-rule-faint focus:border-accent-blue flex-1 rounded-md border bg-white px-3 py-2 text-sm outline-none"
-                    />
-                    <div className="flex shrink-0 gap-2">
-                      <button
-                        type="button"
-                        disabled={pending || !editName.trim()}
-                        onClick={() =>
-                          run(
-                            () => updateCenter(c.id, editName),
-                            () => setEditingId(null),
-                          )
-                        }
-                        className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
-                      >
-                        {pending && <Loader2 className="size-3.5 animate-spin" />}
-                        저장
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(null)}
-                        className="border-rule text-muted-fg h-9 rounded-md border px-4 text-sm font-medium"
-                      >
-                        취소
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <span className="text-muted-fg-faint w-6 shrink-0 text-center text-xs">{i + 1}</span>
-                    <p className="text-ink min-w-0 flex-1 truncate text-sm font-semibold">{c.name}</p>
-                    <div className="flex shrink-0 gap-1.5">
-                      <button type="button" onClick={() => startEdit(c)} className="border-rule text-muted-fg rounded border px-2.5 py-1 text-xs">
-                        수정
-                      </button>
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => setDeleteTarget(c)}
-                        className="border-rule text-brand rounded border px-2.5 py-1 text-xs disabled:opacity-60"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] border-collapse text-sm">
+              <thead>
+                <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
+                  <th className="w-12 px-4 py-2.5 text-center md:px-6">#</th>
+                  <th className="px-4 py-2.5">센터명</th>
+                  <th className="px-4 py-2.5">회당 단가</th>
+                  <th className="px-4 py-2.5 text-right md:px-6">
+                    <span className="sr-only">관리</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {centers.map((c, i) => (
+                  <tr key={c.id} className="border-rule border-b last:border-b-0">
+                    {editingId === c.id ? (
+                      <>
+                        <td className="text-muted-fg-faint px-4 py-3 text-center text-xs align-middle md:px-6">{i + 1}</td>
+                        <td className="px-4 py-3 align-middle">
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            maxLength={100}
+                            className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+                          />
+                        </td>
+                        <td className="px-4 py-3 align-middle">
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={editPrice}
+                            onChange={(e) => setEditPrice(e.target.value)}
+                            placeholder="1회당 단가(원)"
+                            className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none sm:w-40"
+                          />
+                        </td>
+                        <td className="px-4 py-3 align-middle md:px-6">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              disabled={pending || !editName.trim()}
+                              onClick={() =>
+                                run(
+                                  () => updateCenter(c.id, editName, editPrice),
+                                  () => setEditingId(null),
+                                )
+                              }
+                              className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
+                            >
+                              {pending && <Loader2 className="size-3.5 animate-spin" />}
+                              저장
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingId(null)}
+                              className="border-rule text-muted-fg h-9 rounded-md border px-4 text-sm font-medium"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="text-muted-fg-faint px-4 py-3.5 text-center text-xs align-middle md:px-6">{i + 1}</td>
+                        <td className="text-ink px-4 py-3.5 align-middle text-sm font-semibold">{c.name}</td>
+                        <td className="px-4 py-3.5 align-middle whitespace-nowrap">
+                          {c.price_per_session == null ? (
+                            <span className="text-muted-fg-faint">단가 미설정</span>
+                          ) : (
+                            <span className="text-ink">{c.price_per_session.toLocaleString()}원</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5 align-middle md:px-6">
+                          <div className="flex justify-end gap-1.5">
+                            <button type="button" onClick={() => startEdit(c)} className="border-rule text-muted-fg rounded border px-2.5 py-1 text-xs">
+                              수정
+                            </button>
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() => setDeleteTarget(c)}
+                              className="border-rule text-brand rounded border px-2.5 py-1 text-xs disabled:opacity-60"
+                            >
+                              삭제
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
