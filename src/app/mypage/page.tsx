@@ -49,9 +49,11 @@ export default async function MyPage() {
     .order("created_at", { ascending: false });
   const applications = (data ?? []) as ApplicationRow[];
 
-  const { data: profile } = await supabase.from("profiles").select("first_name, phone").eq("id", user.id).maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("first_name, last_name, phone").eq("id", user.id).maybeSingle();
 
-  const displayName = profile?.first_name || applications[0]?.name || user.email?.split("@")[0] || "회원";
+  // 한국 관례: 성+이름 붙임(홍+길동=홍길동).
+  const fullName = `${profile?.last_name ?? ""}${profile?.first_name ?? ""}`.trim();
+  const displayName = fullName || applications[0]?.name || user.email?.split("@")[0] || "회원";
   const joinedAt = user.created_at ? formatDate(user.created_at) : "-";
 
   return (
@@ -88,7 +90,11 @@ export default async function MyPage() {
             </div>
           </dl>
           <div className="px-6 pb-6">
-            <StudentProfileForm initialName={profile?.first_name ?? ""} initialPhone={profile?.phone ?? ""} />
+            <StudentProfileForm
+              initialLastName={profile?.last_name ?? ""}
+              initialFirstName={profile?.first_name ?? ""}
+              initialPhone={profile?.phone ?? ""}
+            />
           </div>
         </details>
 

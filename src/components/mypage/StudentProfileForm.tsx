@@ -8,9 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function StudentProfileForm({ initialName, initialPhone }: { initialName: string; initialPhone: string }) {
+export default function StudentProfileForm({
+  initialLastName,
+  initialFirstName,
+  initialPhone,
+}: {
+  initialLastName: string;
+  initialFirstName: string;
+  initialPhone: string;
+}) {
   const [state, formAction, pending] = useActionState<StudentActionState, FormData>(updateStudentProfile, {});
-  const [name, setName] = useState(initialName);
+  const [lastName, setLastName] = useState(initialLastName);
+  const [firstName, setFirstName] = useState(initialFirstName);
   const [phone, setPhone] = useState(initialPhone);
 
   // 액션 결과 → 토스트. 초기 {} 상태는 ok/error 모두 falsy라 마운트 시 토스트 없음.
@@ -21,9 +30,22 @@ export default function StudentProfileForm({ initialName, initialPhone }: { init
 
   return (
     <form action={formAction} className="border-rule mt-2 grid gap-4 border-t pt-5">
-      <div className="grid gap-1.5">
-        <Label htmlFor="student-name">이름</Label>
-        <Input id="student-name" name="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="예: 홍길동" maxLength={40} />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-1.5">
+          <Label htmlFor="student-last-name">성</Label>
+          <Input id="student-last-name" name="last_name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="예: 홍" maxLength={40} />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="student-first-name">이름</Label>
+          <Input
+            id="student-first-name"
+            name="first_name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="예: 길동"
+            maxLength={40}
+          />
+        </div>
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="student-phone">

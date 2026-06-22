@@ -23,11 +23,12 @@ export async function updateStudentProfile(_prev: StudentActionState, formData: 
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다." };
 
-  const name = clean(formData.get("name"), 40);
+  const lastName = clean(formData.get("last_name"), 40);
+  const firstName = clean(formData.get("first_name"), 40);
   const phone = clean(formData.get("phone"), 30);
 
-  // 화이트리스트: first_name·phone만 갱신(role 등 미포함).
-  const { error } = await supabase.from("profiles").update({ first_name: name, phone }).eq("id", user.id);
+  // 화이트리스트: first_name·last_name·phone만 갱신(role 등 미포함).
+  const { error } = await supabase.from("profiles").update({ first_name: firstName, last_name: lastName, phone }).eq("id", user.id);
   if (error) return { error: "저장 중 문제가 발생했어요." };
 
   revalidatePath("/mypage");
