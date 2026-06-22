@@ -7,6 +7,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { isAdmin } from "@/lib/auth";
 import { getOrigin } from "@/lib/origin";
 import { sendTeacherApprovalNotification, sendTeacherRejectionNotification } from "@/lib/mailer";
+import { normalizeCurrency } from "@/data/currencies";
 
 export type ActionResult = { ok: boolean; error?: string };
 
@@ -121,6 +122,20 @@ function revalidateCenterConsumers() {
   revalidatePath("/admin/teacher-requests");
 }
 
+// 1 페소당 원화 환율 저장(settings.php_to_krw). admin만, 양수만 허용.
+export async function updateExchangeRate(phpToKrw: number | string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const n = Number(phpToKrw);
+  if (!Number.isFinite(n) || n <= 0) return { ok: false, error: "유효한 환율을 입력하세요." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("settings").upsert({ key: "php_to_krw", value: String(n) }, { onConflict: "key" });
+  if (error) return { ok: false, error: "환율 저장 중 오류가 발생했습니다." };
+
+  revalidatePath("/admin/centers");
+  return { ok: true };
+}
+
 // 단가 입력(원) 정규화: 빈 값/비숫자/음수 → null, 그 외 정수로 내림.
 function normalizePrice(raw: number | string | null | undefined): number | null {
   if (raw === null || raw === undefined || raw === "") return null;
@@ -129,7 +144,7 @@ function normalizePrice(raw: number | string | null | undefined): number | null 
   return n;
 }
 
-export async function addCenter(name: string, price?: number | string | null): Promise<ActionResult> {
+export async function addCenter(name: string, price?: number | string | null, currency?: string | null): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   const clean = name?.trim();
   if (!clean) return { ok: false, error: "센터 이름은 필수입니다." };
@@ -139,20 +154,25 @@ export async function addCenter(name: string, price?: number | string | null): P
   const { data: maxRow } = await admin.from("centers").select("sort_order").order("sort_order", { ascending: false }).limit(1).maybeSingle();
   const nextOrder = ((maxRow as { sort_order?: number } | null)?.sort_order ?? 0) + 1;
 
-  const { error } = await admin.from("centers").insert({ name: clean, sort_order: nextOrder, price_per_session: normalizePrice(price) });
+  const { error } = await admin
+    .from("centers")
+    .insert({ name: clean, sort_order: nextOrder, price_per_session: normalizePrice(price), price_currency: normalizeCurrency(currency) });
   if (error) return { ok: false, error: "등록 중 오류가 발생했습니다." };
 
   revalidateCenterConsumers();
   return { ok: true };
 }
 
-export async function updateCenter(id: string, name: string, price?: number | string | null): Promise<ActionResult> {
+export async function updateCenter(id: string, name: string, price?: number | string | null, currency?: string | null): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   const clean = name?.trim();
   if (!id || !clean) return { ok: false, error: "센터 이름은 필수입니다." };
 
   const admin = createAdminClient();
-  const { error } = await admin.from("centers").update({ name: clean, price_per_session: normalizePrice(price) }).eq("id", id);
+  const { error } = await admin
+    .from("centers")
+    .update({ name: clean, price_per_session: normalizePrice(price), price_currency: normalizeCurrency(currency) })
+    .eq("id", id);
   if (error) return { ok: false, error: "수정 중 오류가 발생했습니다." };
 
   revalidateCenterConsumers();

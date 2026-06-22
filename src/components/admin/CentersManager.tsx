@@ -4,7 +4,9 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { addCenter, deleteCenter, updateCenter } from "@/app/admin/actions";
+import { addCenter, deleteCenter, updateCenter, updateExchangeRate } from "@/app/admin/actions";
+import CenterDetailModal from "@/components/admin/CenterDetailModal";
+import { CURRENCIES, DEFAULT_CURRENCY, formatPrice, krwEquivalent } from "@/data/currencies";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,16 +24,17 @@ export type AdminCenter = {
   sort_order: number;
   created_at: string;
   price_per_session: number | null;
+  price_currency: string | null;
 };
 
 // 강사 신청폼·프로필의 센터 드롭다운을 채우는 마스터 데이터. YoutubeManager CRUD 패턴 축약(필드=name 1개).
-export default function CentersManager({ centers }: { centers: AdminCenter[] }) {
+export default function CentersManager({ centers, phpToKrw }: { centers: AdminCenter[]; phpToKrw: number }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editPrice, setEditPrice] = useState("");
+  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
+  const [rate, setRate] = useState(phpToKrw ? String(phpToKrw) : "");
+  const [editTarget, setEditTarget] = useState<AdminCenter | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminCenter | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -47,18 +50,42 @@ export default function CentersManager({ centers }: { centers: AdminCenter[] }) 
     });
   };
 
-  const startEdit = (c: AdminCenter) => {
-    setEditingId(c.id);
-    setEditName(c.name);
-    setEditPrice(c.price_per_session == null ? "" : String(c.price_per_session));
-  };
-
   return (
     <div>
       <h1 className="text-ink text-2xl font-extrabold">센터 관리</h1>
       <p className="text-muted-fg mt-1 text-sm">
         강사 신청·프로필에서 선택하는 센터 목록을 관리합니다. 센터를 삭제하면 해당 강사는 자동으로 미지정(None)됩니다.
       </p>
+
+      {/* 환율 설정 */}
+      <div className="border-rule mt-5 rounded-xl border bg-white p-5">
+        <p className="text-ink mb-1 text-base font-bold">페소 환율</p>
+        <p className="text-muted-fg-faint mb-3 text-xs">페소(₱)로 입력한 단가를 원화로 환산해 표시합니다.</p>
+        <div className="flex flex-wrap items-end gap-3">
+          <span className="text-ink pb-2 text-sm font-semibold">1 페소(₱) =</span>
+          <div className="w-32">
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              value={rate}
+              onChange={(e) => setRate(e.target.value)}
+              placeholder="예: 25"
+              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+            />
+          </div>
+          <span className="text-ink pb-2 text-sm font-semibold">원(₩)</span>
+          <button
+            type="button"
+            disabled={pending || !(Number(rate) > 0)}
+            onClick={() => run(() => updateExchangeRate(rate))}
+            className="bg-ink inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+          >
+            {pending && <Loader2 className="size-3.5 animate-spin" />}
+            환율 적용
+          </button>
+        </div>
+      </div>
 
       {/* 등록 폼 */}
       <div className="border-rule mt-5 rounded-xl border bg-white p-5">
@@ -75,8 +102,22 @@ export default function CentersManager({ centers }: { centers: AdminCenter[] }) 
               className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
             />
           </div>
-          <div className="sm:w-44">
-            <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">1회당 단가(원)</label>
+          <div className="sm:w-40">
+            <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">통화</label>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="border-rule-faint focus:border-accent-blue h-[42px] w-full rounded-md border bg-white px-3 text-sm outline-none"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="sm:w-40">
+            <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">1회당 단가</label>
             <input
               type="number"
               min={0}
@@ -92,10 +133,11 @@ export default function CentersManager({ centers }: { centers: AdminCenter[] }) 
             disabled={pending || !name.trim()}
             onClick={() =>
               run(
-                () => addCenter(name, price),
+                () => addCenter(name, price, currency),
                 () => {
                   setName("");
                   setPrice("");
+                  setCurrency(DEFAULT_CURRENCY);
                 },
               )
             }
@@ -127,83 +169,35 @@ export default function CentersManager({ centers }: { centers: AdminCenter[] }) 
               <tbody>
                 {centers.map((c, i) => (
                   <tr key={c.id} className="border-rule border-b last:border-b-0">
-                    {editingId === c.id ? (
-                      <>
-                        <td className="text-muted-fg-faint px-4 py-3 text-center text-xs align-middle md:px-6">{i + 1}</td>
-                        <td className="px-4 py-3 align-middle">
-                          <input
-                            type="text"
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            maxLength={100}
-                            className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-                          />
-                        </td>
-                        <td className="px-4 py-3 align-middle">
-                          <input
-                            type="number"
-                            min={0}
-                            step={1}
-                            value={editPrice}
-                            onChange={(e) => setEditPrice(e.target.value)}
-                            placeholder="1회당 단가(원)"
-                            className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none sm:w-40"
-                          />
-                        </td>
-                        <td className="px-4 py-3 align-middle md:px-6">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              disabled={pending || !editName.trim()}
-                              onClick={() =>
-                                run(
-                                  () => updateCenter(c.id, editName, editPrice),
-                                  () => setEditingId(null),
-                                )
-                              }
-                              className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
-                            >
-                              {pending && <Loader2 className="size-3.5 animate-spin" />}
-                              저장
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setEditingId(null)}
-                              className="border-rule text-muted-fg h-9 rounded-md border px-4 text-sm font-medium"
-                            >
-                              취소
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="text-muted-fg-faint px-4 py-3.5 text-center text-xs align-middle md:px-6">{i + 1}</td>
-                        <td className="text-ink px-4 py-3.5 align-middle text-sm font-semibold">{c.name}</td>
-                        <td className="px-4 py-3.5 align-middle whitespace-nowrap">
-                          {c.price_per_session == null ? (
-                            <span className="text-muted-fg-faint">단가 미설정</span>
-                          ) : (
-                            <span className="text-ink">{c.price_per_session.toLocaleString()}원</span>
+                    <td className="text-muted-fg-faint px-4 py-3.5 text-center text-xs align-middle md:px-6">{i + 1}</td>
+                    <td className="text-ink px-4 py-3.5 align-middle text-sm font-semibold">{c.name}</td>
+                    <td className="px-4 py-3.5 align-middle whitespace-nowrap">
+                      {c.price_per_session == null ? (
+                        <span className="text-muted-fg-faint">단가 미설정</span>
+                      ) : (
+                        <span className="text-ink">
+                          {formatPrice(c.price_per_session, c.price_currency)}
+                          {krwEquivalent(c.price_per_session, c.price_currency, phpToKrw) != null && (
+                            <span className="text-muted-fg-faint ml-1.5">≈ {formatPrice(krwEquivalent(c.price_per_session, c.price_currency, phpToKrw)!, "KRW")}</span>
                           )}
-                        </td>
-                        <td className="px-4 py-3.5 align-middle md:px-6">
-                          <div className="flex justify-end gap-1.5">
-                            <button type="button" onClick={() => startEdit(c)} className="border-rule text-muted-fg rounded border px-2.5 py-1 text-xs">
-                              수정
-                            </button>
-                            <button
-                              type="button"
-                              disabled={pending}
-                              onClick={() => setDeleteTarget(c)}
-                              className="border-rule text-brand rounded border px-2.5 py-1 text-xs disabled:opacity-60"
-                            >
-                              삭제
-                            </button>
-                          </div>
-                        </td>
-                      </>
-                    )}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 align-middle md:px-6">
+                      <div className="flex justify-end gap-1.5">
+                        <button type="button" onClick={() => setEditTarget(c)} className="border-rule text-muted-fg rounded border px-2.5 py-1 text-xs">
+                          수정
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => setDeleteTarget(c)}
+                          className="border-rule text-brand rounded border px-2.5 py-1 text-xs disabled:opacity-60"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -211,6 +205,22 @@ export default function CentersManager({ centers }: { centers: AdminCenter[] }) 
           </div>
         )}
       </div>
+
+      {/* 상세 편집 모달 */}
+      <CenterDetailModal
+        center={editTarget}
+        pending={pending}
+        phpToKrw={phpToKrw}
+        onClose={() => setEditTarget(null)}
+        onSave={(editName, editPrice, editCurrency) => {
+          const target = editTarget;
+          if (!target) return;
+          run(
+            () => updateCenter(target.id, editName, editPrice, editCurrency),
+            () => setEditTarget(null),
+          );
+        }}
+      />
 
       {/* 삭제 확인 */}
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>

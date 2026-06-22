@@ -67,6 +67,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          price_currency: string
           price_per_session: number | null
           sort_order: number
           updated_at: string
@@ -75,6 +76,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          price_currency?: string
           price_per_session?: number | null
           sort_order?: number
           updated_at?: string
@@ -83,6 +85,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          price_currency?: string
           price_per_session?: number | null
           sort_order?: number
           updated_at?: string
@@ -172,6 +175,24 @@ export type Database = {
           last_viewed_at?: string
           unit?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string | null
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: string | null
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string | null
         }
         Relationships: []
       }
