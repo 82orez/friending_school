@@ -32,41 +32,41 @@ export default function StudentProfileForm({
 
   return (
     <div className="border-rule mt-2 grid gap-5 border-t pt-5">
-      {/* 이름 폼(성/이름) — 전화번호 인증과 독립 제출 */}
-      <form action={formAction} className="grid gap-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor="student-last-name">성</Label>
-            <Input id="student-last-name" name="last_name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="예: 홍" maxLength={40} />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="student-first-name">이름</Label>
-            <Input
-              id="student-first-name"
-              name="first_name"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="예: 길동"
-              maxLength={40}
-            />
-          </div>
+      {/* 이름 폼(성/이름) — 전화번호 인증과 독립 제출. 제출 버튼은 form 속성으로 연결해 카드 맨 아래에 배치. */}
+      <form id="student-profile-form" action={formAction} className="grid grid-cols-2 gap-3">
+        <div className="grid gap-1.5">
+          <Label htmlFor="student-last-name">성</Label>
+          <Input id="student-last-name" name="last_name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="예: 홍" maxLength={40} />
         </div>
-        <div>
-          <Button type="submit" variant="brand" disabled={pending}>
-            {pending ? (
-              <>
-                <Loader2 className="animate-spin" />
-                저장 중
-              </>
-            ) : (
-              "저장"
-            )}
-          </Button>
+        <div className="grid gap-1.5">
+          <Label htmlFor="student-first-name">이름</Label>
+          <Input
+            id="student-first-name"
+            name="first_name"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            placeholder="예: 길동"
+            maxLength={40}
+          />
         </div>
       </form>
 
       {/* 전화번호 SMS 인증 */}
       <PhoneVerifyField initialPhone={initialPhone} initialVerified={initialPhoneVerified} />
+
+      {/* 저장 버튼 — 카드 맨 아래 오른쪽 */}
+      <div className="flex justify-end">
+        <Button type="submit" form="student-profile-form" variant="brand" disabled={pending}>
+          {pending ? (
+            <>
+              <Loader2 className="animate-spin" />
+              저장 중
+            </>
+          ) : (
+            "저장"
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
