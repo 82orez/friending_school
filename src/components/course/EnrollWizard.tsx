@@ -128,9 +128,9 @@ export default function EnrollWizard({ courseSlug, courseTitle, teachers }: { co
                               on ? "border-progress bg-progress/5" : "border-rule bg-white hover:border-rule-faint",
                             )}>
                             {t.avatarUrl ? (
-                              <Image src={t.avatarUrl} alt="" width={56} height={56} className="size-14 shrink-0 rounded-full object-cover" />
+                              <Image src={t.avatarUrl} alt="" width={56} height={56} className="size-14 shrink-0 rounded-xl object-cover" />
                             ) : (
-                              <span className="bg-surface text-muted-fg-faint flex size-14 shrink-0 items-center justify-center rounded-full text-lg font-bold">
+                              <span className="bg-surface text-muted-fg-faint flex size-14 shrink-0 items-center justify-center rounded-xl text-lg font-bold">
                                 {t.name.charAt(0)}
                               </span>
                             )}
@@ -141,7 +141,6 @@ export default function EnrollWizard({ courseSlug, courseTitle, teachers }: { co
                               </div>
                               <p className="text-muted-fg mt-0.5 text-sm">
                                 {nationalityLabel(t.nationality)} · {genderLabelKo(t.gender)}
-                                {t.centerName && ` · ${t.centerName}`}
                               </p>
                               {t.bio && <p className="text-muted-fg-faint mt-1 line-clamp-2 text-sm">{t.bio}</p>}
                             </div>
