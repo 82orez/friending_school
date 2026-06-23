@@ -9,6 +9,7 @@ import { isValidZoomUrl } from "@/lib/url";
 import { NATIONALITY_NAMES } from "@/data/nationalities";
 import { GENDER_VALUES } from "@/data/genders";
 import { resolveCenterId } from "@/lib/center";
+import { sendSms } from "@/lib/sms";
 
 export type TeacherActionState = { ok?: boolean; error?: string };
 
@@ -110,6 +111,89 @@ export async function updateTeacherAvailability(slots: AvailabilitySlot[]): Prom
   // 3) bulk insert.
   const { error: insErr } = await admin.from("teacher_availability").insert(rows);
   if (insErr) return { error: "Something went wrong while saving." };
+
+  revalidatePath("/teacher");
+  return { ok: true };
+}
+
+/* ===== 수강신청 승인/거절 (강사 대시보드) ===== */
+
+// 본인에게 온 '신청' 상태 수강신청을 로드(소유권 가드). 처리 대상이 아니면 null.
+async function loadOwnPendingEnrollment(admin: ReturnType<typeof createAdminClient>, enrollmentId: string, teacherId: string) {
+  const { data } = await admin
+    .from("enrollments")
+    .select("id, teacher_id, status, student_phone, student_name, course_title, start_date")
+    .eq("id", enrollmentId)
+    .maybeSingle();
+  if (!data || data.teacher_id !== teacherId) return null;
+  return data as {
+    id: string;
+    teacher_id: string;
+    status: string;
+    student_phone: string | null;
+    student_name: string | null;
+    course_title: string;
+    start_date: string;
+  };
+}
+
+// 수강신청 승인 — 본인 소유 + 상태 '신청'일 때만. 성공 시 학생에게 SMS 발송(best-effort).
+export async function approveEnrollment(enrollmentId: string): Promise<TeacherActionState> {
+  const userId = await requireTeacher();
+  if (!userId) return { error: "You don't have permission." };
+
+  const admin = createAdminClient();
+  const enr = await loadOwnPendingEnrollment(admin, enrollmentId, userId);
+  if (!enr) return { error: "신청을 찾을 수 없어요. 목록을 새로고침해 주세요." };
+  if (enr.status !== "신청") return { error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
+
+  // 상태 가드: '신청'일 때만 갱신(동시 처리 방지).
+  const { data, error } = await admin.from("enrollments").update({ status: "승인" }).eq("id", enrollmentId).eq("status", "신청").select("id");
+  if (error) return { error: "처리 중 오류가 발생했어요." };
+  if (!data || data.length === 0) return { error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
+
+  // 학생 결과 SMS (best-effort).
+  if (enr.student_phone) {
+    try {
+      await sendSms(enr.student_phone, `[프렌딩 스쿨] 수강신청이 승인되었습니다. ${enr.course_title} · 시작 ${enr.start_date}. 자세한 내용은 마이페이지에서 확인하세요.`);
+    } catch (err) {
+      console.error("[approveEnrollment] SMS 발송 실패:", err);
+    }
+  }
+
+  revalidatePath("/teacher");
+  return { ok: true };
+}
+
+// 수강신청 거절 — 사유 필수. 본인 소유 + 상태 '신청'일 때만. 성공 시 학생에게 SMS 발송(best-effort).
+export async function rejectEnrollment(enrollmentId: string, note: string): Promise<TeacherActionState> {
+  const userId = await requireTeacher();
+  if (!userId) return { error: "You don't have permission." };
+
+  const reason = String(note ?? "").trim();
+  if (!reason) return { error: "거절 사유를 입력해 주세요." };
+
+  const admin = createAdminClient();
+  const enr = await loadOwnPendingEnrollment(admin, enrollmentId, userId);
+  if (!enr) return { error: "신청을 찾을 수 없어요. 목록을 새로고침해 주세요." };
+  if (enr.status !== "신청") return { error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
+
+  const { data, error } = await admin
+    .from("enrollments")
+    .update({ status: "거절", teacher_note: reason.slice(0, 1000) })
+    .eq("id", enrollmentId)
+    .eq("status", "신청")
+    .select("id");
+  if (error) return { error: "처리 중 오류가 발생했어요." };
+  if (!data || data.length === 0) return { error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
+
+  if (enr.student_phone) {
+    try {
+      await sendSms(enr.student_phone, `[프렌딩 스쿨] 수강신청이 거절되었습니다. ${enr.course_title}. 사유: ${reason}`);
+    } catch (err) {
+      console.error("[rejectEnrollment] SMS 발송 실패:", err);
+    }
+  }
 
   revalidatePath("/teacher");
   return { ok: true };

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import CourseApplyForm from "@/components/course/CourseApplyForm";
 import { COURSE_SLUGS, NOTICE_STEPS, getCourse, getCurriculumGroups } from "@/data/courses";
 
 export function generateStaticParams() {
@@ -69,11 +69,11 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <p className="text-ink mb-4 text-2xl font-bold tracking-tight">
             {course.price} <span className="text-muted-fg-faint text-base font-normal">{course.per}</span>
           </p>
-          <a
-            href="#apply-form"
+          <Link
+            href={`/courses/${course.slug}/enroll`}
             className="bg-brand-gradient block w-full rounded-full py-3.5 text-center text-base font-bold tracking-wide text-white transition-opacity hover:opacity-90">
-            상담 신청하기
-          </a>
+            수강 신청하기
+          </Link>
         </div>
 
         {/* 신청 안내 */}
@@ -188,10 +188,10 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
         </div>
       </section>
 
-      {/* 8. 신청폼 */}
+      {/* 8. 신청 CTA */}
       <section id="apply-form" className="py-16 md:py-18">
-        <div className="mx-auto max-w-[1200px] rounded-2xl bg-[#E05A6A] px-5 py-12 md:px-10 md:py-16">
-          <h2 className="mb-9 text-center text-[22px] leading-snug font-bold tracking-tight text-white md:text-[28px]">
+        <div className="mx-auto max-w-[1200px] rounded-2xl bg-[#E05A6A] px-5 py-12 text-center md:px-10 md:py-16">
+          <h2 className="mb-4 text-[22px] leading-snug font-bold tracking-tight text-white md:text-[28px]">
             {course.applyHeading.map((line, i) => (
               <span key={i}>
                 {line}
@@ -199,7 +199,12 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
               </span>
             ))}
           </h2>
-          <CourseApplyForm courseSlug={course.slug} title={course.applyTitle} options={course.applyOptions} />
+          <p className="mb-8 text-base text-white/85">원하는 요일·시간과 강사를 직접 선택해 바로 신청하세요.</p>
+          <Link
+            href={`/courses/${course.slug}/enroll`}
+            className="text-ink inline-block rounded-full bg-white px-8 py-3.5 text-base font-bold tracking-wide transition-opacity hover:opacity-90">
+            수강 신청하기
+          </Link>
         </div>
       </section>
     </div>

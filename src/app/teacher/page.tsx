@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getUserRole } from "@/lib/auth";
 import TeacherProfileForm, { type TeacherProfile } from "@/components/teacher/TeacherProfileForm";
 import AvailabilityModal from "@/components/teacher/AvailabilityModal";
+import TeacherEnrollments, { type TeacherEnrollment } from "@/components/teacher/TeacherEnrollments";
 
 export const metadata: Metadata = { title: "Teacher — Friending School", robots: { index: false } };
 
@@ -45,6 +46,26 @@ export default async function TeacherPage() {
   const { data: availRows } = await supabase.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", user.id);
   const initialSlots = (availRows ?? []).map((r) => ({ day: r.day_of_week, min: r.start_min }));
 
+  // 본인에게 온 수강신청(신청 우선 정렬) — RLS enrollments_select_own_teacher로 본인 것만.
+  const { data: enrollRows } = await supabase
+    .from("enrollments")
+    .select("id, student_name, course_title, start_date, slots, status, teacher_note, created_at")
+    .eq("teacher_id", user.id)
+    .order("created_at", { ascending: false });
+  const enrollments: TeacherEnrollment[] = (enrollRows ?? [])
+    .map((r) => ({
+      id: r.id,
+      studentName: r.student_name ?? "학생",
+      courseTitle: r.course_title,
+      startDate: r.start_date,
+      slots: Array.isArray(r.slots) ? r.slots : [],
+      status: r.status,
+      teacherNote: r.teacher_note,
+      createdAt: r.created_at,
+    }))
+    // 신청(대기) 먼저, 그다음 최신순.
+    .sort((a, b) => (a.status === "신청" ? 0 : 1) - (b.status === "신청" ? 0 : 1));
+
   // 친근한 호칭은 이름(first) 우선, 없으면 이메일 로컬파트.
   const displayName = initial.first_name || user.email?.split("@")[0] || "Teacher";
 
@@ -67,6 +88,9 @@ export default async function TeacherPage() {
 
         {/* 주간 가능 시간 — 요약 카드 + 모달 편집 */}
         <AvailabilityModal initialSlots={initialSlots} />
+
+        {/* 수강신청 관리 — 승인/거절 */}
+        <TeacherEnrollments enrollments={enrollments} />
       </div>
     </div>
   );

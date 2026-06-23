@@ -92,6 +92,57 @@ export type Database = {
         }
         Relationships: []
       }
+      enrollments: {
+        Row: {
+          course: string
+          course_title: string
+          created_at: string
+          id: string
+          slots: Json
+          start_date: string
+          status: Database["public"]["Enums"]["enrollment_status"]
+          student_id: string
+          student_name: string | null
+          student_phone: string | null
+          teacher_id: string
+          teacher_name: string | null
+          teacher_note: string | null
+          updated_at: string
+        }
+        Insert: {
+          course: string
+          course_title: string
+          created_at?: string
+          id?: string
+          slots: Json
+          start_date: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          student_id: string
+          student_name?: string | null
+          student_phone?: string | null
+          teacher_id: string
+          teacher_name?: string | null
+          teacher_note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          course?: string
+          course_title?: string
+          created_at?: string
+          id?: string
+          slots?: Json
+          start_date?: string
+          status?: Database["public"]["Enums"]["enrollment_status"]
+          student_id?: string
+          student_name?: string | null
+          student_phone?: string | null
+          teacher_id?: string
+          teacher_name?: string | null
+          teacher_note?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       phone_verifications: {
         Row: {
           attempts: number
@@ -378,6 +429,7 @@ export type Database = {
     }
     Enums: {
       application_status: "신청" | "확인" | "완료" | "취소"
+      enrollment_status: "신청" | "승인" | "거절" | "취소"
       teacher_application_status: "신청" | "승인" | "거절"
       user_role: "admin" | "teacher" | "student"
     }
@@ -508,6 +560,7 @@ export const Constants = {
   public: {
     Enums: {
       application_status: ["신청", "확인", "완료", "취소"],
+      enrollment_status: ["신청", "승인", "거절", "취소"],
       teacher_application_status: ["신청", "승인", "거절"],
       user_role: ["admin", "teacher", "student"],
     },

@@ -52,7 +52,7 @@ const COMMON_SPEC = (courseName: string, progress = "총 24회 · 각 25분"): S
 ];
 
 export const NOTICE_STEPS: NoticeStep[] = [
-  { step: "STEP 01. 신청", text: "하단 신청폼을 작성하시면 상담이 진행됩니다." },
+  { step: "STEP 01. 신청", text: "원하는 요일·시간과 강사를 선택해 수강신청을 하시면 강사 승인 후 진행됩니다." },
   { step: "STEP 02. 결제", text: "무통장 입금으로 진행됩니다.\n계좌번호\n국민은행 680401-00-111464\n(주)프렌딩" },
   { step: "STEP 03. 진행", text: "수업 일정 및 진행 방법은 상담 시 안내드립니다." },
   {

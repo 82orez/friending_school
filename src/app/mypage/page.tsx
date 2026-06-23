@@ -5,26 +5,34 @@ import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { cn } from "@/lib/utils";
+import { summarizeSlots, type Slot } from "@/lib/availability";
 import StudentProfileForm from "@/components/mypage/StudentProfileForm";
 
 export const metadata: Metadata = { title: "마이페이지 — 프렌딩 스쿨" };
 
-type ApplicationRow = {
+type EnrollmentRow = {
   id: string;
   course_title: string;
-  option: string | null;
-  name: string;
-  email: string | null;
-  phone: string;
-  memo: string | null;
-  status: "신청" | "확인" | "완료" | "취소";
+  teacher_name: string | null;
+  start_date: string;
+  slots: Slot[];
+  status: "신청" | "승인" | "거절" | "취소";
+  teacher_note: string | null;
   created_at: string;
 };
 
-const STATUS_BADGE: Record<ApplicationRow["status"], string> = {
+// 학생 화면 상태 라벨(강사 승인 흐름).
+const STATUS_LABEL: Record<EnrollmentRow["status"], string> = {
+  신청: "승인 대기",
+  승인: "승인됨",
+  거절: "거절됨",
+  취소: "취소됨",
+};
+
+const STATUS_BADGE: Record<EnrollmentRow["status"], string> = {
   신청: "bg-accent-blue-soft text-accent-blue-ink",
-  확인: "bg-[#FFF7E6] text-[#B97400]",
-  완료: "bg-[#E1F5EE] text-[#0F6E56]",
+  승인: "bg-[#E1F5EE] text-[#0F6E56]",
+  거절: "bg-brand/10 text-brand",
   취소: "bg-rule text-muted-fg",
 };
 
@@ -43,11 +51,11 @@ export default async function MyPage() {
   if (!user) redirect("/login?next=/mypage");
 
   const { data } = await supabase
-    .from("applications")
-    .select("id, course_title, option, name, email, phone, memo, status, created_at")
-    .eq("user_id", user.id)
+    .from("enrollments")
+    .select("id, course_title, teacher_name, start_date, slots, status, teacher_note, created_at")
+    .eq("student_id", user.id)
     .order("created_at", { ascending: false });
-  const applications = (data ?? []) as ApplicationRow[];
+  const enrollments = ((data ?? []) as EnrollmentRow[]).map((e) => ({ ...e, slots: Array.isArray(e.slots) ? e.slots : [] }));
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -57,7 +65,7 @@ export default async function MyPage() {
 
   // 한국 관례: 성+이름 붙임(홍+길동=홍길동).
   const fullName = `${profile?.last_name ?? ""}${profile?.first_name ?? ""}`.trim();
-  const displayName = fullName || applications[0]?.name || user.email?.split("@")[0] || "회원";
+  const displayName = fullName || user.email?.split("@")[0] || "회원";
   const joinedAt = user.created_at ? formatDate(user.created_at) : "-";
 
   // 회원정보 필수 완료 여부 — 전화번호는 인증 완료(phone_verified_at)되어야 충족.
@@ -116,17 +124,17 @@ export default async function MyPage() {
           </div>
         </details>
 
-        {/* 신청 내역 */}
+        {/* 수강신청 내역 */}
         <section className="border-rule overflow-hidden rounded-2xl border bg-white">
           <div className="border-rule flex items-center gap-2 border-b px-6 py-5">
             <span aria-hidden>📋</span>
-            <h2 className="text-ink text-base font-bold">신청 내역</h2>
-            <span className="text-muted-fg-faint ml-auto text-sm">{applications.length}건</span>
+            <h2 className="text-ink text-base font-bold">수강신청 내역</h2>
+            <span className="text-muted-fg-faint ml-auto text-sm">{enrollments.length}건</span>
           </div>
 
-          {applications.length === 0 ? (
+          {enrollments.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-muted-fg text-sm">아직 신청 내역이 없어요.</p>
+              <p className="text-muted-fg text-sm">아직 수강신청 내역이 없어요.</p>
               <Link
                 href="/#courses"
                 className="bg-cta mt-4 inline-block rounded-full px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
@@ -136,24 +144,24 @@ export default async function MyPage() {
             </div>
           ) : (
             <ul className="list-none">
-              {applications.map((a) => (
-                <li key={a.id} className="border-rule border-b last:border-b-0">
+              {enrollments.map((e) => (
+                <li key={e.id} className="border-rule border-b last:border-b-0">
                   <details className="group">
                     <summary className="flex cursor-pointer items-center gap-3 px-6 py-4 [&::-webkit-details-marker]:hidden">
                       <div className="min-w-0 flex-1">
-                        <p className="text-ink truncate text-[15px] font-bold">{a.course_title}</p>
-                        {a.option && <p className="text-muted-fg mt-0.5 truncate text-sm">{a.option}</p>}
-                        <p className="text-muted-fg-faint mt-0.5 text-xs">신청일 {formatDate(a.created_at)}</p>
+                        <p className="text-ink truncate text-[15px] font-bold">{e.course_title}</p>
+                        <p className="text-muted-fg mt-0.5 truncate text-sm">{e.teacher_name ?? "강사"} · 시작 {e.start_date}</p>
+                        <p className="text-muted-fg-faint mt-0.5 text-xs">신청일 {formatDate(e.created_at)}</p>
                       </div>
-                      <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[a.status])}>{a.status}</span>
+                      <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[e.status])}>{STATUS_LABEL[e.status]}</span>
                       <ChevronDown aria-hidden className="text-muted-fg-faint size-4 shrink-0 transition-transform group-open:rotate-180" />
                     </summary>
                     <dl className="bg-surface border-rule mx-6 mb-4 rounded-xl border px-4 py-2">
                       {[
-                        ["이름", a.name],
-                        ["이메일", a.email ?? "-"],
-                        ["전화번호", a.phone],
-                        ["메모", a.memo ?? "-"],
+                        ["강사", e.teacher_name ?? "강사"],
+                        ["수업 일정", summarizeSlots(e.slots)],
+                        ["시작일", e.start_date],
+                        ...(e.status === "거절" && e.teacher_note ? ([["거절 사유", e.teacher_note]] as [string, string][]) : []),
                       ].map(([label, value]) => (
                         <div key={label} className="border-rule flex justify-between gap-4 border-b py-2.5 last:border-b-0">
                           <dt className="text-muted-fg shrink-0 text-sm">{label}</dt>

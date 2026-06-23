@@ -1,0 +1,191 @@
+"use server";
+
+import { cookies, headers } from "next/headers";
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
+import { formatRetryAfter, getClientIp, rateLimit } from "@/lib/rate-limit";
+import { getCourse } from "@/data/courses";
+import { sendEnrollmentNotificationToTeacher } from "@/lib/mailer";
+import { getOrigin } from "@/lib/origin";
+import { isValidSlot, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
+
+// 학생 수강신청용 강사 카드(공개 안전 필드만 — 이메일/전화 등 PII 제외). slots는 클라이언트 라이브 필터용.
+export type EnrollTeacherCard = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  nationality: string | null;
+  gender: string | null;
+  centerName: string | null;
+  bio: string | null;
+  slots: Slot[];
+};
+
+export type EnrollState = { error?: string; success?: boolean };
+
+// 입력 슬롯 정규화: 유효성 검증 + 중복 제거.
+function normalizeSlots(raw: unknown): Slot[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: Slot[] = [];
+  for (const s of raw) {
+    if (!isValidSlot(s)) continue;
+    const day = Number((s as Slot).day);
+    const min = Number((s as Slot).min);
+    const key = `${day}-${min}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ day, min });
+  }
+  return out;
+}
+
+// 전체 강사(공개 안전 필드 + 주간 슬롯)를 반환 — 위저드가 클라이언트에서 `teacherHasAllSlots`로 라이브 필터.
+// enroll 페이지(server component, 로그인+폰인증 가드 통과 후)에서 호출.
+export async function loadEnrollTeachers(): Promise<EnrollTeacherCard[]> {
+  const admin = createAdminClient();
+  const { data: profiles, error: profErr } = await admin
+    .from("profiles")
+    .select("id, first_name, last_name, avatar_url, nationality, gender, center_id, bio")
+    .eq("role", "teacher");
+  if (profErr) {
+    console.error("[loadEnrollTeachers] 강사 조회 실패:", profErr);
+    return [];
+  }
+  const teachers = (profiles ?? []) as {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
+    nationality: string | null;
+    gender: string | null;
+    center_id: string | null;
+    bio: string | null;
+  }[];
+  if (teachers.length === 0) return [];
+
+  // 센터 이름 resolve.
+  const { data: centersData } = await admin.from("centers").select("id, name");
+  const centerNameById = new Map<string, string>((centersData ?? []).map((c: { id: string; name: string }) => [c.id, c.name]));
+
+  // 강사별 슬롯 일괄 조회 → 그룹핑.
+  const ids = teachers.map((t) => t.id);
+  const { data: slotRows } = await admin.from("teacher_availability").select("teacher_id, day_of_week, start_min").in("teacher_id", ids);
+  const byTeacher = new Map<string, Slot[]>();
+  for (const r of (slotRows ?? []) as { teacher_id: string; day_of_week: number; start_min: number }[]) {
+    const list = byTeacher.get(r.teacher_id) ?? [];
+    list.push({ day: r.day_of_week, min: r.start_min });
+    byTeacher.set(r.teacher_id, list);
+  }
+
+  return teachers.map((t) => ({
+    id: t.id,
+    name: [t.first_name, t.last_name].filter(Boolean).join(" ").trim() || "강사",
+    avatarUrl: t.avatar_url,
+    nationality: t.nationality,
+    gender: t.gender,
+    centerName: t.center_id ? (centerNameById.get(t.center_id) ?? null) : null,
+    bio: t.bio,
+    slots: byTeacher.get(t.id) ?? [],
+  }));
+}
+
+// 오늘 날짜(KST) YYYY-MM-DD.
+function todayKst(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+}
+
+// 수강신청 저장. 가드: (1)로그인 (2)휴대폰 인증 (3)입력 검증 (4)rateLimit (5)강사 가용시간 재검증 (6)insert (7)강사 알림 메일.
+export async function submitEnrollment(_prev: EnrollState, formData: FormData): Promise<EnrollState> {
+  const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다. 다시 로그인해 주세요." };
+
+  const courseSlug = String(formData.get("courseSlug") ?? "");
+  const teacherId = String(formData.get("teacherId") ?? "").trim();
+  const startDate = String(formData.get("startDate") ?? "").trim();
+  let parsedSlots: unknown = [];
+  try {
+    parsedSlots = JSON.parse(String(formData.get("slots") ?? "[]"));
+  } catch {
+    return { error: "일정 정보가 올바르지 않습니다. 다시 선택해 주세요." };
+  }
+
+  const course = getCourse(courseSlug);
+  if (!course) return { error: "잘못된 과정입니다. 페이지를 새로고침해 주세요." };
+
+  const slots = normalizeSlots(parsedSlots);
+  if (slots.length === 0) return { error: "원하는 수업 요일과 시간을 선택해 주세요." };
+  if (slots.length > 7 * 36) return { error: "선택한 시간이 너무 많습니다." };
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return { error: "수업 시작일을 선택해 주세요." };
+  if (startDate < todayKst()) return { error: "수업 시작일은 오늘 이후로 선택해 주세요." };
+
+  if (!teacherId) return { error: "강사를 선택해 주세요." };
+
+  // 휴대폰 인증 + 이름 스냅샷 조회.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("first_name, last_name, phone, phone_verified_at")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!profile?.phone_verified_at || !profile?.phone) {
+    return { error: "휴대폰 인증이 필요합니다. 마이페이지에서 인증을 완료해 주세요." };
+  }
+  // 한국 관례: 성+이름 붙임.
+  const studentName = `${profile.last_name ?? ""}${profile.first_name ?? ""}`.trim() || user.email?.split("@")[0] || "회원";
+
+  const ip = getClientIp(await headers());
+  const rl = rateLimit(`enroll:${ip}`, 5, 10 * 60_000);
+  if (!rl.allowed) return { error: `신청이 너무 많아요. ${formatRetryAfter(rl.retryAfterSec)} 다시 시도해 주세요.` };
+
+  // 강사 검증 + 가용시간 재검증(경쟁/위조 방지) — service_role로 신뢰 가능한 최신 슬롯 조회.
+  const admin = createAdminClient();
+  const { data: teacherProfile } = await admin.from("profiles").select("id, role, first_name, last_name").eq("id", teacherId).maybeSingle();
+  if (!teacherProfile || teacherProfile.role !== "teacher") return { error: "선택한 강사를 찾을 수 없어요. 목록을 새로고침해 주세요." };
+  const teacherName = [teacherProfile.first_name, teacherProfile.last_name].filter(Boolean).join(" ").trim() || "강사";
+
+  const { data: slotRows } = await admin.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", teacherId);
+  const teacherSlots: Slot[] = (slotRows ?? []).map((r: { day_of_week: number; start_min: number }) => ({ day: r.day_of_week, min: r.start_min }));
+  if (!teacherHasAllSlots(teacherSlots, slots)) {
+    return { error: "선택한 시간이 더 이상 가능하지 않아요. 일정을 다시 선택해 주세요." };
+  }
+
+  // 본인 세션 client로 insert(RLS enrollments_insert: student_id=auth.uid()).
+  const { error: insErr } = await supabase.from("enrollments").insert({
+    student_id: user.id,
+    teacher_id: teacherId,
+    course: course.slug,
+    course_title: course.title,
+    start_date: startDate,
+    slots,
+    teacher_name: teacherName,
+    student_name: studentName,
+    student_phone: profile.phone,
+  });
+  if (insErr) return { error: "신청 저장 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요." };
+
+  // 강사 알림 메일(best-effort) — 실패해도 신청 성공과 분리.
+  try {
+    const { data: teacherUser } = await admin.auth.admin.getUserById(teacherId);
+    const teacherEmail = teacherUser?.user?.email;
+    if (teacherEmail) {
+      const origin = getOrigin(await headers());
+      await sendEnrollmentNotificationToTeacher([teacherEmail], {
+        studentName,
+        courseTitle: course.title,
+        schedule: summarizeSlots(slots, false),
+        startDate,
+        teacherUrl: `${origin}/teacher`,
+      });
+    }
+  } catch (err) {
+    console.error("[submitEnrollment] 강사 알림 발송 실패:", err);
+  }
+
+  revalidatePath("/mypage");
+  return { success: true };
+}
