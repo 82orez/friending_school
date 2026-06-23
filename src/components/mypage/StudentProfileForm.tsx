@@ -108,12 +108,12 @@ export default function StudentProfileForm({
           </div>
         </div>
 
+        {/* 전화번호 SMS 인증 — 자체 보기/편집 상태머신이라 이름 편집 모드와 독립(입력에 name 없음·버튼 type=button이라 폼 제출 무관). */}
+        <PhoneVerifyField initialPhone={initialPhone} initialVerified={initialPhoneVerified} onVerifiedChange={setPhoneVerified} />
+
         {/* 주소(선택) — 다음 우편번호 검색. 보기 모드에선 비활성. */}
         <AddressField value={address} onChange={setAddress} disabled={!editing} />
       </form>
-
-      {/* 전화번호 SMS 인증 — 자체 보기/편집 상태머신이라 이름 편집 모드와 독립. */}
-      <PhoneVerifyField initialPhone={initialPhone} initialVerified={initialPhoneVerified} onVerifiedChange={setPhoneVerified} />
 
       {/* 버튼 — 카드 맨 아래 오른쪽. 보기 모드=수정 / 편집 모드=취소+저장. */}
       <div className="flex justify-end gap-3">
