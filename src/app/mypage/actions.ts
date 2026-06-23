@@ -39,8 +39,16 @@ export async function updateStudentProfile(_prev: StudentActionState, formData: 
   const { data: prof } = await supabase.from("profiles").select("phone_verified_at").eq("id", user.id).maybeSingle();
   if (!prof?.phone_verified_at) return { error: "전화번호 인증을 완료해 주세요." };
 
-  // 화이트리스트: first_name·last_name만 갱신(role·phone 등 미포함).
-  const { error } = await supabase.from("profiles").update({ first_name: firstName, last_name: lastName }).eq("id", user.id);
+  // 주소(선택 입력) — 빈값은 clean()이 null로 저장.
+  const postcode = clean(formData.get("postcode"), 10);
+  const address = clean(formData.get("address"), 200);
+  const addressDetail = clean(formData.get("address_detail"), 200);
+
+  // 화이트리스트: first_name·last_name·주소만 갱신(role·phone 등 미포함).
+  const { error } = await supabase
+    .from("profiles")
+    .update({ first_name: firstName, last_name: lastName, postcode, address, address_detail: addressDetail })
+    .eq("id", user.id);
   if (error) return { error: "저장 중 문제가 발생했어요." };
 
   revalidatePath("/mypage");
@@ -117,11 +125,7 @@ export async function verifyPhoneOtp(rawPhone: string, rawCode: string): Promise
   if (!/^\d{6}$/.test(code)) return { error: "인증번호 6자리를 입력해 주세요." };
 
   const admin = createAdminClient();
-  const { data: row } = await admin
-    .from("phone_verifications")
-    .select("phone, code_hash, expires_at, attempts")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const { data: row } = await admin.from("phone_verifications").select("phone, code_hash, expires_at, attempts").eq("user_id", user.id).maybeSingle();
 
   if (!row) return { error: "인증번호를 먼저 요청해 주세요." };
   if (new Date(row.expires_at).getTime() < Date.now()) return { error: "인증번호가 만료되었어요. 다시 요청해 주세요." };

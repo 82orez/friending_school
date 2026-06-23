@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import PhoneVerifyField from "@/components/mypage/PhoneVerifyField";
+import AddressField, { type AddressValue } from "@/components/mypage/AddressField";
 
 // 보기 모드(disabled)에서 값이 흐려지지 않도록 텍스트를 진하게.
 const VIEW_TEXT = "disabled:opacity-100 disabled:text-ink";
@@ -18,25 +19,37 @@ export default function StudentProfileForm({
   initialFirstName,
   initialPhone,
   initialPhoneVerified,
+  initialPostcode,
+  initialAddress,
+  initialAddressDetail,
 }: {
   initialLastName: string;
   initialFirstName: string;
   initialPhone: string;
   initialPhoneVerified: boolean;
+  initialPostcode: string;
+  initialAddress: string;
+  initialAddressDetail: string;
 }) {
   const [state, formAction, pending] = useActionState<StudentActionState, FormData>(updateStudentProfile, {});
   const [lastName, setLastName] = useState(initialLastName);
   const [firstName, setFirstName] = useState(initialFirstName);
+  // 주소(선택 입력) — 다음 우편번호 검색 + 상세주소.
+  const [address, setAddress] = useState<AddressValue>({
+    postcode: initialPostcode,
+    address: initialAddress,
+    addressDetail: initialAddressDetail,
+  });
   // 전화번호 인증 여부를 끌어올려 저장 버튼 활성/비활성에 사용(미인증이면 저장 차단).
   const [phoneVerified, setPhoneVerified] = useState(initialPhoneVerified && !!initialPhone);
 
-  // 보기/편집 모드 — 편집 모드에서만 이름 필드 수정 가능(실수 저장 방지).
+  // 보기/편집 모드 — 편집 모드에서만 이름·주소 필드 수정 가능(실수 저장 방지).
   const [editing, setEditing] = useState(false);
   // 편집 진입 시점 스냅샷(Cancel 시 복원).
-  const snapshotRef = useRef({ lastName, firstName });
+  const snapshotRef = useRef({ lastName, firstName, address });
 
   const startEditing = () => {
-    snapshotRef.current = { lastName, firstName };
+    snapshotRef.current = { lastName, firstName, address };
     setEditing(true);
   };
 
@@ -44,6 +57,7 @@ export default function StudentProfileForm({
     const s = snapshotRef.current;
     setLastName(s.lastName);
     setFirstName(s.firstName);
+    setAddress(s.address);
     setEditing(false);
   };
 
@@ -57,40 +71,45 @@ export default function StudentProfileForm({
 
   return (
     <div className="border-rule mt-2 grid gap-5 border-t pt-5">
-      {/* 이름 폼(성/이름) — 전화번호 인증과 독립 제출. 제출 버튼은 form 속성으로 연결해 카드 맨 아래에 배치. */}
-      <form id="student-profile-form" action={formAction} className="grid grid-cols-2 gap-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor="student-last-name">
-            성 <span className="text-brand">*</span>
-          </Label>
-          <Input
-            id="student-last-name"
-            name="last_name"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder="홍"
-            maxLength={40}
-            required
-            disabled={!editing}
-            className={VIEW_TEXT}
-          />
+      {/* 이름·주소 폼 — 전화번호 인증과 독립 제출. 제출 버튼은 form 속성으로 연결해 카드 맨 아래에 배치. */}
+      <form id="student-profile-form" action={formAction} className="grid gap-5">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-1.5">
+            <Label htmlFor="student-last-name">
+              성 <span className="text-brand">*</span>
+            </Label>
+            <Input
+              id="student-last-name"
+              name="last_name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="홍"
+              maxLength={40}
+              required
+              disabled={!editing}
+              className={VIEW_TEXT}
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="student-first-name">
+              이름 <span className="text-brand">*</span>
+            </Label>
+            <Input
+              id="student-first-name"
+              name="first_name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="길동"
+              maxLength={40}
+              required
+              disabled={!editing}
+              className={VIEW_TEXT}
+            />
+          </div>
         </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="student-first-name">
-            이름 <span className="text-brand">*</span>
-          </Label>
-          <Input
-            id="student-first-name"
-            name="first_name"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder="길동"
-            maxLength={40}
-            required
-            disabled={!editing}
-            className={VIEW_TEXT}
-          />
-        </div>
+
+        {/* 주소(선택) — 다음 우편번호 검색. 보기 모드에선 비활성. */}
+        <AddressField value={address} onChange={setAddress} disabled={!editing} />
       </form>
 
       {/* 전화번호 SMS 인증 — 자체 보기/편집 상태머신이라 이름 편집 모드와 독립. */}

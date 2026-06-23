@@ -124,6 +124,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address: string | null
+          address_detail: string | null
           avatar_url: string | null
           bio: string | null
           center_id: string | null
@@ -137,11 +139,14 @@ export type Database = {
           nationality: string | null
           phone: string | null
           phone_verified_at: string | null
+          postcode: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
           zoom_url: string | null
         }
         Insert: {
+          address?: string | null
+          address_detail?: string | null
           avatar_url?: string | null
           bio?: string | null
           center_id?: string | null
@@ -155,11 +160,14 @@ export type Database = {
           nationality?: string | null
           phone?: string | null
           phone_verified_at?: string | null
+          postcode?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           zoom_url?: string | null
         }
         Update: {
+          address?: string | null
+          address_detail?: string | null
           avatar_url?: string | null
           bio?: string | null
           center_id?: string | null
@@ -173,6 +181,7 @@ export type Database = {
           nationality?: string | null
           phone?: string | null
           phone_verified_at?: string | null
+          postcode?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           zoom_url?: string | null
