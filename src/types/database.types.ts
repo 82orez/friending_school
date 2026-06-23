@@ -92,6 +92,36 @@ export type Database = {
         }
         Relationships: []
       }
+      phone_verifications: {
+        Row: {
+          attempts: number
+          code_hash: string
+          created_at: string
+          expires_at: string
+          last_sent_at: string
+          phone: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          last_sent_at?: string
+          phone: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          last_sent_at?: string
+          phone?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -106,6 +136,7 @@ export type Database = {
           last_name: string | null
           nationality: string | null
           phone: string | null
+          phone_verified_at: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
           zoom_url: string | null
@@ -123,6 +154,7 @@ export type Database = {
           last_name?: string | null
           nationality?: string | null
           phone?: string | null
+          phone_verified_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           zoom_url?: string | null
@@ -140,6 +172,7 @@ export type Database = {
           last_name?: string | null
           nationality?: string | null
           phone?: string | null
+          phone_verified_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           zoom_url?: string | null

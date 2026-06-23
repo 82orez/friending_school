@@ -49,7 +49,7 @@ export default async function MyPage() {
     .order("created_at", { ascending: false });
   const applications = (data ?? []) as ApplicationRow[];
 
-  const { data: profile } = await supabase.from("profiles").select("first_name, last_name, phone").eq("id", user.id).maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("first_name, last_name, phone, phone_verified_at").eq("id", user.id).maybeSingle();
 
   // 한국 관례: 성+이름 붙임(홍+길동=홍길동).
   const fullName = `${profile?.last_name ?? ""}${profile?.first_name ?? ""}`.trim();
@@ -94,6 +94,7 @@ export default async function MyPage() {
               initialLastName={profile?.last_name ?? ""}
               initialFirstName={profile?.first_name ?? ""}
               initialPhone={profile?.phone ?? ""}
+              initialPhoneVerified={!!profile?.phone_verified_at}
             />
           </div>
         </details>
