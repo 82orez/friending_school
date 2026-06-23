@@ -14,9 +14,12 @@ const END_MIN = GRID_END_HOUR * 60; // 1440 (24:00)
 const START_OPTIONS: number[] = []; // 360 ~ 1410
 for (let m = START_MIN; m < END_MIN; m += SLOT_MIN) START_OPTIONS.push(m);
 
-const MAX_COUNT = 8;
+const MAX_COUNT = 1;
 const COUNT_OPTIONS: number[] = [];
 for (let n = 1; n <= MAX_COUNT; n++) COUNT_OPTIONS.push(n);
+
+// 표시용 회당 수업 길이(25분). 실제 스케줄/매칭은 SLOT_MIN(30분) 그리드 그대로(5분 버퍼), 화면 길이 표기에만 사용.
+const LESSON_MIN = 25;
 
 // 분 → 한국어 길이 표기(30분 / 1시간 / 1시간 30분).
 const formatDuration = (min: number) => {
@@ -34,6 +37,8 @@ export default function EnrollScheduleField({ onChange }: { onChange: (slots: Sl
 
   // 종료 = 시작 + 횟수×30분. 종료가 24:00을 넘지 않도록 시작 옵션 제한.
   const endMin = startMin + count * SLOT_MIN;
+  // 표시 전용 종료(25분 기준 → :25/:55). 슬롯 점유/매칭은 endMin(30분) 그대로.
+  const displayEndMin = startMin + count * LESSON_MIN;
   const maxStartMin = END_MIN - count * SLOT_MIN;
   const validStartOptions = START_OPTIONS.filter((m) => m <= maxStartMin);
 
@@ -72,7 +77,7 @@ export default function EnrollScheduleField({ onChange }: { onChange: (slots: Sl
   return (
     <div>
       <div className="flex items-start justify-between gap-3">
-        <p className="text-muted-fg text-sm">원하는 요일·요일당 수업 횟수·시작 시간을 선택하세요. (1회 = 30분, 종료 시각 자동 계산)</p>
+        <p className="text-muted-fg text-sm">원하는 요일과 시작 시간을 선택하세요. (1회당 25분)</p>
         <button
           type="button"
           onClick={handleReset}
@@ -85,7 +90,7 @@ export default function EnrollScheduleField({ onChange }: { onChange: (slots: Sl
 
       {/* 요일 선택 */}
       <div className="mt-4">
-        <p className="text-muted-fg-faint mb-2 text-xs font-semibold">요일 (여러 개 선택 시 모두 가능한 강사만)</p>
+        <p className="text-muted-fg-faint mb-2 text-xs font-semibold">원하는 요일 선택하기</p>
         <div className="flex flex-wrap gap-2">
           {DISPLAY_DAYS.map((day) => {
             const on = selectedDays.has(day);
@@ -116,7 +121,7 @@ export default function EnrollScheduleField({ onChange }: { onChange: (slots: Sl
             className="border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none">
             {COUNT_OPTIONS.map((n) => (
               <option key={n} value={n}>
-                {n}회 ({formatDuration(n * SLOT_MIN)})
+                {n}회 ({formatDuration(n * LESSON_MIN)})
               </option>
             ))}
           </select>
@@ -137,11 +142,13 @@ export default function EnrollScheduleField({ onChange }: { onChange: (slots: Sl
         <span className="text-muted-fg-faint pb-2.5 text-sm">~</span>
         <div className="flex flex-col gap-1">
           <span className="text-muted-fg-faint text-xs font-semibold">종료 (자동)</span>
-          <div className="border-rule bg-surface text-ink flex h-10 items-center rounded-md border px-3 text-sm font-medium">{fmtTime(endMin)}</div>
+          <div className="border-rule bg-surface text-ink flex h-10 items-center rounded-md border px-3 text-sm font-medium">
+            {fmtTime(displayEndMin)}
+          </div>
         </div>
       </div>
       <p className="text-muted-fg-faint mt-2 text-xs">
-        요일당 {formatDuration(count * SLOT_MIN)} · {fmtTime(startMin)} ~ {fmtTime(endMin)}
+        요일당 {formatDuration(count * LESSON_MIN)} · {fmtTime(startMin)} ~ {fmtTime(displayEndMin)}
         {selectedDays.size > 0 && ` · 주 ${selectedDays.size}일`}
       </p>
     </div>

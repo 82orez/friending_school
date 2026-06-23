@@ -25,7 +25,15 @@ import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 import { cn } from "@/lib/utils";
 
-export default function EnrollWizard({ courseSlug, courseTitle, teachers }: { courseSlug: string; courseTitle: string; teachers: EnrollTeacherCard[] }) {
+export default function EnrollWizard({
+  courseSlug,
+  courseTitle,
+  teachers,
+}: {
+  courseSlug: string;
+  courseTitle: string;
+  teachers: EnrollTeacherCard[];
+}) {
   const [step, setStep] = useState(1);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [date, setDate] = useState<Date | undefined>(undefined);
@@ -59,7 +67,9 @@ export default function EnrollWizard({ courseSlug, courseTitle, teachers }: { co
           <Link href="/mypage" className={cn("bg-cta rounded-full px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90")}>
             신청 내역 보기
           </Link>
-          <Link href="/#courses" className="border-rule text-ink rounded-full border bg-white px-5 py-2.5 text-sm font-bold transition-colors hover:bg-surface">
+          <Link
+            href="/#courses"
+            className="border-rule text-ink hover:bg-surface rounded-full border bg-white px-5 py-2.5 text-sm font-bold transition-colors">
             다른 과정 보기
           </Link>
         </div>
@@ -94,7 +104,7 @@ export default function EnrollWizard({ courseSlug, courseTitle, teachers }: { co
         {/* ───── Step 1: 일정 + 강사 (라이브 필터) ───── */}
         {step === 1 && (
           <div>
-            <h2 className="text-ink text-lg font-bold">원하는 수업 요일·시간을 선택하세요</h2>
+            <h2 className="text-ink text-lg font-bold">원하는 수업 요일과 시간을 선택하세요</h2>
             <div className="mt-4">
               <EnrollScheduleField onChange={setSlots} />
             </div>
@@ -107,7 +117,7 @@ export default function EnrollWizard({ courseSlug, courseTitle, teachers }: { co
 
               <div className="mt-3">
                 {slots.length === 0 ? (
-                  <p className="text-muted-fg py-8 text-center text-sm">원하는 요일·시간을 먼저 선택하면 가능한 강사가 표시됩니다.</p>
+                  <p className="text-muted-fg py-8 text-center text-sm">원하는 요일과 시간을 선택하시면 수업 가능한 강사가 표시됩니다.</p>
                 ) : matches.length === 0 ? (
                   <div className="py-8 text-center">
                     <p className="text-muted-fg text-sm">선택한 시간에 가능한 강사가 없어요.</p>
@@ -125,7 +135,7 @@ export default function EnrollWizard({ courseSlug, courseTitle, teachers }: { co
                             aria-pressed={on}
                             className={cn(
                               "flex w-full items-start gap-4 rounded-xl border p-4 text-left transition-colors",
-                              on ? "border-progress bg-progress/5" : "border-rule bg-white hover:border-rule-faint",
+                              on ? "border-progress bg-progress/5" : "border-rule hover:border-rule-faint bg-white",
                             )}>
                             {t.avatarUrl ? (
                               <Image src={t.avatarUrl} alt="" width={56} height={56} className="size-14 shrink-0 rounded-xl object-cover" />
@@ -164,7 +174,10 @@ export default function EnrollWizard({ courseSlug, courseTitle, teachers }: { co
         {/* ───── Step 2: 시작일 선택 ───── */}
         {step === 2 && (
           <div>
-            <button type="button" onClick={() => setStep(1)} className="text-muted-fg hover:text-ink inline-flex items-center gap-1 text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="text-muted-fg hover:text-ink inline-flex items-center gap-1 text-sm font-medium">
               <ChevronLeft className="size-4" aria-hidden /> 일정·강사 다시 선택
             </button>
             <h2 className="text-ink mt-3 text-lg font-bold">수업 시작일을 선택하세요</h2>
@@ -196,7 +209,10 @@ export default function EnrollWizard({ courseSlug, courseTitle, teachers }: { co
         {/* ───── Step 3: 확인 ───── */}
         {step === 3 && (
           <div>
-            <button type="button" onClick={() => setStep(2)} className="text-muted-fg hover:text-ink inline-flex items-center gap-1 text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              className="text-muted-fg hover:text-ink inline-flex items-center gap-1 text-sm font-medium">
               <ChevronLeft className="size-4" aria-hidden /> 시작일 다시 선택
             </button>
             <h2 className="text-ink mt-3 text-lg font-bold">신청 내용을 확인하세요</h2>
