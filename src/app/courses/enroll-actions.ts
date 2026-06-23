@@ -123,6 +123,13 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return { error: "수업 시작일을 선택해 주세요." };
   if (startDate <= todayKst()) return { error: "수업 시작일은 내일 이후로 선택해 주세요." };
+  // 상한: 오늘+14일(2주) 이내. KST 오늘 문자열에 14일 더해 비교(UTC 자정 기준 → tz 무관).
+  const maxKst = (() => {
+    const d = new Date(`${todayKst()}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 14);
+    return d.toISOString().slice(0, 10);
+  })();
+  if (startDate > maxKst) return { error: "수업 시작일은 오늘부터 2주 이내로 선택해 주세요." };
   // 시작일 요일이 신청한 수업 요일 중 하나인지 확인(UTC 자정 파싱 → tz 무관 요일). day: 0=일, getUTCDay와 동일.
   const startDow = new Date(`${startDate}T00:00:00Z`).getUTCDay();
   if (!slots.some((s) => s.day === startDow)) return { error: "수업 시작일은 선택한 수업 요일 중 하나여야 합니다." };

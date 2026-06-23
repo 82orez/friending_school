@@ -49,6 +49,9 @@ export default function EnrollWizard({
   // 오늘은 선택 불가 → 내일 자정 경계. 달력은 이 날짜 이전(오늘 포함)을 비활성.
   const minDate = new Date(today);
   minDate.setDate(minDate.getDate() + 1);
+  // 상한: 오늘+14일까지만 선택 가능(2주 이내).
+  const maxDate = new Date(today);
+  maxDate.setDate(maxDate.getDate() + 14);
 
   // 선택 슬롯 전부 비는 강사만 라이브 필터(관리자 finder와 동일 패턴, 추가 쿼리 0).
   const matches = useMemo(() => (slots.length === 0 ? [] : teachers.filter((t) => teacherHasAllSlots(t.slots, slots))), [teachers, slots]);
@@ -204,7 +207,7 @@ export default function EnrollWizard({
                   selected={date}
                   onSelect={setDate}
                   locale={ko}
-                  disabled={[{ before: minDate }, (d: Date) => !allowedDays.has(d.getDay())]}
+                  disabled={[{ before: minDate }, { after: maxDate }, (d: Date) => !allowedDays.has(d.getDay())]}
                   className="text-base [--cell-size:--spacing(11)]"
                   style={{ "--cell-size": "2.75rem" } as CSSProperties}
                 />
