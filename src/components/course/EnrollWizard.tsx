@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useActionState, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -188,8 +188,16 @@ export default function EnrollWizard({
             )}
 
             <div className="mt-4 flex justify-center">
-              <div className="border-rule rounded-xl border p-2">
-                <Calendar mode="single" selected={date} onSelect={setDate} locale={ko} disabled={{ before: today }} />
+              <div className="border-rule rounded-xl border p-3">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  locale={ko}
+                  disabled={{ before: today }}
+                  className="text-base [--cell-size:--spacing(11)]"
+                  style={{ "--cell-size": "2.75rem" } as CSSProperties}
+                />
               </div>
             </div>
             {startDate && (
