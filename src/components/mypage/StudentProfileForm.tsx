@@ -36,7 +36,14 @@ export default function StudentProfileForm({
       <form id="student-profile-form" action={formAction} className="grid grid-cols-2 gap-3">
         <div className="grid gap-1.5">
           <Label htmlFor="student-last-name">성</Label>
-          <Input id="student-last-name" name="last_name" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="예: 홍" maxLength={40} />
+          <Input
+            id="student-last-name"
+            name="last_name"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder="홍"
+            maxLength={40}
+          />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="student-first-name">이름</Label>
@@ -45,7 +52,7 @@ export default function StudentProfileForm({
             name="first_name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
-            placeholder="예: 길동"
+            placeholder="길동"
             maxLength={40}
           />
         </div>
