@@ -32,6 +32,13 @@ export async function updateStudentProfile(_prev: StudentActionState, formData: 
   const lastName = clean(formData.get("last_name"), 40);
   const firstName = clean(formData.get("first_name"), 40);
 
+  // 이름 필수(공백-only는 clean()이 null로 만들어 함께 차단).
+  if (!lastName || !firstName) return { error: "성과 이름을 모두 입력해 주세요." };
+
+  // 전화번호 인증 필수 — 미인증이면 저장 차단(RLS profiles_select_own으로 본인 row 조회).
+  const { data: prof } = await supabase.from("profiles").select("phone_verified_at").eq("id", user.id).maybeSingle();
+  if (!prof?.phone_verified_at) return { error: "전화번호 인증을 완료해 주세요." };
+
   // 화이트리스트: first_name·last_name만 갱신(role·phone 등 미포함).
   const { error } = await supabase.from("profiles").update({ first_name: firstName, last_name: lastName }).eq("id", user.id);
   if (error) return { error: "저장 중 문제가 발생했어요." };

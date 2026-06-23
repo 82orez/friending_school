@@ -23,6 +23,8 @@ export default function StudentProfileForm({
   const [state, formAction, pending] = useActionState<StudentActionState, FormData>(updateStudentProfile, {});
   const [lastName, setLastName] = useState(initialLastName);
   const [firstName, setFirstName] = useState(initialFirstName);
+  // 전화번호 인증 여부를 끌어올려 저장 버튼 활성/비활성에 사용(미인증이면 저장 차단).
+  const [phoneVerified, setPhoneVerified] = useState(initialPhoneVerified && !!initialPhone);
 
   // 액션 결과 → 토스트. 초기 {} 상태는 ok/error 모두 falsy라 마운트 시 토스트 없음.
   useEffect(() => {
@@ -35,7 +37,9 @@ export default function StudentProfileForm({
       {/* 이름 폼(성/이름) — 전화번호 인증과 독립 제출. 제출 버튼은 form 속성으로 연결해 카드 맨 아래에 배치. */}
       <form id="student-profile-form" action={formAction} className="grid grid-cols-2 gap-3">
         <div className="grid gap-1.5">
-          <Label htmlFor="student-last-name">성</Label>
+          <Label htmlFor="student-last-name">
+            성 <span className="text-brand">*</span>
+          </Label>
           <Input
             id="student-last-name"
             name="last_name"
@@ -43,10 +47,13 @@ export default function StudentProfileForm({
             onChange={(e) => setLastName(e.target.value)}
             placeholder="홍"
             maxLength={40}
+            required
           />
         </div>
         <div className="grid gap-1.5">
-          <Label htmlFor="student-first-name">이름</Label>
+          <Label htmlFor="student-first-name">
+            이름 <span className="text-brand">*</span>
+          </Label>
           <Input
             id="student-first-name"
             name="first_name"
@@ -54,16 +61,17 @@ export default function StudentProfileForm({
             onChange={(e) => setFirstName(e.target.value)}
             placeholder="길동"
             maxLength={40}
+            required
           />
         </div>
       </form>
 
       {/* 전화번호 SMS 인증 */}
-      <PhoneVerifyField initialPhone={initialPhone} initialVerified={initialPhoneVerified} />
+      <PhoneVerifyField initialPhone={initialPhone} initialVerified={initialPhoneVerified} onVerifiedChange={setPhoneVerified} />
 
       {/* 저장 버튼 — 카드 맨 아래 오른쪽 */}
       <div className="flex justify-end">
-        <Button type="submit" form="student-profile-form" variant="brand" disabled={pending}>
+        <Button type="submit" form="student-profile-form" variant="brand" disabled={pending || !phoneVerified}>
           {pending ? (
             <>
               <Loader2 className="animate-spin" />

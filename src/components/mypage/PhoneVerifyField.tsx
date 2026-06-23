@@ -12,7 +12,15 @@ import { formatPhone, isValidKoreanMobile, normalizePhone } from "@/lib/phone";
 
 const RESEND_COOLDOWN = 60;
 
-export default function PhoneVerifyField({ initialPhone, initialVerified }: { initialPhone: string; initialVerified: boolean }) {
+export default function PhoneVerifyField({
+  initialPhone,
+  initialVerified,
+  onVerifiedChange,
+}: {
+  initialPhone: string;
+  initialVerified: boolean;
+  onVerifiedChange?: (verified: boolean) => void;
+}) {
   const router = useRouter();
   const [verified, setVerified] = useState(initialVerified && !!initialPhone);
   const [editing, setEditing] = useState(false); // 번호 변경/최초 입력 모드
@@ -52,6 +60,7 @@ export default function PhoneVerifyField({ initialPhone, initialVerified }: { in
       const res = await verifyPhoneOtp(phone, code);
       if (res.ok) {
         setVerified(true);
+        onVerifiedChange?.(true);
         setEditing(false);
         setCodeSent(false);
         setCode("");
@@ -73,7 +82,9 @@ export default function PhoneVerifyField({ initialPhone, initialVerified }: { in
   if (verified && !editing) {
     return (
       <div className="grid gap-1.5">
-        <Label>전화번호</Label>
+        <Label>
+          전화번호 <span className="text-brand">*</span>
+        </Label>
         <div className="flex items-center gap-3">
           <span className="text-ink text-sm font-medium">{formatPhone(phone)}</span>
           <span className="text-progress inline-flex items-center gap-1 text-xs font-bold">
@@ -90,7 +101,9 @@ export default function PhoneVerifyField({ initialPhone, initialVerified }: { in
   return (
     <div className="grid gap-3">
       <div className="grid gap-1.5">
-        <Label htmlFor="student-phone">전화번호</Label>
+        <Label htmlFor="student-phone">
+          전화번호 <span className="text-brand">*</span>
+        </Label>
         <div className="flex gap-2">
           <Input
             id="student-phone"

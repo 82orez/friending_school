@@ -56,6 +56,11 @@ export default async function MyPage() {
   const displayName = fullName || applications[0]?.name || user.email?.split("@")[0] || "회원";
   const joinedAt = user.created_at ? formatDate(user.created_at) : "-";
 
+  // 회원정보 필수 완료 여부 — 전화번호는 인증 완료(phone_verified_at)되어야 충족.
+  const nameComplete = !!(profile?.first_name && profile?.last_name);
+  const phoneComplete = !!profile?.phone_verified_at;
+  const missing = [!nameComplete && "이름", !phoneComplete && "전화번호 인증"].filter(Boolean) as string[];
+
   return (
     <div className="bg-surface min-h-screen">
       {/* 라벨 바 */}
@@ -79,6 +84,11 @@ export default async function MyPage() {
             </span>
             <ChevronDown aria-hidden className="text-muted-fg-faint size-5 transition-transform group-open:rotate-180" />
           </summary>
+          {missing.length > 0 && (
+            <div className="border-brand/30 bg-brand/5 text-brand border-t px-6 py-3 text-sm font-medium">
+              회원 정보 완성을 위해 {missing.join("과 ")} 항목을 완료해 주세요.
+            </div>
+          )}
           <dl className="border-rule border-t px-6 py-2">
             <div className="border-rule flex items-center justify-between border-b py-3 last:border-b-0">
               <dt className="text-muted-fg text-sm">이메일</dt>
