@@ -73,7 +73,8 @@ export default function StudentProfileForm({
     <div className="border-rule mt-2 grid gap-5 border-t pt-5">
       {/* 이름·주소 폼 — 전화번호 인증과 독립 제출. 제출 버튼은 form 속성으로 연결해 카드 맨 아래에 배치. */}
       <form id="student-profile-form" action={formAction} className="grid gap-5">
-        <div className="grid grid-cols-2 gap-3">
+        {/* 이름 */}
+        <div className="border-rule grid grid-cols-2 gap-3 rounded-xl border p-4">
           <div className="grid gap-1.5">
             <Label htmlFor="student-last-name">
               성 <span className="text-brand">*</span>
@@ -109,10 +110,14 @@ export default function StudentProfileForm({
         </div>
 
         {/* 전화번호 SMS 인증 — 자체 보기/편집 상태머신이라 이름 편집 모드와 독립(입력에 name 없음·버튼 type=button이라 폼 제출 무관). */}
-        <PhoneVerifyField initialPhone={initialPhone} initialVerified={initialPhoneVerified} onVerifiedChange={setPhoneVerified} />
+        <div className="border-rule rounded-xl border p-4">
+          <PhoneVerifyField initialPhone={initialPhone} initialVerified={initialPhoneVerified} onVerifiedChange={setPhoneVerified} />
+        </div>
 
         {/* 주소(선택) — 다음 우편번호 검색. 보기 모드에선 비활성. */}
-        <AddressField value={address} onChange={setAddress} disabled={!editing} />
+        <div className="border-rule rounded-xl border p-4">
+          <AddressField value={address} onChange={setAddress} disabled={!editing} />
+        </div>
       </form>
 
       {/* 버튼 — 카드 맨 아래 오른쪽. 보기 모드=수정 / 편집 모드=취소+저장. */}
