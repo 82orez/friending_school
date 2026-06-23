@@ -123,6 +123,9 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return { error: "수업 시작일을 선택해 주세요." };
   if (startDate < todayKst()) return { error: "수업 시작일은 오늘 이후로 선택해 주세요." };
+  // 시작일 요일이 신청한 수업 요일 중 하나인지 확인(UTC 자정 파싱 → tz 무관 요일). day: 0=일, getUTCDay와 동일.
+  const startDow = new Date(`${startDate}T00:00:00Z`).getUTCDay();
+  if (!slots.some((s) => s.day === startDow)) return { error: "수업 시작일은 선택한 수업 요일 중 하나여야 합니다." };
 
   if (!teacherId) return { error: "강사를 선택해 주세요." };
 

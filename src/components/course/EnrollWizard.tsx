@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useActionState, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -51,6 +51,13 @@ export default function EnrollWizard({
   const matches = useMemo(() => (slots.length === 0 ? [] : teachers.filter((t) => teacherHasAllSlots(t.slots, slots))), [teachers, slots]);
   // 일정 변경으로 선택 강사가 매칭에서 빠지면 자동 무효(다음 버튼 비활성).
   const selectedTeacher = matches.find((t) => t.id === teacherId) ?? null;
+
+  // 시작일은 신청한 요일 중 하나여야 함(주간 반복 수업의 첫 수업일). day: 0=일, JS getDay와 동일.
+  const allowedDays = useMemo(() => new Set(slots.map((s) => s.day)), [slots]);
+  // 1단계로 돌아가 요일을 바꿔 기존 선택일이 허용 요일에서 빠지면 초기화.
+  useEffect(() => {
+    if (date && !allowedDays.has(date.getDay())) setDate(undefined);
+  }, [allowedDays, date]);
 
   // 제출 성공 시 성공 화면.
   if (state.success) {
@@ -194,7 +201,7 @@ export default function EnrollWizard({
                   selected={date}
                   onSelect={setDate}
                   locale={ko}
-                  disabled={{ before: today }}
+                  disabled={[{ before: today }, (d: Date) => !allowedDays.has(d.getDay())]}
                   className="text-base [--cell-size:--spacing(11)]"
                   style={{ "--cell-size": "2.75rem" } as CSSProperties}
                 />
