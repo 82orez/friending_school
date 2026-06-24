@@ -228,6 +228,46 @@ export async function sendEnrollmentNotificationToTeacher(to: string[], data: En
   await sendResultEmail(to, `[Friending School] New enrollment request · ${data.studentName}`, html, text);
 }
 
+/**
+ * 강사에게 학생의 수강신청 취소 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ * 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않고 로그만 남긴다.
+ */
+export async function sendEnrollmentCancellationToTeacher(to: string[], data: EnrollmentEmailData): Promise<void> {
+  const rows: [string, string][] = [
+    ["Student", data.studentName || "-"],
+    ["Course", data.courseTitle],
+    ["Weekly schedule", data.schedule || "-"],
+    ["Start date", data.startDate || "-"],
+  ];
+  const tr = rows
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:8px 12px;color:#666;background:#f8f8f8;white-space:nowrap;border-bottom:1px solid #eee;vertical-align:top">${escapeHtml(
+          k,
+        )}</td><td style="padding:8px 12px;color:#1a1a1a;border-bottom:1px solid #eee;white-space:pre-wrap">${escapeHtml(v)}</td></tr>`,
+    )
+    .join("");
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">An enrollment request has been cancelled</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(data.studentName)} · ${escapeHtml(data.courseTitle)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">The student cancelled this request, so no action is needed. You can review your enrollments on your teacher page.</p>
+    <a href="${escapeHtml(data.teacherUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to teacher page</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
+  </div>`;
+  const text = [
+    "An enrollment request has been cancelled by the student.",
+    "",
+    `Student: ${data.studentName || "-"}`,
+    `Course: ${data.courseTitle}`,
+    `Weekly schedule: ${data.schedule || "-"}`,
+    `Start date: ${data.startDate || "-"}`,
+    "",
+    `Teacher page: ${data.teacherUrl}`,
+  ].join("\n");
+  await sendResultEmail(to, `[Friending School] Enrollment cancelled · ${data.studentName}`, html, text);
+}
+
 /* ===== 지원자 대상 강사 심사 결과 알림 ===== */
 
 function buildResultHtml(title: string, bodyHtml: string): string {

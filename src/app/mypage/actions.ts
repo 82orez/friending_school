@@ -8,6 +8,9 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { rateLimit, getClientIp, formatRetryAfter } from "@/lib/rate-limit";
 import { normalizePhone, isValidKoreanMobile } from "@/lib/phone";
 import { sendSms } from "@/lib/sms";
+import { summarizeSlots, type Slot } from "@/lib/availability";
+import { getOrigin } from "@/lib/origin";
+import { sendEnrollmentCancellationToTeacher } from "@/lib/mailer";
 
 export type StudentActionState = { ok?: boolean; error?: string };
 
@@ -52,6 +55,65 @@ export async function updateStudentProfile(_prev: StudentActionState, formData: 
   if (error) return { error: "저장 중 문제가 발생했어요." };
 
   revalidatePath("/mypage");
+  return { ok: true };
+}
+
+/* ===== 수강신청 자가 취소 (학생) ===== */
+
+// 학생 본인 수강신청 취소 — 본인 소유 + 상태 '신청'/'승인'일 때만(거절/취소는 불가).
+// 강사 승인/거절과 동일하게 service_role + 소유·상태 가드(RLS에 사용자 UPDATE 정책 없음, 설계상 취소는 service_role 전용).
+// 성공 시 강사에게 취소 알림 이메일(best-effort).
+export async function cancelEnrollment(enrollmentId: string): Promise<StudentActionState> {
+  const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const id = String(enrollmentId ?? "").trim();
+  if (!id) return { error: "신청을 찾을 수 없어요. 목록을 새로고침해 주세요." };
+
+  const admin = createAdminClient();
+  const { data: enr } = await admin
+    .from("enrollments")
+    .select("id, student_id, teacher_id, status, course_title, start_date, slots, student_name")
+    .eq("id", id)
+    .maybeSingle();
+  if (!enr || enr.student_id !== user.id) return { error: "신청을 찾을 수 없어요. 목록을 새로고침해 주세요." };
+  if (enr.status !== "신청" && enr.status !== "승인") return { error: "취소할 수 없는 상태입니다. 목록을 새로고침해 주세요." };
+
+  // 상태 가드: '신청'/'승인'일 때만 갱신(동시 처리 방지).
+  const { data, error } = await admin
+    .from("enrollments")
+    .update({ status: "취소" })
+    .eq("id", id)
+    .eq("student_id", user.id)
+    .in("status", ["신청", "승인"])
+    .select("id");
+  if (error) return { error: "취소 처리 중 문제가 발생했어요." };
+  if (!data || data.length === 0) return { error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
+
+  // 강사 취소 알림 이메일(best-effort) — 실패해도 취소 성공과 분리.
+  try {
+    const { data: teacherUser } = await admin.auth.admin.getUserById(enr.teacher_id);
+    const teacherEmail = teacherUser?.user?.email;
+    if (teacherEmail) {
+      const origin = getOrigin(await headers());
+      const slots = (Array.isArray(enr.slots) ? enr.slots : []) as Slot[];
+      await sendEnrollmentCancellationToTeacher([teacherEmail], {
+        studentName: enr.student_name ?? "회원",
+        courseTitle: enr.course_title,
+        schedule: summarizeSlots(slots, false),
+        startDate: enr.start_date,
+        teacherUrl: `${origin}/teacher`,
+      });
+    }
+  } catch (err) {
+    console.error("[cancelEnrollment] 강사 알림 발송 실패:", err);
+  }
+
+  revalidatePath("/mypage");
+  revalidatePath("/teacher");
   return { ok: true };
 }
 

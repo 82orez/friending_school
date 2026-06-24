@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
-import { cn } from "@/lib/utils";
-import { summarizeSlots, type Slot } from "@/lib/availability";
+import { type Slot } from "@/lib/availability";
 import StudentProfileForm from "@/components/mypage/StudentProfileForm";
+import StudentEnrollments, { type StudentEnrollment } from "@/components/mypage/StudentEnrollments";
 
 export const metadata: Metadata = { title: "마이페이지 — 프렌딩 스쿨" };
 
@@ -19,21 +18,6 @@ type EnrollmentRow = {
   status: "신청" | "승인" | "거절" | "취소";
   teacher_note: string | null;
   created_at: string;
-};
-
-// 학생 화면 상태 라벨(강사 승인 흐름).
-const STATUS_LABEL: Record<EnrollmentRow["status"], string> = {
-  신청: "승인 대기",
-  승인: "승인됨",
-  거절: "거절됨",
-  취소: "취소됨",
-};
-
-const STATUS_BADGE: Record<EnrollmentRow["status"], string> = {
-  신청: "bg-accent-blue-soft text-accent-blue-ink",
-  승인: "bg-[#E1F5EE] text-[#0F6E56]",
-  거절: "bg-brand/10 text-brand",
-  취소: "bg-rule text-muted-fg",
 };
 
 function formatDate(iso: string): string {
@@ -55,7 +39,16 @@ export default async function MyPage() {
     .select("id, course_title, teacher_name, start_date, slots, status, teacher_note, created_at")
     .eq("student_id", user.id)
     .order("created_at", { ascending: false });
-  const enrollments = ((data ?? []) as EnrollmentRow[]).map((e) => ({ ...e, slots: Array.isArray(e.slots) ? e.slots : [] }));
+  const enrollments: StudentEnrollment[] = ((data ?? []) as EnrollmentRow[]).map((e) => ({
+    id: e.id,
+    courseTitle: e.course_title,
+    teacherName: e.teacher_name,
+    startDate: e.start_date,
+    slots: Array.isArray(e.slots) ? e.slots : [],
+    status: e.status,
+    teacherNote: e.teacher_note,
+    createdAt: e.created_at,
+  }));
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -125,56 +118,7 @@ export default async function MyPage() {
         </details>
 
         {/* 수강신청 내역 */}
-        <section className="border-rule overflow-hidden rounded-2xl border bg-white">
-          <div className="border-rule flex items-center gap-2 border-b px-6 py-5">
-            <span aria-hidden>📋</span>
-            <h2 className="text-ink text-base font-bold">수강신청 내역</h2>
-            <span className="text-muted-fg-faint ml-auto text-sm">{enrollments.length}건</span>
-          </div>
-
-          {enrollments.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <p className="text-muted-fg text-sm">아직 수강신청 내역이 없어요.</p>
-              <Link
-                href="/#courses"
-                className="bg-cta mt-4 inline-block rounded-full px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
-              >
-                과정 둘러보기
-              </Link>
-            </div>
-          ) : (
-            <ul className="list-none">
-              {enrollments.map((e) => (
-                <li key={e.id} className="border-rule border-b last:border-b-0">
-                  <details className="group">
-                    <summary className="flex cursor-pointer items-center gap-3 px-6 py-4 [&::-webkit-details-marker]:hidden">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-ink truncate text-[15px] font-bold">{e.course_title}</p>
-                        <p className="text-muted-fg mt-0.5 truncate text-sm">{e.teacher_name ?? "강사"} · 시작 {e.start_date}</p>
-                        <p className="text-muted-fg-faint mt-0.5 text-xs">신청일 {formatDate(e.created_at)}</p>
-                      </div>
-                      <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[e.status])}>{STATUS_LABEL[e.status]}</span>
-                      <ChevronDown aria-hidden className="text-muted-fg-faint size-4 shrink-0 transition-transform group-open:rotate-180" />
-                    </summary>
-                    <dl className="bg-surface border-rule mx-6 mb-4 rounded-xl border px-4 py-2">
-                      {[
-                        ["강사", e.teacher_name ?? "강사"],
-                        ["수업 일정", summarizeSlots(e.slots)],
-                        ["시작일", e.start_date],
-                        ...(e.status === "거절" && e.teacher_note ? ([["거절 사유", e.teacher_note]] as [string, string][]) : []),
-                      ].map(([label, value]) => (
-                        <div key={label} className="border-rule flex justify-between gap-4 border-b py-2.5 last:border-b-0">
-                          <dt className="text-muted-fg shrink-0 text-sm">{label}</dt>
-                          <dd className="text-ink text-right text-sm font-medium break-words">{value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </details>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <StudentEnrollments enrollments={enrollments} />
       </div>
     </div>
   );
