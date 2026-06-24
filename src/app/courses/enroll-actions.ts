@@ -8,7 +8,7 @@ import { formatRetryAfter, getClientIp, rateLimit } from "@/lib/rate-limit";
 import { getCourse } from "@/data/courses";
 import { sendEnrollmentNotificationToTeacher } from "@/lib/mailer";
 import { getOrigin } from "@/lib/origin";
-import { isValidSlot, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
+import { isValidSlot, slotsOverlap, subtractSlots, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
 
 // 학생 수강신청용 강사 카드(공개 안전 필드만 — 이메일/전화 등 PII 제외). slots는 클라이언트 라이브 필터용.
 export type EnrollTeacherCard = {
@@ -41,6 +41,25 @@ function normalizeSlots(raw: unknown): Slot[] {
   return out;
 }
 
+// enrollments.slots(jsonb)를 안전하게 Slot[]로 파싱.
+function parseSlots(raw: unknown): Slot[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(isValidSlot).map((s) => ({ day: Number(s.day), min: Number(s.min) }));
+}
+
+// 강사 id 목록의 '승인'된 예약 슬롯을 강사별로 union(중복 예약 차감용).
+async function loadBookedSlotsByTeacher(admin: ReturnType<typeof createAdminClient>, teacherIds: string[]): Promise<Map<string, Slot[]>> {
+  const out = new Map<string, Slot[]>();
+  if (teacherIds.length === 0) return out;
+  const { data } = await admin.from("enrollments").select("teacher_id, slots").in("teacher_id", teacherIds).eq("status", "승인");
+  for (const r of (data ?? []) as { teacher_id: string; slots: unknown }[]) {
+    const list = out.get(r.teacher_id) ?? [];
+    list.push(...parseSlots(r.slots));
+    out.set(r.teacher_id, list);
+  }
+  return out;
+}
+
 // 전체 강사(공개 안전 필드 + 주간 슬롯)를 반환 — 위저드가 클라이언트에서 `teacherHasAllSlots`로 라이브 필터.
 // enroll 페이지(server component, 로그인+폰인증 가드 통과 후)에서 호출.
 export async function loadEnrollTeachers(): Promise<EnrollTeacherCard[]> {
@@ -69,7 +88,7 @@ export async function loadEnrollTeachers(): Promise<EnrollTeacherCard[]> {
   const { data: centersData } = await admin.from("centers").select("id, name");
   const centerNameById = new Map<string, string>((centersData ?? []).map((c: { id: string; name: string }) => [c.id, c.name]));
 
-  // 강사별 슬롯 일괄 조회 → 그룹핑.
+  // 강사별 가용 슬롯 일괄 조회 → 그룹핑.
   const ids = teachers.map((t) => t.id);
   const { data: slotRows } = await admin.from("teacher_availability").select("teacher_id, day_of_week, start_min").in("teacher_id", ids);
   const byTeacher = new Map<string, Slot[]>();
@@ -79,6 +98,9 @@ export async function loadEnrollTeachers(): Promise<EnrollTeacherCard[]> {
     byTeacher.set(r.teacher_id, list);
   }
 
+  // 이미 '승인'된 예약 슬롯은 강사 가용에서 차감(중복 예약 방지) — 학생은 남은 슬롯만 보게 됨.
+  const bookedByTeacher = await loadBookedSlotsByTeacher(admin, ids);
+
   return teachers.map((t) => ({
     id: t.id,
     name: [t.first_name, t.last_name].filter(Boolean).join(" ").trim() || "강사",
@@ -87,7 +109,7 @@ export async function loadEnrollTeachers(): Promise<EnrollTeacherCard[]> {
     gender: t.gender,
     centerName: t.center_id ? (centerNameById.get(t.center_id) ?? null) : null,
     bio: t.bio,
-    slots: byTeacher.get(t.id) ?? [],
+    slots: subtractSlots(byTeacher.get(t.id) ?? [], bookedByTeacher.get(t.id) ?? []),
   }));
 }
 
@@ -137,11 +159,7 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
   if (!teacherId) return { error: "강사를 선택해 주세요." };
 
   // 휴대폰 인증 + 이름 스냅샷 조회.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("first_name, last_name, phone, phone_verified_at")
-    .eq("id", user.id)
-    .maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("first_name, last_name, phone, phone_verified_at").eq("id", user.id).maybeSingle();
   if (!profile?.phone_verified_at || !profile?.phone) {
     return { error: "휴대폰 인증이 필요합니다. 마이페이지에서 인증을 완료해 주세요." };
   }
@@ -160,8 +178,18 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
 
   const { data: slotRows } = await admin.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", teacherId);
   const teacherSlots: Slot[] = (slotRows ?? []).map((r: { day_of_week: number; start_min: number }) => ({ day: r.day_of_week, min: r.start_min }));
-  if (!teacherHasAllSlots(teacherSlots, slots)) {
+  // 유효 가용 = 강사 템플릿 − 이미 '승인'된 예약 슬롯(중복 예약 방지).
+  const booked = (await loadBookedSlotsByTeacher(admin, [teacherId])).get(teacherId) ?? [];
+  const effective = subtractSlots(teacherSlots, booked);
+  if (!teacherHasAllSlots(effective, slots)) {
     return { error: "선택한 시간이 더 이상 가능하지 않아요. 일정을 다시 선택해 주세요." };
+  }
+
+  // 학생 본인 시간 충돌 차단 — 진행 중('신청'/'승인') 신청과 겹치면 거절.
+  const { data: myRows } = await admin.from("enrollments").select("slots").eq("student_id", user.id).in("status", ["신청", "승인"]);
+  const mySlots: Slot[] = (myRows ?? []).flatMap((r: { slots: unknown }) => parseSlots(r.slots));
+  if (slotsOverlap(slots, mySlots)) {
+    return { error: "이미 같은 시간에 신청한 수업이 있어요. 일정을 다시 선택해 주세요." };
   }
 
   // 본인 세션 client로 insert(RLS enrollments_insert: student_id=auth.uid()).

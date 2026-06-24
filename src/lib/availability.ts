@@ -30,6 +30,20 @@ export function teacherHasAllSlots(teacherSlots: Slot[], requested: Slot[]): boo
   return requested.every((s) => set.has(slotKey(s.day, s.min)));
 }
 
+// base에서 remove에 속한 슬롯을 제외(예약 소비 차감). teacher_availability − 승인된 예약 슬롯.
+export function subtractSlots(base: Slot[], remove: Slot[]): Slot[] {
+  if (remove.length === 0) return base;
+  const removeSet = new Set(remove.map((s) => slotKey(s.day, s.min)));
+  return base.filter((s) => !removeSet.has(slotKey(s.day, s.min)));
+}
+
+// 두 슬롯 목록이 하나라도 같은 슬롯을 공유하는지(시간 충돌 검사).
+export function slotsOverlap(a: Slot[], b: Slot[]): boolean {
+  if (a.length === 0 || b.length === 0) return false;
+  const set = new Set(a.map((s) => slotKey(s.day, s.min)));
+  return b.some((s) => set.has(slotKey(s.day, s.min)));
+}
+
 // 슬롯 유효성 — day 0~6, min 30배수 & [0,1439]. 서버 입력 검증 공용.
 export function isValidSlot(s: unknown): s is Slot {
   if (!s || typeof s !== "object") return false;
