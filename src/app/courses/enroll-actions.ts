@@ -159,9 +159,17 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
   if (!teacherId) return { error: "강사를 선택해 주세요." };
 
   // 휴대폰 인증 + 이름 스냅샷 조회.
-  const { data: profile } = await supabase.from("profiles").select("first_name, last_name, phone, phone_verified_at").eq("id", user.id).maybeSingle();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("first_name, last_name, english_name, phone, phone_verified_at")
+    .eq("id", user.id)
+    .maybeSingle();
   if (!profile?.phone_verified_at || !profile?.phone) {
     return { error: "휴대폰 인증이 필요합니다. 마이페이지에서 인증을 완료해 주세요." };
+  }
+  // 영문 이름 필수 — 미등록 시 차단(마이페이지에서 등록 유도).
+  if (!profile?.english_name) {
+    return { error: "영문 이름을 등록해야 수강신청할 수 있어요. 마이페이지에서 등록해 주세요." };
   }
   // 한국 관례: 성+이름 붙임.
   const studentName = `${profile.last_name ?? ""}${profile.first_name ?? ""}`.trim() || user.email?.split("@")[0] || "회원";

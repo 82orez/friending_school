@@ -24,12 +24,14 @@ export default async function EnrollPage({ params }: { params: Promise<{ slug: s
   } = await supabase.auth.getUser();
   if (!user) redirect(`/login?next=/courses/${slug}/enroll`);
 
-  // 휴대폰 인증 가드 — 결과 SMS 발송을 위해 인증된 번호 필요.
-  const { data: profile } = await supabase.from("profiles").select("phone_verified_at").eq("id", user.id).maybeSingle();
+  // 휴대폰 인증 + 영문 이름 가드. 휴대폰: 결과 SMS 발송에 필요 / 영문 이름: 수강신청 필수.
+  const { data: profile } = await supabase.from("profiles").select("phone_verified_at, english_name").eq("id", user.id).maybeSingle();
   const phoneVerified = !!profile?.phone_verified_at;
+  const englishNameSet = !!profile?.english_name;
+  const ready = phoneVerified && englishNameSet;
 
   // 전체 강사(공개 안전 필드 + 슬롯) 미리 로드 → 위저드가 클라에서 라이브 필터.
-  const teachers = phoneVerified ? await loadEnrollTeachers() : [];
+  const teachers = ready ? await loadEnrollTeachers() : [];
 
   return (
     <div className="bg-surface min-h-screen">
@@ -39,9 +41,9 @@ export default async function EnrollPage({ params }: { params: Promise<{ slug: s
       </div>
 
       <div className="px-5 pb-16">
-        {phoneVerified ? (
+        {ready ? (
           <EnrollWizard courseSlug={course.slug} courseTitle={course.title} teachers={teachers} />
-        ) : (
+        ) : !phoneVerified ? (
           <div className="border-brand/30 bg-brand/5 mx-auto max-w-[560px] rounded-2xl border p-8 text-center">
             <h2 className="text-ink text-lg font-bold">휴대폰 인증이 필요해요</h2>
             <p className="text-muted-fg mt-3 text-sm leading-relaxed">
@@ -53,6 +55,20 @@ export default async function EnrollPage({ params }: { params: Promise<{ slug: s
               href="/mypage"
               className="bg-cta mt-6 inline-block rounded-full px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90">
               마이페이지에서 인증하기
+            </Link>
+          </div>
+        ) : (
+          <div className="border-brand/30 bg-brand/5 mx-auto max-w-[560px] rounded-2xl border p-8 text-center">
+            <h2 className="text-ink text-lg font-bold">영문 이름 등록이 필요해요</h2>
+            <p className="text-muted-fg mt-3 text-sm leading-relaxed">
+              수강신청을 위해 영문 이름 등록이 필요합니다.
+              <br />
+              마이페이지에서 영문 이름을 등록한 뒤 다시 신청해 주세요.
+            </p>
+            <Link
+              href="/mypage"
+              className="bg-cta mt-6 inline-block rounded-full px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90">
+              마이페이지에서 등록하기
             </Link>
           </div>
         )}

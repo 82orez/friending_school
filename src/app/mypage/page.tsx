@@ -52,7 +52,7 @@ export default async function MyPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("first_name, last_name, phone, phone_verified_at, postcode, address, address_detail")
+    .select("first_name, last_name, english_name, phone, phone_verified_at, postcode, address, address_detail")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -63,8 +63,9 @@ export default async function MyPage() {
 
   // 회원정보 필수 완료 여부 — 전화번호는 인증 완료(phone_verified_at)되어야 충족.
   const nameComplete = !!(profile?.first_name && profile?.last_name);
+  const englishNameComplete = !!profile?.english_name;
   const phoneComplete = !!profile?.phone_verified_at;
-  const missing = [!nameComplete && "이름", !phoneComplete && "전화번호 인증"].filter(Boolean) as string[];
+  const missing = [!nameComplete && "이름", !englishNameComplete && "영문 이름", !phoneComplete && "전화번호 인증"].filter(Boolean) as string[];
 
   return (
     <div className="bg-surface min-h-screen">
@@ -108,6 +109,7 @@ export default async function MyPage() {
             <StudentProfileForm
               initialLastName={profile?.last_name ?? ""}
               initialFirstName={profile?.first_name ?? ""}
+              initialEnglishName={profile?.english_name ?? ""}
               initialPhone={profile?.phone ?? ""}
               initialPhoneVerified={!!profile?.phone_verified_at}
               initialPostcode={profile?.postcode ?? ""}

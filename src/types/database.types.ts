@@ -181,6 +181,7 @@ export type Database = {
           bio: string | null
           center_id: string | null
           created_at: string
+          english_name: string | null
           experience: string | null
           first_name: string | null
           full_name: string | null
@@ -202,6 +203,7 @@ export type Database = {
           bio?: string | null
           center_id?: string | null
           created_at?: string
+          english_name?: string | null
           experience?: string | null
           first_name?: string | null
           full_name?: string | null
@@ -223,6 +225,7 @@ export type Database = {
           bio?: string | null
           center_id?: string | null
           created_at?: string
+          english_name?: string | null
           experience?: string | null
           first_name?: string | null
           full_name?: string | null

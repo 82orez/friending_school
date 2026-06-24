@@ -14,9 +14,13 @@ import AddressField, { type AddressValue } from "@/components/mypage/AddressFiel
 // 보기 모드(disabled)에서 값이 흐려지지 않도록 텍스트를 진하게.
 const VIEW_TEXT = "disabled:opacity-100 disabled:text-ink";
 
+// 영문자·공백·.·-·' 외 문자 제거(한글 등 차단). 서버도 동일 패턴 재검증.
+const sanitizeEnglishName = (v: string) => v.replace(/[^A-Za-z .'-]/g, "");
+
 export default function StudentProfileForm({
   initialLastName,
   initialFirstName,
+  initialEnglishName,
   initialPhone,
   initialPhoneVerified,
   initialPostcode,
@@ -25,6 +29,7 @@ export default function StudentProfileForm({
 }: {
   initialLastName: string;
   initialFirstName: string;
+  initialEnglishName: string;
   initialPhone: string;
   initialPhoneVerified: boolean;
   initialPostcode: string;
@@ -34,6 +39,7 @@ export default function StudentProfileForm({
   const [state, formAction, pending] = useActionState<StudentActionState, FormData>(updateStudentProfile, {});
   const [lastName, setLastName] = useState(initialLastName);
   const [firstName, setFirstName] = useState(initialFirstName);
+  const [englishName, setEnglishName] = useState(initialEnglishName);
   // 주소(선택 입력) — 다음 우편번호 검색 + 상세주소.
   const [address, setAddress] = useState<AddressValue>({
     postcode: initialPostcode,
@@ -46,10 +52,10 @@ export default function StudentProfileForm({
   // 보기/편집 모드 — 편집 모드에서만 이름·주소 필드 수정 가능(실수 저장 방지).
   const [editing, setEditing] = useState(false);
   // 편집 진입 시점 스냅샷(Cancel 시 복원).
-  const snapshotRef = useRef({ lastName, firstName, address });
+  const snapshotRef = useRef({ lastName, firstName, englishName, address });
 
   const startEditing = () => {
-    snapshotRef.current = { lastName, firstName, address };
+    snapshotRef.current = { lastName, firstName, englishName, address };
     setEditing(true);
   };
 
@@ -57,6 +63,7 @@ export default function StudentProfileForm({
     const s = snapshotRef.current;
     setLastName(s.lastName);
     setFirstName(s.firstName);
+    setEnglishName(s.englishName);
     setAddress(s.address);
     setEditing(false);
   };
@@ -102,6 +109,23 @@ export default function StudentProfileForm({
               onChange={(e) => setFirstName(e.target.value)}
               placeholder="길동"
               maxLength={40}
+              required
+              disabled={!editing}
+              className={VIEW_TEXT}
+            />
+          </div>
+          {/* 영문 이름(수강신청 필수) — 영문자/공백/.·-·'만 입력 가능(onChange에서 비영문 즉시 제거). */}
+          <div className="col-span-2 grid gap-1.5">
+            <Label htmlFor="student-english-name">
+              영문 이름 <span className="text-brand">*</span>
+            </Label>
+            <Input
+              id="student-english-name"
+              name="english_name"
+              value={englishName}
+              onChange={(e) => setEnglishName(sanitizeEnglishName(e.target.value))}
+              placeholder="Gildong Hong"
+              maxLength={80}
               required
               disabled={!editing}
               className={VIEW_TEXT}

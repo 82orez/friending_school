@@ -34,9 +34,13 @@ export async function updateStudentProfile(_prev: StudentActionState, formData: 
 
   const lastName = clean(formData.get("last_name"), 40);
   const firstName = clean(formData.get("first_name"), 40);
+  const englishName = clean(formData.get("english_name"), 80);
 
   // 이름 필수(공백-only는 clean()이 null로 만들어 함께 차단).
   if (!lastName || !firstName) return { error: "성과 이름을 모두 입력해 주세요." };
+  // 영문 이름 필수 + 영문자만(클라 sanitize 우회 방어, 서버 authoritative).
+  if (!englishName) return { error: "영문 이름을 입력해 주세요." };
+  if (!/^[A-Za-z][A-Za-z .'-]*$/.test(englishName)) return { error: "영문 이름은 영문자로만 입력해 주세요." };
 
   // 전화번호 인증 필수 — 미인증이면 저장 차단(RLS profiles_select_own으로 본인 row 조회).
   const { data: prof } = await supabase.from("profiles").select("phone_verified_at").eq("id", user.id).maybeSingle();
@@ -47,10 +51,10 @@ export async function updateStudentProfile(_prev: StudentActionState, formData: 
   const address = clean(formData.get("address"), 200);
   const addressDetail = clean(formData.get("address_detail"), 200);
 
-  // 화이트리스트: first_name·last_name·주소만 갱신(role·phone 등 미포함).
+  // 화이트리스트: first_name·last_name·english_name·주소만 갱신(role·phone 등 미포함).
   const { error } = await supabase
     .from("profiles")
-    .update({ first_name: firstName, last_name: lastName, postcode, address, address_detail: addressDetail })
+    .update({ first_name: firstName, last_name: lastName, english_name: englishName, postcode, address, address_detail: addressDetail })
     .eq("id", user.id);
   if (error) return { error: "저장 중 문제가 발생했어요." };
 
