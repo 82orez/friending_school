@@ -4,6 +4,9 @@
 # 특이점
 - 학생 이름이 db의 first name 칼럼에 저장되고 있음.
 
+# 회원 간 동일 전화번호 허용
+- 부모/자녀의 경우
+
 # Fake data 생성
 - npm run seed:teachers -> 12명 생성
 - npm run seed:teachers:clean -> 전부 삭제
