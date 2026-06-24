@@ -210,6 +210,9 @@ export default function EnrollWizard({
                   disabled={[{ before: minDate }, { after: maxDate }, (d: Date) => !allowedDays.has(d.getDay())]}
                   className="text-base [--cell-size:--spacing(11)]"
                   style={{ "--cell-size": "2.75rem" } as CSSProperties}
+                  classNames={{
+                    today: "rounded-(--cell-radius) bg-accent-blue/10 text-accent-blue-ink font-bold ring-1 ring-accent-blue ring-inset !opacity-100",
+                  }}
                 />
               </div>
             </div>
