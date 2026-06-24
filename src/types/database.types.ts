@@ -101,6 +101,7 @@ export type Database = {
           slots: Json
           start_date: string
           status: Database["public"]["Enums"]["enrollment_status"]
+          student_english_name: string | null
           student_id: string
           student_name: string | null
           student_phone: string | null
@@ -117,6 +118,7 @@ export type Database = {
           slots: Json
           start_date: string
           status?: Database["public"]["Enums"]["enrollment_status"]
+          student_english_name?: string | null
           student_id: string
           student_name?: string | null
           student_phone?: string | null
@@ -133,6 +135,7 @@ export type Database = {
           slots?: Json
           start_date?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
+          student_english_name?: string | null
           student_id?: string
           student_name?: string | null
           student_phone?: string | null

@@ -20,6 +20,7 @@ import {
 export type TeacherEnrollment = {
   id: string;
   studentName: string;
+  studentEnglishName: string;
   courseTitle: string;
   startDate: string;
   slots: Slot[];
@@ -100,6 +101,8 @@ function EnrollmentRow({
   const [confirmApprove, setConfirmApprove] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
   const isPending = row.status === "신청";
+  // 영어이름(한국이름) 표시 — 영문명 없으면(백필 안 된 구 행) 한국명만.
+  const studentLabel = row.studentEnglishName ? `${row.studentEnglishName}(${row.studentName})` : row.studentName;
 
   const approve = () => {
     setConfirmApprove(false);
@@ -145,7 +148,7 @@ function EnrollmentRow({
         <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[row.status])}>{STATUS_LABEL[row.status]}</span>
         <div className="min-w-0 flex-1">
           <p className="text-ink truncate text-sm font-bold">
-            {row.studentName}
+            {studentLabel}
             <span className="text-muted-fg-faint font-normal"> · {row.courseTitle}</span>
           </p>
           <p className="text-muted-fg truncate text-xs">
@@ -160,7 +163,7 @@ function EnrollmentRow({
         <div className="bg-surface border-rule border-t px-4 py-4 md:px-6">
           <dl className="mb-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm">
             {[
-              ["Student", row.studentName],
+              ["Student", studentLabel],
               ["Course", row.courseTitle],
               ["Weekly schedule", summarizeSlots(row.slots, false)],
               ["Start date", row.startDate],
@@ -221,7 +224,7 @@ function EnrollmentRow({
           <AlertDialogHeader>
             <AlertDialogTitle>Approve this enrollment?</AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="text-ink font-semibold">{row.studentName}</span> will be notified by SMS that their enrollment for {row.courseTitle} is
+              <span className="text-ink font-semibold">{studentLabel}</span> will be notified by SMS that their enrollment for {row.courseTitle} is
               approved.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -239,7 +242,7 @@ function EnrollmentRow({
           <AlertDialogHeader>
             <AlertDialogTitle>Decline this enrollment?</AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="text-ink font-semibold">{row.studentName}</span> will be notified by SMS with the reason you entered.
+              <span className="text-ink font-semibold">{studentLabel}</span> will be notified by SMS with the reason you entered.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

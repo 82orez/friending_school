@@ -210,6 +210,7 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
     slots,
     teacher_name: teacherName,
     student_name: studentName,
+    student_english_name: profile.english_name,
     student_phone: profile.phone,
   });
   if (insErr) return { error: "신청 저장 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요." };
