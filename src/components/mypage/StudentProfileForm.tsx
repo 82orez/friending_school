@@ -118,6 +118,7 @@ export default function StudentProfileForm({
           <div className="col-span-2 grid gap-1.5">
             <Label htmlFor="student-english-name">
               영문 이름 <span className="text-brand">*</span>
+              <span className="text-muted-fg ml-1.5 text-xs font-normal">영문으로 작성해주세요.</span>
             </Label>
             <Input
               id="student-english-name"
