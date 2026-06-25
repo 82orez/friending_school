@@ -162,7 +162,7 @@ export async function approveEnrollment(enrollmentId: string): Promise<TeacherAc
     .neq("id", enrollmentId);
   const bookedSlots: Slot[] = (approvedRows ?? []).flatMap((r: { slots: unknown }) => parse(r.slots));
   if (slotsOverlap(targetSlots, bookedSlots)) {
-    return { error: "이 시간은 이미 다른 수강생이 확정되어 있어요. 거절 후 다른 시간을 안내해 주세요." };
+    return { error: "This time slot is already booked by another student. Please decline and suggest a different time." };
   }
 
   // 상태 가드: '신청'일 때만 '결제대기'로 갱신(동시 처리 방지).
