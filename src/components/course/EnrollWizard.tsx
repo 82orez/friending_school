@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { CheckCircle2, ChevronLeft, Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Loader2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import EnrollScheduleField from "@/components/course/EnrollScheduleField";
 import { submitEnrollment, type EnrollTeacherCard } from "@/app/courses/enroll-actions";
-import { summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
+import { slotsOverlap, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 import { cn } from "@/lib/utils";
@@ -57,6 +57,8 @@ export default function EnrollWizard({
   const matches = useMemo(() => (slots.length === 0 ? [] : teachers.filter((t) => teacherHasAllSlots(t.slots, slots))), [teachers, slots]);
   // 일정 변경으로 선택 강사가 매칭에서 빠지면 자동 무효(다음 버튼 비활성).
   const selectedTeacher = matches.find((t) => t.id === teacherId) ?? null;
+  // 선택한 시간이 다른 학생의 진행중 신청('신청'/'결제대기')과 겹치면 경고(하드 차단 아님 — 확인 후 신청 가능).
+  const overlapWarning = !!selectedTeacher && slotsOverlap(slots, selectedTeacher.heldSlots);
 
   // 시작일은 신청한 요일 중 하나여야 함(주간 반복 수업의 첫 수업일). day: 0=일, JS getDay와 동일.
   const allowedDays = useMemo(() => new Set(slots.map((s) => s.day)), [slots]);
@@ -255,6 +257,13 @@ export default function EnrollWizard({
               ))}
             </dl>
 
+            {overlapWarning && (
+              <p className="mt-4 flex items-start gap-2 rounded-lg bg-[#FFF7E6] px-3.5 py-3 text-sm font-medium text-[#B97400]">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <span>이 시간대에 다른 학생이 먼저 수강신청을 한 상태입니다. 해당 수강신청이 확정되면 이번 수강신청은 취소될 수 있습니다.</span>
+              </p>
+            )}
+
             {state.error && (
               <p role="alert" className="text-brand mt-4 text-sm font-medium">
                 {state.error}
@@ -286,7 +295,9 @@ export default function EnrollWizard({
                 <AlertDialogHeader>
                   <AlertDialogTitle>이대로 수강신청할까요?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    {selectedTeacher?.name} 강사님께 {courseTitle} 신청이 전달됩니다. 결과는 문자로 안내드려요.
+                    {overlapWarning
+                      ? "이 시간대에 다른 학생이 먼저 수강신청을 한 상태입니다. 해당 수강신청이 확정되면 이번 수강신청은 취소될 수 있습니다. 수강 신청하시겠습니까?"
+                      : `${selectedTeacher?.name} 강사님께 ${courseTitle} 신청이 전달됩니다. 결과는 문자로 안내드려요.`}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

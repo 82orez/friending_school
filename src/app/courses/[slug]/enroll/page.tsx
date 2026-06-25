@@ -31,7 +31,7 @@ export default async function EnrollPage({ params }: { params: Promise<{ slug: s
   const ready = phoneVerified && englishNameSet;
 
   // 전체 강사(공개 안전 필드 + 슬롯) 미리 로드 → 위저드가 클라에서 라이브 필터.
-  const teachers = ready ? await loadEnrollTeachers() : [];
+  const teachers = ready ? await loadEnrollTeachers(user.id) : [];
 
   return (
     <div className="bg-surface min-h-screen">
