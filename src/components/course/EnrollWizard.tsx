@@ -25,13 +25,18 @@ import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 import { cn } from "@/lib/utils";
 
+// 과정 표준 수업 횟수(한 신청당). 종료일·수업 횟수 표시에 사용 — 모든 과정 동일.
+const TOTAL_SESSIONS = 24;
+
 export default function EnrollWizard({
   courseSlug,
   courseTitle,
+  coursePrice,
   teachers,
 }: {
   courseSlug: string;
   courseTitle: string;
+  coursePrice: string;
   teachers: EnrollTeacherCard[];
 }) {
   const [step, setStep] = useState(1);
@@ -66,6 +71,24 @@ export default function EnrollWizard({
   useEffect(() => {
     if (date && !allowedDays.has(date.getDay())) setDate(undefined);
   }, [allowedDays, date]);
+
+  // 종료일 = 시작일부터 주간 일정(선택 요일)대로 진행해 TOTAL_SESSIONS회째 수업이 있는 날.
+  const endDate = useMemo(() => {
+    if (!date || slots.length === 0) return "";
+    const weekdays = new Set(slots.map((s) => s.day));
+    let remaining = TOTAL_SESSIONS;
+    const cur = new Date(date);
+    let last = new Date(date);
+    while (remaining > 0) {
+      if (weekdays.has(cur.getDay())) {
+        remaining--;
+        last = new Date(cur);
+        if (remaining === 0) break;
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    return format(last, "yyyy-MM-dd");
+  }, [date, slots]);
 
   // 제출 성공 시 성공 화면.
   if (state.success) {
@@ -249,6 +272,9 @@ export default function EnrollWizard({
                 ["강사", selectedTeacher?.name ?? "-"],
                 ["수업 일정", summarizeSlots(slots)],
                 ["시작일", startDate],
+                ["종료일", endDate],
+                ["수업 횟수", `총 ${TOTAL_SESSIONS}회`],
+                ["결제 금액", coursePrice],
               ].map(([label, value]) => (
                 <div key={label} className="border-rule flex justify-between gap-4 border-b py-3 last:border-b-0">
                   <dt className="text-muted-fg shrink-0 text-sm">{label}</dt>
