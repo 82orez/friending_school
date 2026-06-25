@@ -44,6 +44,30 @@ export function slotsOverlap(a: Slot[], b: Slot[]): boolean {
   return b.some((s) => set.has(slotKey(s.day, s.min)));
 }
 
+// 같은 그룹(예: 강사) 안에서 슬롯이 서로 겹치는 항목들의 id 집합을 반환.
+// 수강신청 목록에서 시간이 충돌하는 신청을 시각적으로 표시하는 용도(강사·admin 공용).
+// 호출 측이 "진행중(신청/승인/결제대기)" 등 활성 행만 걸러 넘긴다. group=강사 식별자.
+export function overlappingIds<T extends { id: string; group: string; slots: Slot[] }>(items: T[]): Set<string> {
+  const out = new Set<string>();
+  const byGroup = new Map<string, T[]>();
+  for (const it of items) {
+    const arr = byGroup.get(it.group);
+    if (arr) arr.push(it);
+    else byGroup.set(it.group, [it]);
+  }
+  for (const arr of Array.from(byGroup.values())) {
+    for (let i = 0; i < arr.length; i++) {
+      for (let j = i + 1; j < arr.length; j++) {
+        if (slotsOverlap(arr[i].slots, arr[j].slots)) {
+          out.add(arr[i].id);
+          out.add(arr[j].id);
+        }
+      }
+    }
+  }
+  return out;
+}
+
 // 슬롯 유효성 — day 0~6, min 30배수 & [0,1439]. 서버 입력 검증 공용.
 export function isValidSlot(s: unknown): s is Slot {
   if (!s || typeof s !== "object") return false;

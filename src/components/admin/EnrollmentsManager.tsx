@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ChevronDown, Loader2, Search } from "lucide-react";
+import { ChevronDown, Loader2, Search, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { adminCancelEnrollment } from "@/app/admin/actions";
-import { summarizeSlots, type Slot } from "@/lib/availability";
+import { overlappingIds, summarizeSlots, type Slot } from "@/lib/availability";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,7 @@ import {
 
 export type AdminEnrollment = {
   id: string;
+  teacher_id: string;
   course_title: string;
   teacher_name: string | null;
   student_name: string | null;
@@ -66,6 +67,13 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
     const c: Record<string, number> = { 전체: rows.length, 신청: 0, 결제대기: 0, 승인: 0, 거절: 0, 취소: 0 };
     for (const r of rows) c[r.status] = (c[r.status] ?? 0) + 1;
     return c;
+  }, [rows]);
+
+  // 같은 강사(teacher_id) 내 진행중(신청/승인/결제대기) 신청끼리 시간이 겹치는 행 id 집합.
+  // 전체 rows 기준으로 계산(상태 필터로 상대 행이 가려져도 충돌 표시는 유지).
+  const conflictIds = useMemo(() => {
+    const active = new Set<StatusKey>(["신청", "승인", "결제대기"]);
+    return overlappingIds(rows.filter((r) => active.has(r.status)).map((r) => ({ id: r.id, group: r.teacher_id, slots: r.slots })));
   }, [rows]);
 
   const filtered = useMemo(() => {
@@ -122,6 +130,7 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
               <EnrollmentRow
                 key={r.id}
                 row={r}
+                conflict={conflictIds.has(r.id)}
                 open={openId === r.id}
                 onToggle={() => setOpenId(openId === r.id ? null : r.id)}
                 onUpdated={(updated) => setRows((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
@@ -136,11 +145,13 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
 
 function EnrollmentRow({
   row,
+  conflict,
   open,
   onToggle,
   onUpdated,
 }: {
   row: AdminEnrollment;
+  conflict: boolean;
   open: boolean;
   onToggle: () => void;
   onUpdated: (updated: AdminEnrollment) => void;
@@ -172,9 +183,16 @@ function EnrollmentRow({
   };
 
   return (
-    <li className="border-rule border-b last:border-b-0">
+    <li className={cn("border-rule border-b last:border-b-0", conflict && "border-l-2 border-l-[#F5A623]")}>
       <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 px-4 py-3.5 text-left md:px-6">
         <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[row.status])}>{row.status}</span>
+        {conflict && (
+          <span
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#FFF7E6] px-2 py-0.5 text-xs font-bold text-[#B97400]"
+            title="같은 강사의 다른 진행중 신청과 시간이 겹칩니다.">
+            <TriangleAlert className="size-3" aria-hidden /> 시간 겹침
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-ink truncate text-sm font-bold">
             {row.student_name ?? "학생"}
@@ -190,6 +208,11 @@ function EnrollmentRow({
 
       {open && (
         <div className="bg-surface border-rule border-t px-4 py-4 md:px-6">
+          {conflict && (
+            <p className="mb-3 inline-flex items-center gap-1.5 rounded-md bg-[#FFF7E6] px-2.5 py-1.5 text-xs font-semibold text-[#B97400]">
+              <TriangleAlert className="size-3.5 shrink-0" aria-hidden /> 같은 강사의 다른 진행중 신청과 수업 시간이 겹칩니다.
+            </p>
+          )}
           <dl className="mb-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm">
             {[
               ["학생", row.student_name ?? "-"],

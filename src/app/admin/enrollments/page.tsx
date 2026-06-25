@@ -6,7 +6,7 @@ export default async function AdminEnrollmentsPage() {
   const admin = createAdminClient();
   const { data } = await admin
     .from("enrollments")
-    .select("id, course_title, teacher_name, student_name, student_phone, slots, start_date, status, teacher_note, created_at")
+    .select("id, teacher_id, course_title, teacher_name, student_name, student_phone, slots, start_date, status, teacher_note, created_at")
     .order("created_at", { ascending: false });
 
   const enrollments: AdminEnrollment[] = ((data ?? []) as AdminEnrollment[]).map((e) => ({

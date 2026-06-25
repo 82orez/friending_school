@@ -1,11 +1,14 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { approveEnrollment, rejectEnrollment } from "@/app/teacher/actions";
-import { summarizeSlots, type Slot } from "@/lib/availability";
+import { overlappingIds, summarizeSlots, type Slot } from "@/lib/availability";
+
+// 시간 충돌 표시 대상 = 진행중 상태(거절/취소는 제외).
+const ACTIVE_STATUSES = new Set<TeacherEnrollment["status"]>(["신청", "승인", "결제대기"]);
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +61,12 @@ export default function TeacherEnrollments({ enrollments }: { enrollments: Teach
 
   const pending = useMemo(() => rows.filter((r) => r.status === "신청").length, [rows]);
 
+  // 같은 강사(=본인) 내 진행중 신청끼리 시간이 겹치는 행 id 집합.
+  const conflictIds = useMemo(
+    () => overlappingIds(rows.filter((r) => ACTIVE_STATUSES.has(r.status)).map((r) => ({ id: r.id, group: "self", slots: r.slots }))),
+    [rows],
+  );
+
   return (
     <section className="mt-6">
       <div className="mb-3 flex items-center gap-2">
@@ -74,6 +83,7 @@ export default function TeacherEnrollments({ enrollments }: { enrollments: Teach
               <EnrollmentRow
                 key={r.id}
                 row={r}
+                conflict={conflictIds.has(r.id)}
                 open={openId === r.id}
                 onToggle={() => setOpenId(openId === r.id ? null : r.id)}
                 onUpdated={(updated) => setRows((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
@@ -88,11 +98,13 @@ export default function TeacherEnrollments({ enrollments }: { enrollments: Teach
 
 function EnrollmentRow({
   row,
+  conflict,
   open,
   onToggle,
   onUpdated,
 }: {
   row: TeacherEnrollment;
+  conflict: boolean;
   open: boolean;
   onToggle: () => void;
   onUpdated: (updated: TeacherEnrollment) => void;
@@ -145,9 +157,16 @@ function EnrollmentRow({
   };
 
   return (
-    <li className="border-rule border-b last:border-b-0">
+    <li className={cn("border-rule border-b last:border-b-0", conflict && "border-l-2 border-l-[#F5A623]")}>
       <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 px-4 py-3.5 text-left md:px-6">
         <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[row.status])}>{STATUS_LABEL[row.status]}</span>
+        {conflict && (
+          <span
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#FFF7E6] px-2 py-0.5 text-xs font-bold text-[#B97400]"
+            title="This time overlaps with another active request.">
+            <TriangleAlert className="size-3" aria-hidden /> Time conflict
+          </span>
+        )}
         <div className="min-w-0 flex-1">
           <p className="text-ink truncate text-sm font-bold">
             {studentLabel}
@@ -163,6 +182,11 @@ function EnrollmentRow({
 
       {open && (
         <div className="bg-surface border-rule border-t px-4 py-4 md:px-6">
+          {conflict && (
+            <p className="mb-3 inline-flex items-center gap-1.5 rounded-md bg-[#FFF7E6] px-2.5 py-1.5 text-xs font-semibold text-[#B97400]">
+              <TriangleAlert className="size-3.5 shrink-0" aria-hidden /> This time overlaps with another active enrollment — only one can be approved.
+            </p>
+          )}
           <dl className="mb-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm">
             {[
               ["Student", studentLabel],
