@@ -15,7 +15,7 @@ type EnrollmentRow = {
   teacher_name: string | null;
   start_date: string;
   slots: Slot[];
-  status: "신청" | "승인" | "거절" | "취소";
+  status: "신청" | "승인" | "결제대기" | "거절" | "취소";
   teacher_note: string | null;
   created_at: string;
 };

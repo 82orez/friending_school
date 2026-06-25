@@ -229,8 +229,8 @@ export async function deleteTeacher(userId: string): Promise<ActionResult> {
 
 /* ===== 수강신청 관리 ===== */
 
-// 관리자 강제 취소 — 상태 '신청'/'승인'일 때만. 성공 시 학생에게 SMS 통보(best-effort).
-// 슬롯은 동적 차감이라('승인'만 강사 가용 소비) 취소 즉시 자동 해제.
+// 관리자 강제 취소 — 상태 '신청'/'승인'/'결제대기'일 때만. 성공 시 학생에게 SMS 통보(best-effort).
+// 슬롯은 동적 차감이라('승인'·'결제대기'가 강사 가용 소비) 취소 즉시 자동 해제.
 export async function adminCancelEnrollment(id: string, note: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   const enrollmentId = String(id ?? "").trim();
@@ -241,13 +241,13 @@ export async function adminCancelEnrollment(id: string, note: string): Promise<A
   const admin = createAdminClient();
   const { data: enr } = await admin.from("enrollments").select("status, student_phone, course_title").eq("id", enrollmentId).maybeSingle();
   if (!enr) return { ok: false, error: "신청을 찾을 수 없습니다." };
-  if (enr.status !== "신청" && enr.status !== "승인") return { ok: false, error: "취소할 수 없는 상태입니다." };
+  if (enr.status !== "신청" && enr.status !== "승인" && enr.status !== "결제대기") return { ok: false, error: "취소할 수 없는 상태입니다." };
 
   const { data, error } = await admin
     .from("enrollments")
     .update({ status: "취소", teacher_note: `[관리자] ${reason}`.slice(0, 1000) })
     .eq("id", enrollmentId)
-    .in("status", ["신청", "승인"])
+    .in("status", ["신청", "승인", "결제대기"])
     .select("id");
   if (error) return { ok: false, error: "취소 처리 중 오류가 발생했습니다." };
   if (!data || data.length === 0) return { ok: false, error: "이미 처리된 신청입니다." };

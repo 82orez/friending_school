@@ -138,7 +138,7 @@ async function loadOwnPendingEnrollment(admin: ReturnType<typeof createAdminClie
   };
 }
 
-// 수강신청 승인 — 본인 소유 + 상태 '신청'일 때만. 성공 시 학생에게 SMS 발송(best-effort).
+// 수강신청 승인 — 본인 소유 + 상태 '신청'일 때만. 승인 시 곧바로 '결제대기'로 전환. 성공 시 학생에게 SMS 발송(best-effort).
 export async function approveEnrollment(enrollmentId: string): Promise<TeacherActionState> {
   const userId = await requireTeacher();
   if (!userId) return { error: "You don't have permission." };
@@ -148,7 +148,7 @@ export async function approveEnrollment(enrollmentId: string): Promise<TeacherAc
   if (!enr) return { error: "신청을 찾을 수 없어요. 목록을 새로고침해 주세요." };
   if (enr.status !== "신청") return { error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
 
-  // 중복 예약 가드: 이 강사의 다른 '승인' 예약과 시간이 겹치면 승인 차단(race-safe — update 직전 최신 조회).
+  // 중복 예약 가드: 이 강사의 다른 확정 예약('승인'·'결제대기')과 시간이 겹치면 승인 차단(race-safe — update 직전 최신 조회).
   // ⚠️ 잔여 race(겹치는 두 건을 거의 동시 승인)는 앱레벨 한계 — 단일 강사 순차 클릭이라 현실 위험 낮음. 향후 DB 제약으로 하드닝 가능.
   const parse = (raw: unknown): Slot[] =>
     Array.isArray(raw) ? raw.filter(isValidSlot).map((s) => ({ day: Number(s.day), min: Number(s.min) })) : [];
@@ -158,15 +158,15 @@ export async function approveEnrollment(enrollmentId: string): Promise<TeacherAc
     .from("enrollments")
     .select("slots")
     .eq("teacher_id", userId)
-    .eq("status", "승인")
+    .in("status", ["승인", "결제대기"])
     .neq("id", enrollmentId);
   const bookedSlots: Slot[] = (approvedRows ?? []).flatMap((r: { slots: unknown }) => parse(r.slots));
   if (slotsOverlap(targetSlots, bookedSlots)) {
     return { error: "이 시간은 이미 다른 수강생이 확정되어 있어요. 거절 후 다른 시간을 안내해 주세요." };
   }
 
-  // 상태 가드: '신청'일 때만 갱신(동시 처리 방지).
-  const { data, error } = await admin.from("enrollments").update({ status: "승인" }).eq("id", enrollmentId).eq("status", "신청").select("id");
+  // 상태 가드: '신청'일 때만 '결제대기'로 갱신(동시 처리 방지).
+  const { data, error } = await admin.from("enrollments").update({ status: "결제대기" }).eq("id", enrollmentId).eq("status", "신청").select("id");
   if (error) return { error: "처리 중 오류가 발생했어요." };
   if (!data || data.length === 0) return { error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
 
@@ -175,7 +175,7 @@ export async function approveEnrollment(enrollmentId: string): Promise<TeacherAc
     try {
       await sendSms(
         enr.student_phone,
-        `[프렌딩 스쿨] 수강신청이 승인되었습니다. ${enr.course_title} · 시작 ${enr.start_date}. 자세한 내용은 마이페이지에서 확인하세요.`,
+        `[프렌딩 스쿨] 수강신청이 승인되었습니다(결제 대기). ${enr.course_title} · 시작 ${enr.start_date}. 자세한 내용은 마이페이지에서 확인하세요.`,
       );
     } catch (err) {
       console.error("[approveEnrollment] SMS 발송 실패:", err);

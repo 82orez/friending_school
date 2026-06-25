@@ -24,7 +24,7 @@ export type TeacherEnrollment = {
   courseTitle: string;
   startDate: string;
   slots: Slot[];
-  status: "신청" | "승인" | "거절" | "취소";
+  status: "신청" | "승인" | "결제대기" | "거절" | "취소";
   teacherNote: string | null;
   createdAt: string;
 };
@@ -32,6 +32,7 @@ export type TeacherEnrollment = {
 const STATUS_LABEL: Record<TeacherEnrollment["status"], string> = {
   신청: "Pending",
   승인: "Approved",
+  결제대기: "Payment pending",
   거절: "Declined",
   취소: "Cancelled",
 };
@@ -39,6 +40,7 @@ const STATUS_LABEL: Record<TeacherEnrollment["status"], string> = {
 const STATUS_BADGE: Record<TeacherEnrollment["status"], string> = {
   신청: "bg-[#FFF7E6] text-[#B97400]",
   승인: "bg-[#E1F5EE] text-[#0F6E56]",
+  결제대기: "bg-[#F3EEFD] text-[#6B4AD4]",
   거절: "bg-brand/10 text-brand",
   취소: "bg-rule text-muted-fg",
 };
@@ -110,8 +112,8 @@ function EnrollmentRow({
     startTransition(async () => {
       const res = await approveEnrollment(row.id);
       if (res.ok) {
-        onUpdated({ ...row, status: "승인" });
-        toast.success("Enrollment approved. The student has been notified by SMS.");
+        onUpdated({ ...row, status: "결제대기" });
+        toast.success("Enrollment approved — now awaiting payment. The student has been notified by SMS.");
       } else {
         toast.error(res.error ?? "Something went wrong.");
       }
@@ -207,6 +209,7 @@ function EnrollmentRow({
           ) : (
             <p className="text-muted-fg text-sm">
               {row.status === "승인" && "✅ Approved. The student has been notified."}
+              {row.status === "결제대기" && "✅ Approved — awaiting the student's payment."}
               {row.status === "거절" && (
                 <>
                   ❌ Declined.
@@ -225,7 +228,7 @@ function EnrollmentRow({
             <AlertDialogTitle>Approve this enrollment?</AlertDialogTitle>
             <AlertDialogDescription>
               <span className="text-ink font-semibold">{studentLabel}</span> will be notified by SMS that their enrollment for {row.courseTitle} is
-              approved.
+              approved and now awaiting payment.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

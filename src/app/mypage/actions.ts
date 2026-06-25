@@ -64,7 +64,7 @@ export async function updateStudentProfile(_prev: StudentActionState, formData: 
 
 /* ===== 수강신청 자가 취소 (학생) ===== */
 
-// 학생 본인 수강신청 취소 — 본인 소유 + 상태 '신청'/'승인'일 때만(거절/취소는 불가).
+// 학생 본인 수강신청 취소 — 본인 소유 + 상태 '신청'/'승인'/'결제대기'일 때만(거절/취소는 불가).
 // 강사 승인/거절과 동일하게 service_role + 소유·상태 가드(RLS에 사용자 UPDATE 정책 없음, 설계상 취소는 service_role 전용).
 // 성공 시 강사에게 취소 알림 이메일(best-effort).
 export async function cancelEnrollment(enrollmentId: string): Promise<StudentActionState> {
@@ -84,15 +84,16 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
     .eq("id", id)
     .maybeSingle();
   if (!enr || enr.student_id !== user.id) return { error: "신청을 찾을 수 없어요. 목록을 새로고침해 주세요." };
-  if (enr.status !== "신청" && enr.status !== "승인") return { error: "취소할 수 없는 상태입니다. 목록을 새로고침해 주세요." };
+  if (enr.status !== "신청" && enr.status !== "승인" && enr.status !== "결제대기")
+    return { error: "취소할 수 없는 상태입니다. 목록을 새로고침해 주세요." };
 
-  // 상태 가드: '신청'/'승인'일 때만 갱신(동시 처리 방지).
+  // 상태 가드: '신청'/'승인'/'결제대기'일 때만 갱신(동시 처리 방지).
   const { data, error } = await admin
     .from("enrollments")
     .update({ status: "취소" })
     .eq("id", id)
     .eq("student_id", user.id)
-    .in("status", ["신청", "승인"])
+    .in("status", ["신청", "승인", "결제대기"])
     .select("id");
   if (error) return { error: "취소 처리 중 문제가 발생했어요." };
   if (!data || data.length === 0) return { error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };

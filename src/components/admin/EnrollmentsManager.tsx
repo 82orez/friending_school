@@ -25,7 +25,7 @@ export type AdminEnrollment = {
   student_phone: string | null;
   slots: Slot[];
   start_date: string;
-  status: "신청" | "승인" | "거절" | "취소";
+  status: "신청" | "승인" | "결제대기" | "거절" | "취소";
   teacher_note: string | null;
   created_at: string;
 };
@@ -35,6 +35,7 @@ type StatusKey = AdminEnrollment["status"];
 const STATUS_BADGE: Record<StatusKey, string> = {
   신청: "bg-accent-blue-soft text-accent-blue-ink",
   승인: "bg-[#E1F5EE] text-[#0F6E56]",
+  결제대기: "bg-[#F3EEFD] text-[#6B4AD4]",
   거절: "bg-brand/10 text-brand",
   취소: "bg-rule text-muted-fg",
 };
@@ -42,6 +43,7 @@ const STATUS_BADGE: Record<StatusKey, string> = {
 const FILTERS: { key: "전체" | StatusKey; label: string }[] = [
   { key: "전체", label: "전체" },
   { key: "신청", label: "승인 대기" },
+  { key: "결제대기", label: "결제 대기" },
   { key: "승인", label: "승인" },
   { key: "거절", label: "거절" },
   { key: "취소", label: "취소" },
@@ -61,7 +63,7 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
   const [openId, setOpenId] = useState<string | null>(null);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { 전체: rows.length, 신청: 0, 승인: 0, 거절: 0, 취소: 0 };
+    const c: Record<string, number> = { 전체: rows.length, 신청: 0, 결제대기: 0, 승인: 0, 거절: 0, 취소: 0 };
     for (const r of rows) c[r.status] = (c[r.status] ?? 0) + 1;
     return c;
   }, [rows]);
@@ -146,7 +148,7 @@ function EnrollmentRow({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();
-  const cancellable = row.status === "신청" || row.status === "승인";
+  const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
 
   const askCancel = () => {
     if (!reason.trim()) {

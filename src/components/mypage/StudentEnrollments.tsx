@@ -24,15 +24,16 @@ export type StudentEnrollment = {
   teacherName: string | null;
   startDate: string;
   slots: Slot[];
-  status: "신청" | "승인" | "거절" | "취소";
+  status: "신청" | "승인" | "결제대기" | "거절" | "취소";
   teacherNote: string | null;
   createdAt: string;
 };
 
-// 학생 화면 상태 라벨(강사 승인 흐름).
+// 학생 화면 상태 라벨(강사 승인 흐름 — 승인 시 결제대기).
 const STATUS_LABEL: Record<StudentEnrollment["status"], string> = {
   신청: "승인 대기",
   승인: "승인됨",
+  결제대기: "결제 대기",
   거절: "거절됨",
   취소: "취소됨",
 };
@@ -40,6 +41,7 @@ const STATUS_LABEL: Record<StudentEnrollment["status"], string> = {
 const STATUS_BADGE: Record<StudentEnrollment["status"], string> = {
   신청: "bg-accent-blue-soft text-accent-blue-ink",
   승인: "bg-[#E1F5EE] text-[#0F6E56]",
+  결제대기: "bg-[#F3EEFD] text-[#6B4AD4]",
   거절: "bg-brand/10 text-brand",
   취소: "bg-rule text-muted-fg",
 };
@@ -86,7 +88,7 @@ export default function StudentEnrollments({ enrollments }: { enrollments: Stude
 function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: (updated: StudentEnrollment) => void }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const cancellable = row.status === "신청" || row.status === "승인";
+  const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
 
   const cancel = () => {
     setConfirmOpen(false);

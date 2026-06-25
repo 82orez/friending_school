@@ -47,11 +47,11 @@ function parseSlots(raw: unknown): Slot[] {
   return raw.filter(isValidSlot).map((s) => ({ day: Number(s.day), min: Number(s.min) }));
 }
 
-// 강사 id 목록의 '승인'된 예약 슬롯을 강사별로 union(중복 예약 차감용).
+// 강사 id 목록의 확정 예약('승인'·'결제대기') 슬롯을 강사별로 union(중복 예약 차감용).
 async function loadBookedSlotsByTeacher(admin: ReturnType<typeof createAdminClient>, teacherIds: string[]): Promise<Map<string, Slot[]>> {
   const out = new Map<string, Slot[]>();
   if (teacherIds.length === 0) return out;
-  const { data } = await admin.from("enrollments").select("teacher_id, slots").in("teacher_id", teacherIds).eq("status", "승인");
+  const { data } = await admin.from("enrollments").select("teacher_id, slots").in("teacher_id", teacherIds).in("status", ["승인", "결제대기"]);
   for (const r of (data ?? []) as { teacher_id: string; slots: unknown }[]) {
     const list = out.get(r.teacher_id) ?? [];
     list.push(...parseSlots(r.slots));
@@ -98,7 +98,7 @@ export async function loadEnrollTeachers(): Promise<EnrollTeacherCard[]> {
     byTeacher.set(r.teacher_id, list);
   }
 
-  // 이미 '승인'된 예약 슬롯은 강사 가용에서 차감(중복 예약 방지) — 학생은 남은 슬롯만 보게 됨.
+  // 이미 확정된 예약('승인'·'결제대기') 슬롯은 강사 가용에서 차감(중복 예약 방지) — 학생은 남은 슬롯만 보게 됨.
   const bookedByTeacher = await loadBookedSlotsByTeacher(admin, ids);
 
   return teachers.map((t) => ({
@@ -186,15 +186,15 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
 
   const { data: slotRows } = await admin.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", teacherId);
   const teacherSlots: Slot[] = (slotRows ?? []).map((r: { day_of_week: number; start_min: number }) => ({ day: r.day_of_week, min: r.start_min }));
-  // 유효 가용 = 강사 템플릿 − 이미 '승인'된 예약 슬롯(중복 예약 방지).
+  // 유효 가용 = 강사 템플릿 − 이미 확정된 예약('승인'·'결제대기') 슬롯(중복 예약 방지).
   const booked = (await loadBookedSlotsByTeacher(admin, [teacherId])).get(teacherId) ?? [];
   const effective = subtractSlots(teacherSlots, booked);
   if (!teacherHasAllSlots(effective, slots)) {
     return { error: "선택한 시간이 더 이상 가능하지 않아요. 일정을 다시 선택해 주세요." };
   }
 
-  // 학생 본인 시간 충돌 차단 — 진행 중('신청'/'승인') 신청과 겹치면 거절.
-  const { data: myRows } = await admin.from("enrollments").select("slots").eq("student_id", user.id).in("status", ["신청", "승인"]);
+  // 학생 본인 시간 충돌 차단 — 진행 중('신청'/'승인'/'결제대기') 신청과 겹치면 거절.
+  const { data: myRows } = await admin.from("enrollments").select("slots").eq("student_id", user.id).in("status", ["신청", "승인", "결제대기"]);
   const mySlots: Slot[] = (myRows ?? []).flatMap((r: { slots: unknown }) => parseSlots(r.slots));
   if (slotsOverlap(slots, mySlots)) {
     return { error: "이미 같은 시간에 신청한 수업이 있어요. 일정을 다시 선택해 주세요." };
