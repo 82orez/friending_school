@@ -144,7 +144,13 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
   if (slots.length > 7 * 36) return { error: "선택한 시간이 너무 많습니다." };
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return { error: "수업 시작일을 선택해 주세요." };
-  if (startDate <= todayKst()) return { error: "수업 시작일은 내일 이후로 선택해 주세요." };
+  // 하한: 오늘+3일(D+3, KST). 오늘 문자열에 3일 더해 비교(UTC 자정 기준 → tz 무관).
+  const minKst = (() => {
+    const d = new Date(`${todayKst()}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 3);
+    return d.toISOString().slice(0, 10);
+  })();
+  if (startDate < minKst) return { error: "수업 시작일은 오늘부터 3일 이후로 선택해 주세요." };
   // 상한: 오늘+14일(2주) 이내. KST 오늘 문자열에 14일 더해 비교(UTC 자정 기준 → tz 무관).
   const maxKst = (() => {
     const d = new Date(`${todayKst()}T00:00:00Z`);

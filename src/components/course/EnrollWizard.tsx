@@ -46,9 +46,9 @@ export default function EnrollWizard({
   const startDate = date ? format(date, "yyyy-MM-dd") : "";
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  // 오늘은 선택 불가 → 내일 자정 경계. 달력은 이 날짜 이전(오늘 포함)을 비활성.
+  // 오늘+3일(D+3)부터 선택 가능. 달력은 이 날짜 이전(오늘~오늘+2일)을 비활성.
   const minDate = new Date(today);
-  minDate.setDate(minDate.getDate() + 1);
+  minDate.setDate(minDate.getDate() + 3);
   // 상한: 오늘+14일까지만 선택 가능(2주 이내).
   const maxDate = new Date(today);
   maxDate.setDate(maxDate.getDate() + 14);
