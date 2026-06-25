@@ -13,7 +13,7 @@ type NavbarUser = { email?: string | null } | null;
 
 // 커리큘럼(과정) 링크 — Phase 2 과정 상세페이지(/courses/<slug>) placeholder.
 const COURSES = [
-  { slug: "workhol", label: "워홀 영어" },
+  { slug: "workhol", label: "워홀 생존영어" },
   { slug: "kitchen", label: "주방 영어" },
   { slug: "grammar", label: "회화기초 문법" },
   { slug: "cosmetic", label: "화장품 수출 영어" },

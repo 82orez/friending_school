@@ -9,7 +9,7 @@ import { setUnitCompleted } from "@/app/textbook/actions";
 import { cn } from "@/lib/utils";
 
 const TAB_LABELS: Record<string, string> = {
-  workhol: "워홀 영어",
+  workhol: "워홀 생존영어",
   kitchen: "주방 영어",
   basic1: "회화기초 문법 1",
   basic2: "회화기초 문법 2",

@@ -27,7 +27,7 @@ export type Book = {
 export const BOOKS: Book[] = [
   {
     key: "workhol",
-    title: "워홀 영어 — 현지에서 쓰는 생존 영어",
+    title: "워홀 생존영어 — 현지에서 쓰는 실전 영어",
     copy: "워홀러 초보 생존 필수! 이건 꼭 알고 가세요!",
     tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }],
     units: [
@@ -270,7 +270,7 @@ export type CourseCard = {
 export const COURSE_CARDS: CourseCard[] = [
   {
     slug: "workhol",
-    name: "워홀 영어 과정",
+    name: "워홀 생존영어 과정",
     desc: "해외 현지 적응, 면접, 일상 영어까지. 초보라도 지금부터 준비하면 호주 현장에서 당당하게 생활할 수 있습니다.",
     price: "₩240,000",
     per: "/ 24회",

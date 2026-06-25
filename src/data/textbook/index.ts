@@ -41,7 +41,7 @@ function unitsFromBook(bookKey: string): TextbookUnit[] {
 export const TEXTBOOK_REGISTRY: Textbook[] = [
   {
     course: WORKHOL_COURSE, // "workhol" — 워홀 콘텐츠(폴더 content/textbook/workhol)
-    title: "워홀 영어 - 현지에서 쓰는 생존 영어",
+    title: "워홀 생존영어 - 현지에서 쓰는 실전 영어",
     subtitle: "준(Jun)의 호주 워킹홀리데이 24개 Unit. 매일 한 Unit씩 호주 현지 표현을 익혀보세요.",
     eyebrow: "FRIENDING · WORKING HOLIDAY ENGLISH",
     freeUnits: [1],

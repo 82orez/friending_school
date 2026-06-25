@@ -71,12 +71,12 @@ const SIMPLE_OPTIONS: ApplyOption[] = [
 const COURSES: Record<CourseSlug, Course> = {
   workhol: {
     slug: "workhol",
-    title: "워홀 영어 과정",
+    title: "워홀 생존영어 과정",
     heroImage: "/images/course-workhol.jpg",
     tagline: "SIM 개통 · 이력서 돌리기 · 면접 · 급여 협상까지",
     introTitle: "현지에서 당당하게 살아가기",
     introDesc: ["해외 현지 적응, 면접, 일상 영어까지.", "초급이라도 지금부터 준비하면", "호주 현장에서 당당하게 생활할 수 있습니다."],
-    spec: COMMON_SPEC("워홀 영어 과정"),
+    spec: COMMON_SPEC("워홀 생존영어 과정"),
     price: "₩240,000",
     per: "/ 24회",
     regretHeadLead: "선배 워홀러들이",
@@ -98,7 +98,7 @@ const COURSES: Record<CourseSlug, Course> = {
         desc: "면접에서 버벅거렸어요. 내 경험과 강점을 제대로 설명하지 못해 떨어진 면접이 수십 개예요. 지금 생각하니 영어만 됐어도 훨씬 빨리 일자리를 얻었을 것 같아요.",
       },
     ],
-    diffHeadLead: "워홀 영어 과정 ",
+    diffHeadLead: "워홀 생존영어 과정 ",
     diffHeadEm: "이렇게 달라요",
     diff: [
       {
@@ -134,7 +134,7 @@ const COURSES: Record<CourseSlug, Course> = {
       },
     ],
     curriculumBooks: [{ bookKey: "workhol" }],
-    applyTitle: "워홀 영어 1:1 화상수업",
+    applyTitle: "워홀 생존영어 1:1 화상수업",
     applyHeading: ["버벅거리는 순간이 오기 전에", "제대로 준비하세요"],
     applyOptions: SIMPLE_OPTIONS,
   },
@@ -317,6 +317,7 @@ const COURSES: Record<CourseSlug, Course> = {
     price: "₩240,000",
     per: "/ 24회",
     // 프로토타입 cosmetic.html의 후회/차별점/후기 섹션은 워홀 카피를 그대로 사용 중 — 원본 충실 이식.
+    // ※ 차별점 헤딩만 화장품 과정명으로 교정(diffHeadLead), 나머지 본문 카피는 원본 유지.
     regretHeadLead: "선배 워홀러들이",
     regretHeadEm: "후회하는 3가지",
     regret: [
@@ -336,7 +337,7 @@ const COURSES: Record<CourseSlug, Course> = {
         desc: "면접에서 버벅거렸어요. 내 경험과 강점을 제대로 설명하지 못해 떨어진 면접이 수십 개예요. 지금 생각하니 영어만 됐어도 훨씬 빨리 일자리를 얻었을 것 같아요.",
       },
     ],
-    diffHeadLead: "워홀 영어 과정 ",
+    diffHeadLead: "화장품 수출 영어 과정 ",
     diffHeadEm: "이렇게 달라요",
     diff: [
       {
