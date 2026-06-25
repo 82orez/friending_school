@@ -15,7 +15,8 @@ type NavbarUser = { email?: string | null } | null;
 const COURSES = [
   { slug: "workhol", label: "워홀 생존영어" },
   { slug: "kitchen", label: "셰프 영어" },
-  { slug: "grammar", label: "회화 공식영어" },
+  { slug: "grammar1", label: "회화 공식영어 1" },
+  { slug: "grammar2", label: "회화 공식영어 2" },
   { slug: "cosmetic", label: "뷰티 영어" },
 ];
 

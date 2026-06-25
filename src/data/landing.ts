@@ -285,12 +285,20 @@ export const COURSE_CARDS: CourseCard[] = [
     image: "/images/course-kitchen.jpg",
   },
   {
-    slug: "grammar",
-    name: "회화 공식영어 1,2 과정",
-    desc: "토익 점수는 올라가는데 입이 안 떨어졌다면, 영어의 뼈대와 원리부터 다시 시작하세요.",
+    slug: "grammar1",
+    name: "회화 공식영어 1 과정",
+    desc: "토익 점수는 올라가는데 입이 안 떨어졌다면, 영어의 뼈대와 원리부터 다시 시작하세요. (Unit 1–24)",
     price: "₩240,000",
     per: "/ 24회",
     image: "/images/course-basic1.jpg",
+  },
+  {
+    slug: "grammar2",
+    name: "회화 공식영어 2 과정",
+    desc: "기초를 다졌다면 이제 실전 회화로. 표현의 폭을 넓혀 어떤 상황에서도 막힘없이 말해보세요. (Unit 25–48)",
+    price: "₩240,000",
+    per: "/ 24회",
+    image: "/images/course-basic2.jpg",
   },
   {
     slug: "cosmetic",

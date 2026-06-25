@@ -3,7 +3,7 @@
 
 import { BOOKS, type BookUnit } from "./landing";
 
-export const COURSE_SLUGS = ["workhol", "kitchen", "grammar", "cosmetic"] as const;
+export const COURSE_SLUGS = ["workhol", "kitchen", "grammar1", "grammar2", "cosmetic"] as const;
 export type CourseSlug = (typeof COURSE_SLUGS)[number];
 
 export type SpecItem = { key: string; val: string };
@@ -66,6 +66,58 @@ const SIMPLE_OPTIONS: ApplyOption[] = [
   { value: "2", label: "주 2회 과정 (12주)" },
   { value: "3", label: "주 3회 과정 (8주)" },
   { value: "5", label: "주 5회 과정 (5주)" },
+];
+
+// 회화 공식영어 1·2 과정 공통 카피 — 같은 교수법(이해하는 문법→화상 회화), 교재(Unit 범위)만 다름.
+const GRAMMAR_REGRET: RegretCard[] = [
+  {
+    num: "01",
+    title: "문법은 아는데, 말이 안 나와요",
+    desc: "학교에서 문법은 배웠는데 정작 입이 안 떨어졌어요. 규칙을 외웠을 뿐, 왜 그렇게 쓰는지 몰랐거든요. 이해하지 못한 문법은 말할 때 절대 나오지 않아요.",
+  },
+  {
+    num: "02",
+    title: "학원을 다녀도 늘 같은 자리예요",
+    desc: "회화 학원, 문법 학원 번갈아 다녀봤는데 연결이 안 됐어요. 문법은 문법대로, 회화는 회화대로 따로 놀았어요. 둘을 같이 배워야 했는데.",
+  },
+  {
+    num: "03",
+    title: "Be동사가 뭔지 아직도 헷갈려요",
+    desc: "am / is / are를 외웠는데 왜 쓰는지 몰랐어요. 원리를 이해하지 못한 채 외우기만 하면, 조금만 문장이 바뀌어도 막혀버려요.",
+  },
+];
+
+const GRAMMAR_DIFF: DiffItem[] = [
+  {
+    title: "외우는 문법이 아니라, 이해하는 문법.",
+    desc: 'Be동사를 "존재동사"로, 분사를 "동사에서 나온 형용사"로 설명합니다. 어려운 용어를 쉽게 재해석해서 한 번 이해하면 절대 잊지 않습니다.',
+  },
+  {
+    title: "문법 설명에서 끝나지 않습니다.",
+    desc: "배운 내용을 화상 수업에서 직접 말해보며 연습합니다. 이해한 문법이 입 밖으로 나오는 순간, 진짜 실력이 됩니다.",
+  },
+  {
+    title: "48유닛, 회화 중심으로 촘촘하게.",
+    desc: "Be동사부터 가정법까지, 일상에서 정말 쓰는 표현 중심으로 구성했습니다. 1편(1-24유닛) · 2편(25-48유닛)으로 나뉘어 단계적으로 완성됩니다.",
+  },
+];
+
+const GRAMMAR_REVIEWS: Review[] = [
+  {
+    text: "“Be동사를 존재동사로 설명해 주시는데, 그 순간 모든 게 이해됐어요. 10년 동안 외워만 왔는데, 왜 그렇게 쓰는지 처음으로 알게 됐습니다.”",
+    author: "유○○",
+    role: "문화센터 수강생",
+  },
+  {
+    text: "“문법 배우고 바로 화상 수업에서 말해보니까 확실히 달랐어요. 머릿속에 있던 게 입으로 나오는 느낌, 다른 학원에서는 한 번도 못 느꼈거든요.”",
+    author: "김○○",
+    role: "기초회화 수강생",
+  },
+  {
+    text: "“관계대명사가 한국어에도 있다는 설명에 무릎을 탁 쳤어요. 그렇게 어렵던 문법이 갑자기 친숙해지더라고요. 진작 이렇게 배웠으면 좋았을 텐데!”",
+    author: "박○○",
+    role: "문화센터 수강생",
+  },
 ];
 
 const COURSES: Record<CourseSlug, Course> = {
@@ -209,94 +261,54 @@ const COURSES: Record<CourseSlug, Course> = {
     applyOptions: SIMPLE_OPTIONS,
   },
 
-  grammar: {
-    slug: "grammar",
-    title: "회화 공식영어 1,2 과정",
+  grammar1: {
+    slug: "grammar1",
+    title: "회화 공식영어 1 과정",
     heroImage: "/images/course-basic1.jpg",
     tagline: "Be동사 · 시제 · 조동사 · 가정법까지",
     introTitle: "영어를 이해하고 말하는 공부",
     introDesc: ["토익 점수는 올라가는데", "입이 안 떨어졌다면,", "영어의 뼈대와 원리부터", "다시 시작하세요."],
-    spec: COMMON_SPEC("회화 공식영어 1,2", "각 24회 · 각 25분"),
+    spec: COMMON_SPEC("회화 공식영어 1"),
     price: "₩240,000",
     per: "/ 24회",
     regretHeadLead: "영어 공부를 해봤던 분들이",
     regretHeadEm: "가장 많이 털어놓는 3가지",
-    regret: [
-      {
-        num: "01",
-        title: "문법은 아는데, 말이 안 나와요",
-        desc: "학교에서 문법은 배웠는데 정작 입이 안 떨어졌어요. 규칙을 외웠을 뿐, 왜 그렇게 쓰는지 몰랐거든요. 이해하지 못한 문법은 말할 때 절대 나오지 않아요.",
-      },
-      {
-        num: "02",
-        title: "학원을 다녀도 늘 같은 자리예요",
-        desc: "회화 학원, 문법 학원 번갈아 다녀봤는데 연결이 안 됐어요. 문법은 문법대로, 회화는 회화대로 따로 놀았어요. 둘을 같이 배워야 했는데.",
-      },
-      {
-        num: "03",
-        title: "Be동사가 뭔지 아직도 헷갈려요",
-        desc: "am / is / are를 외웠는데 왜 쓰는지 몰랐어요. 원리를 이해하지 못한 채 외우기만 하면, 조금만 문장이 바뀌어도 막혀버려요.",
-      },
-    ],
-    diffHeadLead: "회화 공식영어 ",
+    regret: GRAMMAR_REGRET,
+    diffHeadLead: "회화 공식영어 1 ",
     diffHeadEm: "이렇게 달라요",
-    diff: [
-      {
-        title: "외우는 문법이 아니라, 이해하는 문법.",
-        desc: 'Be동사를 "존재동사"로, 분사를 "동사에서 나온 형용사"로 설명합니다. 어려운 용어를 쉽게 재해석해서 한 번 이해하면 절대 잊지 않습니다.',
-      },
-      {
-        title: "문법 설명에서 끝나지 않습니다.",
-        desc: "배운 내용을 화상 수업에서 직접 말해보며 연습합니다. 이해한 문법이 입 밖으로 나오는 순간, 진짜 실력이 됩니다.",
-      },
-      {
-        title: "48유닛, 회화 중심으로 촘촘하게.",
-        desc: "Be동사부터 가정법까지, 일상에서 정말 쓰는 표현 중심으로 구성했습니다. 문법1(1-24유닛) · 문법2(25-48유닛)로 나뉘어 단계적으로 완성됩니다.",
-      },
-    ],
-    reviewHeadLead: "회화 공식영어",
+    diff: GRAMMAR_DIFF,
+    reviewHeadLead: "회화 공식영어 1",
     reviewHeadEm: "반응",
-    reviews: [
-      {
-        text: "“Be동사를 존재동사로 설명해 주시는데, 그 순간 모든 게 이해됐어요. 10년 동안 외워만 왔는데, 왜 그렇게 쓰는지 처음으로 알게 됐습니다.”",
-        author: "유○○",
-        role: "문화센터 수강생",
-      },
-      {
-        text: "“문법 배우고 바로 화상 수업에서 말해보니까 확실히 달랐어요. 머릿속에 있던 게 입으로 나오는 느낌, 다른 학원에서는 한 번도 못 느꼈거든요.”",
-        author: "김○○",
-        role: "기초회화 수강생",
-      },
-      {
-        text: "“관계대명사가 한국어에도 있다는 설명에 무릎을 탁 쳤어요. 그렇게 어렵던 문법이 갑자기 친숙해지더라고요. 진작 이렇게 배웠으면 좋았을 텐데!”",
-        author: "박○○",
-        role: "문화센터 수강생",
-      },
-    ],
-    curriculumBooks: [
-      { bookKey: "basic1", title: "회화 공식영어 1 (Unit 1–24)" },
-      { bookKey: "basic2", title: "회화 공식영어 2 (Unit 25–48)" },
-    ],
-    applyTitle: "회화 공식영어 1:1 화상수업",
+    reviews: GRAMMAR_REVIEWS,
+    curriculumBooks: [{ bookKey: "basic1", title: "회화 공식영어 1 (Unit 1–24)" }],
+    applyTitle: "회화 공식영어 1 1:1 화상수업",
     applyHeading: ["외우다 포기했던 영어,", "이번엔 이해하고 말해보세요"],
-    applyOptions: [
-      {
-        group: "회화 공식영어 1 (Unit 1–24)",
-        options: [
-          { value: "공식영어1-주2회", label: "공식영어1 · 주 2회 과정 (12주)" },
-          { value: "공식영어1-주3회", label: "공식영어1 · 주 3회 과정 (8주)" },
-          { value: "공식영어1-주5회", label: "공식영어1 · 주 5회 과정 (5주)" },
-        ],
-      },
-      {
-        group: "회화 공식영어 2 (Unit 25–48)",
-        options: [
-          { value: "공식영어2-주2회", label: "공식영어2 · 주 2회 과정 (12주)" },
-          { value: "공식영어2-주3회", label: "공식영어2 · 주 3회 과정 (8주)" },
-          { value: "공식영어2-주5회", label: "공식영어2 · 주 5회 과정 (5주)" },
-        ],
-      },
-    ],
+    applyOptions: SIMPLE_OPTIONS,
+  },
+
+  grammar2: {
+    slug: "grammar2",
+    title: "회화 공식영어 2 과정",
+    heroImage: "/images/course-basic2.jpg",
+    tagline: "관계대명사 · 분사 · 가정법 · 화법까지",
+    introTitle: "기초 위에 실전 회화를 완성",
+    introDesc: ["기초 문법을 익혔다면,", "이제 표현의 폭을 넓혀", "어떤 상황에서도", "막힘없이 말해보세요."],
+    spec: COMMON_SPEC("회화 공식영어 2"),
+    price: "₩240,000",
+    per: "/ 24회",
+    regretHeadLead: "영어 공부를 해봤던 분들이",
+    regretHeadEm: "가장 많이 털어놓는 3가지",
+    regret: GRAMMAR_REGRET,
+    diffHeadLead: "회화 공식영어 2 ",
+    diffHeadEm: "이렇게 달라요",
+    diff: GRAMMAR_DIFF,
+    reviewHeadLead: "회화 공식영어 2",
+    reviewHeadEm: "반응",
+    reviews: GRAMMAR_REVIEWS,
+    curriculumBooks: [{ bookKey: "basic2", title: "회화 공식영어 2 (Unit 25–48)" }],
+    applyTitle: "회화 공식영어 2 1:1 화상수업",
+    applyHeading: ["외우다 포기했던 영어,", "이번엔 이해하고 말해보세요"],
+    applyOptions: SIMPLE_OPTIONS,
   },
 
   cosmetic: {
