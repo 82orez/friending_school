@@ -49,7 +49,7 @@ export const TEXTBOOK_REGISTRY: Textbook[] = [
   },
   {
     course: "kitchen",
-    title: "주방 영어 — 식당 · 카페 · 주방 현장 실전",
+    title: "셰프 영어 — 식당 · 카페 · 주방 현장 실전",
     subtitle: "미장플라스부터 러시아워 소통까지, 주방에서 바로 통하는 실전 표현 24개 Unit.",
     eyebrow: "FRIENDING · KITCHEN ENGLISH",
     freeUnits: [1],
@@ -57,7 +57,7 @@ export const TEXTBOOK_REGISTRY: Textbook[] = [
   },
   {
     course: "grammar1",
-    title: "회화기초 문법 1 — 기초부터 탄탄하게",
+    title: "회화 공식영어 1 — 기초부터 탄탄하게",
     subtitle: "Be동사부터 전치사까지, 회화의 뼈대를 세우는 24개 Unit.",
     eyebrow: "FRIENDING · BASIC GRAMMAR 1",
     freeUnits: [1],
@@ -65,7 +65,7 @@ export const TEXTBOOK_REGISTRY: Textbook[] = [
   },
   {
     course: "grammar2",
-    title: "회화기초 문법 2 — 실전 회화 완성",
+    title: "회화 공식영어 2 — 실전 회화 완성",
     subtitle: "비교급부터 가정법까지, 실전 회화를 완성하는 Unit 25–48.",
     eyebrow: "FRIENDING · BASIC GRAMMAR 2",
     freeUnits: [25],
@@ -73,7 +73,7 @@ export const TEXTBOOK_REGISTRY: Textbook[] = [
   },
   {
     course: "cosmetic",
-    title: "화장품 수출 영어 — 글로벌 비즈니스 실전",
+    title: "뷰티 영어 — 글로벌 비즈니스 실전",
     subtitle: "바이어 미팅부터 협상·이메일·계약까지, K-뷰티 수출 영어 24개 Unit.",
     eyebrow: "FRIENDING · COSMETIC EXPORT ENGLISH",
     freeUnits: [1],

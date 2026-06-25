@@ -98,7 +98,7 @@ const COURSES: Record<CourseSlug, Course> = {
         desc: "면접에서 버벅거렸어요. 내 경험과 강점을 제대로 설명하지 못해 떨어진 면접이 수십 개예요. 지금 생각하니 영어만 됐어도 훨씬 빨리 일자리를 얻었을 것 같아요.",
       },
     ],
-    diffHeadLead: "워홀 생존영어 과정 ",
+    diffHeadLead: "워홀 생존영어 과정",
     diffHeadEm: "이렇게 달라요",
     diff: [
       {
@@ -141,12 +141,12 @@ const COURSES: Record<CourseSlug, Course> = {
 
   kitchen: {
     slug: "kitchen",
-    title: "주방 영어 과정",
+    title: "셰프 영어 과정",
     heroImage: "/images/course-kitchen.jpg",
     tagline: "미장플라스부터 러시아워 · 매니저 소통까지",
     introTitle: "주방에서 당당하게 일하기",
     introDesc: ['"Behind!" 한 마디도 못 알아들었던 첫날,', "이제는 주방 어디서든 당당하게", "소통할 수 있습니다. 지금 시작하세요."],
-    spec: COMMON_SPEC("주방 영어 과정"),
+    spec: COMMON_SPEC("셰프 영어 과정"),
     price: "₩240,000",
     per: "/ 24회",
     regretHeadLead: "주방에서 일했던 사람들이",
@@ -168,7 +168,7 @@ const COURSES: Record<CourseSlug, Course> = {
         desc: '"한 번 더 말씀해 주시겠어요?"라는 말 한마디를 못해서 엉뚱하게 일을 처리한 적이 수도 없어요. 소통이 안 되니 자신감도 기회도 같이 사라졌어요.',
       },
     ],
-    diffHeadLead: "주방 영어 과정 ",
+    diffHeadLead: "셰프 영어 과정 ",
     diffHeadEm: "이렇게 달라요",
     diff: [
       {
@@ -184,7 +184,7 @@ const COURSES: Record<CourseSlug, Course> = {
         desc: "출근 D-day에서 역산해 설계했습니다. 2주 몰입 과정, 5주, 8주, 12주까지 본인 일정에 맞게 준비 가능합니다.",
       },
     ],
-    reviewHeadLead: "주방영어 희망자들의 ",
+    reviewHeadLead: "셰프 영어 희망자들의 ",
     reviewHeadEm: "반응",
     reviews: [
       {
@@ -204,19 +204,19 @@ const COURSES: Record<CourseSlug, Course> = {
       },
     ],
     curriculumBooks: [{ bookKey: "kitchen" }],
-    applyTitle: "주방 영어 1:1 화상수업",
+    applyTitle: "셰프 영어 1:1 화상수업",
     applyHeading: ["주방에서 버벅거리는 순간이 오기 전에", "제대로 준비하세요"],
     applyOptions: SIMPLE_OPTIONS,
   },
 
   grammar: {
     slug: "grammar",
-    title: "회화기초 문법과정 1,2",
+    title: "회화 공식영어 1,2 과정",
     heroImage: "/images/course-basic1.jpg",
     tagline: "Be동사 · 시제 · 조동사 · 가정법까지",
     introTitle: "영어를 이해하고 말하는 공부",
     introDesc: ["토익 점수는 올라가는데", "입이 안 떨어졌다면,", "영어의 뼈대와 원리부터", "다시 시작하세요."],
-    spec: COMMON_SPEC("기초회화 문법1,2", "각 24회 · 각 25분"),
+    spec: COMMON_SPEC("회화 공식영어 1,2", "각 24회 · 각 25분"),
     price: "₩240,000",
     per: "/ 24회",
     regretHeadLead: "영어 공부를 해봤던 분들이",
@@ -238,7 +238,7 @@ const COURSES: Record<CourseSlug, Course> = {
         desc: "am / is / are를 외웠는데 왜 쓰는지 몰랐어요. 원리를 이해하지 못한 채 외우기만 하면, 조금만 문장이 바뀌어도 막혀버려요.",
       },
     ],
-    diffHeadLead: "기초회화 문법 ",
+    diffHeadLead: "회화 공식영어 ",
     diffHeadEm: "이렇게 달라요",
     diff: [
       {
@@ -254,7 +254,7 @@ const COURSES: Record<CourseSlug, Course> = {
         desc: "Be동사부터 가정법까지, 일상에서 정말 쓰는 표현 중심으로 구성했습니다. 문법1(1-24유닛) · 문법2(25-48유닛)로 나뉘어 단계적으로 완성됩니다.",
       },
     ],
-    reviewHeadLead: "기초회화 문법",
+    reviewHeadLead: "회화 공식영어",
     reviewHeadEm: "반응",
     reviews: [
       {
@@ -274,26 +274,26 @@ const COURSES: Record<CourseSlug, Course> = {
       },
     ],
     curriculumBooks: [
-      { bookKey: "basic1", title: "기초회화 문법 1 (Unit 1–24)" },
-      { bookKey: "basic2", title: "기초회화 문법 2 (Unit 25–48)" },
+      { bookKey: "basic1", title: "회화 공식영어 1 (Unit 1–24)" },
+      { bookKey: "basic2", title: "회화 공식영어 2 (Unit 25–48)" },
     ],
-    applyTitle: "기초회화 문법 1:1 화상수업",
+    applyTitle: "회화 공식영어 1:1 화상수업",
     applyHeading: ["외우다 포기했던 영어,", "이번엔 이해하고 말해보세요"],
     applyOptions: [
       {
-        group: "기초회화 문법 1 (Unit 1–24)",
+        group: "회화 공식영어 1 (Unit 1–24)",
         options: [
-          { value: "문법1-주2회", label: "문법1 · 주 2회 과정 (12주)" },
-          { value: "문법1-주3회", label: "문법1 · 주 3회 과정 (8주)" },
-          { value: "문법1-주5회", label: "문법1 · 주 5회 과정 (5주)" },
+          { value: "공식영어1-주2회", label: "공식영어1 · 주 2회 과정 (12주)" },
+          { value: "공식영어1-주3회", label: "공식영어1 · 주 3회 과정 (8주)" },
+          { value: "공식영어1-주5회", label: "공식영어1 · 주 5회 과정 (5주)" },
         ],
       },
       {
-        group: "기초회화 문법 2 (Unit 25–48)",
+        group: "회화 공식영어 2 (Unit 25–48)",
         options: [
-          { value: "문법2-주2회", label: "문법2 · 주 2회 과정 (12주)" },
-          { value: "문법2-주3회", label: "문법2 · 주 3회 과정 (8주)" },
-          { value: "문법2-주5회", label: "문법2 · 주 5회 과정 (5주)" },
+          { value: "공식영어2-주2회", label: "공식영어2 · 주 2회 과정 (12주)" },
+          { value: "공식영어2-주3회", label: "공식영어2 · 주 3회 과정 (8주)" },
+          { value: "공식영어2-주5회", label: "공식영어2 · 주 5회 과정 (5주)" },
         ],
       },
     ],
@@ -301,7 +301,7 @@ const COURSES: Record<CourseSlug, Course> = {
 
   cosmetic: {
     slug: "cosmetic",
-    title: "화장품 수출영어 과정",
+    title: "뷰티 영어 과정",
     heroImage: "/images/course-cosmetic.jpg",
     tagline: "바이어 미팅 · 협상 · 이메일 · 계약까지",
     introTitle: "바이어 앞에서 당당하게",
@@ -313,11 +313,11 @@ const COURSES: Record<CourseSlug, Course> = {
       "제품 소개부터 협상, 이메일까지",
       "한 번에 준비하세요.",
     ],
-    spec: COMMON_SPEC("화장품 수출 영어 과정"),
+    spec: COMMON_SPEC("뷰티 영어 과정"),
     price: "₩240,000",
     per: "/ 24회",
     // 프로토타입 cosmetic.html의 후회/차별점/후기 섹션은 워홀 카피를 그대로 사용 중 — 원본 충실 이식.
-    // ※ 차별점 헤딩만 화장품 과정명으로 교정(diffHeadLead), 나머지 본문 카피는 원본 유지.
+    // ※ 차별점 헤딩만 이 과정(뷰티 영어) 이름으로 교정(diffHeadLead), 나머지 본문 카피는 원본 유지.
     regretHeadLead: "선배 워홀러들이",
     regretHeadEm: "후회하는 3가지",
     regret: [
@@ -337,7 +337,7 @@ const COURSES: Record<CourseSlug, Course> = {
         desc: "면접에서 버벅거렸어요. 내 경험과 강점을 제대로 설명하지 못해 떨어진 면접이 수십 개예요. 지금 생각하니 영어만 됐어도 훨씬 빨리 일자리를 얻었을 것 같아요.",
       },
     ],
-    diffHeadLead: "화장품 수출 영어 과정 ",
+    diffHeadLead: "뷰티 영어 과정 ",
     diffHeadEm: "이렇게 달라요",
     diff: [
       {
@@ -373,7 +373,7 @@ const COURSES: Record<CourseSlug, Course> = {
       },
     ],
     curriculumBooks: [{ bookKey: "cosmetic" }],
-    applyTitle: "화장품 수출 영어 1:1 화상수업",
+    applyTitle: "뷰티 영어 1:1 화상수업",
     applyHeading: ["버벅거리는 순간이 오기 전에", "제대로 준비하세요"],
     applyOptions: SIMPLE_OPTIONS,
   },

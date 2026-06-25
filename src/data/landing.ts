@@ -62,7 +62,7 @@ export const BOOKS: Book[] = [
   },
   {
     key: "kitchen",
-    title: "주방 영어 — 식당 · 카페 · 주방 현장 실전",
+    title: "셰프 영어 — 식당 · 카페 · 주방 현장 실전",
     copy: "주방에서 바로 통하는 영어, 워홀러 필수!",
     tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }],
     units: [
@@ -97,7 +97,7 @@ export const BOOKS: Book[] = [
   },
   {
     key: "basic1",
-    title: "회화기초 문법 1 — 기초부터 탄탄하게",
+    title: "회화 공식영어 1 — 기초부터 탄탄하게",
     copy: "영어가 처음이라면, 여기서 시작하세요.",
     tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }],
     units: [
@@ -132,7 +132,7 @@ export const BOOKS: Book[] = [
   },
   {
     key: "basic2",
-    title: "회화기초 문법 2 — 실전 회화 완성",
+    title: "회화 공식영어 2 — 실전 회화 완성",
     copy: "문법 1을 마쳤다면, 이제 실전으로!",
     tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }],
     units: [
@@ -167,7 +167,7 @@ export const BOOKS: Book[] = [
   },
   {
     key: "cosmetic",
-    title: "화장품 수출 영어 — 글로벌 비즈니스 실전",
+    title: "뷰티 영어 — 글로벌 비즈니스 실전",
     copy: "바이어와 직접 협상하는 비즈니스 영어!",
     tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }, { t: "기업 추천" }],
     units: [
@@ -278,7 +278,7 @@ export const COURSE_CARDS: CourseCard[] = [
   },
   {
     slug: "kitchen",
-    name: "주방 영어 과정",
+    name: "셰프 영어 과정",
     desc: '"Behind!" 한 마디도 못 알아들었던 첫날, 이제는 주방 어디서든 당당하게 소통할 수 있습니다. 지금 시작하세요.',
     price: "₩240,000",
     per: "/ 24회",
@@ -286,7 +286,7 @@ export const COURSE_CARDS: CourseCard[] = [
   },
   {
     slug: "grammar",
-    name: "회화기초 문법 1,2과정",
+    name: "회화 공식영어 1,2 과정",
     desc: "토익 점수는 올라가는데 입이 안 떨어졌다면, 영어의 뼈대와 원리부터 다시 시작하세요.",
     price: "₩240,000",
     per: "/ 24회",
@@ -294,7 +294,7 @@ export const COURSE_CARDS: CourseCard[] = [
   },
   {
     slug: "cosmetic",
-    name: "화장품 수출 영어 과정",
+    name: "뷰티 영어 과정",
     desc: "첫 미팅부터 계약 성사까지, K-뷰티 수출 영어 24유닛. 바이어가 눈앞에 있는데 영어가 막혔다면, 제품 소개부터 협상, 이메일까지 한 번에 준비하세요.",
     price: "₩240,000",
     per: "/ 24회",
