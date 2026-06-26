@@ -18,6 +18,7 @@ export type CurriculumGroup = { title?: string; units: BookUnit[] };
 export type Course = {
   slug: CourseSlug;
   title: string;
+  englishTitle: string;
   heroImage: string;
   tagline: string;
   introTitle: string;
@@ -124,6 +125,7 @@ const COURSES: Record<CourseSlug, Course> = {
   workhol: {
     slug: "workhol",
     title: "워홀 생존영어 과정",
+    englishTitle: "Working Holiday Survival English",
     heroImage: "/images/course-workhol.jpg",
     tagline: "SIM 개통 · 이력서 돌리기 · 면접 · 급여 협상까지",
     introTitle: "현지에서 당당하게 살아가기",
@@ -194,6 +196,7 @@ const COURSES: Record<CourseSlug, Course> = {
   kitchen: {
     slug: "kitchen",
     title: "셰프 영어 과정",
+    englishTitle: "Chef English",
     heroImage: "/images/course-kitchen.jpg",
     tagline: "미장플라스부터 러시아워 · 매니저 소통까지",
     introTitle: "주방에서 당당하게 일하기",
@@ -264,6 +267,7 @@ const COURSES: Record<CourseSlug, Course> = {
   grammar1: {
     slug: "grammar1",
     title: "회화 공식영어 1 과정",
+    englishTitle: "Conversational English 1",
     heroImage: "/images/course-basic1.jpg",
     tagline: "Be동사 · 시제 · 조동사 · 가정법까지",
     introTitle: "영어를 이해하고 말하는 공부",
@@ -289,6 +293,7 @@ const COURSES: Record<CourseSlug, Course> = {
   grammar2: {
     slug: "grammar2",
     title: "회화 공식영어 2 과정",
+    englishTitle: "Conversational English 2",
     heroImage: "/images/course-basic2.jpg",
     tagline: "관계대명사 · 분사 · 가정법 · 화법까지",
     introTitle: "기초 위에 실전 회화를 완성",
@@ -314,6 +319,7 @@ const COURSES: Record<CourseSlug, Course> = {
   cosmetic: {
     slug: "cosmetic",
     title: "뷰티 영어 과정",
+    englishTitle: "Beauty English",
     heroImage: "/images/course-cosmetic.jpg",
     tagline: "바이어 미팅 · 협상 · 이메일 · 계약까지",
     introTitle: "바이어 앞에서 당당하게",

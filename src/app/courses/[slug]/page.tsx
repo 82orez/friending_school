@@ -34,6 +34,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <Image src={course.heroImage} alt="" fill priority sizes="(max-width: 1200px) 100vw, 1200px" className="object-cover" />
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 px-6 text-center">
             <h1 className="text-2xl leading-snug font-bold tracking-tight text-white md:text-[40px]">{course.title}</h1>
+            <p className="mt-1.5 text-sm font-medium tracking-wide text-white/70 md:text-base">{course.englishTitle}</p>
             <p className="mt-2.5 text-base font-normal text-white/85 md:text-lg">{course.tagline}</p>
           </div>
         </div>
@@ -65,6 +66,10 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
                 <span className="text-ink font-medium">{s.val}</span>
               </li>
             ))}
+            <li className="flex items-start gap-2.5 text-base">
+              <span className="text-muted-fg-faint w-11 shrink-0">영어명</span>
+              <span className="text-ink font-medium">{course.englishTitle}</span>
+            </li>
           </ul>
           <p className="text-ink mb-4 text-2xl font-bold tracking-tight">
             {course.price} <span className="text-muted-fg-faint text-base font-normal">{course.per}</span>

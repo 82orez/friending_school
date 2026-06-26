@@ -42,7 +42,13 @@ export default async function EnrollPage({ params }: { params: Promise<{ slug: s
 
       <div className="px-5 pb-16">
         {ready ? (
-          <EnrollWizard courseSlug={course.slug} courseTitle={course.title} coursePrice={course.price} teachers={teachers} />
+          <EnrollWizard
+            courseSlug={course.slug}
+            courseTitle={course.title}
+            courseEnglishTitle={course.englishTitle}
+            coursePrice={course.price}
+            teachers={teachers}
+          />
         ) : !phoneVerified ? (
           <div className="border-brand/30 bg-brand/5 mx-auto max-w-[560px] rounded-2xl border p-8 text-center">
             <h2 className="text-ink text-lg font-bold">휴대폰 인증이 필요해요</h2>
