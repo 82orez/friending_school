@@ -37,6 +37,10 @@ const WEEKDAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // index 
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const dateToStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseDate = (s: string) => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
 
 // sessionDate(YYYY-MM-DD) → 날짜 라벨. ko="7월 1일 (월)" / en="Jul 1 (Mon)".
 function formatSessionDate(d: string, ko: boolean): string {
@@ -57,7 +61,19 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
     return () => clearInterval(t);
   }, []);
 
-  const [view, setView] = useState<View>("list");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // enrollment_id별 그룹핑(서버 정렬 유지) → 다음 예정 수업 빠른 그룹 먼저, 전부 종료된 그룹은 뒤로.
+  const groups: CourseGroup[] = useMemo(() => {
+    const map = new Map<string, CourseGroup>();
+    for (const c of classes) {
+      const g = map.get(c.enrollmentId);
+      if (g) g.items.push(c);
+      else map.set(c.enrollmentId, { enrollmentId: c.enrollmentId, courseTitle: c.courseTitle, counterpart: c.counterpart, items: [c] });
+    }
+    const nextStart = (g: CourseGroup) => g.items.find((c) => c.endMs >= now)?.startMs ?? Infinity;
+    return Array.from(map.values()).sort((a, b) => nextStart(a) - nextStart(b));
+  }, [classes, now]);
 
   if (classes.length === 0) {
     return (
@@ -71,13 +87,45 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
     );
   }
 
+  const selected = selectedId ? (groups.find((g) => g.enrollmentId === selectedId) ?? null) : null;
+
+  if (selected) {
+    return <CourseDetail group={selected} isTeacher={isTeacher} now={now} ko={ko} onBack={() => setSelectedId(null)} />;
+  }
+
+  // 진입 — 과정 카드 그리드.
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {groups.map((g) => (
+        <CourseCard key={g.enrollmentId} group={g} isTeacher={isTeacher} now={now} onSelect={() => setSelectedId(g.enrollmentId)} />
+      ))}
+    </div>
+  );
+}
+
+// 과정 상세 — 달력 기본 + 목록 토글(해당 과정 수업만).
+function CourseDetail({ group, isTeacher, now, ko, onBack }: { group: CourseGroup; isTeacher: boolean; now: number; ko: boolean; onBack: () => void }) {
+  const [view, setView] = useState<View>("calendar");
+
   return (
     <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-muted-fg hover:text-ink focus-visible:ring-accent-blue/50 inline-flex items-center gap-1 rounded text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+          <ArrowLeft className="size-4" />
+          {ko ? "목록으로" : "Back"}
+        </button>
+        <h2 className="text-ink truncate text-base font-bold">{group.courseTitle}</h2>
+      </div>
+
       <ViewToggle view={view} setView={setView} ko={ko} />
+
       {view === "calendar" ? (
-        <ClassroomCalendar classes={classes} isTeacher={isTeacher} now={now} />
+        <ClassroomCalendar classes={group.items} isTeacher={isTeacher} now={now} />
       ) : (
-        <ListView classes={classes} isTeacher={isTeacher} now={now} ko={ko} />
+        <SessionList items={group.items} isTeacher={isTeacher} now={now} ko={ko} />
       )}
     </div>
   );
@@ -85,8 +133,8 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
 
 function ViewToggle({ view, setView, ko }: { view: View; setView: (v: View) => void; ko: boolean }) {
   const tabs: [View, string][] = [
-    ["list", ko ? "목록" : "List"],
     ["calendar", ko ? "달력" : "Calendar"],
+    ["list", ko ? "목록" : "List"],
   ];
   return (
     <div className="bg-surface inline-flex rounded-lg p-1">
@@ -107,83 +155,46 @@ function ViewToggle({ view, setView, ko }: { view: View; setView: (v: View) => v
   );
 }
 
-// 목록 뷰 — 과정 카드 그리드 → 클릭 시 해당 과정의 예정/지난 수업.
-function ListView({ classes, isTeacher, now, ko }: { classes: ClassItem[]; isTeacher: boolean; now: number; ko: boolean }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  // enrollment_id별 그룹핑(서버 정렬 유지) → 다음 예정 수업 빠른 그룹 먼저, 전부 종료된 그룹은 뒤로.
-  const groups: CourseGroup[] = useMemo(() => {
-    const map = new Map<string, CourseGroup>();
-    for (const c of classes) {
-      const g = map.get(c.enrollmentId);
-      if (g) g.items.push(c);
-      else map.set(c.enrollmentId, { enrollmentId: c.enrollmentId, courseTitle: c.courseTitle, counterpart: c.counterpart, items: [c] });
-    }
-    const nextStart = (g: CourseGroup) => g.items.find((c) => c.endMs >= now)?.startMs ?? Infinity;
-    return Array.from(map.values()).sort((a, b) => nextStart(a) - nextStart(b));
-  }, [classes, now]);
-
-  const selected = selectedId ? (groups.find((g) => g.enrollmentId === selectedId) ?? null) : null;
-
-  // 상세 뷰 — 선택한 과정의 예정/지난 수업.
-  if (selected) {
-    const upcoming = selected.items.filter((c) => c.endMs >= now);
-    const past = selected.items.filter((c) => c.endMs < now).reverse();
-    return (
-      <div className="space-y-5">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setSelectedId(null)}
-            className="text-muted-fg hover:text-ink focus-visible:ring-accent-blue/50 inline-flex items-center gap-1 rounded text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-            <ArrowLeft className="size-4" />
-            {ko ? "목록으로" : "Back"}
-          </button>
-          <h2 className="text-ink truncate text-base font-bold">{selected.courseTitle}</h2>
-        </div>
-
-        <Section title={ko ? "예정된 수업" : "Upcoming classes"} count={upcoming.length} ko={ko}>
-          {upcoming.length === 0 ? (
-            <p className="text-muted-fg px-6 py-8 text-center text-sm">{ko ? "예정된 수업이 없어요." : "No upcoming classes."}</p>
-          ) : (
-            <ul className="list-none">
-              {upcoming.map((c) => (
-                <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} />
-              ))}
-            </ul>
-          )}
-        </Section>
-
-        {past.length > 0 && (
-          <Section title={ko ? "지난 수업" : "Past classes"} count={past.length} ko={ko}>
-            <ul className="list-none">
-              {past.map((c) => (
-                <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} isPast />
-              ))}
-            </ul>
-          </Section>
-        )}
-      </div>
-    );
-  }
-
-  // 기본 — 과정 카드 그리드.
+// 목록 — 예정/지난 수업(단일 과정).
+function SessionList({ items, isTeacher, now, ko }: { items: ClassItem[]; isTeacher: boolean; now: number; ko: boolean }) {
+  const upcoming = items.filter((c) => c.endMs >= now);
+  const past = items.filter((c) => c.endMs < now).reverse();
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {groups.map((g) => (
-        <CourseCard key={g.enrollmentId} group={g} isTeacher={isTeacher} now={now} onSelect={() => setSelectedId(g.enrollmentId)} />
-      ))}
+    <div className="space-y-5">
+      <Section title={ko ? "예정된 수업" : "Upcoming classes"} count={upcoming.length} ko={ko}>
+        {upcoming.length === 0 ? (
+          <p className="text-muted-fg px-6 py-8 text-center text-sm">{ko ? "예정된 수업이 없어요." : "No upcoming classes."}</p>
+        ) : (
+          <ul className="list-none">
+            {upcoming.map((c) => (
+              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} />
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      {past.length > 0 && (
+        <Section title={ko ? "지난 수업" : "Past classes"} count={past.length} ko={ko}>
+          <ul className="list-none">
+            {past.map((c) => (
+              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} isPast />
+            ))}
+          </ul>
+        </Section>
+      )}
     </div>
   );
 }
 
-// 달력 뷰 — 전체 과정 통합 월간. 수업 있는 날 예정/지난 색 구분, 날짜 클릭 시 그 날 수업 목록.
+// 달력 — 단일 과정 월간. 수업 있는 날 예정/지난 색 구분, 날짜 클릭 시 그 날 수업 목록.
 function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; isTeacher: boolean; now: number }) {
   const ko = !isTeacher;
+
+  // 기본 포커스 = 다음 예정 수업(없으면 마지막 수업) 날짜. 1회만 계산(틱에 튀지 않게).
   const [selected, setSelected] = useState<Date | undefined>(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
+    const t = Date.now();
+    const src = classes.find((c) => c.endMs >= t) ?? classes[classes.length - 1];
+    return src ? parseDate(src.sessionDate) : new Date();
   });
 
   const { byDate, upcoming, past } = useMemo(() => {
@@ -195,10 +206,8 @@ function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; 
     }
     const upcoming: Date[] = [];
     const past: Date[] = [];
-    for (const [ds, items] of Array.from(byDate.entries())) {
-      const [y, m, d] = ds.split("-").map(Number);
-      const date = new Date(y, m - 1, d);
-      (items.some((c) => c.endMs >= now) ? upcoming : past).push(date);
+    for (const [ds, dItems] of Array.from(byDate.entries())) {
+      (dItems.some((c) => c.endMs >= now) ? upcoming : past).push(parseDate(ds));
     }
     return { byDate, upcoming, past };
   }, [classes, now]);
@@ -215,6 +224,7 @@ function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; 
             required
             selected={selected}
             onSelect={setSelected}
+            defaultMonth={selected}
             locale={ko ? koLocale : enUS}
             showOutsideDays
             modifiers={{ upcoming, past }}
@@ -236,7 +246,7 @@ function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; 
         ) : (
           <ul className="list-none">
             {dayItems.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} showCourse isPast={c.endMs < now} />
+              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} isPast={c.endMs < now} />
             ))}
           </ul>
         )}
@@ -303,23 +313,10 @@ function Section({ title, count, ko, children }: { title: string; count: number;
   );
 }
 
-function ClassRow({
-  item,
-  isTeacher,
-  now,
-  isPast = false,
-  showCourse = false,
-}: {
-  item: ClassItem;
-  isTeacher: boolean;
-  now: number;
-  isPast?: boolean;
-  showCourse?: boolean;
-}) {
+function ClassRow({ item, isTeacher, now, isPast = false }: { item: ClassItem; isTeacher: boolean; now: number; isPast?: boolean }) {
   const ko = !isTeacher;
   const [pending, startTransition] = useTransition();
   const enterable = !isPast && canEnterClass(now, item.startMs, item.endMs);
-  const timeRange = `${fmtTime(item.startMin)}~${fmtTime(item.endMin - (SLOT_MIN - LESSON_MIN))}`;
 
   function handleEnter() {
     // 팝업 차단 회피 — 동기적으로 빈 탭을 먼저 연 뒤 액션 결과 URL로 이동.
@@ -339,13 +336,11 @@ function ClassRow({
   return (
     <li className={cn("border-rule flex items-center gap-3 border-b px-6 py-4 last:border-b-0", isPast && "opacity-60")}>
       <div className="min-w-0 flex-1">
-        <p className="text-ink truncate text-[15px] font-bold">{showCourse ? timeRange : `${formatSessionDate(item.sessionDate, ko)} · ${timeRange}`}</p>
-        <p className="text-muted-fg-faint mt-0.5 truncate text-xs">
-          {showCourse
-            ? `${item.courseTitle} · ${isTeacher ? "Student" : "강사"} ${item.counterpart}`
-            : ko
-              ? `${item.sessionNo}/${TOTAL_SESSIONS}회차`
-              : `Session ${item.sessionNo}/${TOTAL_SESSIONS}`}
+        <p className="text-ink truncate text-[15px] font-bold">
+          {formatSessionDate(item.sessionDate, ko)} · {fmtTime(item.startMin)}~{fmtTime(item.endMin - (SLOT_MIN - LESSON_MIN))}
+        </p>
+        <p className="text-muted-fg-faint mt-0.5 text-xs">
+          {ko ? `${item.sessionNo}/${TOTAL_SESSIONS}회차` : `Session ${item.sessionNo}/${TOTAL_SESSIONS}`}
         </p>
       </div>
 
