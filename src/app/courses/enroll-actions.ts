@@ -8,7 +8,16 @@ import { formatRetryAfter, getClientIp, rateLimit } from "@/lib/rate-limit";
 import { getCourse } from "@/data/courses";
 import { sendEnrollmentNotificationToTeacher } from "@/lib/mailer";
 import { getOrigin } from "@/lib/origin";
-import { isValidSlot, slotsOverlap, subtractSlots, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
+import {
+  TOTAL_SESSIONS,
+  isValidSlot,
+  lessonEndDate,
+  slotsOverlap,
+  subtractSlots,
+  summarizeSlots,
+  teacherHasAllSlots,
+  type Slot,
+} from "@/lib/availability";
 
 // 학생 수강신청용 강사 카드(공개 안전 필드만 — 이메일/전화 등 PII 제외). slots는 클라이언트 라이브 필터용.
 // heldSlots: 다른 학생의 진행중 신청('신청'/'결제대기')이 잡고 있는 슬롯 — 하드 차단은 아니고, 겹치면 확인 단계에서 경고용.
@@ -249,12 +258,22 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
     const teacherEmail = teacherUser?.user?.email;
     if (teacherEmail) {
       const origin = getOrigin(await headers());
+      // 종료일 — 위저드와 동일한 lessonEndDate 사용(start_date YYYY-MM-DD를 로컬 Date로 파싱).
+      const [sy, sm, sd] = startDate.split("-").map(Number);
+      const endObj = lessonEndDate(new Date(sy, sm - 1, sd), slots, TOTAL_SESSIONS);
+      const endDate = endObj
+        ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}`
+        : "";
       await sendEnrollmentNotificationToTeacher([teacherEmail], {
         studentName,
         courseTitle: course.title,
         schedule: summarizeSlots(slots, false),
         startDate,
         teacherUrl: `${origin}/teacher`,
+        studentEnglishName: profile.english_name ?? "",
+        courseEnglishTitle: course.englishTitle,
+        endDate,
+        totalSessions: TOTAL_SESSIONS,
       });
     }
   } catch (err) {

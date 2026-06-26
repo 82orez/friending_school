@@ -20,13 +20,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import EnrollScheduleField from "@/components/course/EnrollScheduleField";
 import { submitEnrollment, type EnrollTeacherCard } from "@/app/courses/enroll-actions";
-import { slotsOverlap, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
+import { TOTAL_SESSIONS, lessonEndDate, slotsOverlap, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 import { cn } from "@/lib/utils";
-
-// 과정 표준 수업 횟수(한 신청당). 종료일·수업 횟수 표시에 사용 — 모든 과정 동일.
-const TOTAL_SESSIONS = 24;
 
 export default function EnrollWizard({
   courseSlug,
@@ -75,21 +72,11 @@ export default function EnrollWizard({
   }, [allowedDays, date]);
 
   // 종료일 = 시작일부터 주간 일정(선택 요일)대로 진행해 TOTAL_SESSIONS회째 수업이 있는 날.
+  // 강사 알림 메일도 같은 lessonEndDate를 써서 학생이 본 값과 일치.
   const endDate = useMemo(() => {
     if (!date || slots.length === 0) return "";
-    const weekdays = new Set(slots.map((s) => s.day));
-    let remaining = TOTAL_SESSIONS;
-    const cur = new Date(date);
-    let last = new Date(date);
-    while (remaining > 0) {
-      if (weekdays.has(cur.getDay())) {
-        remaining--;
-        last = new Date(cur);
-        if (remaining === 0) break;
-      }
-      cur.setDate(cur.getDate() + 1);
-    }
-    return format(last, "yyyy-MM-dd");
+    const last = lessonEndDate(date, slots, TOTAL_SESSIONS);
+    return last ? format(last, "yyyy-MM-dd") : "";
   }, [date, slots]);
 
   // 제출 성공 시 성공 화면.

@@ -186,6 +186,11 @@ export type EnrollmentEmailData = {
   schedule: string; // 주간 일정 요약(영문 요일)
   startDate: string; // YYYY-MM-DD
   teacherUrl: string; // 강사 대시보드 링크
+  // 아래는 신규 수강신청 알림 전용(옵셔널) — 취소 알림 호출부는 미제공.
+  studentEnglishName?: string; // 학생 영문 이름
+  courseEnglishTitle?: string; // 영문 과정명
+  endDate?: string; // YYYY-MM-DD, 마지막(N회째) 수업일
+  totalSessions?: number; // 총 수업 횟수
 };
 
 /**
@@ -193,11 +198,16 @@ export type EnrollmentEmailData = {
  * 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않고 로그만 남긴다.
  */
 export async function sendEnrollmentNotificationToTeacher(to: string[], data: EnrollmentEmailData): Promise<void> {
+  // 강사가 읽는 영문 메일 — 영문 이름/과정명 우선 노출(한글은 괄호로 병기, 강사 대시보드 관례와 동일).
+  const studentLabel = data.studentEnglishName ? `${data.studentEnglishName} (${data.studentName})` : data.studentName;
+  const courseLabel = data.courseEnglishTitle ? `${data.courseEnglishTitle} (${data.courseTitle})` : data.courseTitle;
   const rows: [string, string][] = [
-    ["Student", data.studentName || "-"],
-    ["Course", data.courseTitle],
+    ["Student", studentLabel || "-"],
+    ["Course", courseLabel],
     ["Weekly schedule", data.schedule || "-"],
     ["Preferred start date", data.startDate || "-"],
+    ...(data.endDate ? ([["End date", data.endDate]] as [string, string][]) : []),
+    ...(data.totalSessions ? ([["Total sessions", String(data.totalSessions)]] as [string, string][]) : []),
   ];
   const tr = rows
     .map(
@@ -209,7 +219,7 @@ export async function sendEnrollmentNotificationToTeacher(to: string[], data: En
     .join("");
   const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
     <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">You have a new enrollment request 🎉</h2>
-    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(data.studentName)} · ${escapeHtml(data.courseTitle)}</p>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(studentLabel)} · ${escapeHtml(courseLabel)}</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
     <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">Please review and approve or decline the request on your teacher page.</p>
     <a href="${escapeHtml(data.teacherUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to teacher page</a>
@@ -218,14 +228,16 @@ export async function sendEnrollmentNotificationToTeacher(to: string[], data: En
   const text = [
     "You have a new enrollment request.",
     "",
-    `Student: ${data.studentName || "-"}`,
-    `Course: ${data.courseTitle}`,
+    `Student: ${studentLabel || "-"}`,
+    `Course: ${courseLabel}`,
     `Weekly schedule: ${data.schedule || "-"}`,
     `Preferred start date: ${data.startDate || "-"}`,
+    ...(data.endDate ? [`End date: ${data.endDate}`] : []),
+    ...(data.totalSessions ? [`Total sessions: ${data.totalSessions}`] : []),
     "",
     `Review on your teacher page: ${data.teacherUrl}`,
   ].join("\n");
-  await sendResultEmail(to, `[Friending School] New enrollment request · ${data.studentName}`, html, text);
+  await sendResultEmail(to, `[Friending School] New enrollment request · ${data.studentEnglishName || data.studentName}`, html, text);
 }
 
 /**

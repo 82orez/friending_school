@@ -94,3 +94,25 @@ export function summarizeSlots(slots: Slot[], ko = true): string {
     })
     .join(" · ");
 }
+
+// 과정 표준 수업 횟수(한 신청당) — 종료일·수업횟수 계산/표시 공용(위저드·강사 알림 메일).
+export const TOTAL_SESSIONS = 24;
+
+// 시작일부터 주간 반복 일정(slots의 요일)대로 진행해 totalSessions회째 수업이 있는 날을 반환.
+// "요일 발생 횟수"만 세므로 TZ 비의존(로컬 Y/M/D 기준). 선택 요일 없거나 횟수<1이면 null.
+export function lessonEndDate(start: Date, slots: Slot[], totalSessions: number): Date | null {
+  const weekdays = new Set(slots.map((s) => s.day));
+  if (weekdays.size === 0 || totalSessions < 1) return null;
+  let remaining = totalSessions;
+  const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  let last = new Date(cur);
+  while (remaining > 0) {
+    if (weekdays.has(cur.getDay())) {
+      remaining--;
+      last = new Date(cur);
+      if (remaining === 0) break;
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  return last;
+}
