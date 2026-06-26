@@ -20,15 +20,21 @@ export type ClassItem = {
   endMs: number;
 };
 
-// "7월 1일 (월)" — sessionDate(YYYY-MM-DD)를 한국어 날짜 라벨로.
-function formatSessionDate(d: string): string {
+const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const WEEKDAYS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // index = getDay (0=Sun)
+
+// sessionDate(YYYY-MM-DD) → 날짜 라벨. ko="7월 1일 (월)" / en="Jul 1 (Mon)".
+function formatSessionDate(d: string, ko: boolean): string {
   const [y, m, day] = d.split("-").map(Number);
   if (!y || !m || !day) return d;
-  const dow = DAY_LABELS_KO[new Date(y, m - 1, day).getDay()];
-  return `${m}월 ${day}일 (${dow})`;
+  const dow = new Date(y, m - 1, day).getDay();
+  return ko ? `${m}월 ${day}일 (${DAY_LABELS_KO[dow]})` : `${MONTHS_EN[m - 1]} ${day} (${WEEKDAYS_EN[dow]})`;
 }
 
 export default function ClassroomList({ classes, isTeacher }: { classes: ClassItem[]; isTeacher: boolean }) {
+  // 강사 화면은 영문, 학생 화면은 한국어.
+  const ko = !isTeacher;
+
   // 1분마다 갱신 — 입장 버튼 활성/예정·지난 분리를 시간에 맞춰 갱신.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -50,7 +56,7 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
       <section className="border-rule overflow-hidden rounded-2xl border bg-white">
         <div className="px-6 py-12 text-center">
           <p className="text-muted-fg text-sm">
-            {isTeacher ? "아직 예정된 강의가 없어요." : "아직 예정된 수업이 없어요. 결제가 확인되면 수업이 생성돼요."}
+            {ko ? "아직 예정된 수업이 없어요. 결제가 확인되면 수업이 생성돼요." : "No classes scheduled yet."}
           </p>
         </div>
       </section>
@@ -59,9 +65,9 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
 
   return (
     <div className="space-y-5">
-      <Section title="예정된 수업" count={upcoming.length}>
+      <Section title={ko ? "예정된 수업" : "Upcoming classes"} count={upcoming.length} ko={ko}>
         {upcoming.length === 0 ? (
-          <p className="text-muted-fg px-6 py-8 text-center text-sm">예정된 수업이 없어요.</p>
+          <p className="text-muted-fg px-6 py-8 text-center text-sm">{ko ? "예정된 수업이 없어요." : "No upcoming classes."}</p>
         ) : (
           <ul className="list-none">
             {upcoming.map((c) => (
@@ -72,7 +78,7 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
       </Section>
 
       {past.length > 0 && (
-        <Section title="지난 수업" count={past.length}>
+        <Section title={ko ? "지난 수업" : "Past classes"} count={past.length} ko={ko}>
           <ul className="list-none">
             {past.map((c) => (
               <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} isPast />
@@ -84,13 +90,16 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
   );
 }
 
-function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+function Section({ title, count, ko, children }: { title: string; count: number; ko: boolean; children: React.ReactNode }) {
   return (
     <section className="border-rule overflow-hidden rounded-2xl border bg-white">
       <div className="border-rule flex items-center gap-2 border-b px-6 py-5">
         <span aria-hidden>🎬</span>
         <h2 className="text-ink text-base font-bold">{title}</h2>
-        <span className="text-muted-fg-faint ml-auto text-sm">{count}개</span>
+        <span className="text-muted-fg-faint ml-auto text-sm">
+          {count}
+          {ko ? "개" : ""}
+        </span>
       </div>
       {children}
     </section>
@@ -98,6 +107,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
 }
 
 function ClassRow({ item, isTeacher, now, isPast = false }: { item: ClassItem; isTeacher: boolean; now: number; isPast?: boolean }) {
+  const ko = !isTeacher;
   const [pending, startTransition] = useTransition();
   const enterable = !isPast && canEnterClass(now, item.startMs, item.endMs);
 
@@ -111,7 +121,7 @@ function ClassRow({ item, isTeacher, now, isPast = false }: { item: ClassItem; i
         else window.open(res.url, "_blank");
       } else {
         w?.close();
-        toast.error(res.error ?? "입장할 수 없어요.");
+        toast.error(res.error ?? (ko ? "입장할 수 없어요." : "Unable to enter the class."));
       }
     });
   }
@@ -120,13 +130,13 @@ function ClassRow({ item, isTeacher, now, isPast = false }: { item: ClassItem; i
     <li className={cn("border-rule flex items-center gap-3 border-b px-6 py-4 last:border-b-0", isPast && "opacity-60")}>
       <div className="min-w-0 flex-1">
         <p className="text-ink truncate text-[15px] font-bold">
-          {formatSessionDate(item.sessionDate)} · {fmtTime(item.startMin)}~{fmtTime(item.endMin)}
+          {formatSessionDate(item.sessionDate, ko)} · {fmtTime(item.startMin)}~{fmtTime(item.endMin)}
         </p>
         <p className="text-muted-fg mt-0.5 truncate text-sm">
-          {item.courseTitle} · {isTeacher ? "수강생" : "강사"} {item.counterpart}
+          {item.courseTitle} · {isTeacher ? "Student" : "강사"} {item.counterpart}
         </p>
         <p className="text-muted-fg-faint mt-0.5 text-xs">
-          {item.sessionNo}/{TOTAL_SESSIONS}회차
+          {ko ? `${item.sessionNo}/${TOTAL_SESSIONS}회차` : `Session ${item.sessionNo}/${TOTAL_SESSIONS}`}
         </p>
       </div>
 
@@ -138,10 +148,10 @@ function ClassRow({ item, isTeacher, now, isPast = false }: { item: ClassItem; i
             disabled={pending}
             className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
             {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Video className="size-3.5" />}
-            입장하기
+            {ko ? "입장하기" : "Enter"}
           </button>
         ) : (
-          <span className="text-muted-fg-faint shrink-0 text-xs">시작 15분 전 입장</span>
+          <span className="text-muted-fg-faint shrink-0 text-xs">{ko ? "시작 15분 전 입장" : "Opens 15 min before"}</span>
         ))}
     </li>
   );
