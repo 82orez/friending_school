@@ -226,17 +226,20 @@ function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; 
             onSelect={setSelected}
             defaultMonth={selected}
             locale={ko ? koLocale : enUS}
-            showOutsideDays
+            weekStartsOn={0}
+            showOutsideDays={false}
             formatters={{ formatWeekdayName: (d: Date) => d.toLocaleDateString(ko ? "ko-KR" : "en-US", { weekday: "short" }) }}
-            modifiers={{ upcoming, past }}
+            modifiers={{ upcoming, past, sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
             modifiersClassNames={{
               upcoming: "bg-accent-blue/10 text-accent-blue-ink font-bold rounded-(--cell-radius)",
               past: "bg-rule/60 text-muted-fg rounded-(--cell-radius)",
+              sunday: "!text-brand",
+              saturday: "!text-accent-blue-ink",
             }}
             classNames={{
               today: "bg-accent-blue/10 text-accent-blue-ink font-bold ring-1 ring-accent-blue ring-inset rounded-(--cell-radius) !opacity-100",
             }}
-            className="text-base [--cell-size:--spacing(10)]"
+            className="text-base [--cell-size:--spacing(10)] [&_.rdp-weekday:first-child]:!text-brand [&_.rdp-weekday:last-child]:!text-accent-blue-ink"
           />
         </div>
       </div>
