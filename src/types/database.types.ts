@@ -92,6 +92,68 @@ export type Database = {
         }
         Relationships: []
       }
+      classes: {
+        Row: {
+          course: string
+          course_title: string
+          created_at: string
+          end_min: number
+          enrollment_id: string
+          id: string
+          session_date: string
+          session_no: number
+          start_min: number
+          student_english_name: string | null
+          student_id: string
+          student_name: string | null
+          teacher_id: string
+          teacher_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          course: string
+          course_title: string
+          created_at?: string
+          end_min: number
+          enrollment_id: string
+          id?: string
+          session_date: string
+          session_no: number
+          start_min: number
+          student_english_name?: string | null
+          student_id: string
+          student_name?: string | null
+          teacher_id: string
+          teacher_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          course?: string
+          course_title?: string
+          created_at?: string
+          end_min?: number
+          enrollment_id?: string
+          id?: string
+          session_date?: string
+          session_no?: number
+          start_min?: number
+          student_english_name?: string | null
+          student_id?: string
+          student_name?: string | null
+          teacher_id?: string
+          teacher_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classes_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollments: {
         Row: {
           course: string

@@ -9,6 +9,7 @@ import { getOrigin } from "@/lib/origin";
 import { sendTeacherApprovalNotification, sendTeacherRejectionNotification } from "@/lib/mailer";
 import { normalizeCurrency } from "@/data/currencies";
 import { sendSms } from "@/lib/sms";
+import { TOTAL_SESSIONS, enumerateLessonSessions, isValidSlot, type Slot } from "@/lib/availability";
 
 export type ActionResult = { ok: boolean; error?: string };
 
@@ -267,7 +268,52 @@ export async function adminCancelEnrollment(id: string, note: string): Promise<A
   return { ok: true };
 }
 
-// 입금 확인(무통장 1단계) — 상태 '결제대기'일 때만 '결제완료'로 전환. 성공 시 학생에게 SMS 통보(best-effort).
+// 날짜(로컬 Date) → 'YYYY-MM-DD'. enroll-actions의 종료일 포맷과 동일.
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// enrollment에서 날짜별 클래스를 생성(멱등). 결제 확정 시 호출. best-effort — 실패해도 결제 확정은 유지.
+type EnrollmentForClasses = {
+  id: string;
+  student_id: string;
+  teacher_id: string;
+  course: string;
+  course_title: string;
+  teacher_name: string | null;
+  student_name: string | null;
+  student_english_name: string | null;
+  slots: unknown;
+  start_date: string;
+};
+async function generateClassesForEnrollment(admin: ReturnType<typeof createAdminClient>, enr: EnrollmentForClasses): Promise<void> {
+  const slots: Slot[] = (Array.isArray(enr.slots) ? enr.slots : []).filter(isValidSlot).map((s) => ({ day: Number(s.day), min: Number(s.min) }));
+  if (slots.length === 0) return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(enr.start_date)) return;
+  const [y, m, d] = enr.start_date.split("-").map(Number);
+  const sessions = enumerateLessonSessions(new Date(y, m - 1, d), slots, TOTAL_SESSIONS);
+  if (sessions.length === 0) return;
+
+  const rows = sessions.map((s) => ({
+    enrollment_id: enr.id,
+    student_id: enr.student_id,
+    teacher_id: enr.teacher_id,
+    course: enr.course,
+    course_title: enr.course_title,
+    teacher_name: enr.teacher_name,
+    student_name: enr.student_name,
+    student_english_name: enr.student_english_name,
+    session_no: s.sessionNo,
+    session_date: toDateStr(s.date),
+    start_min: s.startMin,
+    end_min: s.endMin,
+  }));
+  // 멱등 — 같은 (enrollment_id, session_no)는 중복 생성하지 않음.
+  const { error } = await admin.from("classes").upsert(rows, { onConflict: "enrollment_id,session_no", ignoreDuplicates: true });
+  if (error) console.error("[generateClassesForEnrollment] 클래스 생성 실패:", error);
+}
+
+// 입금 확인(무통장 1단계) — 상태 '결제대기'일 때만 '결제완료'로 전환. 성공 시 클래스 생성 + 학생에게 SMS 통보(best-effort).
 // 회사 계좌 입금이라 확인 주체는 admin. (2단계 PortOne 도입 시 PG 웹훅이 동일 전환을 수행.)
 export async function confirmPayment(id: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
@@ -275,7 +321,11 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
   if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { data: enr } = await admin.from("enrollments").select("status, student_phone, course_title, start_date").eq("id", enrollmentId).maybeSingle();
+  const { data: enr } = await admin
+    .from("enrollments")
+    .select("status, student_phone, course_title, start_date, id, student_id, teacher_id, course, teacher_name, student_name, student_english_name, slots")
+    .eq("id", enrollmentId)
+    .maybeSingle();
   if (!enr) return { ok: false, error: "신청을 찾을 수 없습니다." };
   if (enr.status !== "결제대기") return { ok: false, error: "결제 대기 상태에서만 확인할 수 있습니다." };
 
@@ -288,12 +338,19 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
   if (error) return { ok: false, error: "결제 확인 처리 중 오류가 발생했습니다." };
   if (!data || data.length === 0) return { ok: false, error: "이미 처리된 신청입니다." };
 
+  // 날짜별 클래스 생성 (best-effort, 멱등) — 실패해도 결제 확정은 유지.
+  try {
+    await generateClassesForEnrollment(admin, enr as EnrollmentForClasses);
+  } catch (err) {
+    console.error("[confirmPayment] 클래스 생성 실패:", err);
+  }
+
   // 학생 결과 SMS (best-effort).
   if (enr.student_phone) {
     try {
       await sendSms(
         enr.student_phone,
-        `[프렌딩 스쿨] 결제가 확인되어 수업이 확정되었습니다. ${enr.course_title} · 시작 ${enr.start_date}. 자세한 내용은 마이페이지에서 확인하세요.`,
+        `[프렌딩 스쿨] 결제가 확인되어 수업이 확정되었습니다. ${enr.course_title} · 시작 ${enr.start_date}. 자세한 내용은 마이페이지(내 강의실)에서 확인하세요.`,
       );
     } catch (err) {
       console.error("[confirmPayment] SMS 발송 실패:", err);
@@ -303,6 +360,7 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
   revalidatePath("/admin/enrollments");
   revalidatePath("/teacher");
   revalidatePath("/mypage");
+  revalidatePath("/classroom");
   return { ok: true };
 }
 

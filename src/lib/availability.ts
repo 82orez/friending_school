@@ -142,3 +142,34 @@ export function lessonEndDate(start: Date, slots: Slot[], totalSessions: number)
   }
   return last;
 }
+
+// 개별 수업(클래스) 1회 = 매칭 요일 하루(같은 날 여러 슬롯이면 한 클래스, 시작=최소 min·종료=최대 min+30).
+export type LessonSession = { sessionNo: number; date: Date; startMin: number; endMin: number };
+
+// 시작일부터 주간 반복 일정대로 진행하며 totalSessions개의 날짜별 수업을 열거.
+// lessonEndDate와 동일하게 "요일 발생 횟수"로 세므로 TZ 비의존(로컬 Y/M/D 기준).
+export function enumerateLessonSessions(start: Date, slots: Slot[], totalSessions: number): LessonSession[] {
+  // 요일별 시작/종료(분) — 같은 날 여러 슬롯은 한 수업으로 병합.
+  const byDay = new Map<number, { startMin: number; endMin: number }>();
+  for (const s of slots) {
+    const cur = byDay.get(s.day);
+    if (cur) {
+      cur.startMin = Math.min(cur.startMin, s.min);
+      cur.endMin = Math.max(cur.endMin, s.min + SLOT_MIN);
+    } else {
+      byDay.set(s.day, { startMin: s.min, endMin: s.min + SLOT_MIN });
+    }
+  }
+  if (byDay.size === 0 || totalSessions < 1) return [];
+
+  const out: LessonSession[] = [];
+  const cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  while (out.length < totalSessions) {
+    const span = byDay.get(cur.getDay());
+    if (span) {
+      out.push({ sessionNo: out.length + 1, date: new Date(cur), startMin: span.startMin, endMin: span.endMin });
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
