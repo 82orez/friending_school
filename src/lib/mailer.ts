@@ -310,17 +310,17 @@ export async function sendEnrollmentNotificationToAdmin(to: string[], data: Enro
     return;
   }
 
-  // 한글 (영문) 병기 — 영문이 없으면 한글만.
+  // 학생 이름·과정명은 한글 (영문) 병기 — 영문이 없으면 한글만.
   const studentLabel = data.studentEnglishName ? `${data.studentName} (${data.studentEnglishName})` : data.studentName;
   const courseLabel = data.courseEnglishTitle ? `${data.courseTitle} (${data.courseEnglishTitle})` : data.courseTitle;
   const rows: [string, string][] = [
-    ["학생", studentLabel || "-"],
-    ["과정", courseLabel],
-    ["강사", data.teacherName || "-"],
-    ["주간 일정", data.schedule || "-"],
-    ["수업 시작일", data.startDate || "-"],
-    ...(data.endDate ? ([["수업 종료일", data.endDate]] as [string, string][]) : []),
-    ...(data.totalSessions ? ([["총 수업 횟수", `${data.totalSessions}회`]] as [string, string][]) : []),
+    ["Student", studentLabel || "-"],
+    ["Course", courseLabel],
+    ["Teacher", data.teacherName || "-"],
+    ["Weekly schedule", data.schedule || "-"],
+    ["Start date", data.startDate || "-"],
+    ...(data.endDate ? ([["End date", data.endDate]] as [string, string][]) : []),
+    ...(data.totalSessions ? ([["Total sessions", String(data.totalSessions)]] as [string, string][]) : []),
   ];
   const tr = rows
     .map(
@@ -331,25 +331,25 @@ export async function sendEnrollmentNotificationToAdmin(to: string[], data: Enro
     )
     .join("");
   const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
-    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">새 수강신청이 접수되었습니다</h2>
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">A new enrollment request has been received</h2>
     <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(courseLabel)} · ${escapeHtml(studentLabel)}</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
-    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">관리자 페이지(수강신청 관리)에서 입금 확인/처리할 수 있습니다.</p>
-    <a href="${escapeHtml(data.adminUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">수강신청 관리로 이동</a>
-    <p style="font-size:12px;color:#999;margin:20px 0 0">프렌딩 스쿨 관리자 알림</p>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">You can confirm payment and manage this request on the admin page (Enrollments).</p>
+    <a href="${escapeHtml(data.adminUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to enrollment management</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School admin notification</p>
   </div>`;
   const text = [
-    "새 수강신청이 접수되었습니다.",
+    "A new enrollment request has been received.",
     "",
-    `학생: ${studentLabel || "-"}`,
-    `과정: ${courseLabel}`,
-    `강사: ${data.teacherName || "-"}`,
-    `주간 일정: ${data.schedule || "-"}`,
-    `수업 시작일: ${data.startDate || "-"}`,
-    ...(data.endDate ? [`수업 종료일: ${data.endDate}`] : []),
-    ...(data.totalSessions ? [`총 수업 횟수: ${data.totalSessions}회`] : []),
+    `Student: ${studentLabel || "-"}`,
+    `Course: ${courseLabel}`,
+    `Teacher: ${data.teacherName || "-"}`,
+    `Weekly schedule: ${data.schedule || "-"}`,
+    `Start date: ${data.startDate || "-"}`,
+    ...(data.endDate ? [`End date: ${data.endDate}`] : []),
+    ...(data.totalSessions ? [`Total sessions: ${data.totalSessions}`] : []),
     "",
-    `수강신청 관리: ${data.adminUrl}`,
+    `Enrollment management: ${data.adminUrl}`,
   ].join("\n");
 
   try {
@@ -357,7 +357,7 @@ export async function sendEnrollmentNotificationToAdmin(to: string[], data: Enro
     const { error } = await resend.emails.send({
       from: FROM,
       to,
-      subject: `[신규 수강신청] ${data.courseTitle} · ${data.studentName}`,
+      subject: `[New enrollment] ${courseLabel} · ${studentLabel}`,
       html,
       text,
     });

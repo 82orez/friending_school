@@ -298,7 +298,7 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
       courseTitle: course.title,
       courseEnglishTitle: course.englishTitle,
       teacherName,
-      schedule: summarizeSlots(slots, true),
+      schedule: summarizeSlots(slots, false),
       startDate,
       endDate,
       totalSessions: TOTAL_SESSIONS,
