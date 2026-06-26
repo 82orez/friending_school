@@ -280,6 +280,93 @@ export async function sendEnrollmentCancellationToTeacher(to: string[], data: En
   await sendResultEmail(to, `[Friending School] Enrollment cancelled · ${data.studentName}`, html, text);
 }
 
+/* ===== 관리자 대상 신규 수강신청 알림 ===== */
+
+export type EnrollmentAdminEmailData = {
+  studentName: string; // 학생 한글 이름
+  studentEnglishName: string; // 학생 영문 이름
+  courseTitle: string; // 과정 한글명
+  courseEnglishTitle: string; // 과정 영문명
+  teacherName: string; // 강사명
+  schedule: string; // 주간 일정 요약(한국어 요일)
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD, 마지막(N회째) 수업일
+  totalSessions: number; // 총 수업 횟수
+  adminUrl: string; // 관리자 수강신청 관리 링크
+};
+
+/**
+ * 관리자들에게 신규 수강신청 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ * 학생 이름·과정명은 한글/영문 병기. 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않고 로그만 남긴다.
+ */
+export async function sendEnrollmentNotificationToAdmin(to: string[], data: EnrollmentAdminEmailData): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[mailer] RESEND_API_KEY 미설정 — 수강신청 관리자 알림 메일 생략");
+    return;
+  }
+  if (to.length === 0) {
+    console.warn("[mailer] 관리자(admin) 수신자가 없어 메일 생략");
+    return;
+  }
+
+  // 한글 (영문) 병기 — 영문이 없으면 한글만.
+  const studentLabel = data.studentEnglishName ? `${data.studentName} (${data.studentEnglishName})` : data.studentName;
+  const courseLabel = data.courseEnglishTitle ? `${data.courseTitle} (${data.courseEnglishTitle})` : data.courseTitle;
+  const rows: [string, string][] = [
+    ["학생", studentLabel || "-"],
+    ["과정", courseLabel],
+    ["강사", data.teacherName || "-"],
+    ["주간 일정", data.schedule || "-"],
+    ["수업 시작일", data.startDate || "-"],
+    ...(data.endDate ? ([["수업 종료일", data.endDate]] as [string, string][]) : []),
+    ...(data.totalSessions ? ([["총 수업 횟수", `${data.totalSessions}회`]] as [string, string][]) : []),
+  ];
+  const tr = rows
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:8px 12px;color:#666;background:#f8f8f8;white-space:nowrap;border-bottom:1px solid #eee;vertical-align:top">${escapeHtml(
+          k,
+        )}</td><td style="padding:8px 12px;color:#1a1a1a;border-bottom:1px solid #eee;white-space:pre-wrap">${escapeHtml(v)}</td></tr>`,
+    )
+    .join("");
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">새 수강신청이 접수되었습니다</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(courseLabel)} · ${escapeHtml(studentLabel)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">관리자 페이지(수강신청 관리)에서 입금 확인/처리할 수 있습니다.</p>
+    <a href="${escapeHtml(data.adminUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">수강신청 관리로 이동</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">프렌딩 스쿨 관리자 알림</p>
+  </div>`;
+  const text = [
+    "새 수강신청이 접수되었습니다.",
+    "",
+    `학생: ${studentLabel || "-"}`,
+    `과정: ${courseLabel}`,
+    `강사: ${data.teacherName || "-"}`,
+    `주간 일정: ${data.schedule || "-"}`,
+    `수업 시작일: ${data.startDate || "-"}`,
+    ...(data.endDate ? [`수업 종료일: ${data.endDate}`] : []),
+    ...(data.totalSessions ? [`총 수업 횟수: ${data.totalSessions}회`] : []),
+    "",
+    `수강신청 관리: ${data.adminUrl}`,
+  ].join("\n");
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      subject: `[신규 수강신청] ${data.courseTitle} · ${data.studentName}`,
+      html,
+      text,
+    });
+    if (error) console.error("[mailer] Resend 발송 실패:", error);
+  } catch (err) {
+    console.error("[mailer] 메일 발송 예외:", err);
+  }
+}
+
 /* ===== 지원자 대상 강사 심사 결과 알림 ===== */
 
 function buildResultHtml(title: string, bodyHtml: string): string {

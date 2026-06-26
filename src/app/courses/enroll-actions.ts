@@ -6,7 +6,8 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { formatRetryAfter, getClientIp, rateLimit } from "@/lib/rate-limit";
 import { getCourse } from "@/data/courses";
-import { sendEnrollmentNotificationToTeacher } from "@/lib/mailer";
+import { sendEnrollmentNotificationToTeacher, sendEnrollmentNotificationToAdmin } from "@/lib/mailer";
+import { getAdminEmails } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
 import {
   TOTAL_SESSIONS,
@@ -256,18 +257,22 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
   });
   if (insErr) return { error: "신청 저장 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요." };
 
+  // 알림 메일 공유 값 — 강사/관리자 알림이 함께 사용.
+  const origin = getOrigin(await headers());
+  // 종료일 — 위저드와 동일한 lessonEndDate 사용(start_date YYYY-MM-DD를 로컬 Date로 파싱).
+  const endDate = (() => {
+    const [sy, sm, sd] = startDate.split("-").map(Number);
+    const endObj = lessonEndDate(new Date(sy, sm - 1, sd), slots, TOTAL_SESSIONS);
+    return endObj
+      ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}`
+      : "";
+  })();
+
   // 강사 알림 메일(best-effort) — 실패해도 신청 성공과 분리.
   try {
     const { data: teacherUser } = await admin.auth.admin.getUserById(teacherId);
     const teacherEmail = teacherUser?.user?.email;
     if (teacherEmail) {
-      const origin = getOrigin(await headers());
-      // 종료일 — 위저드와 동일한 lessonEndDate 사용(start_date YYYY-MM-DD를 로컬 Date로 파싱).
-      const [sy, sm, sd] = startDate.split("-").map(Number);
-      const endObj = lessonEndDate(new Date(sy, sm - 1, sd), slots, TOTAL_SESSIONS);
-      const endDate = endObj
-        ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}`
-        : "";
       await sendEnrollmentNotificationToTeacher([teacherEmail], {
         studentName,
         courseTitle: course.title,
@@ -282,6 +287,25 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
     }
   } catch (err) {
     console.error("[submitEnrollment] 강사 알림 발송 실패:", err);
+  }
+
+  // 관리자 알림 메일(best-effort) — 강사 알림과 독립. 학생 이름·과정명 한글/영문 병기.
+  try {
+    const adminEmails = await getAdminEmails();
+    await sendEnrollmentNotificationToAdmin(adminEmails, {
+      studentName,
+      studentEnglishName: profile.english_name ?? "",
+      courseTitle: course.title,
+      courseEnglishTitle: course.englishTitle,
+      teacherName,
+      schedule: summarizeSlots(slots, true),
+      startDate,
+      endDate,
+      totalSessions: TOTAL_SESSIONS,
+      adminUrl: `${origin}/admin/enrollments`,
+    });
+  } catch (err) {
+    console.error("[submitEnrollment] 관리자 알림 발송 실패:", err);
   }
 
   revalidatePath("/mypage");
