@@ -4,6 +4,10 @@
 
 export const SLOT_MIN = 30;
 
+// 30분 슬롯 = 25분 수업 + 5분 휴식. 표시용 수업 종료 = 슬롯 종료 − (SLOT_MIN − LESSON_MIN) → :25/:55.
+// (슬롯 점유·매칭·입장 시간창은 SLOT_MIN(30) 그대로, LESSON_MIN은 표시 전용.)
+export const LESSON_MIN = 25;
+
 // 그리드 표시 범위(06:00~24:00). DB는 범위 비종속이라 변경 시 이 상수만 수정.
 export const GRID_START_HOUR = 6;
 export const GRID_END_HOUR = 24;

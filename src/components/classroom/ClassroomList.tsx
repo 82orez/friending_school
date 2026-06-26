@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { ArrowLeft, ChevronRight, Loader2, Video } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { fmtTime, DAY_LABELS_KO, TOTAL_SESSIONS } from "@/lib/availability";
+import { fmtTime, DAY_LABELS_KO, TOTAL_SESSIONS, SLOT_MIN, LESSON_MIN } from "@/lib/availability";
 import { canEnterClass } from "@/lib/classtime";
 import { enterClass } from "@/app/classroom/actions";
 
@@ -212,7 +212,7 @@ function ClassRow({ item, isTeacher, now, isPast = false }: { item: ClassItem; i
     <li className={cn("border-rule flex items-center gap-3 border-b px-6 py-4 last:border-b-0", isPast && "opacity-60")}>
       <div className="min-w-0 flex-1">
         <p className="text-ink truncate text-[15px] font-bold">
-          {formatSessionDate(item.sessionDate, ko)} · {fmtTime(item.startMin)}~{fmtTime(item.endMin)}
+          {formatSessionDate(item.sessionDate, ko)} · {fmtTime(item.startMin)}~{fmtTime(item.endMin - (SLOT_MIN - LESSON_MIN))}
         </p>
         <p className="text-muted-fg-faint mt-0.5 text-xs">
           {ko ? `${item.sessionNo}/${TOTAL_SESSIONS}회차` : `Session ${item.sessionNo}/${TOTAL_SESSIONS}`}

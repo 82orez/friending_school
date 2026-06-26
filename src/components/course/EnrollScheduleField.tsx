@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DAY_LABELS_KO, DISPLAY_DAYS, GRID_END_HOUR, GRID_START_HOUR, SLOT_MIN, fmtTime, type Slot } from "@/lib/availability";
+import { DAY_LABELS_KO, DISPLAY_DAYS, GRID_END_HOUR, GRID_START_HOUR, LESSON_MIN, SLOT_MIN, fmtTime, type Slot } from "@/lib/availability";
 
 // 관리자 "수업 가능 시간으로 강사 찾기"(TeacherAvailabilityFinder)와 동일한 입력 모델을 학생 수강신청용으로 도입.
 // 요일(다중) + 요일당 수업 횟수(1~8회, 1회=30분) + 시작 시각 → 종료 자동 계산. 선택값에서 30분 슬롯 배열을 파생해 onChange로 통지.
@@ -17,9 +17,6 @@ for (let m = START_MIN; m < END_MIN; m += SLOT_MIN) START_OPTIONS.push(m);
 const MAX_COUNT = 1;
 const COUNT_OPTIONS: number[] = [];
 for (let n = 1; n <= MAX_COUNT; n++) COUNT_OPTIONS.push(n);
-
-// 표시용 회당 수업 길이(25분). 실제 스케줄/매칭은 SLOT_MIN(30분) 그리드 그대로(5분 버퍼), 화면 길이 표기에만 사용.
-const LESSON_MIN = 25;
 
 // 분 → 한국어 길이 표기(30분 / 1시간 / 1시간 30분).
 const formatDuration = (min: number) => {
