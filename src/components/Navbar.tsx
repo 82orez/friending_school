@@ -133,7 +133,7 @@ export default function Navbar({
                   <Link
                     href="/classroom"
                     className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-                    내 강의실
+                    {isTeacher ? "My Classroom" : "내 강의실"}
                   </Link>
                 )}
                 {!isTeacher && (
@@ -302,7 +302,7 @@ export default function Navbar({
                     href="/classroom"
                     onClick={closeMenu}
                     className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-medium no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-                    내 강의실
+                    {isTeacher ? "My Classroom" : "내 강의실"}
                   </Link>
                 </li>
               )}
