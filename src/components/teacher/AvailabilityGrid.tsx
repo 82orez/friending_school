@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { updateTeacherAvailability, type AvailabilitySlot } from "@/app/teacher/actions";
@@ -33,16 +33,39 @@ const fmtTime = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0"
 
 type Slot = { day: number; min: number };
 
+// 예약 슬롯(강사 그리드 오버레이용) — confirmed='승인'/'결제완료'(하드 확정), pending='결제대기'.
+export type BookedSlot = { day: number; min: number; tier: "confirmed" | "pending"; label?: string };
+
 export default function AvailabilityGrid({
   initialSlots,
+  bookedSlots,
   readOnly = false,
   onDirtyChange,
 }: {
   initialSlots: Slot[];
+  bookedSlots?: BookedSlot[];
   readOnly?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
-  const initialKeys = () => new Set(initialSlots.map((s) => slotKey(s.day, s.min)));
+  // 예약 슬롯 맵(키→tier)·키 집합. 예약 셀은 색 표시 + 편집 잠금 + 가용에서 못 빼게 유지.
+  const bookedTier = useMemo(() => {
+    const m = new Map<string, BookedSlot["tier"]>();
+    for (const b of bookedSlots ?? []) {
+      const k = slotKey(b.day, b.min);
+      if (m.get(k) === "confirmed") continue; // confirmed 우선
+      m.set(k, b.tier);
+    }
+    return m;
+  }, [bookedSlots]);
+  const bookedLabel = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const b of bookedSlots ?? []) if (b.label && !m.has(slotKey(b.day, b.min))) m.set(slotKey(b.day, b.min), b.label);
+    return m;
+  }, [bookedSlots]);
+  const bookedKeys = useMemo(() => new Set(bookedTier.keys()), [bookedTier]);
+
+  // 예약 슬롯은 항상 가용에 포함(저장 시 누락 방지 — 가용 밖 예약은 self-heal).
+  const initialKeys = () => new Set<string>([...initialSlots.map((s) => slotKey(s.day, s.min)), ...Array.from(bookedKeys)]);
   const [selected, setSelected] = useState<Set<string>>(initialKeys);
   const [saved, setSaved] = useState<Set<string>>(initialKeys); // 마지막 저장 스냅샷(dirty 판정용)
   const [isPending, startTransition] = useTransition();
@@ -69,6 +92,7 @@ export default function AvailabilityGrid({
 
   const applyCell = (day: number, min: number) => {
     const key = slotKey(day, min);
+    if (bookedKeys.has(key)) return; // 예약 셀은 잠금(토글 불가)
     setSelected((prev) => {
       const has = prev.has(key);
       if (dragModeRef.current === "add" ? has : !has) return prev; // 변화 없음 → 동일 참조 유지
@@ -80,7 +104,7 @@ export default function AvailabilityGrid({
   };
 
   const onCellDown = (day: number, min: number) => {
-    if (readOnly) return;
+    if (readOnly || bookedKeys.has(slotKey(day, min))) return; // 예약 셀은 잠금
     dragModeRef.current = selected.has(slotKey(day, min)) ? "remove" : "add";
     draggingRef.current = true;
     applyCell(day, min);
@@ -147,17 +171,29 @@ export default function AvailabilityGrid({
                   {fmtTime(min)}
                 </div>
                 {DISPLAY_DAYS.map((day) => {
-                  const on = selected.has(slotKey(day, min));
+                  const key = slotKey(day, min);
+                  const on = selected.has(key);
+                  const tier = bookedTier.get(key);
+                  const title = tier ? `${bookedLabel.get(key) ?? "Booked"} · ${tier === "confirmed" ? "Booked" : "Awaiting payment"}` : undefined;
                   return (
                     <div
                       key={day}
                       data-day={day}
                       data-min={min}
                       onPointerDown={() => onCellDown(day, min)}
+                      title={title}
                       className={cn(
                         "border-rule-faint h-7 flex-1 border-l first:border-l-0",
-                        !readOnly && "touch-none",
-                        on ? (readOnly ? "bg-accent-blue/40" : "bg-progress") : !readOnly && "bg-white hover:bg-progress/10",
+                        !readOnly && !tier && "touch-none",
+                        tier === "confirmed"
+                          ? "cursor-not-allowed bg-[#1E7E34]"
+                          : tier === "pending"
+                            ? "cursor-not-allowed bg-[#6B4AD4]/55"
+                            : on
+                              ? readOnly
+                                ? "bg-accent-blue/40"
+                                : "bg-progress"
+                              : !readOnly && "bg-white hover:bg-progress/10",
                       )}
                     />
                   );
@@ -194,6 +230,20 @@ export default function AvailabilityGrid({
         </div>
       )}
 
+      {!readOnly && bookedKeys.size > 0 && (
+        <div className="text-muted-fg mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="bg-progress inline-block size-3 rounded-sm" /> Available
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-3 rounded-sm bg-[#1E7E34]" /> Booked (locked)
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block size-3 rounded-sm bg-[#6B4AD4]/55" /> Awaiting payment
+          </span>
+        </div>
+      )}
+
       {!readOnly && (
         <AlertDialog open={confirmSave} onOpenChange={setConfirmSave}>
           <AlertDialogContent className="z-[130]">
@@ -226,7 +276,7 @@ export default function AvailabilityGrid({
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => {
-                  setSelected(new Set());
+                  setSelected(new Set(bookedKeys)); // 예약 슬롯은 남기고 나머지만 비움
                   setConfirmClear(false);
                 }}>
                 Clear all

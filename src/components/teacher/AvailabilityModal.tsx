@@ -13,14 +13,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import AvailabilityGrid from "@/components/teacher/AvailabilityGrid";
+import AvailabilityGrid, { type BookedSlot } from "@/components/teacher/AvailabilityGrid";
 
 type Slot = { day: number; min: number };
 
 // 확인 모달(AlertDialog)이 열려 있는지 — Esc/오버레이 클릭 이중 트리거 방지용.
 const isConfirmOpen = () => typeof document !== "undefined" && !!document.querySelector('[data-slot="alert-dialog-content"]');
 
-export default function AvailabilityModal({ initialSlots }: { initialSlots: Slot[] }) {
+export default function AvailabilityModal({ initialSlots, bookedSlots }: { initialSlots: Slot[]; bookedSlots?: BookedSlot[] }) {
   const [open, setOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
@@ -71,6 +71,7 @@ export default function AvailabilityModal({ initialSlots }: { initialSlots: Slot
             {initialSlots.length > 0
               ? `${initialSlots.length} time slot${initialSlots.length === 1 ? "" : "s"} marked.`
               : "No availability set yet. Add the times you can teach."}
+            {!!bookedSlots?.length && <span className="text-[#1E7E34] font-medium"> · {bookedSlots.length} booked</span>}
           </p>
         </div>
         <Button ref={triggerRef} type="button" variant="brand" onClick={() => setOpen(true)}>
@@ -113,7 +114,7 @@ export default function AvailabilityModal({ initialSlots }: { initialSlots: Slot
         </div>
         <div className="overflow-auto px-6 py-5">
           <p className="text-muted-fg text-sm">Mark the 30-minute time slots when you&apos;re available to teach.</p>
-          <div className="mt-4">{open && <AvailabilityGrid initialSlots={initialSlots} onDirtyChange={setDirty} />}</div>
+          <div className="mt-4">{open && <AvailabilityGrid initialSlots={initialSlots} bookedSlots={bookedSlots} onDirtyChange={setDirty} />}</div>
         </div>
       </div>
 

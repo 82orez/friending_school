@@ -6,6 +6,7 @@ import { getUserRole } from "@/lib/auth";
 import { getCourse } from "@/data/courses";
 import TeacherProfileForm, { type TeacherProfile } from "@/components/teacher/TeacherProfileForm";
 import AvailabilityModal from "@/components/teacher/AvailabilityModal";
+import { type BookedSlot } from "@/components/teacher/AvailabilityGrid";
 import TeacherEnrollments, { type TeacherEnrollment } from "@/components/teacher/TeacherEnrollments";
 
 export const metadata: Metadata = { title: "Teacher — Friending School", robots: { index: false } };
@@ -69,6 +70,24 @@ export default async function TeacherPage() {
     // 신청(대기) 먼저, 그다음 최신순.
     .sort((a, b) => (a.status === "신청" ? 0 : 1) - (b.status === "신청" ? 0 : 1));
 
+  // 가용 그리드 오버레이용 예약 슬롯 — 승인 후 전부(확정=승인/결제완료, 결제대기=pending; confirmed 우선).
+  const bookedMap = new Map<string, BookedSlot>();
+  for (const r of enrollRows ?? []) {
+    const tier: BookedSlot["tier"] | null =
+      r.status === "승인" || r.status === "결제완료" ? "confirmed" : r.status === "결제대기" ? "pending" : null;
+    if (!tier) continue;
+    const label = r.student_english_name || r.student_name || "Student";
+    for (const s of Array.isArray(r.slots) ? r.slots : []) {
+      const day = Number(s?.day);
+      const min = Number(s?.min);
+      if (!Number.isInteger(day) || !Number.isInteger(min)) continue;
+      const k = `${day}-${min}`;
+      if (bookedMap.get(k)?.tier === "confirmed") continue; // confirmed 우선
+      bookedMap.set(k, { day, min, tier, label });
+    }
+  }
+  const bookedSlots = Array.from(bookedMap.values());
+
   // 친근한 호칭은 이름(first) 우선, 없으면 이메일 로컬파트.
   const displayName = initial.first_name || user.email?.split("@")[0] || "Teacher";
 
@@ -90,7 +109,7 @@ export default async function TeacherPage() {
         <TeacherProfileForm userId={user.id} email={user.email ?? ""} initial={initial} centers={centers} />
 
         {/* 주간 가능 시간 — 요약 카드 + 모달 편집 */}
-        <AvailabilityModal initialSlots={initialSlots} />
+        <AvailabilityModal initialSlots={initialSlots} bookedSlots={bookedSlots} />
 
         {/* 수강신청 관리 — 승인/거절 */}
         <TeacherEnrollments enrollments={enrollments} />
