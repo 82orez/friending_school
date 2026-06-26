@@ -59,7 +59,7 @@ function parseSlots(raw: unknown): Slot[] {
 }
 
 // 강사 id 목록의 진행중 enrollment 슬롯을 강사별로 두 종류로 union:
-//  - confirmed: '승인'(레거시 하드 확정) → 가용에서 차감(슬롯 숨김)·신청 하드 차단.
+//  - confirmed: '승인'(레거시)·'결제완료'(결제 확정) → 가용에서 차감(슬롯 숨김)·신청 하드 차단.
 //  - held: '신청'+'결제대기'(소프트 보류) → 차단하지 않고, 겹치면 경고용(heldSlots). excludeStudentId(본인)는 held에서 제외.
 async function loadEnrollmentSlotsByTeacher(
   admin: ReturnType<typeof createAdminClient>,
@@ -73,9 +73,9 @@ async function loadEnrollmentSlotsByTeacher(
     .from("enrollments")
     .select("teacher_id, student_id, slots, status")
     .in("teacher_id", teacherIds)
-    .in("status", ["신청", "승인", "결제대기"]);
+    .in("status", ["신청", "승인", "결제대기", "결제완료"]);
   for (const r of (data ?? []) as { teacher_id: string; student_id: string; slots: unknown; status: string }[]) {
-    if (r.status === "승인") {
+    if (r.status === "승인" || r.status === "결제완료") {
       const list = confirmed.get(r.teacher_id) ?? [];
       list.push(...parseSlots(r.slots));
       confirmed.set(r.teacher_id, list);
@@ -231,7 +231,11 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
   }
 
   // 학생 본인 시간 충돌 차단 — 진행 중('신청'/'승인'/'결제대기') 신청과 겹치면 거절.
-  const { data: myRows } = await admin.from("enrollments").select("slots").eq("student_id", user.id).in("status", ["신청", "승인", "결제대기"]);
+  const { data: myRows } = await admin
+    .from("enrollments")
+    .select("slots")
+    .eq("student_id", user.id)
+    .in("status", ["신청", "승인", "결제대기", "결제완료"]);
   const mySlots: Slot[] = (myRows ?? []).flatMap((r: { slots: unknown }) => parseSlots(r.slots));
   if (slotsOverlap(slots, mySlots)) {
     return { error: "이미 같은 시간에 신청한 수업이 있어요. 일정을 다시 선택해 주세요." };

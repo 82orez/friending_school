@@ -148,7 +148,7 @@ export async function approveEnrollment(enrollmentId: string): Promise<TeacherAc
   if (!enr) return { error: "신청을 찾을 수 없어요. 목록을 새로고침해 주세요." };
   if (enr.status !== "신청") return { error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
 
-  // 중복 예약 가드: 이 강사의 다른 확정 예약('승인'·'결제대기')과 시간이 겹치면 승인 차단(race-safe — update 직전 최신 조회).
+  // 중복 예약 가드: 이 강사의 다른 확정 예약('승인'·'결제대기'·'결제완료')과 시간이 겹치면 승인 차단(race-safe — update 직전 최신 조회).
   // ⚠️ 잔여 race(겹치는 두 건을 거의 동시 승인)는 앱레벨 한계 — 단일 강사 순차 클릭이라 현실 위험 낮음. 향후 DB 제약으로 하드닝 가능.
   const parse = (raw: unknown): Slot[] =>
     Array.isArray(raw) ? raw.filter(isValidSlot).map((s) => ({ day: Number(s.day), min: Number(s.min) })) : [];
@@ -158,7 +158,7 @@ export async function approveEnrollment(enrollmentId: string): Promise<TeacherAc
     .from("enrollments")
     .select("slots")
     .eq("teacher_id", userId)
-    .in("status", ["승인", "결제대기"])
+    .in("status", ["승인", "결제대기", "결제완료"])
     .neq("id", enrollmentId);
   const bookedSlots: Slot[] = (approvedRows ?? []).flatMap((r: { slots: unknown }) => parse(r.slots));
   if (slotsOverlap(targetSlots, bookedSlots)) {

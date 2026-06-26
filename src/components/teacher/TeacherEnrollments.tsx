@@ -8,7 +8,7 @@ import { approveEnrollment, rejectEnrollment } from "@/app/teacher/actions";
 import { overlappingIds, summarizeSlots, type Slot } from "@/lib/availability";
 
 // 시간 충돌 표시 대상 = 진행중 상태(거절/취소는 제외).
-const ACTIVE_STATUSES = new Set<TeacherEnrollment["status"]>(["신청", "승인", "결제대기"]);
+const ACTIVE_STATUSES = new Set<TeacherEnrollment["status"]>(["신청", "승인", "결제대기", "결제완료"]);
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +27,7 @@ export type TeacherEnrollment = {
   courseTitle: string;
   startDate: string;
   slots: Slot[];
-  status: "신청" | "승인" | "결제대기" | "거절" | "취소";
+  status: "신청" | "승인" | "결제대기" | "결제완료" | "거절" | "취소";
   teacherNote: string | null;
   createdAt: string;
 };
@@ -36,6 +36,7 @@ const STATUS_LABEL: Record<TeacherEnrollment["status"], string> = {
   신청: "Pending",
   승인: "Approved",
   결제대기: "Payment pending",
+  결제완료: "Paid",
   거절: "Declined",
   취소: "Cancelled",
 };
@@ -44,6 +45,7 @@ const STATUS_BADGE: Record<TeacherEnrollment["status"], string> = {
   신청: "bg-[#FFF7E6] text-[#B97400]",
   승인: "bg-[#E1F5EE] text-[#0F6E56]",
   결제대기: "bg-[#F3EEFD] text-[#6B4AD4]",
+  결제완료: "bg-[#E6F4EA] text-[#1E7E34]",
   거절: "bg-brand/10 text-brand",
   취소: "bg-rule text-muted-fg",
 };
@@ -54,6 +56,7 @@ const FILTERS: { key: "전체" | StatusKey; label: string }[] = [
   { key: "전체", label: "All" },
   { key: "신청", label: "Pending" },
   { key: "결제대기", label: "Payment pending" },
+  { key: "결제완료", label: "Paid" },
   { key: "승인", label: "Approved" },
   { key: "거절", label: "Declined" },
   { key: "취소", label: "Cancelled" },
@@ -90,7 +93,7 @@ export default function TeacherEnrollments({ enrollments }: { enrollments: Teach
   const pending = useMemo(() => rows.filter((r) => r.status === "신청").length, [rows]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { 전체: rows.length, 신청: 0, 결제대기: 0, 승인: 0, 거절: 0, 취소: 0 };
+    const c: Record<string, number> = { 전체: rows.length, 신청: 0, 결제대기: 0, 결제완료: 0, 승인: 0, 거절: 0, 취소: 0 };
     for (const r of rows) c[r.status] = (c[r.status] ?? 0) + 1;
     return c;
   }, [rows]);

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, Search, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { adminCancelEnrollment } from "@/app/admin/actions";
+import { adminCancelEnrollment, confirmPayment } from "@/app/admin/actions";
 import { overlappingIds, summarizeSlots, type Slot } from "@/lib/availability";
 import {
   AlertDialog,
@@ -26,7 +26,7 @@ export type AdminEnrollment = {
   student_phone: string | null;
   slots: Slot[];
   start_date: string;
-  status: "신청" | "승인" | "결제대기" | "거절" | "취소";
+  status: "신청" | "승인" | "결제대기" | "결제완료" | "거절" | "취소";
   teacher_note: string | null;
   created_at: string;
 };
@@ -37,6 +37,7 @@ const STATUS_BADGE: Record<StatusKey, string> = {
   신청: "bg-accent-blue-soft text-accent-blue-ink",
   승인: "bg-[#E1F5EE] text-[#0F6E56]",
   결제대기: "bg-[#F3EEFD] text-[#6B4AD4]",
+  결제완료: "bg-[#E6F4EA] text-[#1E7E34]",
   거절: "bg-brand/10 text-brand",
   취소: "bg-rule text-muted-fg",
 };
@@ -45,6 +46,7 @@ const FILTERS: { key: "전체" | StatusKey; label: string }[] = [
   { key: "전체", label: "전체" },
   { key: "신청", label: "승인 대기" },
   { key: "결제대기", label: "결제 대기" },
+  { key: "결제완료", label: "결제 완료" },
   { key: "승인", label: "승인" },
   { key: "거절", label: "거절" },
   { key: "취소", label: "취소" },
@@ -76,7 +78,7 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
   const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { 전체: rows.length, 신청: 0, 결제대기: 0, 승인: 0, 거절: 0, 취소: 0 };
+    const c: Record<string, number> = { 전체: rows.length, 신청: 0, 결제대기: 0, 결제완료: 0, 승인: 0, 거절: 0, 취소: 0 };
     for (const r of rows) c[r.status] = (c[r.status] ?? 0) + 1;
     return c;
   }, [rows]);
@@ -84,7 +86,7 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
   // 같은 강사(teacher_id) 내 진행중(신청/승인/결제대기) 신청끼리 시간이 겹치는 행 id 집합.
   // 전체 rows 기준으로 계산(상태 필터로 상대 행이 가려져도 충돌 표시는 유지).
   const conflictIds = useMemo(() => {
-    const active = new Set<StatusKey>(["신청", "승인", "결제대기"]);
+    const active = new Set<StatusKey>(["신청", "승인", "결제대기", "결제완료"]);
     return overlappingIds(rows.filter((r) => active.has(r.status)).map((r) => ({ id: r.id, group: r.teacher_id, slots: r.slots })));
   }, [rows]);
 
@@ -235,13 +237,15 @@ function EnrollmentDetailModal({
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [payConfirmOpen, setPayConfirmOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();
   const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
+  const payable = row.status === "결제대기"; // 입금 확인 → 결제완료
 
   // Esc 닫기(확인창 열림 시 무시) + body scroll lock + 닫기 버튼 포커스.
   const confirmingRef = useRef(false);
-  confirmingRef.current = confirmOpen;
+  confirmingRef.current = confirmOpen || payConfirmOpen;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !confirmingRef.current) onClose();
@@ -274,6 +278,20 @@ function EnrollmentDetailModal({
         onClose();
       } else {
         toast.error(res.error ?? "취소 중 문제가 발생했어요.");
+      }
+    });
+  };
+
+  const confirmPay = () => {
+    setPayConfirmOpen(false);
+    startTransition(async () => {
+      const res = await confirmPayment(row.id);
+      if (res.ok) {
+        onUpdated({ ...row, status: "결제완료" });
+        toast.success("결제를 확인했어요. 학생에게 확정 문자가 발송됩니다.");
+        onClose();
+      } else {
+        toast.error(res.error ?? "결제 확인 중 문제가 발생했어요.");
       }
     });
   };
@@ -358,6 +376,17 @@ function EnrollmentDetailModal({
               >
                 닫기
               </button>
+              {payable && (
+                <button
+                  type="button"
+                  onClick={() => setPayConfirmOpen(true)}
+                  disabled={pending}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-transparent bg-[#1E7E34] px-4 text-sm font-bold text-white transition-colors hover:bg-[#1A6E2E] disabled:opacity-50"
+                >
+                  {pending && <Loader2 className="size-3.5 animate-spin" />}
+                  결제 확인
+                </button>
+              )}
               <button
                 type="button"
                 onClick={askCancel}
@@ -392,6 +421,23 @@ function EnrollmentDetailModal({
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction onClick={cancel} className="bg-brand hover:bg-brand/90 border-transparent text-white">
               취소 처리
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={payConfirmOpen} onOpenChange={setPayConfirmOpen}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>입금을 확인하고 결제완료로 처리할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="text-ink font-semibold">{studentLabel}</span>님의 {row.course_title} 수업이 확정되며, 학생에게 확정 문자가 전송됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmPay} className="border-transparent bg-[#1E7E34] text-white hover:bg-[#1A6E2E]">
+              결제 확인
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

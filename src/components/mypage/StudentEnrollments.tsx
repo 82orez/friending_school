@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { cancelEnrollment } from "@/app/mypage/actions";
 import { summarizeSlots, type Slot } from "@/lib/availability";
+import { PAYMENT_BANK } from "@/data/payment";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,19 +22,21 @@ import {
 export type StudentEnrollment = {
   id: string;
   courseTitle: string;
+  priceLabel: string; // 결제 금액 표시(과정 고정가, 예 "₩240,000")
   teacherName: string | null;
   startDate: string;
   slots: Slot[];
-  status: "신청" | "승인" | "결제대기" | "거절" | "취소";
+  status: "신청" | "승인" | "결제대기" | "결제완료" | "거절" | "취소";
   teacherNote: string | null;
   createdAt: string;
 };
 
-// 학생 화면 상태 라벨(강사 승인 흐름 — 승인 시 결제대기).
+// 학생 화면 상태 라벨(강사 승인 흐름 — 승인 시 결제대기, 입금 확인 시 결제완료).
 const STATUS_LABEL: Record<StudentEnrollment["status"], string> = {
   신청: "승인 대기",
   승인: "승인됨",
   결제대기: "결제 대기",
+  결제완료: "결제 완료",
   거절: "거절됨",
   취소: "취소됨",
 };
@@ -42,6 +45,7 @@ const STATUS_BADGE: Record<StudentEnrollment["status"], string> = {
   신청: "bg-accent-blue-soft text-accent-blue-ink",
   승인: "bg-[#E1F5EE] text-[#0F6E56]",
   결제대기: "bg-[#F3EEFD] text-[#6B4AD4]",
+  결제완료: "bg-[#E6F4EA] text-[#1E7E34]",
   거절: "bg-brand/10 text-brand",
   취소: "bg-rule text-muted-fg",
 };
@@ -131,6 +135,28 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
               </div>
             ))}
           </dl>
+
+          {row.status === "결제대기" && (
+            <div className="mt-3 rounded-xl border border-[#6B4AD4]/30 bg-[#F3EEFD] px-4 py-3.5">
+              <p className="text-[15px] font-bold text-[#6B4AD4]">💳 입금 안내</p>
+              <dl className="mt-2 space-y-1.5 text-sm">
+                {[
+                  ["결제 금액", row.priceLabel || "-"],
+                  ["입금 은행", PAYMENT_BANK.bank],
+                  ["계좌번호", PAYMENT_BANK.account],
+                  ["예금주", PAYMENT_BANK.holder],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex justify-between gap-4">
+                    <dt className="text-muted-fg shrink-0">{label}</dt>
+                    <dd className={cn("text-ink text-right break-words", label === "결제 금액" ? "font-bold" : "font-medium")}>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="text-muted-fg-faint mt-2.5 text-xs leading-relaxed">
+                위 계좌로 입금해 주세요. 입금이 확인되면(영업일 기준 1~2일) 수업이 확정되며 문자로 안내드려요.
+              </p>
+            </div>
+          )}
 
           {cancellable && (
             <div className="mt-3 flex justify-end">

@@ -267,6 +267,45 @@ export async function adminCancelEnrollment(id: string, note: string): Promise<A
   return { ok: true };
 }
 
+// 입금 확인(무통장 1단계) — 상태 '결제대기'일 때만 '결제완료'로 전환. 성공 시 학생에게 SMS 통보(best-effort).
+// 회사 계좌 입금이라 확인 주체는 admin. (2단계 PortOne 도입 시 PG 웹훅이 동일 전환을 수행.)
+export async function confirmPayment(id: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const enrollmentId = String(id ?? "").trim();
+  if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: enr } = await admin.from("enrollments").select("status, student_phone, course_title, start_date").eq("id", enrollmentId).maybeSingle();
+  if (!enr) return { ok: false, error: "신청을 찾을 수 없습니다." };
+  if (enr.status !== "결제대기") return { ok: false, error: "결제 대기 상태에서만 확인할 수 있습니다." };
+
+  const { data, error } = await admin
+    .from("enrollments")
+    .update({ status: "결제완료" })
+    .eq("id", enrollmentId)
+    .eq("status", "결제대기")
+    .select("id");
+  if (error) return { ok: false, error: "결제 확인 처리 중 오류가 발생했습니다." };
+  if (!data || data.length === 0) return { ok: false, error: "이미 처리된 신청입니다." };
+
+  // 학생 결과 SMS (best-effort).
+  if (enr.student_phone) {
+    try {
+      await sendSms(
+        enr.student_phone,
+        `[프렌딩 스쿨] 결제가 확인되어 수업이 확정되었습니다. ${enr.course_title} · 시작 ${enr.start_date}. 자세한 내용은 마이페이지에서 확인하세요.`,
+      );
+    } catch (err) {
+      console.error("[confirmPayment] SMS 발송 실패:", err);
+    }
+  }
+
+  revalidatePath("/admin/enrollments");
+  revalidatePath("/teacher");
+  revalidatePath("/mypage");
+  return { ok: true };
+}
+
 /* ===== 강사 지원 관리 ===== */
 
 // 지원자 이메일 + 이름 조회 (알림 메일용). 실패 시 null.

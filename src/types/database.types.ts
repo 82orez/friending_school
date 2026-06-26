@@ -435,7 +435,13 @@ export type Database = {
     }
     Enums: {
       application_status: "신청" | "확인" | "완료" | "취소"
-      enrollment_status: "신청" | "승인" | "결제대기" | "거절" | "취소"
+      enrollment_status:
+        | "신청"
+        | "승인"
+        | "결제대기"
+        | "결제완료"
+        | "거절"
+        | "취소"
       teacher_application_status: "신청" | "승인" | "거절"
       user_role: "admin" | "teacher" | "student"
     }
@@ -566,7 +572,14 @@ export const Constants = {
   public: {
     Enums: {
       application_status: ["신청", "확인", "완료", "취소"],
-      enrollment_status: ["신청", "승인", "결제대기", "거절", "취소"],
+      enrollment_status: [
+        "신청",
+        "승인",
+        "결제대기",
+        "결제완료",
+        "거절",
+        "취소",
+      ],
       teacher_application_status: ["신청", "승인", "거절"],
       user_role: ["admin", "teacher", "student"],
     },

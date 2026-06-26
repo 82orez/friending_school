@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { createClient } from "@/utils/supabase/server";
 import { type Slot } from "@/lib/availability";
+import { getCourse } from "@/data/courses";
 import StudentProfileForm from "@/components/mypage/StudentProfileForm";
 import StudentEnrollments, { type StudentEnrollment } from "@/components/mypage/StudentEnrollments";
 
@@ -11,11 +12,12 @@ export const metadata: Metadata = { title: "마이페이지 — 프렌딩 스쿨
 
 type EnrollmentRow = {
   id: string;
+  course: string;
   course_title: string;
   teacher_name: string | null;
   start_date: string;
   slots: Slot[];
-  status: "신청" | "승인" | "결제대기" | "거절" | "취소";
+  status: "신청" | "승인" | "결제대기" | "결제완료" | "거절" | "취소";
   teacher_note: string | null;
   created_at: string;
 };
@@ -36,12 +38,14 @@ export default async function MyPage() {
 
   const { data } = await supabase
     .from("enrollments")
-    .select("id, course_title, teacher_name, start_date, slots, status, teacher_note, created_at")
+    .select("id, course, course_title, teacher_name, start_date, slots, status, teacher_note, created_at")
     .eq("student_id", user.id)
     .order("created_at", { ascending: false });
   const enrollments: StudentEnrollment[] = ((data ?? []) as EnrollmentRow[]).map((e) => ({
     id: e.id,
     courseTitle: e.course_title,
+    // 결제 금액 = 과정 고정가(슬러그로 live 해석, 미해석 레거시는 빈 값).
+    priceLabel: getCourse(e.course)?.price ?? "",
     teacherName: e.teacher_name,
     startDate: e.start_date,
     slots: Array.isArray(e.slots) ? e.slots : [],
