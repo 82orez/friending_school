@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import TeacherRequestsManager, { type TeacherApplication, type CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
+import { deriveBookedSlots, type BookedSlot } from "@/lib/availability";
 
 const STATUS_ORDER: Record<string, number> = { 신청: 0, 거절: 1, 승인: 2 };
 
@@ -46,6 +47,23 @@ export default async function AdminTeacherRequestsPage() {
     }
   }
 
+  // 현재 강사별 예약(가용 그리드 오버레이용) — 승인 후 전부(승인/결제대기/결제완료) 조회 후 강사별 파생.
+  const bookedByTeacher = new Map<string, BookedSlot[]>();
+  if (teacherIds.length > 0) {
+    const { data: enrollRows } = await admin
+      .from("enrollments")
+      .select("teacher_id, slots, status, student_name, student_english_name")
+      .in("teacher_id", teacherIds)
+      .in("status", ["승인", "결제대기", "결제완료"]);
+    const rowsByTeacher = new Map<string, NonNullable<typeof enrollRows>>();
+    for (const r of enrollRows ?? []) {
+      const list = rowsByTeacher.get(r.teacher_id) ?? [];
+      list.push(r);
+      rowsByTeacher.set(r.teacher_id, list);
+    }
+    rowsByTeacher.forEach((rows, tid) => bookedByTeacher.set(tid, deriveBookedSlots(rows)));
+  }
+
   const currentTeachers: CurrentTeacher[] = (
     (teacherProfiles ?? []) as {
       id: string;
@@ -73,6 +91,7 @@ export default async function AdminTeacherRequestsPage() {
     zoomUrl: p.zoom_url,
     avatarUrl: p.avatar_url,
     slots: slotsByTeacher.get(p.id) ?? [],
+    bookedSlots: bookedByTeacher.get(p.id) ?? [],
   }));
 
   return <TeacherRequestsManager applications={applications} currentTeachers={currentTeachers} />;

@@ -95,6 +95,32 @@ export function summarizeSlots(slots: Slot[], ko = true): string {
     .join(" · ");
 }
 
+// 예약 슬롯(가용 그리드 오버레이용) — confirmed='승인'/'결제완료'(하드 확정), pending='결제대기'.
+export type BookedSlot = { day: number; min: number; tier: "confirmed" | "pending"; label?: string };
+
+// enrollment 행 목록 → 예약 슬롯. 강사 본인 그리드·admin 그리드 공용(파생 로직 단일 소스).
+// confirmed 우선(같은 슬롯이 pending+confirmed면 confirmed), label은 툴팁용 학생 표시명.
+export function deriveBookedSlots(
+  rows: { slots: unknown; status: string; student_name?: string | null; student_english_name?: string | null }[],
+): BookedSlot[] {
+  const m = new Map<string, BookedSlot>();
+  for (const r of rows) {
+    const tier: BookedSlot["tier"] | null =
+      r.status === "승인" || r.status === "결제완료" ? "confirmed" : r.status === "결제대기" ? "pending" : null;
+    if (!tier) continue;
+    const label = r.student_english_name || r.student_name || "Student";
+    for (const s of (Array.isArray(r.slots) ? r.slots : []) as { day?: unknown; min?: unknown }[]) {
+      const day = Number(s?.day);
+      const min = Number(s?.min);
+      if (!Number.isInteger(day) || !Number.isInteger(min)) continue;
+      const k = slotKey(day, min);
+      if (m.get(k)?.tier === "confirmed") continue; // confirmed 우선
+      m.set(k, { day, min, tier, label });
+    }
+  }
+  return Array.from(m.values());
+}
+
 // 과정 표준 수업 횟수(한 신청당) — 종료일·수업횟수 계산/표시 공용(위저드·강사 알림 메일).
 export const TOTAL_SESSIONS = 24;
 

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { updateTeacherAvailability, type AvailabilitySlot } from "@/app/teacher/actions";
+import type { BookedSlot } from "@/lib/availability";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -33,8 +34,8 @@ const fmtTime = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0"
 
 type Slot = { day: number; min: number };
 
-// 예약 슬롯(강사 그리드 오버레이용) — confirmed='승인'/'결제완료'(하드 확정), pending='결제대기'.
-export type BookedSlot = { day: number; min: number; tier: "confirmed" | "pending"; label?: string };
+// 예약 슬롯 타입은 공유 모델(`@/lib/availability`)에 — 기존 import 경로 호환 위해 재export.
+export type { BookedSlot } from "@/lib/availability";
 
 export default function AvailabilityGrid({
   initialSlots,
@@ -230,13 +231,13 @@ export default function AvailabilityGrid({
         </div>
       )}
 
-      {!readOnly && bookedKeys.size > 0 && (
+      {bookedKeys.size > 0 && (
         <div className="text-muted-fg mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
           <span className="inline-flex items-center gap-1.5">
-            <span className="bg-progress inline-block size-3 rounded-sm" /> Available
+            <span className={cn("inline-block size-3 rounded-sm", readOnly ? "bg-accent-blue/40" : "bg-progress")} /> Available
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block size-3 rounded-sm bg-[#1E7E34]" /> Booked (locked)
+            <span className="inline-block size-3 rounded-sm bg-[#1E7E34]" /> Booked{!readOnly && " (locked)"}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block size-3 rounded-sm bg-[#6B4AD4]/55" /> Awaiting payment

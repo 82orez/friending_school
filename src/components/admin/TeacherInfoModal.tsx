@@ -111,7 +111,7 @@ export default function TeacherInfoModal({ teacher, onClose }: { teacher: Curren
 
           <div className="mt-5">
             <p className="text-ink mb-2 text-sm font-bold">주간 가능 시간</p>
-            <AvailabilityGrid initialSlots={teacher.slots} readOnly />
+            <AvailabilityGrid initialSlots={teacher.slots} bookedSlots={teacher.bookedSlots} readOnly />
           </div>
         </div>
 

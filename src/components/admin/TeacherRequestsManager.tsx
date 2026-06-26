@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ChevronDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { BookedSlot } from "@/lib/availability";
 import { approveTeacherApplication, rejectTeacherApplication, deleteTeacher } from "@/app/admin/actions";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
@@ -53,6 +54,7 @@ export type CurrentTeacher = {
   zoomUrl: string | null;
   avatarUrl: string | null;
   slots: { day: number; min: number }[];
+  bookedSlots: BookedSlot[];
 };
 
 const STATUSES = ["신청", "승인", "거절"] as const;
@@ -271,6 +273,7 @@ function ApplicationRow({
           zoomUrl: row.zoom_url,
           avatarUrl: row.avatar_url,
           slots: [],
+          bookedSlots: [],
         });
         toast.success("강사로 승인했습니다.");
       } else {
