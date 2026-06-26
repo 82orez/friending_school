@@ -11,6 +11,7 @@ export const metadata: Metadata = { title: "내 강의실 — 프렌딩 스쿨" 
 
 type ClassRow = {
   id: string;
+  enrollment_id: string;
   course: string;
   course_title: string;
   teacher_name: string | null;
@@ -34,13 +35,14 @@ export default async function ClassroomPage() {
 
   const { data } = await supabase
     .from("classes")
-    .select("id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min")
+    .select("id, enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min")
     .eq(isTeacher ? "teacher_id" : "student_id", user.id)
     .order("session_date", { ascending: true })
     .order("start_min", { ascending: true });
 
   const classes: ClassItem[] = ((data ?? []) as ClassRow[]).map((c) => ({
     id: c.id,
+    enrollmentId: c.enrollment_id,
     // 강사 화면은 영문 과정명(강사 대시보드 관례), 학생 화면은 한글 스냅샷.
     courseTitle: isTeacher ? (getCourse(c.course)?.englishTitle ?? c.course_title) : c.course_title,
     // 학생 뷰=강사명, 강사 뷰=학생명(영문 있으면 영문(한글)).

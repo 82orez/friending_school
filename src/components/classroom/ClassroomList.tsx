@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Loader2, Video } from "lucide-react";
+import { ArrowLeft, ChevronRight, Loader2, Video } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime, DAY_LABELS_KO, TOTAL_SESSIONS } from "@/lib/availability";
@@ -10,6 +10,7 @@ import { enterClass } from "@/app/classroom/actions";
 
 export type ClassItem = {
   id: string;
+  enrollmentId: string;
   courseTitle: string;
   counterpart: string; // 학생 뷰=강사명, 강사 뷰=학생명
   sessionNo: number;
@@ -18,6 +19,13 @@ export type ClassItem = {
   endMin: number;
   startMs: number;
   endMs: number;
+};
+
+type CourseGroup = {
+  enrollmentId: string;
+  courseTitle: string;
+  counterpart: string;
+  items: ClassItem[]; // session_date·start_min asc(서버 정렬 유지)
 };
 
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -35,20 +43,25 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
   // 강사 화면은 영문, 학생 화면은 한국어.
   const ko = !isTeacher;
 
-  // 1분마다 갱신 — 입장 버튼 활성/예정·지난 분리를 시간에 맞춰 갱신.
+  // 1분마다 갱신 — 다음 수업·진행률·입장 버튼 활성·예정/지난 분리를 시간에 맞춰 갱신.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(t);
   }, []);
 
-  const { upcoming, past } = useMemo(() => {
-    const up: ClassItem[] = [];
-    const pa: ClassItem[] = [];
-    for (const c of classes) (c.endMs >= now ? up : pa).push(c);
-    // 지난 수업은 최신순.
-    pa.reverse();
-    return { upcoming: up, past: pa };
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // enrollment_id별 그룹핑(서버 정렬 유지) → 다음 예정 수업 빠른 그룹 먼저, 전부 종료된 그룹은 뒤로.
+  const groups: CourseGroup[] = useMemo(() => {
+    const map = new Map<string, CourseGroup>();
+    for (const c of classes) {
+      const g = map.get(c.enrollmentId);
+      if (g) g.items.push(c);
+      else map.set(c.enrollmentId, { enrollmentId: c.enrollmentId, courseTitle: c.courseTitle, counterpart: c.counterpart, items: [c] });
+    }
+    const nextStart = (g: CourseGroup) => g.items.find((c) => c.endMs >= now)?.startMs ?? Infinity;
+    return Array.from(map.values()).sort((a, b) => nextStart(a) - nextStart(b));
   }, [classes, now]);
 
   if (classes.length === 0) {
@@ -63,30 +76,99 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
     );
   }
 
-  return (
-    <div className="space-y-5">
-      <Section title={ko ? "예정된 수업" : "Upcoming classes"} count={upcoming.length} ko={ko}>
-        {upcoming.length === 0 ? (
-          <p className="text-muted-fg px-6 py-8 text-center text-sm">{ko ? "예정된 수업이 없어요." : "No upcoming classes."}</p>
-        ) : (
-          <ul className="list-none">
-            {upcoming.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} />
-            ))}
-          </ul>
-        )}
-      </Section>
+  const selected = selectedId ? (groups.find((g) => g.enrollmentId === selectedId) ?? null) : null;
 
-      {past.length > 0 && (
-        <Section title={ko ? "지난 수업" : "Past classes"} count={past.length} ko={ko}>
-          <ul className="list-none">
-            {past.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} isPast />
-            ))}
-          </ul>
+  // 상세 뷰 — 선택한 과정의 예정/지난 수업.
+  if (selected) {
+    const upcoming = selected.items.filter((c) => c.endMs >= now);
+    const past = selected.items.filter((c) => c.endMs < now).reverse();
+    return (
+      <div className="space-y-5">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setSelectedId(null)}
+            className="text-muted-fg hover:text-ink focus-visible:ring-accent-blue/50 inline-flex items-center gap-1 rounded text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+            <ArrowLeft className="size-4" />
+            {ko ? "목록으로" : "Back"}
+          </button>
+          <h2 className="text-ink truncate text-base font-bold">{selected.courseTitle}</h2>
+        </div>
+
+        <Section title={ko ? "예정된 수업" : "Upcoming classes"} count={upcoming.length} ko={ko}>
+          {upcoming.length === 0 ? (
+            <p className="text-muted-fg px-6 py-8 text-center text-sm">{ko ? "예정된 수업이 없어요." : "No upcoming classes."}</p>
+          ) : (
+            <ul className="list-none">
+              {upcoming.map((c) => (
+                <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} />
+              ))}
+            </ul>
+          )}
         </Section>
-      )}
+
+        {past.length > 0 && (
+          <Section title={ko ? "지난 수업" : "Past classes"} count={past.length} ko={ko}>
+            <ul className="list-none">
+              {past.map((c) => (
+                <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} isPast />
+              ))}
+            </ul>
+          </Section>
+        )}
+      </div>
+    );
+  }
+
+  // 기본 뷰 — 과정 카드 그리드.
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {groups.map((g) => (
+        <CourseCard key={g.enrollmentId} group={g} isTeacher={isTeacher} now={now} onSelect={() => setSelectedId(g.enrollmentId)} />
+      ))}
     </div>
+  );
+}
+
+function CourseCard({ group, isTeacher, now, onSelect }: { group: CourseGroup; isTeacher: boolean; now: number; onSelect: () => void }) {
+  const ko = !isTeacher;
+  const total = group.items.length;
+  const done = group.items.filter((c) => c.endMs < now).length;
+  const next = group.items.find((c) => c.endMs >= now);
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="border-rule hover:border-accent-blue/50 focus-visible:ring-accent-blue/50 flex flex-col rounded-2xl border bg-white p-5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-ink truncate text-[15px] font-bold">{group.courseTitle}</p>
+          <p className="text-muted-fg mt-0.5 truncate text-sm">
+            {isTeacher ? "Student" : "강사"} {group.counterpart}
+          </p>
+        </div>
+        <ChevronRight aria-hidden className="text-muted-fg-faint mt-0.5 size-5 shrink-0" />
+      </div>
+
+      <p className="text-muted-fg mt-3 text-sm">
+        {next
+          ? `${ko ? "다음" : "Next"} ${formatSessionDate(next.sessionDate, ko)} ${fmtTime(next.startMin)}`
+          : ko
+            ? "수업 종료"
+            : "Completed"}
+      </p>
+
+      <div className="mt-3">
+        <div className="bg-rule h-1.5 w-full overflow-hidden rounded-full">
+          <div className="bg-brand-gradient h-full rounded-full" style={{ width: `${pct}%` }} />
+        </div>
+        <p className="text-muted-fg-faint mt-1.5 text-xs">
+          {ko ? `${total}회 중 ${done}회 완료` : `${done}/${total} sessions`}
+        </p>
+      </div>
+    </button>
   );
 }
 
@@ -131,9 +213,6 @@ function ClassRow({ item, isTeacher, now, isPast = false }: { item: ClassItem; i
       <div className="min-w-0 flex-1">
         <p className="text-ink truncate text-[15px] font-bold">
           {formatSessionDate(item.sessionDate, ko)} · {fmtTime(item.startMin)}~{fmtTime(item.endMin)}
-        </p>
-        <p className="text-muted-fg mt-0.5 truncate text-sm">
-          {item.courseTitle} · {isTeacher ? "Student" : "강사"} {item.counterpart}
         </p>
         <p className="text-muted-fg-faint mt-0.5 text-xs">
           {ko ? `${item.sessionNo}/${TOTAL_SESSIONS}회차` : `Session ${item.sessionNo}/${TOTAL_SESSIONS}`}
