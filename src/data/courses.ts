@@ -2,6 +2,7 @@
 // ⚠️ UI-first — 신청폼 저장은 Phase 4(applications DB)에서 연결. 커리큘럼은 landing.ts BOOKS 재사용.
 
 import { BOOKS, type BookUnit } from "./landing";
+import { COURSE_PRICE_LABEL, COURSE_PER_LABEL } from "./pricing";
 
 export const COURSE_SLUGS = ["workhol", "kitchen", "grammar1", "grammar2", "cosmetic"] as const;
 export type CourseSlug = (typeof COURSE_SLUGS)[number];
@@ -131,8 +132,8 @@ const COURSES: Record<CourseSlug, Course> = {
     introTitle: "현지에서 당당하게 살아가기",
     introDesc: ["해외 현지 적응, 면접, 일상 영어까지.", "초급이라도 지금부터 준비하면", "호주 현장에서 당당하게 생활할 수 있습니다."],
     spec: COMMON_SPEC("워홀 생존영어 과정"),
-    price: "₩240,000",
-    per: "/ 24회",
+    price: COURSE_PRICE_LABEL,
+    per: COURSE_PER_LABEL,
     regretHeadLead: "선배 워홀러들이",
     regretHeadEm: "후회하는 3가지",
     regret: [
@@ -202,8 +203,8 @@ const COURSES: Record<CourseSlug, Course> = {
     introTitle: "주방에서 당당하게 일하기",
     introDesc: ['"Behind!" 한 마디도 못 알아들었던 첫날,', "이제는 주방 어디서든 당당하게", "소통할 수 있습니다. 지금 시작하세요."],
     spec: COMMON_SPEC("셰프 영어 과정"),
-    price: "₩240,000",
-    per: "/ 24회",
+    price: COURSE_PRICE_LABEL,
+    per: COURSE_PER_LABEL,
     regretHeadLead: "주방에서 일했던 사람들이",
     regretHeadEm: "가장 많이 털어놓는 3가지",
     regret: [
@@ -273,8 +274,8 @@ const COURSES: Record<CourseSlug, Course> = {
     introTitle: "영어를 이해하고 말하는 공부",
     introDesc: ["토익 점수는 올라가는데", "입이 안 떨어졌다면,", "영어의 뼈대와 원리부터", "다시 시작하세요."],
     spec: COMMON_SPEC("회화 공식영어 1"),
-    price: "₩240,000",
-    per: "/ 24회",
+    price: COURSE_PRICE_LABEL,
+    per: COURSE_PER_LABEL,
     regretHeadLead: "영어 공부를 해봤던 분들이",
     regretHeadEm: "가장 많이 털어놓는 3가지",
     regret: GRAMMAR_REGRET,
@@ -299,8 +300,8 @@ const COURSES: Record<CourseSlug, Course> = {
     introTitle: "기초 위에 실전 회화를 완성",
     introDesc: ["기초 문법을 익혔다면,", "이제 표현의 폭을 넓혀", "어떤 상황에서도", "막힘없이 말해보세요."],
     spec: COMMON_SPEC("회화 공식영어 2"),
-    price: "₩240,000",
-    per: "/ 24회",
+    price: COURSE_PRICE_LABEL,
+    per: COURSE_PER_LABEL,
     regretHeadLead: "영어 공부를 해봤던 분들이",
     regretHeadEm: "가장 많이 털어놓는 3가지",
     regret: GRAMMAR_REGRET,
@@ -332,8 +333,8 @@ const COURSES: Record<CourseSlug, Course> = {
       "한 번에 준비하세요.",
     ],
     spec: COMMON_SPEC("뷰티 영어 과정"),
-    price: "₩240,000",
-    per: "/ 24회",
+    price: COURSE_PRICE_LABEL,
+    per: COURSE_PER_LABEL,
     // 프로토타입 cosmetic.html의 후회/차별점/후기 섹션은 워홀 카피를 그대로 사용 중 — 원본 충실 이식.
     // ※ 차별점 헤딩만 이 과정(뷰티 영어) 이름으로 교정(diffHeadLead), 나머지 본문 카피는 원본 유지.
     regretHeadLead: "선배 워홀러들이",

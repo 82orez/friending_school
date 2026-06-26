@@ -2,6 +2,8 @@
 // ⚠️ presentational only — project0607 프로토타입(js/index.js)에서 이식. Phase 3(교재 5종 확장)에서
 // 실제 교재 데이터(reading_progress.course)와 재조정 예정. 현재는 셀프디벨롭/과정카드/유튜브 UI 렌더용.
 
+import { COURSE_PRICE_LABEL, COURSE_PER_LABEL } from "./pricing";
+
 /* ===== 셀프 디벨롭 — 무료 교재 미리보기 ===== */
 
 export type BookUnit = {
@@ -272,40 +274,40 @@ export const COURSE_CARDS: CourseCard[] = [
     slug: "workhol",
     name: "워홀 생존영어 과정",
     desc: "해외 현지 적응, 면접, 일상 영어까지. 초보라도 지금부터 준비하면 호주 현장에서 당당하게 생활할 수 있습니다.",
-    price: "₩240,000",
-    per: "/ 24회",
+    price: COURSE_PRICE_LABEL,
+    per: COURSE_PER_LABEL,
     image: "/images/course-workhol.jpg",
   },
   {
     slug: "kitchen",
     name: "셰프 영어 과정",
     desc: '"Behind!" 한 마디도 못 알아들었던 첫날, 이제는 주방 어디서든 당당하게 소통할 수 있습니다. 지금 시작하세요.',
-    price: "₩240,000",
-    per: "/ 24회",
+    price: COURSE_PRICE_LABEL,
+    per: COURSE_PER_LABEL,
     image: "/images/course-kitchen.jpg",
   },
   {
     slug: "grammar1",
     name: "회화 공식영어 1 과정",
     desc: "토익 점수는 올라가는데 입이 안 떨어졌다면, 영어의 뼈대와 원리부터 다시 시작하세요. (Unit 1–24)",
-    price: "₩240,000",
-    per: "/ 24회",
+    price: COURSE_PRICE_LABEL,
+    per: COURSE_PER_LABEL,
     image: "/images/course-basic1.jpg",
   },
   {
     slug: "grammar2",
     name: "회화 공식영어 2 과정",
     desc: "기초를 다졌다면 이제 실전 회화로. 표현의 폭을 넓혀 어떤 상황에서도 막힘없이 말해보세요. (Unit 25–48)",
-    price: "₩240,000",
-    per: "/ 24회",
+    price: COURSE_PRICE_LABEL,
+    per: COURSE_PER_LABEL,
     image: "/images/course-basic2.jpg",
   },
   {
     slug: "cosmetic",
     name: "뷰티 영어 과정",
     desc: "첫 미팅부터 계약 성사까지, K-뷰티 수출 영어 24유닛. 바이어가 눈앞에 있는데 영어가 막혔다면, 제품 소개부터 협상, 이메일까지 한 번에 준비하세요.",
-    price: "₩240,000",
-    per: "/ 24회",
+    price: COURSE_PRICE_LABEL,
+    per: COURSE_PER_LABEL,
     image: "/images/course-cosmetic.jpg",
   },
 ];
