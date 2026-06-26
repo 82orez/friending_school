@@ -227,6 +227,7 @@ function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; 
             defaultMonth={selected}
             locale={ko ? koLocale : enUS}
             showOutsideDays
+            formatters={{ formatWeekdayName: (d: Date) => d.toLocaleDateString(ko ? "ko-KR" : "en-US", { weekday: "short" }) }}
             modifiers={{ upcoming, past }}
             modifiersClassNames={{
               upcoming: "bg-accent-blue/10 text-accent-blue-ink font-bold rounded-(--cell-radius)",
