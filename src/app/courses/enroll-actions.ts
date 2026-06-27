@@ -308,6 +308,6 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
     console.error("[submitEnrollment] 관리자 알림 발송 실패:", err);
   }
 
-  revalidatePath("/mypage");
+  revalidatePath("/mypage", "layout");
   return { success: true };
 }

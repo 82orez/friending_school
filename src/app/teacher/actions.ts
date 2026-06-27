@@ -73,7 +73,7 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
     .eq("id", userId);
   if (error) return { error: "Something went wrong while saving." };
 
-  revalidatePath("/teacher");
+  revalidatePath("/teacher", "layout");
   return { ok: true };
 }
 
@@ -106,14 +106,14 @@ export async function updateTeacherAvailability(slots: AvailabilitySlot[]): Prom
   if (delErr) return { error: "Something went wrong while saving." };
   // 2) 빈 선택이면 여기서 종료(전부 비움).
   if (rows.length === 0) {
-    revalidatePath("/teacher");
+    revalidatePath("/teacher", "layout");
     return { ok: true };
   }
   // 3) bulk insert.
   const { error: insErr } = await admin.from("teacher_availability").insert(rows);
   if (insErr) return { error: "Something went wrong while saving." };
 
-  revalidatePath("/teacher");
+  revalidatePath("/teacher", "layout");
   return { ok: true };
 }
 
@@ -182,7 +182,7 @@ export async function approveEnrollment(enrollmentId: string): Promise<TeacherAc
     }
   }
 
-  revalidatePath("/teacher");
+  revalidatePath("/teacher", "layout");
   return { ok: true };
 }
 
@@ -216,7 +216,7 @@ export async function rejectEnrollment(enrollmentId: string, note: string): Prom
     }
   }
 
-  revalidatePath("/teacher");
+  revalidatePath("/teacher", "layout");
   return { ok: true };
 }
 
@@ -233,6 +233,6 @@ export async function updateTeacherAvatar(avatarUrl: string): Promise<TeacherAct
   const { error } = await admin.from("profiles").update({ avatar_url: avatarUrl }).eq("id", userId);
   if (error) return { error: "Something went wrong while saving the image." };
 
-  revalidatePath("/teacher");
+  revalidatePath("/teacher", "layout");
   return { ok: true };
 }

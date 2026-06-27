@@ -120,7 +120,7 @@ export async function deleteYoutubeVideo(id: string): Promise<ActionResult> {
 function revalidateCenterConsumers() {
   revalidatePath("/admin/centers");
   revalidatePath("/teacher/apply");
-  revalidatePath("/teacher");
+  revalidatePath("/teacher", "layout");
   revalidatePath("/admin/teacher-requests");
 }
 
@@ -224,7 +224,7 @@ export async function deleteTeacher(userId: string): Promise<ActionResult> {
   if (error) return { ok: false, error: "강사 삭제 중 오류가 발생했습니다." };
 
   revalidatePath("/admin/teacher-requests");
-  revalidatePath("/teacher");
+  revalidatePath("/teacher", "layout");
   return { ok: true };
 }
 
@@ -263,8 +263,8 @@ export async function adminCancelEnrollment(id: string, note: string): Promise<A
   }
 
   revalidatePath("/admin/enrollments");
-  revalidatePath("/teacher");
-  revalidatePath("/mypage");
+  revalidatePath("/teacher", "layout");
+  revalidatePath("/mypage", "layout");
   return { ok: true };
 }
 
@@ -358,9 +358,8 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
   }
 
   revalidatePath("/admin/enrollments");
-  revalidatePath("/teacher");
-  revalidatePath("/mypage");
-  revalidatePath("/mypage/classroom");
+  revalidatePath("/teacher", "layout");
+  revalidatePath("/mypage", "layout");
   return { ok: true };
 }
 
@@ -410,7 +409,7 @@ export async function approveTeacherApplication(id: string): Promise<ActionResul
   }
 
   revalidatePath("/admin/teacher-requests");
-  revalidatePath("/teacher");
+  revalidatePath("/teacher", "layout");
   return { ok: true };
 }
 

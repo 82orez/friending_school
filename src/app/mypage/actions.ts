@@ -58,7 +58,7 @@ export async function updateStudentProfile(_prev: StudentActionState, formData: 
     .eq("id", user.id);
   if (error) return { error: "저장 중 문제가 발생했어요." };
 
-  revalidatePath("/mypage");
+  revalidatePath("/mypage", "layout");
   return { ok: true };
 }
 
@@ -117,8 +117,8 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
     console.error("[cancelEnrollment] 강사 알림 발송 실패:", err);
   }
 
-  revalidatePath("/mypage");
-  revalidatePath("/teacher");
+  revalidatePath("/mypage", "layout");
+  revalidatePath("/teacher", "layout");
   return { ok: true };
 }
 
@@ -213,6 +213,6 @@ export async function verifyPhoneOtp(rawPhone: string, rawCode: string): Promise
 
   await admin.from("phone_verifications").delete().eq("user_id", user.id);
 
-  revalidatePath("/mypage");
+  revalidatePath("/mypage", "layout");
   return { ok: true };
 }
