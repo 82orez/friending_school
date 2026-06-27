@@ -360,7 +360,7 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
   revalidatePath("/admin/enrollments");
   revalidatePath("/teacher");
   revalidatePath("/mypage");
-  revalidatePath("/classroom");
+  revalidatePath("/mypage/classroom");
   return { ok: true };
 }
 

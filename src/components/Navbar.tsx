@@ -129,13 +129,6 @@ export default function Navbar({
                     Teacher
                   </Link>
                 )}
-                {!isAdmin && (
-                  <Link
-                    href="/classroom"
-                    className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-                    {isTeacher ? "My Classroom" : "내 강의실"}
-                  </Link>
-                )}
                 {!isTeacher && (
                   <Link
                     href="/mypage"
@@ -293,16 +286,6 @@ export default function Navbar({
                     onClick={closeMenu}
                     className="text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-semibold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
                     Teacher
-                  </Link>
-                </li>
-              )}
-              {!isAdmin && (
-                <li className="border-rule border-b py-4">
-                  <Link
-                    href="/classroom"
-                    onClick={closeMenu}
-                    className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-medium no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-                    {isTeacher ? "My Classroom" : "내 강의실"}
                   </Link>
                 </li>
               )}

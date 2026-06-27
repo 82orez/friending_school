@@ -7,7 +7,9 @@ import { getCourse } from "@/data/courses";
 import TeacherProfileForm, { type TeacherProfile } from "@/components/teacher/TeacherProfileForm";
 import AvailabilityModal from "@/components/teacher/AvailabilityModal";
 import { deriveBookedSlots } from "@/lib/availability";
+import { loadClasses } from "@/lib/classroom";
 import TeacherEnrollments, { type TeacherEnrollment } from "@/components/teacher/TeacherEnrollments";
+import ClassroomList from "@/components/classroom/ClassroomList";
 
 export const metadata: Metadata = { title: "Teacher — Friending School", robots: { index: false } };
 
@@ -73,6 +75,9 @@ export default async function TeacherPage() {
   // 가용 그리드 오버레이용 예약 슬롯 — 승인 후 전부(확정=승인/결제완료, 결제대기=pending; confirmed 우선).
   const bookedSlots = deriveBookedSlots(enrollRows ?? []);
 
+  // 내 강의실(확정된 수업 클래스) — 결제완료 시 생성된 클래스.
+  const classes = await loadClasses(supabase, user.id, true);
+
   // 친근한 호칭은 이름(first) 우선, 없으면 이메일 로컬파트.
   const displayName = initial.first_name || user.email?.split("@")[0] || "Teacher";
 
@@ -98,6 +103,12 @@ export default async function TeacherPage() {
 
         {/* 수강신청 관리 — 승인/거절 */}
         <TeacherEnrollments enrollments={enrollments} />
+
+        {/* 내 강의실 — 확정된 수업 일정 */}
+        <section className="mt-8">
+          <h2 className="text-ink mb-4 text-lg font-bold">My Classroom</h2>
+          <ClassroomList classes={classes} isTeacher />
+        </section>
       </div>
     </div>
   );
