@@ -7,6 +7,10 @@ const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 // 수업 시작 가능 시점: 시작 15분 전부터.
 export const ENTRY_LEAD_MS = 15 * 60 * 1000;
 
+// 개별 수업 취소 컷오프: 시작 1시간 전까지만. 과정(enrollment)당 취소 한도.
+export const CANCEL_CUTOFF_MS = 60 * 60 * 1000;
+export const MAX_CANCELLATIONS = 6;
+
 // KST 날짜(YYYY-MM-DD) + 분(0~1440) → UTC epoch ms.
 export function kstDateMinToMs(sessionDate: string, min: number): number {
   const [y, m, d] = sessionDate.split("-").map(Number);
@@ -16,4 +20,9 @@ export function kstDateMinToMs(sessionDate: string, min: number): number {
 // 입장 가능 여부: 시작 15분 전 ~ 종료 시각.
 export function canEnterClass(nowMs: number, startMs: number, endMs: number): boolean {
   return nowMs >= startMs - ENTRY_LEAD_MS && nowMs <= endMs;
+}
+
+// 취소 가능 여부: 수업 시작 1시간 전까지.
+export function canCancelClass(nowMs: number, startMs: number): boolean {
+  return nowMs <= startMs - CANCEL_CUTOFF_MS;
 }

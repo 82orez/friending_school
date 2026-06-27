@@ -100,9 +100,11 @@ export type Database = {
           end_min: number
           enrollment_id: string
           id: string
+          is_makeup: boolean
           session_date: string
           session_no: number
           start_min: number
+          status: string
           student_english_name: string | null
           student_id: string
           student_name: string | null
@@ -117,9 +119,11 @@ export type Database = {
           end_min: number
           enrollment_id: string
           id?: string
+          is_makeup?: boolean
           session_date: string
           session_no: number
           start_min: number
+          status?: string
           student_english_name?: string | null
           student_id: string
           student_name?: string | null
@@ -134,9 +138,11 @@ export type Database = {
           end_min?: number
           enrollment_id?: string
           id?: string
+          is_makeup?: boolean
           session_date?: string
           session_no?: number
           start_min?: number
+          status?: string
           student_english_name?: string | null
           student_id?: string
           student_name?: string | null

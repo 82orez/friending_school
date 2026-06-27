@@ -280,6 +280,52 @@ export async function sendEnrollmentCancellationToTeacher(to: string[], data: En
   await sendResultEmail(to, `[Friending School] Enrollment cancelled · ${data.studentName}`, html, text);
 }
 
+export type ClassCancellationEmailData = {
+  studentName: string;
+  courseTitle: string;
+  sessionDate: string; // YYYY-MM-DD (취소된 회차)
+  sessionTime: string; // "09:00~09:25"
+  makeupDate?: string; // YYYY-MM-DD (자동 보강 예정일)
+};
+
+/**
+ * 강사에게 학생의 개별 수업 취소 + 자동 보강 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ */
+export async function sendClassCancellationToTeacher(to: string[], data: ClassCancellationEmailData): Promise<void> {
+  const rows: [string, string][] = [
+    ["Student", data.studentName || "-"],
+    ["Course", data.courseTitle],
+    ["Cancelled session", `${data.sessionDate} ${data.sessionTime}`],
+    ...(data.makeupDate ? ([["Makeup scheduled", `${data.makeupDate} ${data.sessionTime}`]] as [string, string][]) : []),
+  ];
+  const tr = rows
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:8px 12px;color:#666;background:#f8f8f8;white-space:nowrap;border-bottom:1px solid #eee;vertical-align:top">${escapeHtml(
+          k,
+        )}</td><td style="padding:8px 12px;color:#1a1a1a;border-bottom:1px solid #eee;white-space:pre-wrap">${escapeHtml(v)}</td></tr>`,
+    )
+    .join("");
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">A class has been cancelled by the student</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(data.studentName)} · ${escapeHtml(data.courseTitle)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 0">${
+      data.makeupDate ? "A makeup class has been automatically scheduled (same weekday and time). You can review it on your teacher page." : "You can review your classes on your teacher page."
+    }</p>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
+  </div>`;
+  const text = [
+    "A class has been cancelled by the student.",
+    "",
+    `Student: ${data.studentName || "-"}`,
+    `Course: ${data.courseTitle}`,
+    `Cancelled session: ${data.sessionDate} ${data.sessionTime}`,
+    ...(data.makeupDate ? [`Makeup scheduled: ${data.makeupDate} ${data.sessionTime}`] : []),
+  ].join("\n");
+  await sendResultEmail(to, `[Friending School] Class cancelled · ${data.studentName}`, html, text);
+}
+
 /* ===== 관리자 대상 신규 수강신청 알림 ===== */
 
 export type EnrollmentAdminEmailData = {

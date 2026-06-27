@@ -1,14 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { ArrowLeft, ChevronRight, Loader2, Video } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ChevronRight, Loader2, Video, X } from "lucide-react";
 import { ko as koLocale, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime, DAY_LABELS_KO, TOTAL_SESSIONS, SLOT_MIN, LESSON_MIN } from "@/lib/availability";
-import { canEnterClass } from "@/lib/classtime";
+import { canEnterClass, canCancelClass, MAX_CANCELLATIONS } from "@/lib/classtime";
 import { Calendar } from "@/components/ui/calendar";
-import { enterClass } from "@/app/classroom/actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cancelClass, enterClass } from "@/app/classroom/actions";
 
 export type ClassItem = {
   id: string;
@@ -21,6 +32,8 @@ export type ClassItem = {
   endMin: number;
   startMs: number;
   endMs: number;
+  status: "예정" | "취소";
+  isMakeup: boolean;
 };
 
 type CourseGroup = {
@@ -28,6 +41,7 @@ type CourseGroup = {
   courseTitle: string;
   counterpart: string;
   items: ClassItem[]; // session_date·start_min asc(서버 정렬 유지)
+  cancelledCount: number;
 };
 
 type View = "list" | "calendar";
@@ -50,11 +64,13 @@ function formatSessionDate(d: string, ko: boolean): string {
   return ko ? `${m}월 ${day}일 (${DAY_LABELS_KO[dow]})` : `${MONTHS_EN[m - 1]} ${day} (${WEEKDAYS_EN[dow]})`;
 }
 
+const isActive = (c: ClassItem) => c.status !== "취소";
+
 export default function ClassroomList({ classes, isTeacher }: { classes: ClassItem[]; isTeacher: boolean }) {
   // 강사 화면은 영문, 학생 화면은 한국어.
   const ko = !isTeacher;
 
-  // 1분마다 갱신 — 다음 수업·진행률·입장 버튼 활성·예정/지난 분리를 시간에 맞춰 갱신.
+  // 1분마다 갱신 — 다음 수업·진행률·입장/취소 버튼 활성·예정/지난 분리를 시간에 맞춰 갱신.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60_000);
@@ -69,10 +85,12 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
     for (const c of classes) {
       const g = map.get(c.enrollmentId);
       if (g) g.items.push(c);
-      else map.set(c.enrollmentId, { enrollmentId: c.enrollmentId, courseTitle: c.courseTitle, counterpart: c.counterpart, items: [c] });
+      else map.set(c.enrollmentId, { enrollmentId: c.enrollmentId, courseTitle: c.courseTitle, counterpart: c.counterpart, items: [c], cancelledCount: 0 });
     }
-    const nextStart = (g: CourseGroup) => g.items.find((c) => c.endMs >= now)?.startMs ?? Infinity;
-    return Array.from(map.values()).sort((a, b) => nextStart(a) - nextStart(b));
+    const out = Array.from(map.values());
+    for (const g of out) g.cancelledCount = g.items.filter((c) => c.status === "취소").length;
+    const nextStart = (g: CourseGroup) => g.items.find((c) => isActive(c) && c.endMs >= now)?.startMs ?? Infinity;
+    return out.sort((a, b) => nextStart(a) - nextStart(b));
   }, [classes, now]);
 
   if (classes.length === 0) {
@@ -106,6 +124,8 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
 // 과정 상세 — 달력 기본 + 목록 토글(해당 과정 수업만).
 function CourseDetail({ group, isTeacher, now, ko, onBack }: { group: CourseGroup; isTeacher: boolean; now: number; ko: boolean; onBack: () => void }) {
   const [view, setView] = useState<View>("calendar");
+  // 학생만 취소 가능 + 과정당 6회 한도.
+  const cancelAllowed = !isTeacher && group.cancelledCount < MAX_CANCELLATIONS;
 
   return (
     <div className="space-y-5">
@@ -118,14 +138,19 @@ function CourseDetail({ group, isTeacher, now, ko, onBack }: { group: CourseGrou
           {ko ? "목록으로" : "Back"}
         </button>
         <h2 className="text-ink truncate text-base font-bold">{group.courseTitle}</h2>
+        {!isTeacher && (
+          <span className="text-muted-fg-faint ml-auto shrink-0 text-xs">
+            취소 {group.cancelledCount}/{MAX_CANCELLATIONS}
+          </span>
+        )}
       </div>
 
       <ViewToggle view={view} setView={setView} ko={ko} />
 
       {view === "calendar" ? (
-        <ClassroomCalendar classes={group.items} isTeacher={isTeacher} now={now} />
+        <ClassroomCalendar classes={group.items} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} />
       ) : (
-        <SessionList items={group.items} isTeacher={isTeacher} now={now} ko={ko} />
+        <SessionList items={group.items} isTeacher={isTeacher} now={now} ko={ko} cancelAllowed={cancelAllowed} />
       )}
     </div>
   );
@@ -155,10 +180,10 @@ function ViewToggle({ view, setView, ko }: { view: View; setView: (v: View) => v
   );
 }
 
-// 목록 — 예정/지난 수업(단일 과정).
-function SessionList({ items, isTeacher, now, ko }: { items: ClassItem[]; isTeacher: boolean; now: number; ko: boolean }) {
-  const upcoming = items.filter((c) => c.endMs >= now);
-  const past = items.filter((c) => c.endMs < now).reverse();
+// 목록 — 예정/지난(+취소) 수업(단일 과정). 예정=활성 미래, 지난=과거 활성 + 취소 전부.
+function SessionList({ items, isTeacher, now, ko, cancelAllowed }: { items: ClassItem[]; isTeacher: boolean; now: number; ko: boolean; cancelAllowed: boolean }) {
+  const upcoming = items.filter((c) => isActive(c) && c.endMs >= now);
+  const past = items.filter((c) => !(isActive(c) && c.endMs >= now)).reverse();
   return (
     <div className="space-y-5">
       <Section title={ko ? "예정된 수업" : "Upcoming classes"} count={upcoming.length} ko={ko}>
@@ -167,7 +192,7 @@ function SessionList({ items, isTeacher, now, ko }: { items: ClassItem[]; isTeac
         ) : (
           <ul className="list-none">
             {upcoming.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} />
+              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} />
             ))}
           </ul>
         )}
@@ -177,7 +202,7 @@ function SessionList({ items, isTeacher, now, ko }: { items: ClassItem[]; isTeac
         <Section title={ko ? "지난 수업" : "Past classes"} count={past.length} ko={ko}>
           <ul className="list-none">
             {past.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} isPast />
+              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} isPast />
             ))}
           </ul>
         </Section>
@@ -186,18 +211,18 @@ function SessionList({ items, isTeacher, now, ko }: { items: ClassItem[]; isTeac
   );
 }
 
-// 달력 — 단일 과정 월간. 수업 있는 날 예정/지난 색 구분, 날짜 클릭 시 그 날 수업 목록.
-function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; isTeacher: boolean; now: number }) {
+// 달력 — 단일 과정 월간. 예정/지난/취소 색 구분, 날짜 클릭 시 그 날 수업 목록.
+function ClassroomCalendar({ classes, isTeacher, now, cancelAllowed }: { classes: ClassItem[]; isTeacher: boolean; now: number; cancelAllowed: boolean }) {
   const ko = !isTeacher;
 
   // 기본 포커스 = 다음 예정 수업(없으면 마지막 수업) 날짜. 1회만 계산(틱에 튀지 않게).
   const [selected, setSelected] = useState<Date | undefined>(() => {
     const t = Date.now();
-    const src = classes.find((c) => c.endMs >= t) ?? classes[classes.length - 1];
+    const src = classes.find((c) => isActive(c) && c.endMs >= t) ?? classes[classes.length - 1];
     return src ? parseDate(src.sessionDate) : new Date();
   });
 
-  const { byDate, upcoming, past } = useMemo(() => {
+  const { byDate, upcoming, past, cancelled } = useMemo(() => {
     const byDate = new Map<string, ClassItem[]>();
     for (const c of classes) {
       const arr = byDate.get(c.sessionDate) ?? [];
@@ -206,10 +231,14 @@ function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; 
     }
     const upcoming: Date[] = [];
     const past: Date[] = [];
+    const cancelled: Date[] = [];
     for (const [ds, dItems] of Array.from(byDate.entries())) {
-      (dItems.some((c) => c.endMs >= now) ? upcoming : past).push(parseDate(ds));
+      const date = parseDate(ds);
+      if (dItems.some((c) => isActive(c) && c.endMs >= now)) upcoming.push(date);
+      else if (dItems.some((c) => isActive(c))) past.push(date);
+      else cancelled.push(date);
     }
-    return { byDate, upcoming, past };
+    return { byDate, upcoming, past, cancelled };
   }, [classes, now]);
 
   const selectedStr = selected ? dateToStr(selected) : "";
@@ -229,10 +258,11 @@ function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; 
             weekStartsOn={0}
             showOutsideDays={false}
             formatters={{ formatWeekdayName: (d: Date) => d.toLocaleDateString(ko ? "ko-KR" : "en-US", { weekday: "short" }) }}
-            modifiers={{ upcoming, past, sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
+            modifiers={{ upcoming, past, cancelled, sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
             modifiersClassNames={{
               upcoming: "bg-accent-blue/10 text-accent-blue-ink font-bold rounded-(--cell-radius)",
               past: "bg-rule/60 text-muted-fg rounded-(--cell-radius)",
+              cancelled: "text-muted-fg-faint line-through",
               sunday: "!text-brand",
               saturday: "!text-accent-blue-ink",
             }}
@@ -250,7 +280,7 @@ function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; 
         ) : (
           <ul className="list-none">
             {dayItems.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} isPast={c.endMs < now} />
+              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} isPast={c.endMs < now} />
             ))}
           </ul>
         )}
@@ -261,9 +291,10 @@ function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; 
 
 function CourseCard({ group, isTeacher, now, onSelect }: { group: CourseGroup; isTeacher: boolean; now: number; onSelect: () => void }) {
   const ko = !isTeacher;
-  const total = group.items.length;
-  const done = group.items.filter((c) => c.endMs < now).length;
-  const next = group.items.find((c) => c.endMs >= now);
+  const active = group.items.filter(isActive);
+  const total = active.length;
+  const done = active.filter((c) => c.endMs < now).length;
+  const next = active.find((c) => c.endMs >= now);
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
@@ -317,10 +348,27 @@ function Section({ title, count, ko, children }: { title: string; count: number;
   );
 }
 
-function ClassRow({ item, isTeacher, now, isPast = false }: { item: ClassItem; isTeacher: boolean; now: number; isPast?: boolean }) {
+function ClassRow({
+  item,
+  isTeacher,
+  now,
+  isPast = false,
+  cancelAllowed,
+}: {
+  item: ClassItem;
+  isTeacher: boolean;
+  now: number;
+  isPast?: boolean;
+  cancelAllowed: boolean;
+}) {
   const ko = !isTeacher;
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const enterable = !isPast && canEnterClass(now, item.startMs, item.endMs);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const cancelled = item.status === "취소";
+  const enterable = !cancelled && !isPast && canEnterClass(now, item.startMs, item.endMs);
+  const cancellable = cancelAllowed && !cancelled && !isPast && canCancelClass(now, item.startMs);
+  const timeRange = `${fmtTime(item.startMin)}~${fmtTime(item.endMin - (SLOT_MIN - LESSON_MIN))}`;
 
   function handleEnter() {
     // 팝업 차단 회피 — 동기적으로 빈 탭을 먼저 연 뒤 액션 결과 URL로 이동.
@@ -337,30 +385,76 @@ function ClassRow({ item, isTeacher, now, isPast = false }: { item: ClassItem; i
     });
   }
 
+  function handleCancel() {
+    setConfirmOpen(false);
+    startTransition(async () => {
+      const res = await cancelClass(item.id);
+      if (res.ok) {
+        const label = res.makeupDate ? formatSessionDate(res.makeupDate, true) : "";
+        toast.success(res.makeupDate ? `수업을 취소했어요. 보강이 ${label}로 잡혔어요.` : "수업을 취소했어요.");
+        router.refresh();
+      } else {
+        toast.error(res.error ?? "취소할 수 없어요.");
+      }
+    });
+  }
+
   return (
-    <li className={cn("border-rule flex items-center gap-3 border-b px-6 py-4 last:border-b-0", isPast && "opacity-60")}>
+    <li className={cn("border-rule flex items-center gap-3 border-b px-6 py-4 last:border-b-0", (isPast || cancelled) && "opacity-60")}>
       <div className="min-w-0 flex-1">
-        <p className="text-ink truncate text-[15px] font-bold">
-          {formatSessionDate(item.sessionDate, ko)} · {fmtTime(item.startMin)}~{fmtTime(item.endMin - (SLOT_MIN - LESSON_MIN))}
+        <p className={cn("text-ink truncate text-[15px] font-bold", cancelled && "line-through")}>
+          {formatSessionDate(item.sessionDate, ko)} · {timeRange}
         </p>
-        <p className="text-muted-fg-faint mt-0.5 text-xs">
-          {ko ? `${item.sessionNo}/${TOTAL_SESSIONS}회차` : `Session ${item.sessionNo}/${TOTAL_SESSIONS}`}
+        <p className="text-muted-fg-faint mt-0.5 flex items-center gap-1.5 text-xs">
+          <span>{ko ? `${item.sessionNo}/${TOTAL_SESSIONS}회차` : `Session ${item.sessionNo}/${TOTAL_SESSIONS}`}</span>
+          {cancelled && <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "취소" : "Cancelled"}</span>}
+          {item.isMakeup && !cancelled && (
+            <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{ko ? "보강" : "Makeup"}</span>
+          )}
         </p>
       </div>
 
-      {!isPast &&
-        (enterable ? (
-          <button
-            type="button"
-            onClick={handleEnter}
-            disabled={pending}
-            className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
-            {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Video className="size-3.5" />}
-            {ko ? "입장하기" : "Enter"}
-          </button>
-        ) : (
-          <span className="text-muted-fg-faint shrink-0 text-xs">{ko ? "시작 15분 전 입장" : "Opens 15 min before"}</span>
-        ))}
+      {enterable ? (
+        <button
+          type="button"
+          onClick={handleEnter}
+          disabled={pending}
+          className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
+          {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Video className="size-3.5" />}
+          {ko ? "입장하기" : "Enter"}
+        </button>
+      ) : cancellable ? (
+        <button
+          type="button"
+          onClick={() => setConfirmOpen(true)}
+          disabled={pending}
+          className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50">
+          {pending ? <Loader2 className="size-3.5 animate-spin" /> : <X className="size-3.5" />}
+          {ko ? "취소" : "Cancel"}
+        </button>
+      ) : !cancelled && !isPast ? (
+        <span className="text-muted-fg-faint shrink-0 text-xs">{ko ? "시작 15분 전 입장" : "Opens 15 min before"}</span>
+      ) : null}
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>수업을 취소할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="text-ink font-semibold">
+                {formatSessionDate(item.sessionDate, true)} {timeRange}
+              </span>{" "}
+              수업이 취소되고, 같은 요일·시간으로 보강이 자동 배정돼요. (과정당 {MAX_CANCELLATIONS}회까지)
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancel} className="bg-brand hover:bg-brand/90 border-transparent text-white">
+              수업 취소
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </li>
   );
 }

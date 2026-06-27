@@ -4,7 +4,7 @@ import type { ClassItem } from "@/components/classroom/ClassroomList";
 
 // classes 조회 컬럼(내 강의실 학생/강사 공용).
 export const CLASS_SELECT =
-  "id, enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min";
+  "id, enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup";
 
 type ClassRow = {
   id: string;
@@ -18,6 +18,8 @@ type ClassRow = {
   session_date: string;
   start_min: number;
   end_min: number;
+  status: "예정" | "취소";
+  is_makeup: boolean;
 };
 
 // classes 행 → ClassItem(클라 표시용). 강사 화면은 영문 과정명·학생 영문명, 학생 화면은 한글 스냅샷.
@@ -33,6 +35,8 @@ export function mapClassRows(rows: ClassRow[], isTeacher: boolean): ClassItem[] 
     endMin: c.end_min,
     startMs: kstDateMinToMs(c.session_date, c.start_min),
     endMs: kstDateMinToMs(c.session_date, c.end_min),
+    status: c.status,
+    isMakeup: c.is_makeup,
   }));
 }
 
