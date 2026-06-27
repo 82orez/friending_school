@@ -73,7 +73,7 @@ export const TEXTBOOK_REGISTRY: Textbook[] = [
   },
   {
     course: "cosmetic",
-    title: "뷰티 영어 — 글로벌 비즈니스 실전",
+    title: "뷰티 수출영어 — 글로벌 비즈니스 실전",
     subtitle: "바이어 미팅부터 협상·이메일·계약까지, K-뷰티 수출 영어 24개 Unit.",
     eyebrow: "FRIENDING · COSMETIC EXPORT ENGLISH",
     freeUnits: [1],

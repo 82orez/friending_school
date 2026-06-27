@@ -169,7 +169,7 @@ export const BOOKS: Book[] = [
   },
   {
     key: "cosmetic",
-    title: "뷰티 영어 — 글로벌 비즈니스 실전",
+    title: "뷰티 수출영어 — 글로벌 비즈니스 실전",
     copy: "바이어와 직접 협상하는 비즈니스 영어!",
     tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }, { t: "기업 추천" }],
     units: [
@@ -304,7 +304,7 @@ export const COURSE_CARDS: CourseCard[] = [
   },
   {
     slug: "cosmetic",
-    name: "뷰티 영어 과정",
+    name: "뷰티 수출영어 과정",
     desc: "첫 미팅부터 계약 성사까지, K-뷰티 수출 영어 24유닛. 바이어가 눈앞에 있는데 영어가 막혔다면, 제품 소개부터 협상, 이메일까지 한 번에 준비하세요.",
     price: COURSE_PRICE_LABEL,
     per: COURSE_PER_LABEL,

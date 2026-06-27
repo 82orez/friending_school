@@ -319,8 +319,8 @@ const COURSES: Record<CourseSlug, Course> = {
 
   cosmetic: {
     slug: "cosmetic",
-    title: "뷰티 영어 과정",
-    englishTitle: "Beauty English",
+    title: "뷰티 수출영어 과정",
+    englishTitle: "Beauty Export English",
     heroImage: "/images/course-cosmetic.jpg",
     tagline: "바이어 미팅 · 협상 · 이메일 · 계약까지",
     introTitle: "바이어 앞에서 당당하게",
@@ -332,11 +332,11 @@ const COURSES: Record<CourseSlug, Course> = {
       "제품 소개부터 협상, 이메일까지",
       "한 번에 준비하세요.",
     ],
-    spec: COMMON_SPEC("뷰티 영어 과정"),
+    spec: COMMON_SPEC("뷰티 수출영어 과정"),
     price: COURSE_PRICE_LABEL,
     per: COURSE_PER_LABEL,
     // 프로토타입 cosmetic.html의 후회/차별점/후기 섹션은 워홀 카피를 그대로 사용 중 — 원본 충실 이식.
-    // ※ 차별점 헤딩만 이 과정(뷰티 영어) 이름으로 교정(diffHeadLead), 나머지 본문 카피는 원본 유지.
+    // ※ 차별점 헤딩만 이 과정(뷰티 수출영어) 이름으로 교정(diffHeadLead), 나머지 본문 카피는 원본 유지.
     regretHeadLead: "선배 워홀러들이",
     regretHeadEm: "후회하는 3가지",
     regret: [
@@ -356,7 +356,7 @@ const COURSES: Record<CourseSlug, Course> = {
         desc: "면접에서 버벅거렸어요. 내 경험과 강점을 제대로 설명하지 못해 떨어진 면접이 수십 개예요. 지금 생각하니 영어만 됐어도 훨씬 빨리 일자리를 얻었을 것 같아요.",
       },
     ],
-    diffHeadLead: "뷰티 영어 과정 ",
+    diffHeadLead: "뷰티 수출영어 과정 ",
     diffHeadEm: "이렇게 달라요",
     diff: [
       {
@@ -392,7 +392,7 @@ const COURSES: Record<CourseSlug, Course> = {
       },
     ],
     curriculumBooks: [{ bookKey: "cosmetic" }],
-    applyTitle: "뷰티 영어 1:1 화상수업",
+    applyTitle: "뷰티 수출영어 1:1 화상수업",
     applyHeading: ["버벅거리는 순간이 오기 전에", "제대로 준비하세요"],
     applyOptions: SIMPLE_OPTIONS,
   },

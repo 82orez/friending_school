@@ -13,7 +13,7 @@ const TAB_LABELS: Record<string, string> = {
   kitchen: "셰프 영어",
   basic1: "회화 공식영어 1",
   basic2: "회화 공식영어 2",
-  cosmetic: "뷰티 영어",
+  cosmetic: "뷰티 수출영어",
 };
 
 // landing book.key → 전자책 course(레지스트리). 여기 등록된 교재만 전자책 연동(나머지는 mock placeholder).

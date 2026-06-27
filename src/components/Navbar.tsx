@@ -17,7 +17,7 @@ const COURSES = [
   { slug: "kitchen", label: "셰프 영어" },
   { slug: "grammar1", label: "회화 공식영어 1" },
   { slug: "grammar2", label: "회화 공식영어 2" },
-  { slug: "cosmetic", label: "뷰티 영어" },
+  { slug: "cosmetic", label: "뷰티 수출영어" },
 ];
 
 export default function Navbar({
