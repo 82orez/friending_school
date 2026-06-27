@@ -114,16 +114,25 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
   // 이번 취소 반영 후 남은 취소 가능 횟수.
   const remaining = Math.max(0, MAX_CANCELLATIONS - ((cancelledCount ?? 0) + 1));
 
-  // 자동 보강 생성(best-effort) — 같은 요일/시각의 마지막 회차 +7일, session_no=enrollment 최대+1.
+  // 자동 보강 생성(best-effort) — 과정 전체 마지막 수업일 다음으로, 주간 스케줄(요일 집합)을 따라 가장 빠른 수업일.
+  // 예) 월/수/금·마지막 금요일에서 수요일 취소 → 그 다음 주 월요일. session_no=enrollment 최대+1.
   let makeupDate: string | undefined;
   try {
-    const { data: all } = await admin.from("classes").select("session_no, session_date, start_min").eq("enrollment_id", cls.enrollment_id);
-    const rows = (all ?? []) as { session_no: number; session_date: string; start_min: number }[];
-    const targetDow = weekdayOf(cls.session_date);
-    const sameSeries = rows.filter((r) => r.start_min === cls.start_min && weekdayOf(r.session_date) === targetDow);
-    const lastDate = sameSeries.reduce((mx, r) => (r.session_date > mx ? r.session_date : mx), cls.session_date);
+    const { data: all } = await admin.from("classes").select("session_no, session_date, start_min, end_min").eq("enrollment_id", cls.enrollment_id);
+    const rows = (all ?? []) as { session_no: number; session_date: string; start_min: number; end_min: number }[];
+    // 요일 → 시각 맵(스케줄 요일 집합 W). 균일 스케줄이지만 요일별 시간 차이도 견고하게 처리.
+    const dayTime = new Map<number, { start_min: number; end_min: number }>();
+    for (const r of rows) {
+      const dow = weekdayOf(r.session_date);
+      if (!dayTime.has(dow)) dayTime.set(dow, { start_min: r.start_min, end_min: r.end_min });
+    }
+    // 전체 최대 session_date 다음으로, 스케줄 요일에 해당하는 첫 날짜.
+    const lastDate = rows.reduce((mx, r) => (r.session_date > mx ? r.session_date : mx), cls.session_date);
+    let d = addDaysStr(lastDate, 1);
+    for (let i = 0; i < 7 && !dayTime.has(weekdayOf(d)); i++) d = addDaysStr(d, 1);
+    makeupDate = d;
+    const time = dayTime.get(weekdayOf(d)) ?? { start_min: cls.start_min, end_min: cls.end_min };
     const maxSessionNo = rows.reduce((mx, r) => Math.max(mx, r.session_no), 0);
-    makeupDate = addDaysStr(lastDate, 7);
     const { error: insErr } = await admin.from("classes").insert({
       enrollment_id: cls.enrollment_id,
       student_id: cls.student_id,
@@ -135,8 +144,8 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
       student_english_name: cls.student_english_name,
       session_no: maxSessionNo + 1,
       session_date: makeupDate,
-      start_min: cls.start_min,
-      end_min: cls.end_min,
+      start_min: time.start_min,
+      end_min: time.end_min,
       is_makeup: true,
     });
     if (insErr) {
