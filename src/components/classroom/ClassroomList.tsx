@@ -391,7 +391,8 @@ function ClassRow({
       const res = await cancelClass(item.id);
       if (res.ok) {
         const label = res.makeupDate ? formatSessionDate(res.makeupDate, true) : "";
-        toast.success(res.makeupDate ? `수업을 취소했어요. 보강이 ${label}로 잡혔어요.` : "수업을 취소했어요.");
+        const remainingText = typeof res.remaining === "number" ? ` (남은 취소 ${res.remaining}회)` : "";
+        toast.success((res.makeupDate ? `수업을 취소했어요. 보강이 ${label}로 잡혔어요.` : "수업을 취소했어요.") + remainingText);
         router.refresh();
       } else {
         toast.error(res.error ?? "취소할 수 없어요.");

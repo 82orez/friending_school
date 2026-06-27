@@ -10,7 +10,7 @@ import { isValidZoomUrl } from "@/lib/url";
 import { sendClassCancellationToTeacher } from "@/lib/mailer";
 
 export type EnterResult = { url?: string; error?: string };
-export type CancelResult = { ok?: boolean; error?: string; makeupDate?: string };
+export type CancelResult = { ok?: boolean; error?: string; makeupDate?: string; remaining?: number };
 
 // 클래스 입장 — 소유 검증 + 시간창(시작 15분 전~종료) 검증 후 강사 zoom URL(최신값) 반환.
 // 학생/강사 모두 사용. URL을 반환하고 클라가 새 탭으로 연다(서버가 시간창 최종 강제).
@@ -111,6 +111,9 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
   if (updErr) return { error: "취소 처리 중 문제가 발생했어요." };
   if (!updated || updated.length === 0) return { error: "이미 처리된 수업입니다. 새로고침해 주세요." };
 
+  // 이번 취소 반영 후 남은 취소 가능 횟수.
+  const remaining = Math.max(0, MAX_CANCELLATIONS - ((cancelledCount ?? 0) + 1));
+
   // 자동 보강 생성(best-effort) — 같은 요일/시각의 마지막 회차 +7일, session_no=enrollment 최대+1.
   let makeupDate: string | undefined;
   try {
@@ -165,5 +168,5 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
 
   revalidatePath("/mypage", "layout");
   revalidatePath("/teacher", "layout");
-  return { ok: true, makeupDate };
+  return { ok: true, makeupDate, remaining };
 }
