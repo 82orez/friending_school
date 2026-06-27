@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 const TAB_LABELS: Record<string, string> = {
   workhol: "워홀 생존영어",
   kitchen: "셰프 영어",
-  basic1: "회화 공식영어 1",
-  basic2: "회화 공식영어 2",
+  basic1: "회화 기초문법 1",
+  basic2: "회화 기초문법 2",
   cosmetic: "뷰티 수출영어",
 };
 

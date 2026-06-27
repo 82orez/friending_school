@@ -57,7 +57,7 @@ export const TEXTBOOK_REGISTRY: Textbook[] = [
   },
   {
     course: "grammar1",
-    title: "회화 공식영어 1 — 기초부터 탄탄하게",
+    title: "회화 기초문법 1 — 기초부터 탄탄하게",
     subtitle: "Be동사부터 전치사까지, 회화의 뼈대를 세우는 24개 Unit.",
     eyebrow: "FRIENDING · BASIC GRAMMAR 1",
     freeUnits: [1],
@@ -65,7 +65,7 @@ export const TEXTBOOK_REGISTRY: Textbook[] = [
   },
   {
     course: "grammar2",
-    title: "회화 공식영어 2 — 실전 회화 완성",
+    title: "회화 기초문법 2 — 실전 회화 완성",
     subtitle: "비교급부터 가정법까지, 실전 회화를 완성하는 Unit 25–48.",
     eyebrow: "FRIENDING · BASIC GRAMMAR 2",
     freeUnits: [25],

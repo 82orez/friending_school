@@ -99,7 +99,7 @@ export const BOOKS: Book[] = [
   },
   {
     key: "basic1",
-    title: "회화 공식영어 1 — 기초부터 탄탄하게",
+    title: "회화 기초문법 1 — 기초부터 탄탄하게",
     copy: "영어가 처음이라면, 여기서 시작하세요.",
     tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }],
     units: [
@@ -134,7 +134,7 @@ export const BOOKS: Book[] = [
   },
   {
     key: "basic2",
-    title: "회화 공식영어 2 — 실전 회화 완성",
+    title: "회화 기초문법 2 — 실전 회화 완성",
     copy: "문법 1을 마쳤다면, 이제 실전으로!",
     tags: [{ t: "무료", free: true }, { t: "음성 포함" }, { t: "24유닛" }],
     units: [
@@ -288,7 +288,7 @@ export const COURSE_CARDS: CourseCard[] = [
   },
   {
     slug: "grammar1",
-    name: "회화 공식영어 1 과정",
+    name: "회화 기초문법 1 과정",
     desc: "토익 점수는 올라가는데 입이 안 떨어졌다면, 영어의 뼈대와 원리부터 다시 시작하세요. (Unit 1–24)",
     price: COURSE_PRICE_LABEL,
     per: COURSE_PER_LABEL,
@@ -296,7 +296,7 @@ export const COURSE_CARDS: CourseCard[] = [
   },
   {
     slug: "grammar2",
-    name: "회화 공식영어 2 과정",
+    name: "회화 기초문법 2 과정",
     desc: "기초를 다졌다면 이제 실전 회화로. 표현의 폭을 넓혀 어떤 상황에서도 막힘없이 말해보세요. (Unit 25–48)",
     price: COURSE_PRICE_LABEL,
     per: COURSE_PER_LABEL,
