@@ -237,7 +237,7 @@ function ClassroomCalendar({ classes, isTeacher, now }: { classes: ClassItem[]; 
               saturday: "!text-accent-blue-ink",
             }}
             classNames={{
-              today: "bg-accent-blue/10 text-accent-blue-ink font-bold ring-1 ring-accent-blue ring-inset rounded-(--cell-radius) !opacity-100",
+              today: "bg-[#FFF3CD] text-ink font-bold ring-1 ring-[#F5A623] ring-inset rounded-(--cell-radius) !opacity-100",
             }}
             className="text-base [--cell-size:--spacing(10)] [&_.rdp-weekday:first-child]:!text-brand [&_.rdp-weekday:last-child]:!text-accent-blue-ink"
           />
