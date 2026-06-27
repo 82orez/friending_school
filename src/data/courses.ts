@@ -1,5 +1,5 @@
 // 과정 상세페이지(/courses/[slug]) 데이터. project0607 프로토타입 pages/course/*.html에서 이식.
-// ⚠️ UI-first — 신청폼 저장은 Phase 4(applications DB)에서 연결. 커리큘럼은 landing.ts BOOKS 재사용.
+// 신청 동선은 강사 매칭형 수강신청(/courses/[slug]/enroll → enrollments)으로 연결. 커리큘럼은 landing.ts BOOKS 재사용.
 
 import { BOOKS, type BookUnit } from "./landing";
 import { COURSE_PRICE_LABEL, COURSE_PER_LABEL } from "./pricing";

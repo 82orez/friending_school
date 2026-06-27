@@ -13,9 +13,6 @@ import { TOTAL_SESSIONS, enumerateLessonSessions, isValidSlot, type Slot } from 
 
 export type ActionResult = { ok: boolean; error?: string };
 
-const STATUSES = ["신청", "확인", "완료", "취소"] as const;
-type Status = (typeof STATUSES)[number];
-
 // 모든 admin 액션의 진입 가드 — 세션 클라이언트로 admin 확인 후에만 service_role 쓰기 허용.
 async function requireAdmin(): Promise<boolean> {
   const supabase = createClient(await cookies());
@@ -24,23 +21,6 @@ async function requireAdmin(): Promise<boolean> {
   } = await supabase.auth.getUser();
   if (!user) return false;
   return isAdmin(supabase, user.id);
-}
-
-/* ===== 신청 관리 ===== */
-
-export async function updateApplication(id: string, status: string, adminNote: string): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
-  if (!id || !STATUSES.includes(status as Status)) return { ok: false, error: "잘못된 요청입니다." };
-
-  const admin = createAdminClient();
-  const { error } = await admin
-    .from("applications")
-    .update({ status, admin_note: adminNote || null })
-    .eq("id", id);
-  if (error) return { ok: false, error: "저장 중 오류가 발생했습니다." };
-
-  revalidatePath("/admin");
-  return { ok: true };
 }
 
 /* ===== 유튜브 관리 ===== */

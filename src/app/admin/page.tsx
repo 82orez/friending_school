@@ -1,12 +1,7 @@
-import { createAdminClient } from "@/utils/supabase/admin";
-import ApplicationsManager, { type AdminApplication } from "@/components/admin/ApplicationsManager";
+import { redirect } from "next/navigation";
 
-export default async function AdminApplicationsPage() {
-  const admin = createAdminClient();
-  const { data } = await admin
-    .from("applications")
-    .select("id, course_title, option, name, phone, email, memo, status, admin_note, created_at")
-    .order("created_at", { ascending: false });
-
-  return <ApplicationsManager applications={(data ?? []) as AdminApplication[]} />;
+// 구 '신청 관리'(상담신청 applications, 레거시)는 수강신청(enrollments)으로 대체됨.
+// admin 인덱스는 수강신청 관리로 리다이렉트.
+export default function AdminIndexPage() {
+  redirect("/admin/enrollments");
 }

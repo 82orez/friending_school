@@ -14,54 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      applications: {
-        Row: {
-          admin_note: string | null
-          course: string
-          course_title: string
-          created_at: string
-          email: string | null
-          id: string
-          memo: string | null
-          name: string
-          option: string | null
-          phone: string
-          status: Database["public"]["Enums"]["application_status"]
-          updated_at: string
-          user_id: string | null
-        }
-        Insert: {
-          admin_note?: string | null
-          course: string
-          course_title: string
-          created_at?: string
-          email?: string | null
-          id?: string
-          memo?: string | null
-          name: string
-          option?: string | null
-          phone: string
-          status?: Database["public"]["Enums"]["application_status"]
-          updated_at?: string
-          user_id?: string | null
-        }
-        Update: {
-          admin_note?: string | null
-          course?: string
-          course_title?: string
-          created_at?: string
-          email?: string | null
-          id?: string
-          memo?: string | null
-          name?: string
-          option?: string | null
-          phone?: string
-          status?: Database["public"]["Enums"]["application_status"]
-          updated_at?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       centers: {
         Row: {
           created_at: string
@@ -502,7 +454,6 @@ export type Database = {
       }
     }
     Enums: {
-      application_status: "신청" | "확인" | "완료" | "취소"
       enrollment_status:
         | "신청"
         | "승인"
@@ -639,7 +590,6 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      application_status: ["신청", "확인", "완료", "취소"],
       enrollment_status: [
         "신청",
         "승인",
