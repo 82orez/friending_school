@@ -24,8 +24,7 @@ export default async function AdminEnrollmentsPage() {
     slots: (Array.isArray(e.slots) ? e.slots : []) as Slot[],
   }));
 
-  const teacherCards = await loadEnrollTeachers();
-  const teachers = teacherCards.map((t) => ({ id: t.id, name: t.name }));
+  const teachers = await loadEnrollTeachers();
   const courses = COURSE_SLUGS.map((slug) => ({ slug, title: getCourse(slug)?.title ?? slug }));
 
   return (

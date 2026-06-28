@@ -1,14 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FlaskConical, Loader2, X } from "lucide-react";
+import Image from "next/image";
+import { CheckCircle2, FlaskConical, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { createTestEnrollment } from "@/app/admin/actions";
 import EnrollScheduleField from "@/components/course/EnrollScheduleField";
-import { type Slot } from "@/lib/availability";
+import { teacherHasAllSlots, type Slot } from "@/lib/availability";
+import { type EnrollTeacherCard } from "@/app/courses/enroll-actions";
+import { nationalityLabel } from "@/data/nationalities";
+import { genderLabelKo } from "@/data/genders";
 
-type TeacherOpt = { id: string; name: string };
 type CourseOpt = { slug: string; title: string };
 
 // 오늘(KST) YYYY-MM-DD — date input 기본값.
@@ -21,7 +25,7 @@ export default function TestEnrollmentCreator({
   courses,
   defaultStudentEmail,
 }: {
-  teachers: TeacherOpt[];
+  teachers: EnrollTeacherCard[];
   courses: CourseOpt[];
   defaultStudentEmail: string;
 }) {
@@ -58,7 +62,7 @@ function CreatorModal({
   defaultStudentEmail,
   onClose,
 }: {
-  teachers: TeacherOpt[];
+  teachers: EnrollTeacherCard[];
   courses: CourseOpt[];
   defaultStudentEmail: string;
   onClose: () => void;
@@ -66,12 +70,17 @@ function CreatorModal({
   const router = useRouter();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [studentEmail, setStudentEmail] = useState(defaultStudentEmail);
-  const [teacherId, setTeacherId] = useState(teachers[0]?.id ?? "");
   const [course, setCourse] = useState(courses[0]?.slug ?? "");
   const [slots, setSlots] = useState<Slot[]>([]);
+  const [teacherId, setTeacherId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(todayKst());
   const [sessions, setSessions] = useState(3);
   const [pending, startTransition] = useTransition();
+
+  // 선택 슬롯 전부 비는 강사만 라이브 필터(실제 위저드와 동일 패턴, 추가 쿼리 0).
+  const matches = useMemo(() => (slots.length === 0 ? [] : teachers.filter((t) => teacherHasAllSlots(t.slots, slots))), [teachers, slots]);
+  // 일정 변경으로 선택 강사가 매칭에서 빠지면 자동 무효.
+  const selectedTeacher = matches.find((t) => t.id === teacherId) ?? null;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -88,16 +97,23 @@ function CreatorModal({
   }, [onClose]);
 
   const submit = () => {
-    if (!teacherId) {
-      toast.error("강사를 선택해 주세요.");
-      return;
-    }
     if (slots.length === 0) {
       toast.error("수업 일정을 선택해 주세요.");
       return;
     }
+    if (!selectedTeacher) {
+      toast.error("가능한 강사를 선택해 주세요.");
+      return;
+    }
     startTransition(async () => {
-      const res = await createTestEnrollment({ studentEmail: studentEmail.trim() || undefined, teacherId, course, slots, startDate, sessions });
+      const res = await createTestEnrollment({
+        studentEmail: studentEmail.trim() || undefined,
+        teacherId: selectedTeacher.id,
+        course,
+        slots,
+        startDate,
+        sessions,
+      });
       if (res.ok) {
         toast.success("테스트 수강신청을 생성했어요. 승인 → 결제확인으로 진행하세요.");
         onClose();
@@ -142,41 +158,75 @@ function CreatorModal({
             />
           </label>
 
-          <div className="flex flex-wrap gap-4">
-            <label className="block flex-1">
-              <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">강사</span>
-              <select
-                value={teacherId}
-                onChange={(e) => setTeacherId(e.target.value)}
-                className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-              >
-                {teachers.length === 0 && <option value="">(강사 없음 — 먼저 시드 필요)</option>}
-                {teachers.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block flex-1">
-              <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">과정</span>
-              <select
-                value={course}
-                onChange={(e) => setCourse(e.target.value)}
-                className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-              >
-                {courses.map((c) => (
-                  <option key={c.slug} value={c.slug}>
-                    {c.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <label className="block">
+            <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">과정</span>
+            <select
+              value={course}
+              onChange={(e) => setCourse(e.target.value)}
+              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+            >
+              {courses.map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.title}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <div>
             <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">수업 일정 (주간 반복)</span>
             <EnrollScheduleField onChange={setSlots} />
+          </div>
+
+          {/* 선택한 요일·시간에 가능한 강사 라이브 검색 → 택일 (실제 위저드와 동일). */}
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-fg-faint text-xs font-semibold">가능한 강사</span>
+              {slots.length > 0 && matches.length > 0 && <span className="text-muted-fg-faint text-xs">{matches.length}명</span>}
+            </div>
+            <div className="mt-2">
+              {slots.length === 0 ? (
+                <p className="text-muted-fg-faint py-4 text-center text-sm">요일·시간을 선택하면 가능한 강사가 표시됩니다.</p>
+              ) : matches.length === 0 ? (
+                <p className="text-muted-fg-faint py-4 text-center text-sm">선택한 시간에 가능한 강사가 없어요. 요일·시간을 조정해 주세요.</p>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {matches.map((t) => {
+                    const on = selectedTeacher?.id === t.id;
+                    return (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          onClick={() => setTeacherId(t.id)}
+                          aria-pressed={on}
+                          className={cn(
+                            "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
+                            on ? "border-progress bg-progress/5" : "border-rule hover:border-rule-faint bg-white",
+                          )}
+                        >
+                          {t.avatarUrl ? (
+                            <Image src={t.avatarUrl} alt="" width={40} height={40} className="size-10 shrink-0 rounded-lg object-cover" />
+                          ) : (
+                            <span className="bg-surface text-muted-fg-faint flex size-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold">
+                              {t.name.charAt(0)}
+                            </span>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-ink truncate text-sm font-bold">{t.name}</p>
+                              {on && <CheckCircle2 className="text-progress size-4 shrink-0" aria-hidden />}
+                            </div>
+                            <p className="text-muted-fg-faint truncate text-xs">
+                              {nationalityLabel(t.nationality)} · {genderLabelKo(t.gender)}
+                            </p>
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-4">
