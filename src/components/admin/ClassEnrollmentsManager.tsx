@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MAX_CANCELLATIONS } from "@/lib/classtime";
 
 export type ClassEnrollmentSummary = {
   enrollmentId: string;
@@ -108,7 +109,7 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
       </div>
 
       <div className="border-rule mt-4 overflow-x-auto rounded-xl border bg-white">
-        <table className="w-full min-w-[680px] border-collapse text-sm">
+        <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead>
             <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
               <th className="px-4 py-2.5 md:px-6">상태</th>
@@ -116,13 +117,14 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
               <SortHeader label="학생" sortKey="student" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <SortHeader label="강사" sortKey="teacher" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <SortHeader label="기간" sortKey="start" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-              <th className="px-4 py-2.5 md:px-6">진행</th>
+              <th className="px-4 py-2.5">진행</th>
+              <th className="px-4 py-2.5 md:px-6">남은 취소</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-muted-fg px-6 py-12 text-center text-sm">
+                <td colSpan={7} className="text-muted-fg px-6 py-12 text-center text-sm">
                   표시할 과정이 없습니다.
                 </td>
               </tr>
@@ -131,6 +133,7 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
                 const ongoing = isOngoing(r);
                 const active = r.total - r.cancelled;
                 const pct = active > 0 ? Math.round((r.done / active) * 100) : 0;
+                const remaining = Math.max(0, MAX_CANCELLATIONS - r.cancelled);
                 return (
                   <tr
                     key={r.enrollmentId}
@@ -167,7 +170,7 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
                       {r.firstDate}
                       <span className="text-muted-fg-faint"> ~ {r.lastDate}</span>
                     </td>
-                    <td className="px-4 py-3.5 align-middle md:px-6">
+                    <td className="px-4 py-3.5 align-middle">
                       <div className="flex flex-col gap-1">
                         <div className="text-muted-fg-faint flex items-center gap-2 text-xs whitespace-nowrap">
                           <span className="text-ink font-semibold">
@@ -181,6 +184,17 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
                           <div className="bg-progress h-full rounded-full" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
+                    </td>
+                    <td className="px-4 py-3.5 align-middle whitespace-nowrap md:px-6">
+                      <span
+                        className={cn(
+                          "font-semibold",
+                          remaining === 0 ? "text-brand" : remaining <= 2 ? "text-[#B97400]" : "text-muted-fg",
+                        )}
+                      >
+                        {remaining}
+                      </span>
+                      <span className="text-muted-fg-faint"> / {MAX_CANCELLATIONS}</span>
                     </td>
                   </tr>
                 );
