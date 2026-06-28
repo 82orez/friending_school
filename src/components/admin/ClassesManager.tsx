@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, CalendarClock, Loader2, Search, X } from "lucide-react";
+import Link from "next/link";
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarClock, Loader2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { adminCancelClass, adminRescheduleClass } from "@/app/admin/actions";
@@ -66,7 +67,17 @@ function timeRange(start: number, end: number): string {
   return `${fmtTime(start)}~${fmtTime(end)}`;
 }
 
-export default function ClassesManager({ classes }: { classes: AdminClass[] }) {
+export default function ClassesManager({
+  classes,
+  title = "화상수업 관리",
+  subtitle = "결제 확정 시 생성된 전체 수업입니다. 예정 수업은 강제 취소(보강 옵션)·일정 변경할 수 있습니다.",
+  backHref,
+}: {
+  classes: AdminClass[];
+  title?: string;
+  subtitle?: string;
+  backHref?: string;
+}) {
   const [rows, setRows] = useState(classes);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"전체" | StatusKey>("전체");
@@ -105,8 +116,13 @@ export default function ClassesManager({ classes }: { classes: AdminClass[] }) {
 
   return (
     <div>
-      <h1 className="text-ink text-2xl font-extrabold">화상수업 관리</h1>
-      <p className="text-muted-fg mt-1 text-sm">결제 확정 시 생성된 전체 수업입니다. 예정 수업은 강제 취소(보강 옵션)·일정 변경할 수 있습니다.</p>
+      {backHref && (
+        <Link href={backHref} className="text-muted-fg hover:text-ink mb-3 inline-flex items-center gap-1 text-sm font-semibold transition-colors">
+          <ArrowLeft className="size-4" aria-hidden /> 목록으로
+        </Link>
+      )}
+      <h1 className="text-ink text-2xl font-extrabold">{title}</h1>
+      <p className="text-muted-fg mt-1 text-sm">{subtitle}</p>
 
       <div className="mt-5 flex flex-wrap gap-2">
         {FILTERS.map((f) => {

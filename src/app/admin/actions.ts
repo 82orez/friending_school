@@ -391,6 +391,7 @@ export async function adminCancelClass(classId: string, generateMakeup: boolean)
   }
 
   revalidatePath("/admin/classes");
+  revalidatePath(`/admin/classes/${cls.enrollment_id}`);
   revalidatePath("/teacher", "layout");
   revalidatePath("/mypage", "layout");
   return { ok: true };
@@ -448,6 +449,7 @@ export async function adminRescheduleClass(classId: string, sessionDate: string,
   if (!updated || updated.length === 0) return { ok: false, error: "이미 처리된 수업입니다." };
 
   revalidatePath("/admin/classes");
+  revalidatePath(`/admin/classes/${cls.enrollment_id}`);
   revalidatePath("/teacher", "layout");
   revalidatePath("/mypage", "layout");
   return { ok: true };
