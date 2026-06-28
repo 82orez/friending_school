@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/admin/enrollments", label: "📚 수강신청" },
+  { href: "/admin/classes", label: "📹 화상수업" },
   { href: "/admin/members", label: "👥 회원 관리" },
   { href: "/admin/teacher-requests", label: "🧑‍🏫 강사 관리" },
   { href: "/admin/centers", label: "🏫 센터 관리" },

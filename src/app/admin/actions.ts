@@ -6,10 +6,11 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isAdmin } from "@/lib/auth";
 import { getOrigin } from "@/lib/origin";
-import { sendTeacherApprovalNotification, sendTeacherRejectionNotification } from "@/lib/mailer";
+import { sendTeacherApprovalNotification, sendTeacherRejectionNotification, sendClassCancellationToTeacher } from "@/lib/mailer";
 import { normalizeCurrency } from "@/data/currencies";
 import { sendSms } from "@/lib/sms";
-import { TOTAL_SESSIONS, enumerateLessonSessions, isValidSlot, type Slot } from "@/lib/availability";
+import { TOTAL_SESSIONS, enumerateLessonSessions, isValidSlot, teacherHasAllSlots, fmtTime, SLOT_MIN, LESSON_MIN, type Slot } from "@/lib/availability";
+import { createMakeupClass, weekdayOf, type ClassForMakeup } from "@/lib/makeup";
 
 export type ActionResult = { ok: boolean; error?: string };
 
@@ -243,6 +244,7 @@ export async function adminCancelEnrollment(id: string, note: string): Promise<A
   }
 
   revalidatePath("/admin/enrollments");
+  revalidatePath("/admin/classes");
   revalidatePath("/teacher", "layout");
   revalidatePath("/mypage", "layout");
   return { ok: true };
@@ -338,6 +340,114 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
   }
 
   revalidatePath("/admin/enrollments");
+  revalidatePath("/admin/classes");
+  revalidatePath("/teacher", "layout");
+  revalidatePath("/mypage", "layout");
+  return { ok: true };
+}
+
+/* ===== 화상수업(클래스) 관리 ===== */
+
+// admin이 조회·관리하는 클래스 행에 필요한 필드(액션 내부 로드용).
+const CLASS_MANAGE_SELECT =
+  "id, enrollment_id, student_id, teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup";
+
+// 개별 수업 강제 취소(admin) — 상태 '예정'만. generateMakeup=true면 보강 1회 자동 생성(학생 취소와 공유 로직).
+// 학생 취소와 달리 6회 한도·시작 1시간 컷오프 미적용(admin 재량). 강사 알림 이메일 best-effort.
+export async function adminCancelClass(classId: string, generateMakeup: boolean): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const id = String(classId ?? "").trim();
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: cls } = await admin.from("classes").select(CLASS_MANAGE_SELECT).eq("id", id).maybeSingle();
+  if (!cls) return { ok: false, error: "수업을 찾을 수 없습니다." };
+  if (cls.status !== "예정") return { ok: false, error: "예정 상태의 수업만 취소할 수 있습니다." };
+
+  const { data: updated, error: updErr } = await admin.from("classes").update({ status: "취소" }).eq("id", id).eq("status", "예정").select("id");
+  if (updErr) return { ok: false, error: "취소 처리 중 오류가 발생했습니다." };
+  if (!updated || updated.length === 0) return { ok: false, error: "이미 처리된 수업입니다." };
+
+  // 보강 자동 생성(옵션, best-effort).
+  let makeupDate: string | undefined;
+  if (generateMakeup) makeupDate = await createMakeupClass(admin, cls as ClassForMakeup);
+
+  // 강사 알림 이메일(best-effort) — 학생 취소와 동일 메일러.
+  try {
+    const { data: teacherUser } = await admin.auth.admin.getUserById(cls.teacher_id);
+    const teacherEmail = teacherUser?.user?.email;
+    if (teacherEmail) {
+      const lessonEnd = cls.end_min - (SLOT_MIN - LESSON_MIN);
+      await sendClassCancellationToTeacher([teacherEmail], {
+        studentName: cls.student_english_name || cls.student_name || "Student",
+        courseTitle: cls.course_title,
+        sessionDate: cls.session_date,
+        sessionTime: `${fmtTime(cls.start_min)}~${fmtTime(lessonEnd)}`,
+        makeupDate,
+      });
+    }
+  } catch (err) {
+    console.error("[adminCancelClass] 강사 알림 발송 실패:", err);
+  }
+
+  revalidatePath("/admin/classes");
+  revalidatePath("/teacher", "layout");
+  revalidatePath("/mypage", "layout");
+  return { ok: true };
+}
+
+// 수업 일정 변경(admin) — 상태 '예정'만. 새 시간이 강사 주간 가용시간 안이고 다른 예정 수업과 안 겹칠 때만 허용.
+export async function adminRescheduleClass(classId: string, sessionDate: string, startMin: number, endMin: number): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const id = String(classId ?? "").trim();
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  // 입력 검증.
+  const date = String(sessionDate ?? "").trim();
+  const start = Number(startMin);
+  const end = Number(endMin);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "날짜 형식이 올바르지 않습니다." };
+  if (![start, end].every((v) => Number.isInteger(v) && v % 30 === 0)) return { ok: false, error: "시간은 30분 단위여야 합니다." };
+  if (!(start >= 0 && start < end && end <= 1440)) return { ok: false, error: "종료 시각은 시작 이후, 24:00 이내여야 합니다." };
+
+  const admin = createAdminClient();
+  const { data: cls } = await admin.from("classes").select(CLASS_MANAGE_SELECT).eq("id", id).maybeSingle();
+  if (!cls) return { ok: false, error: "수업을 찾을 수 없습니다." };
+  if (cls.status !== "예정") return { ok: false, error: "예정 상태의 수업만 변경할 수 있습니다." };
+
+  // 강사 주간 가용 검증 — 새 시간의 모든 30분 슬롯이 강사 가용시간 안에 있어야 함.
+  const dow = weekdayOf(date);
+  const requested: Slot[] = [];
+  for (let min = start; min < end; min += 30) requested.push({ day: dow, min });
+  const { data: slotRows } = await admin.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", cls.teacher_id);
+  const teacherSlots: Slot[] = (slotRows ?? []).map((r: { day_of_week: number; start_min: number }) => ({ day: r.day_of_week, min: r.start_min }));
+  if (!teacherHasAllSlots(teacherSlots, requested)) {
+    return { ok: false, error: "강사의 주간 가용시간이 아닙니다. 다른 시간을 선택해 주세요." };
+  }
+
+  // 충돌 검증 — 같은 날짜의 다른 '예정' 수업(같은 강사 또는 같은 학생)과 시간이 겹치면 차단.
+  const { data: sameDay } = await admin
+    .from("classes")
+    .select("id, teacher_id, student_id, start_min, end_min, status")
+    .eq("session_date", date)
+    .eq("status", "예정")
+    .neq("id", id);
+  const conflict = (sameDay ?? []).some(
+    (o: { teacher_id: string; student_id: string; start_min: number; end_min: number }) =>
+      (o.teacher_id === cls.teacher_id || o.student_id === cls.student_id) && start < o.end_min && o.start_min < end,
+  );
+  if (conflict) return { ok: false, error: "같은 시간에 다른 예정 수업이 있습니다. 다른 시간을 선택해 주세요." };
+
+  const { data: updated, error: updErr } = await admin
+    .from("classes")
+    .update({ session_date: date, start_min: start, end_min: end })
+    .eq("id", id)
+    .eq("status", "예정")
+    .select("id");
+  if (updErr) return { ok: false, error: "변경 처리 중 오류가 발생했습니다." };
+  if (!updated || updated.length === 0) return { ok: false, error: "이미 처리된 수업입니다." };
+
+  revalidatePath("/admin/classes");
   revalidatePath("/teacher", "layout");
   revalidatePath("/mypage", "layout");
   return { ok: true };
