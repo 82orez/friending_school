@@ -6,7 +6,7 @@ import { ArrowLeft, ChevronRight, Loader2, Video, X } from "lucide-react";
 import { ko as koLocale, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { fmtTime, DAY_LABELS_KO, TOTAL_SESSIONS, SLOT_MIN, LESSON_MIN } from "@/lib/availability";
+import { fmtTime, DAY_LABELS_KO, SLOT_MIN, LESSON_MIN } from "@/lib/availability";
 import { canEnterClass, canCancelClass, MAX_CANCELLATIONS } from "@/lib/classtime";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -42,6 +42,7 @@ type CourseGroup = {
   counterpart: string;
   items: ClassItem[]; // session_date·start_min asc(서버 정렬 유지)
   cancelledCount: number;
+  total: number; // 계획 회차 수(보강 제외 = 원 생성 회차, enrollment.total_sessions와 일치). 회차 라벨 분모.
 };
 
 type View = "list" | "calendar";
@@ -85,10 +86,13 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
     for (const c of classes) {
       const g = map.get(c.enrollmentId);
       if (g) g.items.push(c);
-      else map.set(c.enrollmentId, { enrollmentId: c.enrollmentId, courseTitle: c.courseTitle, counterpart: c.counterpart, items: [c], cancelledCount: 0 });
+      else map.set(c.enrollmentId, { enrollmentId: c.enrollmentId, courseTitle: c.courseTitle, counterpart: c.counterpart, items: [c], cancelledCount: 0, total: 0 });
     }
     const out = Array.from(map.values());
-    for (const g of out) g.cancelledCount = g.items.filter((c) => c.status === "취소").length;
+    for (const g of out) {
+      g.cancelledCount = g.items.filter((c) => c.status === "취소").length;
+      g.total = g.items.filter((c) => !c.isMakeup).length; // 보강 제외 = 계획 회차 수
+    }
     const nextStart = (g: CourseGroup) => g.items.find((c) => isActive(c) && c.endMs >= now)?.startMs ?? Infinity;
     return out.sort((a, b) => nextStart(a) - nextStart(b));
   }, [classes, now]);
@@ -149,9 +153,9 @@ function CourseDetail({ group, isTeacher, now, ko, onBack }: { group: CourseGrou
       <ViewToggle view={view} setView={setView} ko={ko} />
 
       {view === "calendar" ? (
-        <ClassroomCalendar classes={group.items} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} />
+        <ClassroomCalendar classes={group.items} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} total={group.total} />
       ) : (
-        <SessionList items={group.items} isTeacher={isTeacher} now={now} ko={ko} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} />
+        <SessionList items={group.items} isTeacher={isTeacher} now={now} ko={ko} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} total={group.total} />
       )}
     </div>
   );
@@ -189,6 +193,7 @@ function SessionList({
   ko,
   cancelAllowed,
   cancelledCount,
+  total,
 }: {
   items: ClassItem[];
   isTeacher: boolean;
@@ -196,6 +201,7 @@ function SessionList({
   ko: boolean;
   cancelAllowed: boolean;
   cancelledCount: number;
+  total: number;
 }) {
   const upcoming = items.filter((c) => isActive(c) && c.endMs >= now);
   const past = items.filter((c) => !(isActive(c) && c.endMs >= now)).reverse();
@@ -207,7 +213,7 @@ function SessionList({
         ) : (
           <ul className="list-none">
             {upcoming.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} />
+              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} total={total} />
             ))}
           </ul>
         )}
@@ -217,7 +223,7 @@ function SessionList({
         <Section title={ko ? "지난 수업" : "Past classes"} count={past.length} ko={ko}>
           <ul className="list-none">
             {past.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} isPast />
+              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} total={total} isPast />
             ))}
           </ul>
         </Section>
@@ -233,12 +239,14 @@ function ClassroomCalendar({
   now,
   cancelAllowed,
   cancelledCount,
+  total,
 }: {
   classes: ClassItem[];
   isTeacher: boolean;
   now: number;
   cancelAllowed: boolean;
   cancelledCount: number;
+  total: number;
 }) {
   const ko = !isTeacher;
 
@@ -307,7 +315,7 @@ function ClassroomCalendar({
         ) : (
           <ul className="list-none">
             {dayItems.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} isPast={c.endMs < now} />
+              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} total={total} isPast={c.endMs < now} />
             ))}
           </ul>
         )}
@@ -382,6 +390,7 @@ function ClassRow({
   isPast = false,
   cancelAllowed,
   cancelledCount,
+  total,
 }: {
   item: ClassItem;
   isTeacher: boolean;
@@ -389,6 +398,7 @@ function ClassRow({
   isPast?: boolean;
   cancelAllowed: boolean;
   cancelledCount: number;
+  total: number;
 }) {
   const ko = !isTeacher;
   const router = useRouter();
@@ -436,7 +446,7 @@ function ClassRow({
           {formatSessionDate(item.sessionDate, ko)} · {timeRange}
         </p>
         <p className="text-muted-fg-faint mt-0.5 flex items-center gap-1.5 text-xs">
-          <span>{ko ? `${item.sessionNo}/${TOTAL_SESSIONS}회차` : `Session ${item.sessionNo}/${TOTAL_SESSIONS}`}</span>
+          <span>{ko ? `${item.sessionNo}/${total}회차` : `Session ${item.sessionNo}/${total}`}</span>
           {cancelled && <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "취소" : "Cancelled"}</span>}
           {item.isMakeup && !cancelled && (
             <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{ko ? "보강" : "Makeup"}</span>
