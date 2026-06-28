@@ -118,6 +118,7 @@ export type Database = {
           course_title: string
           created_at: string
           id: string
+          is_test: boolean
           slots: Json
           start_date: string
           status: Database["public"]["Enums"]["enrollment_status"]
@@ -128,6 +129,7 @@ export type Database = {
           teacher_id: string
           teacher_name: string | null
           teacher_note: string | null
+          total_sessions: number | null
           updated_at: string
         }
         Insert: {
@@ -135,6 +137,7 @@ export type Database = {
           course_title: string
           created_at?: string
           id?: string
+          is_test?: boolean
           slots: Json
           start_date: string
           status?: Database["public"]["Enums"]["enrollment_status"]
@@ -145,6 +148,7 @@ export type Database = {
           teacher_id: string
           teacher_name?: string | null
           teacher_note?: string | null
+          total_sessions?: number | null
           updated_at?: string
         }
         Update: {
@@ -152,6 +156,7 @@ export type Database = {
           course_title?: string
           created_at?: string
           id?: string
+          is_test?: boolean
           slots?: Json
           start_date?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
@@ -162,6 +167,7 @@ export type Database = {
           teacher_id?: string
           teacher_name?: string | null
           teacher_note?: string | null
+          total_sessions?: number | null
           updated_at?: string
         }
         Relationships: []

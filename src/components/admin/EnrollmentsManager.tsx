@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, Search, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { adminCancelEnrollment, confirmPayment } from "@/app/admin/actions";
+import { adminCancelEnrollment, confirmPayment, deleteTestEnrollment } from "@/app/admin/actions";
 import { overlappingIds, summarizeSlots, type Slot } from "@/lib/availability";
 import {
   AlertDialog,
@@ -29,6 +29,7 @@ export type AdminEnrollment = {
   status: "신청" | "승인" | "결제대기" | "결제완료" | "거절" | "취소";
   teacher_note: string | null;
   created_at: string;
+  is_test?: boolean;
 };
 
 type StatusKey = AdminEnrollment["status"];
@@ -189,6 +190,7 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
                     <td className="px-4 py-3.5 align-middle md:px-6">
                       <div className="flex flex-col items-start gap-1.5">
                         <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[r.status])}>{r.status}</span>
+                        {r.is_test && <span className="bg-accent-blue-soft text-accent-blue-ink shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">테스트</span>}
                         {conflict && (
                           <span
                             className="bg-brand inline-flex w-fit shrink-0 animate-pulse items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold text-white"
@@ -218,6 +220,7 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
           conflict={conflictIds.has(selected.id)}
           onClose={() => setSelectedId(null)}
           onUpdated={(updated) => setRows((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
+          onDeleted={(id) => setRows((prev) => prev.filter((x) => x.id !== id))}
         />
       )}
     </div>
@@ -229,15 +232,18 @@ function EnrollmentDetailModal({
   conflict,
   onClose,
   onUpdated,
+  onDeleted,
 }: {
   enrollment: AdminEnrollment;
   conflict: boolean;
   onClose: () => void;
   onUpdated: (updated: AdminEnrollment) => void;
+  onDeleted: (id: string) => void;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [payConfirmOpen, setPayConfirmOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [pending, startTransition] = useTransition();
   const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
@@ -245,7 +251,7 @@ function EnrollmentDetailModal({
 
   // Esc 닫기(확인창 열림 시 무시) + body scroll lock + 닫기 버튼 포커스.
   const confirmingRef = useRef(false);
-  confirmingRef.current = confirmOpen || payConfirmOpen;
+  confirmingRef.current = confirmOpen || payConfirmOpen || deleteOpen;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !confirmingRef.current) onClose();
@@ -292,6 +298,20 @@ function EnrollmentDetailModal({
         onClose();
       } else {
         toast.error(res.error ?? "결제 확인 중 문제가 발생했어요.");
+      }
+    });
+  };
+
+  const deleteTest = () => {
+    setDeleteOpen(false);
+    startTransition(async () => {
+      const res = await deleteTestEnrollment(row.id);
+      if (res.ok) {
+        onDeleted(row.id);
+        toast.success("테스트 수강신청을 삭제했어요.");
+        onClose();
+      } else {
+        toast.error(res.error ?? "삭제 중 문제가 발생했어요.");
       }
     });
   };
@@ -366,7 +386,21 @@ function EnrollmentDetailModal({
           )}
         </div>
 
-        <div className="border-rule flex justify-end gap-2 border-t px-6 py-4">
+        <div className="border-rule flex items-center justify-between gap-2 border-t px-6 py-4">
+          <div>
+            {row.is_test && (
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(true)}
+                disabled={pending}
+                className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50"
+              >
+                {pending && <Loader2 className="size-3.5 animate-spin" />}
+                테스트 삭제
+              </button>
+            )}
+          </div>
+          <div className="flex gap-2">
           {cancellable ? (
             <>
               <button
@@ -406,8 +440,26 @@ function EnrollmentDetailModal({
               닫기
             </button>
           )}
+          </div>
         </div>
       </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 테스트 수강신청을 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="text-ink font-semibold">{studentLabel}</span>님의 {row.course_title} 테스트 신청과 생성된 수업이 모두 영구 삭제됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction onClick={deleteTest} className="bg-brand hover:bg-brand/90 border-transparent text-white">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="z-[130]">

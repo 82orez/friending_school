@@ -8,6 +8,7 @@ import { isAdmin } from "@/lib/auth";
 import { getOrigin } from "@/lib/origin";
 import { sendTeacherApprovalNotification, sendTeacherRejectionNotification, sendClassCancellationToTeacher } from "@/lib/mailer";
 import { normalizeCurrency } from "@/data/currencies";
+import { getCourse } from "@/data/courses";
 import { sendSms } from "@/lib/sms";
 import { TOTAL_SESSIONS, enumerateLessonSessions, isValidSlot, teacherHasAllSlots, fmtTime, SLOT_MIN, LESSON_MIN, type Slot } from "@/lib/availability";
 import { createMakeupClass, weekdayOf, type ClassForMakeup } from "@/lib/makeup";
@@ -267,13 +268,15 @@ type EnrollmentForClasses = {
   student_english_name: string | null;
   slots: unknown;
   start_date: string;
+  total_sessions?: number | null;
 };
 async function generateClassesForEnrollment(admin: ReturnType<typeof createAdminClient>, enr: EnrollmentForClasses): Promise<void> {
   const slots: Slot[] = (Array.isArray(enr.slots) ? enr.slots : []).filter(isValidSlot).map((s) => ({ day: Number(s.day), min: Number(s.min) }));
   if (slots.length === 0) return;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(enr.start_date)) return;
   const [y, m, d] = enr.start_date.split("-").map(Number);
-  const sessions = enumerateLessonSessions(new Date(y, m - 1, d), slots, TOTAL_SESSIONS);
+  const total = enr.total_sessions ?? TOTAL_SESSIONS; // 테스트 enrollment는 자유 횟수, 실 신청은 기본 24.
+  const sessions = enumerateLessonSessions(new Date(y, m - 1, d), slots, total);
   if (sessions.length === 0) return;
 
   const rows = sessions.map((s) => ({
@@ -305,7 +308,7 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
   const admin = createAdminClient();
   const { data: enr } = await admin
     .from("enrollments")
-    .select("status, student_phone, course_title, start_date, id, student_id, teacher_id, course, teacher_name, student_name, student_english_name, slots")
+    .select("status, student_phone, course_title, start_date, id, student_id, teacher_id, course, teacher_name, student_name, student_english_name, slots, total_sessions")
     .eq("id", enrollmentId)
     .maybeSingle();
   if (!enr) return { ok: false, error: "신청을 찾을 수 없습니다." };
@@ -450,6 +453,111 @@ export async function adminRescheduleClass(classId: string, sessionDate: string,
 
   revalidatePath("/admin/classes");
   revalidatePath(`/admin/classes/${cls.enrollment_id}`);
+  revalidatePath("/teacher", "layout");
+  revalidatePath("/mypage", "layout");
+  return { ok: true };
+}
+
+/* ===== 테스트 수강신청(개발용) ===== */
+
+// 이메일 → user id (페이지네이션). 못 찾으면 null.
+async function findUserIdByEmail(admin: ReturnType<typeof createAdminClient>, email: string): Promise<string | null> {
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error || !data) return null;
+    const users = data.users as Array<{ id: string; email?: string | null }>;
+    const hit = users.find((u) => (u.email ?? "").toLowerCase() === email);
+    if (hit) return hit.id;
+    if (users.length < 1000) break;
+  }
+  return null;
+}
+
+// 관리자 전용 테스트 수강신청 생성 — 실 동선과 동일하게 '신청' 상태로 들어가되, 시작일 D+3/D+14·폰·영문 가드를 우회하고
+// 수업 횟수를 자유 입력(total_sessions). is_test=true로 표시. 이후 승인/결제확인은 일반 흐름과 동일.
+export async function createTestEnrollment(input: {
+  studentEmail?: string;
+  teacherId: string;
+  course: string;
+  slots: Slot[];
+  startDate: string;
+  sessions: number;
+}): Promise<ActionResult> {
+  const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !(await isAdmin(supabase, user.id))) return { ok: false, error: "권한이 없습니다." };
+
+  const course = getCourse(input.course);
+  if (!course) return { ok: false, error: "잘못된 과정입니다." };
+  const teacherId = String(input.teacherId ?? "").trim();
+  if (!teacherId) return { ok: false, error: "강사를 선택해 주세요." };
+  const slots: Slot[] = (Array.isArray(input.slots) ? input.slots : []).filter(isValidSlot).map((s) => ({ day: Number(s.day), min: Number(s.min) }));
+  if (slots.length === 0) return { ok: false, error: "수업 일정을 선택해 주세요." };
+  const startDate = String(input.startDate ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return { ok: false, error: "시작일 형식이 올바르지 않습니다." };
+  const sessions = Number(input.sessions);
+  if (!Number.isInteger(sessions) || sessions < 1 || sessions > 60) return { ok: false, error: "수업 횟수는 1~60 사이여야 합니다." };
+
+  const admin = createAdminClient();
+
+  // 강사 검증 + 이름 스냅샷.
+  const { data: teacher } = await admin.from("profiles").select("id, role, first_name, last_name").eq("id", teacherId).maybeSingle();
+  if (!teacher || teacher.role !== "teacher") return { ok: false, error: "선택한 강사를 찾을 수 없습니다." };
+  const teacherName = [teacher.first_name, teacher.last_name].filter(Boolean).join(" ").trim() || "강사";
+
+  // 학생 resolve — 이메일 지정 시 그 계정, 아니면 호출 admin 본인.
+  let studentId = user.id;
+  const email = String(input.studentEmail ?? "")
+    .trim()
+    .toLowerCase();
+  if (email) {
+    const found = await findUserIdByEmail(admin, email);
+    if (!found) return { ok: false, error: "학생 이메일에 해당하는 계정을 찾을 수 없습니다." };
+    studentId = found;
+  }
+
+  // 학생 스냅샷(없어도 허용 — 테스트 우회). 한국 관례 성+이름 붙임.
+  const { data: student } = await admin.from("profiles").select("first_name, last_name, english_name, phone").eq("id", studentId).maybeSingle();
+  const studentName = student ? [student.last_name, student.first_name].filter(Boolean).join("").trim() || null : null;
+
+  const { error: insErr } = await admin.from("enrollments").insert({
+    student_id: studentId,
+    teacher_id: teacherId,
+    course: course.slug,
+    course_title: course.title,
+    start_date: startDate,
+    slots,
+    teacher_name: teacherName,
+    student_name: studentName,
+    student_english_name: student?.english_name ?? null,
+    student_phone: student?.phone ?? null,
+    total_sessions: sessions,
+    is_test: true,
+  });
+  if (insErr) return { ok: false, error: "테스트 수강신청 생성 중 오류가 발생했습니다." };
+
+  revalidatePath("/admin/enrollments");
+  return { ok: true };
+}
+
+// 테스트 수강신청 삭제(정리용) — is_test=true인 행만 하드 삭제(FK cascade로 classes 동반 제거).
+export async function deleteTestEnrollment(id: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const enrollmentId = String(id ?? "").trim();
+  if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: enr } = await admin.from("enrollments").select("id, is_test").eq("id", enrollmentId).maybeSingle();
+  if (!enr) return { ok: false, error: "수강신청을 찾을 수 없습니다." };
+  if (!enr.is_test) return { ok: false, error: "테스트 수강신청만 삭제할 수 있습니다." };
+
+  const { error } = await admin.from("enrollments").delete().eq("id", enrollmentId).eq("is_test", true);
+  if (error) return { ok: false, error: "삭제 중 오류가 발생했습니다." };
+
+  revalidatePath("/admin/enrollments");
+  revalidatePath("/admin/classes");
   revalidatePath("/teacher", "layout");
   revalidatePath("/mypage", "layout");
   return { ok: true };
