@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import ClassEnrollmentsManager, { type ClassEnrollmentSummary } from "@/components/admin/ClassEnrollmentsManager";
+import { kstDateMinToMs } from "@/lib/classtime";
+import { lessonEndMin } from "@/lib/availability";
 
 type Row = {
   enrollment_id: string;
@@ -9,24 +11,22 @@ type Row = {
   student_name: string | null;
   student_english_name: string | null;
   session_date: string;
+  start_min: number;
+  end_min: number;
   status: "예정" | "취소";
   is_makeup: boolean;
 };
-
-// 오늘(KST) 'YYYY-MM-DD'.
-function todayKst(): string {
-  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-}
 
 export default async function AdminClassesPage() {
   const admin = createAdminClient();
   const { data } = await admin
     .from("classes")
-    .select("enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_date, status, is_makeup")
+    .select("enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup")
     .order("session_date", { ascending: true });
 
   const rows = (data ?? []) as Row[];
-  const today = todayKst();
+  // 완료 판정은 시간 기반(강사/수강생 강의실과 동일) — 레슨 종료 시각이 지나면 done.
+  const now = Date.now();
 
   // enrollment_id별 그룹핑 → 과정 인스턴스 요약(클래스 JS 집계).
   const map = new Map<string, ClassEnrollmentSummary>();
@@ -53,7 +53,7 @@ export default async function AdminClassesPage() {
     g.total += 1;
     if (r.is_makeup) g.makeup += 1;
     if (r.status === "취소") g.cancelled += 1;
-    else if (r.session_date >= today) g.upcoming += 1;
+    else if (kstDateMinToMs(r.session_date, lessonEndMin(r.end_min)) >= now) g.upcoming += 1;
     else g.done += 1;
     if (r.session_date < g.firstDate) g.firstDate = r.session_date;
     if (r.session_date > g.lastDate) g.lastDate = r.session_date;
