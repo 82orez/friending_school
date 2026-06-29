@@ -51,6 +51,8 @@ export type Database = {
           created_at: string
           end_min: number
           enrollment_id: string
+          feedback: string | null
+          feedback_at: string | null
           id: string
           is_makeup: boolean
           session_date: string
@@ -70,6 +72,8 @@ export type Database = {
           created_at?: string
           end_min: number
           enrollment_id: string
+          feedback?: string | null
+          feedback_at?: string | null
           id?: string
           is_makeup?: boolean
           session_date: string
@@ -89,6 +93,8 @@ export type Database = {
           created_at?: string
           end_min?: number
           enrollment_id?: string
+          feedback?: string | null
+          feedback_at?: string | null
           id?: string
           is_makeup?: boolean
           session_date?: string

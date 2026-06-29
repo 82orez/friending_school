@@ -12,6 +12,10 @@ import { createMakeupClass } from "@/lib/makeup";
 
 export type EnterResult = { url?: string; error?: string };
 export type CancelResult = { ok?: boolean; error?: string; makeupDate?: string; remaining?: number };
+export type FeedbackResult = { ok?: boolean; error?: string };
+
+// 피드백 텍스트 최대 길이.
+const MAX_FEEDBACK_LEN = 2000;
 
 // 클래스 입장 — 소유 검증 + 시간창(시작 15분 전~종료) 검증 후 강사 zoom URL(최신값) 반환.
 // 학생/강사 모두 사용. URL을 반환하고 클라가 새 탭으로 연다(서버가 시간창 최종 강제).
@@ -129,4 +133,40 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
   revalidatePath("/teacher", "layout");
   revalidatePath("/admin/classes");
   return { ok: true, makeupDate, remaining };
+}
+
+// 수업 피드백 저장(강사) — 본인 소유 + 취소 아님 + 수업 종료(레슨 종료 시각 이후)일 때만.
+// 빈 문자열이면 피드백 삭제(null). 수강생은 읽기 전용(여기선 강사만 작성).
+export async function saveClassFeedback(classId: string, feedback: string): Promise<FeedbackResult> {
+  const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다. 다시 로그인해 주세요." };
+
+  const id = String(classId ?? "").trim();
+  if (!id) return { error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: cls } = await admin.from("classes").select("id, teacher_id, session_date, start_min, end_min, status").eq("id", id).maybeSingle();
+  if (!cls) return { error: "수업을 찾을 수 없어요." };
+  // 작성 권한 — 강사 본인만.
+  if (cls.teacher_id !== user.id) return { error: "권한이 없습니다." };
+  if (cls.status === "취소") return { error: "취소된 수업에는 피드백을 남길 수 없어요." };
+
+  // 종료 가드 — 레슨 종료 시각(end_min−5) 이후에만.
+  const endMs = kstDateMinToMs(cls.session_date, lessonEndMin(cls.end_min));
+  if (Date.now() < endMs) return { error: "수업이 끝난 뒤에 작성할 수 있어요." };
+
+  const text = String(feedback ?? "").trim().slice(0, MAX_FEEDBACK_LEN);
+
+  const { error } = await admin
+    .from("classes")
+    .update({ feedback: text || null, feedback_at: text ? new Date().toISOString() : null })
+    .eq("id", id);
+  if (error) return { error: "저장 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요." };
+
+  revalidatePath("/teacher", "layout");
+  revalidatePath("/mypage", "layout");
+  return { ok: true };
 }

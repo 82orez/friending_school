@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronRight, Loader2, Video, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, Loader2, MessageSquare, Video, X } from "lucide-react";
 import { ko as koLocale, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cancelClass, enterClass } from "@/app/classroom/actions";
+import { cancelClass, enterClass, saveClassFeedback } from "@/app/classroom/actions";
 
 export type ClassItem = {
   id: string;
@@ -34,6 +34,8 @@ export type ClassItem = {
   endMs: number;
   status: "예정" | "취소";
   isMakeup: boolean;
+  feedback: string | null;
+  feedbackAt: string | null;
 };
 
 type CourseGroup = {
@@ -408,6 +410,28 @@ function ClassRow({
   const enterable = !cancelled && !isPast && canEnterClass(now, item.startMs, item.endMs);
   const cancellable = cancelAllowed && !cancelled && !isPast && canCancelClass(now, item.startMs);
   const timeRange = `${fmtTime(item.startMin)}~${fmtTime(lessonEndMin(item.endMin))}`;
+  // 수업 종료(레슨 종료 시각 이후) — 강사 피드백 작성 가능 조건.
+  const ended = !cancelled && now >= item.endMs;
+  const [fbOpen, setFbOpen] = useState(false);
+  const [draft, setDraft] = useState(item.feedback ?? "");
+
+  function openFeedback() {
+    setDraft(item.feedback ?? "");
+    setFbOpen(true);
+  }
+
+  function handleSaveFeedback() {
+    startTransition(async () => {
+      const res = await saveClassFeedback(item.id, draft);
+      if (res.ok) {
+        toast.success(ko ? "피드백을 저장했어요." : "Feedback saved.");
+        setFbOpen(false);
+        router.refresh();
+      } else {
+        toast.error(res.error ?? (ko ? "저장할 수 없어요." : "Unable to save feedback."));
+      }
+    });
+  }
 
   function handleEnter() {
     // 팝업 차단 회피 — 동기적으로 빈 탭을 먼저 연 뒤 액션 결과 URL로 이동.
@@ -440,8 +464,9 @@ function ClassRow({
   }
 
   return (
-    <li className={cn("border-rule flex items-center gap-3 border-b px-6 py-4 last:border-b-0", (isPast || cancelled) && "opacity-60")}>
-      <div className="min-w-0 flex-1">
+    <li className="border-rule flex flex-col gap-3 border-b px-6 py-4 last:border-b-0">
+      <div className={cn("flex items-center gap-3", (isPast || cancelled) && "opacity-60")}>
+        <div className="min-w-0 flex-1">
         <p className={cn("text-ink truncate text-[15px] font-bold", cancelled && "line-through")}>
           {formatSessionDate(item.sessionDate, ko)} · {timeRange}
         </p>
@@ -474,6 +499,62 @@ function ClassRow({
         </button>
       ) : !cancelled && !isPast ? (
         <span className="text-muted-fg-faint shrink-0 text-xs">{ko ? "시작 15분 전 입장" : "Opens 15 min before"}</span>
+      ) : null}
+      </div>
+
+      {/* 수업 종료 후 강사 피드백 — 강사=작성/수정, 수강생=읽기 전용 */}
+      {isTeacher && ended ? (
+        fbOpen ? (
+          <div className="border-rule bg-surface rounded-lg border p-3">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              maxLength={2000}
+              rows={3}
+              placeholder="Write feedback for this class…"
+              className="border-rule focus:border-accent-blue-ink w-full resize-y rounded-md border bg-white px-3 py-2 text-sm outline-none" />
+            <div className="mt-2 flex items-center justify-end gap-2">
+              <span className="text-muted-fg-faint mr-auto text-xs">{draft.length}/2000</span>
+              <button
+                type="button"
+                onClick={() => setFbOpen(false)}
+                disabled={pending}
+                className="border-rule text-ink hover:bg-rule/40 inline-flex h-8 items-center rounded-md border px-3 text-sm font-bold transition-colors disabled:opacity-50">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveFeedback}
+                disabled={pending}
+                className="bg-cta inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
+                {pending && <Loader2 className="size-3.5 animate-spin" />}
+                Save
+              </button>
+            </div>
+          </div>
+        ) : item.feedback ? (
+          <div className="border-rule bg-surface rounded-lg border p-3">
+            <p className="text-muted-fg-faint mb-1 text-xs font-bold">Your feedback</p>
+            <p className="text-ink-soft line-clamp-3 text-sm whitespace-pre-wrap">{item.feedback}</p>
+            <button type="button" onClick={openFeedback} className="text-accent-blue-ink mt-2 inline-flex items-center gap-1.5 text-sm font-bold">
+              <MessageSquare className="size-3.5" /> Edit feedback
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={openFeedback}
+            className="border-rule text-ink hover:bg-rule/40 inline-flex h-9 w-fit items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors">
+            <MessageSquare className="size-3.5" /> Write feedback
+          </button>
+        )
+      ) : !isTeacher && item.feedback ? (
+        <div className="border-accent-blue-soft bg-accent-blue-soft/30 rounded-lg border p-3">
+          <p className="text-accent-blue-ink mb-1 text-xs font-bold">
+            강사 피드백{item.feedbackAt ? ` · ${new Date(item.feedbackAt).toLocaleDateString("ko-KR")}` : ""}
+          </p>
+          <p className="text-ink-soft text-sm whitespace-pre-wrap">{item.feedback}</p>
+        </div>
       ) : null}
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
