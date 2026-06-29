@@ -11,6 +11,7 @@ import { GENDER_VALUES } from "@/data/genders";
 import { resolveCenterId } from "@/lib/center";
 import { sendSms } from "@/lib/sms";
 import { isValidSlot, slotsOverlap, type Slot } from "@/lib/availability";
+import { loadEndedEnrollmentIds } from "@/lib/booking";
 
 export type TeacherActionState = { ok?: boolean; error?: string };
 
@@ -156,11 +157,15 @@ export async function approveEnrollment(enrollmentId: string): Promise<TeacherAc
   const targetSlots = parse(thisRow?.slots);
   const { data: approvedRows } = await admin
     .from("enrollments")
-    .select("slots")
+    .select("id, slots, status")
     .eq("teacher_id", userId)
     .in("status", ["승인", "결제대기", "결제완료"])
     .neq("id", enrollmentId);
-  const bookedSlots: Slot[] = (approvedRows ?? []).flatMap((r: { slots: unknown }) => parse(r.slots));
+  // 종료된 '결제완료'(남은 예정 수업 없음)는 충돌 대상에서 제외.
+  const ended = await loadEndedEnrollmentIds(admin, [userId]);
+  const bookedSlots: Slot[] = (approvedRows ?? [])
+    .filter((r: { id: string; status: string }) => !(r.status === "결제완료" && ended.has(r.id)))
+    .flatMap((r: { slots: unknown }) => parse(r.slots));
   if (slotsOverlap(targetSlots, bookedSlots)) {
     return { error: "This time slot is already booked by another student. Please decline and suggest a different time." };
   }

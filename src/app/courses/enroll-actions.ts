@@ -19,6 +19,7 @@ import {
   teacherHasAllSlots,
   type Slot,
 } from "@/lib/availability";
+import { loadEndedEnrollmentIds, todayKst } from "@/lib/booking";
 
 // 학생 수강신청용 강사 카드(공개 안전 필드만 — 이메일/전화 등 PII 제외). slots는 클라이언트 라이브 필터용.
 // heldSlots: 다른 학생의 진행중 신청('신청'/'결제대기')이 잡고 있는 슬롯 — 하드 차단은 아니고, 겹치면 확인 단계에서 경고용.
@@ -70,13 +71,16 @@ async function loadEnrollmentSlotsByTeacher(
   const confirmed = new Map<string, Slot[]>();
   const held = new Map<string, Slot[]>();
   if (teacherIds.length === 0) return { confirmed, held };
+  // 종료된 '결제완료'(남은 예정 수업 없음)는 점유에서 제외 — 마지막 수업 다음날부터 슬롯 해제.
+  const ended = await loadEndedEnrollmentIds(admin, teacherIds);
   const { data } = await admin
     .from("enrollments")
-    .select("teacher_id, student_id, slots, status")
+    .select("id, teacher_id, student_id, slots, status")
     .in("teacher_id", teacherIds)
     .in("status", ["신청", "승인", "결제대기", "결제완료"]);
-  for (const r of (data ?? []) as { teacher_id: string; student_id: string; slots: unknown; status: string }[]) {
+  for (const r of (data ?? []) as { id: string; teacher_id: string; student_id: string; slots: unknown; status: string }[]) {
     if (r.status === "승인" || r.status === "결제완료") {
+      if (r.status === "결제완료" && ended.has(r.id)) continue; // 종료된 과정 → 차감 안 함
       const list = confirmed.get(r.teacher_id) ?? [];
       list.push(...parseSlots(r.slots));
       confirmed.set(r.teacher_id, list);
@@ -143,11 +147,6 @@ export async function loadEnrollTeachers(currentUserId?: string): Promise<Enroll
     slots: subtractSlots(byTeacher.get(t.id) ?? [], confirmed.get(t.id) ?? []),
     heldSlots: held.get(t.id) ?? [],
   }));
-}
-
-// 오늘 날짜(KST) YYYY-MM-DD.
-function todayKst(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
 }
 
 // 수강신청 저장. 가드: (1)로그인 (2)휴대폰 인증 (3)입력 검증 (4)rateLimit (5)강사 가용시간 재검증 (6)insert (7)강사 알림 메일.

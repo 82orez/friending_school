@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import TeacherRequestsManager, { type TeacherApplication, type CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 import { deriveBookedSlots, type BookedSlot } from "@/lib/availability";
+import { loadEndedEnrollmentIds } from "@/lib/booking";
 
 const STATUS_ORDER: Record<string, number> = { 신청: 0, 거절: 1, 승인: 2 };
 
@@ -52,11 +53,14 @@ export default async function AdminTeacherRequestsPage() {
   if (teacherIds.length > 0) {
     const { data: enrollRows } = await admin
       .from("enrollments")
-      .select("teacher_id, slots, status, student_name, student_english_name")
+      .select("id, teacher_id, slots, status, student_name, student_english_name")
       .in("teacher_id", teacherIds)
       .in("status", ["승인", "결제대기", "결제완료"]);
+    // 종료된 '결제완료'(남은 예정 수업 없음)는 그리드 오버레이에서 제외.
+    const ended = await loadEndedEnrollmentIds(admin, teacherIds);
     const rowsByTeacher = new Map<string, NonNullable<typeof enrollRows>>();
     for (const r of enrollRows ?? []) {
+      if (r.status === "결제완료" && ended.has(r.id)) continue;
       const list = rowsByTeacher.get(r.teacher_id) ?? [];
       list.push(r);
       rowsByTeacher.set(r.teacher_id, list);
