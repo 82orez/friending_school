@@ -157,6 +157,53 @@ export async function sendEnrollmentNotificationToTeacher(to: string[], data: En
 }
 
 /**
+ * 강사에게 결제 확정(수업 확정) 알림. 관리자가 입금을 확인하면 수업(클래스)이 생성되므로 강사에게 통보한다.
+ * best-effort — 호출 측에서 try/catch로 감쌀 것. 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않고 로그만 남긴다.
+ */
+export async function sendEnrollmentPaymentConfirmedToTeacher(to: string[], data: EnrollmentEmailData): Promise<void> {
+  // 강사가 읽는 영문 메일 — 영문 이름/과정명 우선 노출(한글은 괄호로 병기, 강사 대시보드 관례와 동일).
+  const studentLabel = data.studentEnglishName ? `${data.studentEnglishName} (${data.studentName})` : data.studentName;
+  const courseLabel = data.courseEnglishTitle ? `${data.courseEnglishTitle} (${data.courseTitle})` : data.courseTitle;
+  const rows: [string, string][] = [
+    ["Student", studentLabel || "-"],
+    ["Course", courseLabel],
+    ["Weekly schedule", data.schedule || "-"],
+    ["Start date", data.startDate || "-"],
+    ...(data.endDate ? ([["End date", data.endDate]] as [string, string][]) : []),
+    ...(data.totalSessions ? ([["Total sessions", String(data.totalSessions)]] as [string, string][]) : []),
+  ];
+  const tr = rows
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:8px 12px;color:#666;background:#f8f8f8;white-space:nowrap;border-bottom:1px solid #eee;vertical-align:top">${escapeHtml(
+          k,
+        )}</td><td style="padding:8px 12px;color:#1a1a1a;border-bottom:1px solid #eee;white-space:pre-wrap">${escapeHtml(v)}</td></tr>`,
+    )
+    .join("");
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">Your class is confirmed 🎉</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(studentLabel)} · ${escapeHtml(courseLabel)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">The student's payment has been confirmed and the classes have been scheduled. You can review your upcoming classes in My Classroom on your teacher page.</p>
+    <a href="${escapeHtml(data.teacherUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to teacher page</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
+  </div>`;
+  const text = [
+    "Your class is confirmed.",
+    "",
+    `Student: ${studentLabel || "-"}`,
+    `Course: ${courseLabel}`,
+    `Weekly schedule: ${data.schedule || "-"}`,
+    `Start date: ${data.startDate || "-"}`,
+    ...(data.endDate ? [`End date: ${data.endDate}`] : []),
+    ...(data.totalSessions ? [`Total sessions: ${data.totalSessions}`] : []),
+    "",
+    `The payment has been confirmed and classes are scheduled. Review them in My Classroom: ${data.teacherUrl}`,
+  ].join("\n");
+  await sendResultEmail(to, `[Friending School] Class confirmed · ${data.studentEnglishName || data.studentName}`, html, text);
+}
+
+/**
  * 강사에게 학생의 수강신청 취소 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
  * 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않고 로그만 남긴다.
  */

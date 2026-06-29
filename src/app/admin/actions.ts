@@ -6,11 +6,27 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { isAdmin } from "@/lib/auth";
 import { getOrigin } from "@/lib/origin";
-import { sendTeacherApprovalNotification, sendTeacherRejectionNotification, sendClassCancellationToTeacher } from "@/lib/mailer";
+import {
+  sendTeacherApprovalNotification,
+  sendTeacherRejectionNotification,
+  sendClassCancellationToTeacher,
+  sendEnrollmentPaymentConfirmedToTeacher,
+} from "@/lib/mailer";
 import { normalizeCurrency } from "@/data/currencies";
 import { getCourse } from "@/data/courses";
 import { sendSms } from "@/lib/sms";
-import { TOTAL_SESSIONS, enumerateLessonSessions, isValidSlot, teacherHasAllSlots, fmtTime, SLOT_MIN, LESSON_MIN, type Slot } from "@/lib/availability";
+import {
+  TOTAL_SESSIONS,
+  enumerateLessonSessions,
+  isValidSlot,
+  teacherHasAllSlots,
+  fmtTime,
+  summarizeSlots,
+  lessonEndDate,
+  SLOT_MIN,
+  LESSON_MIN,
+  type Slot,
+} from "@/lib/availability";
 import { createMakeupClass, weekdayOf, type ClassForMakeup } from "@/lib/makeup";
 
 export type ActionResult = { ok: boolean; error?: string };
@@ -340,6 +356,37 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
     } catch (err) {
       console.error("[confirmPayment] SMS 발송 실패:", err);
     }
+  }
+
+  // 강사 결제 확정 알림 메일(best-effort) — 수업이 생성되어 My Classroom에 잡히므로 강사에게 통보. 실패해도 결제 확정은 유지.
+  try {
+    const origin = getOrigin(await headers());
+    const sessions = enr.total_sessions ?? TOTAL_SESSIONS;
+    const endDate = (() => {
+      const [sy, sm, sd] = String(enr.start_date ?? "").split("-").map(Number);
+      if (!sy || !sm || !sd) return "";
+      const endObj = lessonEndDate(new Date(sy, sm - 1, sd), (enr.slots as Slot[]) ?? [], sessions);
+      return endObj
+        ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}`
+        : "";
+    })();
+    const { data: teacherUser } = await admin.auth.admin.getUserById(enr.teacher_id);
+    const teacherEmail = teacherUser?.user?.email;
+    if (teacherEmail) {
+      await sendEnrollmentPaymentConfirmedToTeacher([teacherEmail], {
+        studentName: enr.student_name,
+        courseTitle: enr.course_title,
+        schedule: summarizeSlots((enr.slots as Slot[]) ?? [], false),
+        startDate: enr.start_date,
+        teacherUrl: `${origin}/teacher`,
+        studentEnglishName: enr.student_english_name ?? "",
+        courseEnglishTitle: getCourse(enr.course)?.englishTitle,
+        endDate,
+        totalSessions: sessions,
+      });
+    }
+  } catch (err) {
+    console.error("[confirmPayment] 강사 알림 발송 실패:", err);
   }
 
   revalidatePath("/admin/enrollments");
