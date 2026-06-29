@@ -227,8 +227,7 @@ export default function TeacherApplicationForm({
           value={nationality}
           onChange={(e) => setNationality(e.target.value)}
           aria-invalid={!!state.error && !nationality}
-          className="border-rule-faint focus:border-accent-blue h-11 w-full rounded-md border bg-white px-3.5 text-base outline-none"
-        >
+          className="border-rule-faint focus:border-accent-blue h-11 w-full rounded-md border bg-white px-3.5 text-base outline-none">
           <option value="">Select your nationality</option>
           {NATIONALITIES.map((n) => (
             <option key={n.name} value={n.name}>
@@ -249,8 +248,7 @@ export default function TeacherApplicationForm({
           value={gender}
           onChange={(e) => setGender(e.target.value)}
           aria-invalid={!!state.error && !gender}
-          className="border-rule-faint focus:border-accent-blue h-11 w-full rounded-md border bg-white px-3.5 text-base outline-none"
-        >
+          className="border-rule-faint focus:border-accent-blue h-11 w-full rounded-md border bg-white px-3.5 text-base outline-none">
           <option value="">Select your gender</option>
           {GENDERS.map((g) => (
             <option key={g.value} value={g.value}>
@@ -267,8 +265,7 @@ export default function TeacherApplicationForm({
           name="center_id"
           value={centerId}
           onChange={(e) => setCenterId(e.target.value)}
-          className="border-rule-faint focus:border-accent-blue h-11 w-full rounded-md border bg-white px-3.5 text-base outline-none"
-        >
+          className="border-rule-faint focus:border-accent-blue h-11 w-full rounded-md border bg-white px-3.5 text-base outline-none">
           <option value="">None</option>
           {centers.map((c) => (
             <option key={c.id} value={c.id}>
@@ -280,7 +277,7 @@ export default function TeacherApplicationForm({
 
       <div className="grid gap-1.5">
         <Label htmlFor="ta-bio">
-          About / Bio <span className="text-brand">*</span>
+          Educational background <span className="text-brand">*</span>
         </Label>
         <Textarea
           id="ta-bio"

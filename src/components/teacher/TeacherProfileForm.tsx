@@ -173,8 +173,7 @@ export default function TeacherProfileForm({
             toast.error("Please upload a profile photo.");
           }
         }}
-        className="border-rule rounded-2xl border bg-white p-6"
-      >
+        className="border-rule rounded-2xl border bg-white p-6">
         <h2 className="text-ink mb-4 flex items-center gap-2 text-base font-bold">
           <span aria-hidden>👤</span> Teacher Info
         </h2>
@@ -222,7 +221,7 @@ export default function TeacherProfileForm({
 
           <div className="grid gap-2">
             <Label htmlFor="bio">
-              About / Bio <span className="text-brand">*</span>
+              Educational background <span className="text-brand">*</span>
             </Label>
             <Textarea
               id="bio"
@@ -287,8 +286,7 @@ export default function TeacherProfileForm({
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                 "disabled:text-ink disabled:opacity-100",
-              )}
-            >
+              )}>
               <option value="">Select your nationality</option>
               {NATIONALITIES.map((n) => (
                 <option key={n.name} value={n.name}>
@@ -313,8 +311,7 @@ export default function TeacherProfileForm({
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                 "disabled:text-ink disabled:opacity-100",
-              )}
-            >
+              )}>
               <option value="">Select your gender</option>
               {GENDERS.map((g) => (
                 <option key={g.value} value={g.value}>
@@ -336,8 +333,7 @@ export default function TeacherProfileForm({
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                 "disabled:text-ink disabled:opacity-100",
-              )}
-            >
+              )}>
               <option value="">None</option>
               {centers.map((c) => (
                 <option key={c.id} value={c.id}>
