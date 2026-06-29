@@ -6,7 +6,7 @@ import { ArrowLeft, ChevronRight, Loader2, Video, X } from "lucide-react";
 import { ko as koLocale, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { fmtTime, DAY_LABELS_KO, SLOT_MIN, LESSON_MIN } from "@/lib/availability";
+import { fmtTime, DAY_LABELS_KO, lessonEndMin } from "@/lib/availability";
 import { canEnterClass, canCancelClass, MAX_CANCELLATIONS } from "@/lib/classtime";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -407,7 +407,7 @@ function ClassRow({
   const cancelled = item.status === "취소";
   const enterable = !cancelled && !isPast && canEnterClass(now, item.startMs, item.endMs);
   const cancellable = cancelAllowed && !cancelled && !isPast && canCancelClass(now, item.startMs);
-  const timeRange = `${fmtTime(item.startMin)}~${fmtTime(item.endMin - (SLOT_MIN - LESSON_MIN))}`;
+  const timeRange = `${fmtTime(item.startMin)}~${fmtTime(lessonEndMin(item.endMin))}`;
 
   function handleEnter() {
     // 팝업 차단 회피 — 동기적으로 빈 탭을 먼저 연 뒤 액션 결과 URL로 이동.

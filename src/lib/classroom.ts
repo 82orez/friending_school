@@ -1,5 +1,6 @@
 import { getCourse } from "@/data/courses";
 import { kstDateMinToMs } from "@/lib/classtime";
+import { lessonEndMin } from "@/lib/availability";
 import type { ClassItem } from "@/components/classroom/ClassroomList";
 
 // classes 조회 컬럼(내 강의실 학생/강사 공용).
@@ -34,7 +35,7 @@ export function mapClassRows(rows: ClassRow[], isTeacher: boolean): ClassItem[] 
     startMin: c.start_min,
     endMin: c.end_min,
     startMs: kstDateMinToMs(c.session_date, c.start_min),
-    endMs: kstDateMinToMs(c.session_date, c.end_min),
+    endMs: kstDateMinToMs(c.session_date, lessonEndMin(c.end_min)),
     status: c.status,
     isMakeup: c.is_makeup,
   }));

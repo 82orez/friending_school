@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { canCancelClass, canEnterClass, kstDateMinToMs, MAX_CANCELLATIONS } from "@/lib/classtime";
-import { fmtTime, SLOT_MIN, LESSON_MIN } from "@/lib/availability";
+import { fmtTime, lessonEndMin } from "@/lib/availability";
 import { isValidZoomUrl } from "@/lib/url";
 import { sendClassCancellationToTeacher } from "@/lib/mailer";
 import { createMakeupClass } from "@/lib/makeup";
@@ -37,7 +37,7 @@ export async function enterClass(classId: string): Promise<EnterResult> {
 
   // 시간창 검증(서버 authoritative).
   const startMs = kstDateMinToMs(cls.session_date, cls.start_min);
-  const endMs = kstDateMinToMs(cls.session_date, cls.end_min);
+  const endMs = kstDateMinToMs(cls.session_date, lessonEndMin(cls.end_min));
   if (!canEnterClass(Date.now(), startMs, endMs)) {
     return { error: "수업 시작 15분 전부터 입장할 수 있어요." };
   }
@@ -112,7 +112,7 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
     const { data: teacherUser } = await admin.auth.admin.getUserById(cls.teacher_id);
     const teacherEmail = teacherUser?.user?.email;
     if (teacherEmail) {
-      const lessonEnd = cls.end_min - (SLOT_MIN - LESSON_MIN);
+      const lessonEnd = lessonEndMin(cls.end_min);
       await sendClassCancellationToTeacher([teacherEmail], {
         studentName: cls.student_english_name || cls.student_name || "Student",
         courseTitle: cls.course_title,
