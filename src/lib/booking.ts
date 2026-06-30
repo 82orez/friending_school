@@ -1,6 +1,7 @@
 import "server-only";
 
-import { isValidSlot, lessonEndDate, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
+import { isValidSlot, lessonEndDate, lessonEndMin, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
+import { kstDateMinToMs } from "@/lib/classtime";
 
 // 슬롯 점유 종료 판정 공유 헬퍼. 슬롯을 점유로 취급하는 모든 지점(가용 차감·승인 충돌·그리드 표시)이 공용.
 // service_role(admin) 또는 본인 세션 client 모두 받을 수 있게 느슨한 타입.
@@ -29,7 +30,7 @@ function fmtLocalDate(d: Date): string {
 }
 
 // 종료된 '결제완료' enrollment id 집합 — 슬롯 점유에서 제외할 대상.
-// 종료 = 남은 '예정' 수업(session_date >= 오늘KST)이 없음(보강·일정변경 반영). 마지막 수업 다음날부터 해제(오늘은 점유 유지).
+// 종료 = 남은 '예정' 수업(레슨 종료 시각이 아직 안 지남)이 없음(보강·일정변경 반영). 마지막 수업의 레슨 종료 시각 이후 즉시 해제.
 // 클래스가 전혀 없는 '결제완료'(레거시/백필 전)는 lessonEndDate < 오늘KST 폴백으로 판정.
 // '신청'/'결제대기'/'승인'은 대상 아님(클래스 생성 전 = 진행 전이라 종료 개념 미적용).
 export async function loadEndedEnrollmentIds(admin: SupabaseLike, teacherIds: string[]): Promise<Set<string>> {
@@ -45,14 +46,16 @@ export async function loadEndedEnrollmentIds(admin: SupabaseLike, teacherIds: st
   if (paid.length === 0) return ended;
 
   const today = todayKst();
+  const now = Date.now();
 
   // 클래스 현황 파생 — 클래스 존재 여부 + 남은 '예정' 수업 존재 여부(enrollment_id별).
-  const { data: clsRows } = await admin.from("classes").select("enrollment_id, session_date, status").in("teacher_id", teacherIds);
+  const { data: clsRows } = await admin.from("classes").select("enrollment_id, session_date, end_min, status").in("teacher_id", teacherIds);
   const hasClass = new Set<string>();
   const hasFuture = new Set<string>();
-  for (const c of (clsRows ?? []) as { enrollment_id: string; session_date: string; status: string }[]) {
+  for (const c of (clsRows ?? []) as { enrollment_id: string; session_date: string; end_min: number; status: string }[]) {
     hasClass.add(c.enrollment_id);
-    if (c.status === "예정" && c.session_date >= today) hasFuture.add(c.enrollment_id);
+    // 시간 기준: 레슨 종료 시각(lessonEndMin)이 아직 안 지난 '예정' 수업만 미래로 취급(강의실·admin 목록과 동일 기준).
+    if (c.status === "예정" && kstDateMinToMs(c.session_date, lessonEndMin(c.end_min)) >= now) hasFuture.add(c.enrollment_id);
   }
 
   for (const e of paid) {
