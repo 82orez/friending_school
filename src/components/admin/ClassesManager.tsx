@@ -34,6 +34,8 @@ export type AdminClass = {
   end_min: number;
   status: "예정" | "취소";
   is_makeup: boolean;
+  feedback: string | null;
+  feedback_at: string | null;
 };
 
 type StatusKey = AdminClass["status"];
@@ -196,6 +198,7 @@ export default function ClassesManager({
                     <div className="flex flex-col items-start gap-1.5">
                       <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[r.status])}>{r.status}</span>
                       {r.is_makeup && <span className="bg-progress/10 text-progress shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">보강</span>}
+                      {r.feedback && <span className="bg-accent-blue-soft text-accent-blue-ink shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">피드백</span>}
                     </div>
                   </td>
                   <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{r.session_date}</td>
@@ -342,6 +345,16 @@ function ClassDetailModal({
               </div>
             ))}
           </dl>
+
+          {/* 강사 피드백(읽기 전용) */}
+          {row.feedback && (
+            <div className="border-accent-blue-soft bg-accent-blue-soft/30 mt-4 rounded-lg border p-3">
+              <p className="text-accent-blue-ink mb-1 text-xs font-bold">
+                강사 피드백{row.feedback_at ? ` · ${new Date(row.feedback_at).toLocaleDateString("ko-KR")}` : ""}
+              </p>
+              <p className="text-ink-soft text-sm break-words whitespace-pre-wrap">{row.feedback}</p>
+            </div>
+          )}
 
           {editable ? (
             <div className="mt-6 space-y-6">
