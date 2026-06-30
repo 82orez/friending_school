@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/utils/supabase/admin";
+import { loadEnrollTeachers } from "@/app/courses/enroll-actions";
 import ClassesManager, { type AdminClass } from "@/components/admin/ClassesManager";
 
 export default async function AdminClassDetailPage({ params }: { params: Promise<{ enrollmentId: string }> }) {
@@ -16,11 +17,13 @@ export default async function AdminClassDetailPage({ params }: { params: Promise
   const classes = (data ?? []) as AdminClass[];
   if (classes.length === 0) notFound();
 
+  const teachers = await loadEnrollTeachers();
+
   const first = classes[0];
   const dates = classes.map((c) => c.session_date).sort();
   const studentLabel = first.student_name ?? "학생";
   const title = `${first.course_title} · ${studentLabel}`;
   const subtitle = `강사 ${first.teacher_name ?? "-"} · 기간 ${dates[0]} ~ ${dates[dates.length - 1]} · 총 ${classes.length}회`;
 
-  return <ClassesManager classes={classes} title={title} subtitle={subtitle} backHref="/admin/classes" />;
+  return <ClassesManager classes={classes} teachers={teachers} title={title} subtitle={subtitle} backHref="/admin/classes" />;
 }

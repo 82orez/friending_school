@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarClock, Eye, Loader2, Search, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarClock, Eye, Loader2, Search, UserCog, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { adminCancelClass, adminRescheduleClass } from "@/app/admin/actions";
-import { fmtTime, GRID_START_HOUR, GRID_END_HOUR, SLOT_MIN, lessonEndMin } from "@/lib/availability";
+import { adminCancelClass, adminRescheduleClass, adminReassignClass } from "@/app/admin/actions";
+import { fmtTime, GRID_START_HOUR, GRID_END_HOUR, SLOT_MIN, lessonEndMin, teacherHasAllSlots, type Slot } from "@/lib/availability";
+import type { EnrollTeacherCard } from "@/app/courses/enroll-actions";
 import { kstDateMinToMs } from "@/lib/classtime";
 import {
   AlertDialog,
@@ -87,11 +88,13 @@ function timeRange(start: number, end: number): string {
 
 export default function ClassesManager({
   classes,
+  teachers = [],
   title = "화상수업 관리",
-  subtitle = "결제 확정 시 생성된 전체 수업입니다. 예정 수업은 강제 취소(보강 옵션)·일정 변경할 수 있습니다.",
+  subtitle = "결제 확정 시 생성된 전체 수업입니다. 예정 수업은 강제 취소(보강 옵션)·일정 변경·강사 대체할 수 있습니다.",
   backHref,
 }: {
   classes: AdminClass[];
+  teachers?: EnrollTeacherCard[];
   title?: string;
   subtitle?: string;
   backHref?: string;
@@ -271,6 +274,7 @@ export default function ClassesManager({
           cls={selected}
           now={now}
           courseEnded={courseEnded}
+          teachers={teachers}
           onClose={() => setSelectedId(null)}
           onUpdated={(updated) => setRows((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
         />
@@ -352,27 +356,43 @@ function ClassDetailModal({
   cls: row,
   now,
   courseEnded,
+  teachers,
   onClose,
   onUpdated,
 }: {
   cls: AdminClass;
   now: number;
   courseEnded: boolean;
+  teachers: EnrollTeacherCard[];
   onClose: () => void;
   onUpdated: (updated: AdminClass) => void;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [reassignOpen, setReassignOpen] = useState(false);
   const [makeup, setMakeup] = useState(true);
   const [date, setDate] = useState(row.session_date);
   const [startMin, setStartMin] = useState(row.start_min);
   const [endMin, setEndMin] = useState(row.end_min);
+  const [newTeacherId, setNewTeacherId] = useState("");
   const [pending, startTransition] = useTransition();
   const editable = row.status === "예정" && !courseEnded;
 
+  // 이 수업 시간(요일+30분 슬롯)에 가용한 대체 강사 — 원 강사 제외.
+  const reassignMatches = useMemo(() => {
+    const [y, m, d] = row.session_date.split("-").map(Number);
+    if (!y || !m || !d) return [];
+    const dow = new Date(y, m - 1, d).getDay();
+    const requested: Slot[] = [];
+    for (let min = row.start_min; min < row.end_min; min += 30) requested.push({ day: dow, min });
+    return teachers.filter((t) => t.id !== row.teacher_id && teacherHasAllSlots(t.slots, requested));
+  }, [teachers, row.session_date, row.start_min, row.end_min, row.teacher_id]);
+
+  const selectedNewTeacher = reassignMatches.find((t) => t.id === newTeacherId) ?? null;
+
   const confirmingRef = useRef(false);
-  confirmingRef.current = cancelOpen || rescheduleOpen;
+  confirmingRef.current = cancelOpen || rescheduleOpen || reassignOpen;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !confirmingRef.current) onClose();
@@ -421,6 +441,22 @@ function ClassDetailModal({
         onClose();
       } else {
         toast.error(res.error ?? "일정 변경 중 문제가 발생했어요.");
+      }
+    });
+  };
+
+  const doReassign = () => {
+    const target = selectedNewTeacher;
+    setReassignOpen(false);
+    if (!target) return;
+    startTransition(async () => {
+      const res = await adminReassignClass(row.id, target.id);
+      if (res.ok) {
+        onUpdated({ ...row, teacher_id: target.id, teacher_name: target.name });
+        toast.success(`담당 강사를 ${target.name} 강사로 변경했어요.`);
+        onClose();
+      } else {
+        toast.error(res.error ?? "강사 변경 중 문제가 발생했어요.");
       }
     });
   };
@@ -546,6 +582,51 @@ function ClassDetailModal({
                 </div>
               </section>
 
+              {/* 강사 대체 */}
+              <section className="border-rule rounded-lg border p-4">
+                <h3 className="text-ink flex items-center gap-1.5 text-sm font-bold">
+                  <UserCog className="size-4" aria-hidden /> 강사 대체
+                </h3>
+                <p className="text-muted-fg-faint mt-1 text-xs">강사 사정으로 이 회차를 진행할 수 없을 때, 같은 요일·시간에 가능한 다른 강사로 교체합니다.</p>
+                {reassignMatches.length === 0 ? (
+                  <p className="text-muted-fg mt-3 text-sm">이 시간에 대체 가능한 강사가 없습니다.</p>
+                ) : (
+                  <div className="mt-3 flex flex-wrap items-end gap-3">
+                    <label className="flex flex-col gap-1">
+                      <span className="text-muted-fg-faint text-xs font-semibold">대체 강사</span>
+                      <select
+                        value={newTeacherId}
+                        onChange={(e) => setNewTeacherId(e.target.value)}
+                        className="border-rule-faint focus:border-accent-blue min-w-[12rem] rounded-md border bg-white px-3 py-1.5 text-sm outline-none"
+                      >
+                        <option value="">선택하세요</option>
+                        {reassignMatches.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                            {t.centerName ? ` · ${t.centerName}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!selectedNewTeacher) {
+                          toast.error("대체할 강사를 선택해 주세요.");
+                          return;
+                        }
+                        setReassignOpen(true);
+                      }}
+                      disabled={pending}
+                      className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                    >
+                      {pending && <Loader2 className="size-3.5 animate-spin" />}
+                      강사 대체
+                    </button>
+                  </div>
+                )}
+              </section>
+
               {/* 수업 취소 */}
               <section className="border-brand/30 rounded-lg border p-4">
                 <h3 className="text-brand text-sm font-bold">수업 취소</h3>
@@ -612,6 +693,24 @@ function ClassDetailModal({
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction onClick={doReschedule} className="bg-cta hover:bg-cta/90 border-transparent text-white">
               일정 변경
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={reassignOpen} onOpenChange={setReassignOpen}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>담당 강사를 변경할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="text-ink font-semibold">{studentLabel}</span>님의 {row.session_date} {timeRange(row.start_min, row.end_min)} 수업을{" "}
+              <span className="text-ink font-semibold">{selectedNewTeacher?.name ?? "선택한 강사"}</span> 강사로 변경합니다. 기존 강사의 강의실에서는 이 수업이 사라집니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction onClick={doReassign} className="bg-cta hover:bg-cta/90 border-transparent text-white">
+              강사 대체
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

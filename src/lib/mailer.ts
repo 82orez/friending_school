@@ -289,6 +289,87 @@ export async function sendClassCancellationToTeacher(to: string[], data: ClassCa
   await sendResultEmail(to, `[Friending School] Class cancelled · ${data.studentName}`, html, text);
 }
 
+/* ===== 강사 대체(교체) 알림 ===== */
+
+export type ClassReassignEmailData = {
+  studentName: string;
+  courseTitle: string;
+  sessionDate: string; // YYYY-MM-DD
+  sessionTime: string; // "09:00~09:25"
+  oldTeacherName?: string;
+  newTeacherName?: string;
+  teacherUrl: string;
+};
+
+function reassignTableRows(rows: [string, string][]): string {
+  return rows
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:8px 12px;color:#666;background:#f8f8f8;white-space:nowrap;border-bottom:1px solid #eee;vertical-align:top">${escapeHtml(
+          k,
+        )}</td><td style="padding:8px 12px;color:#1a1a1a;border-bottom:1px solid #eee;white-space:pre-wrap">${escapeHtml(v)}</td></tr>`,
+    )
+    .join("");
+}
+
+/**
+ * 대체 투입된(새) 강사에게 수업 배정 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ */
+export async function sendClassReassignToNewTeacher(to: string[], data: ClassReassignEmailData): Promise<void> {
+  const rows: [string, string][] = [
+    ["Student", data.studentName || "-"],
+    ["Course", data.courseTitle],
+    ["Session", `${data.sessionDate} ${data.sessionTime}`],
+  ];
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">You have been assigned a class</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(data.studentName)} · ${escapeHtml(data.courseTitle)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 0">This session has been assigned to you. You can review it on your <a href="${escapeHtml(
+      data.teacherUrl,
+    )}" style="color:#1a4fa0">teacher page</a>.</p>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
+  </div>`;
+  const text = [
+    "You have been assigned a class.",
+    "",
+    `Student: ${data.studentName || "-"}`,
+    `Course: ${data.courseTitle}`,
+    `Session: ${data.sessionDate} ${data.sessionTime}`,
+    "",
+    `Review it on your teacher page: ${data.teacherUrl}`,
+  ].join("\n");
+  await sendResultEmail(to, `[Friending School] Class assigned · ${data.studentName}`, html, text);
+}
+
+/**
+ * 기존(원) 강사에게 해당 수업이 다른 강사로 이관됐음을 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ */
+export async function sendClassReassignToOldTeacher(to: string[], data: ClassReassignEmailData): Promise<void> {
+  const rows: [string, string][] = [
+    ["Student", data.studentName || "-"],
+    ["Course", data.courseTitle],
+    ["Session", `${data.sessionDate} ${data.sessionTime}`],
+  ];
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">A class has been reassigned to another teacher</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(data.studentName)} · ${escapeHtml(data.courseTitle)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 0">This session has been reassigned and no longer appears in your classroom. No action is needed.</p>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
+  </div>`;
+  const text = [
+    "A class has been reassigned to another teacher.",
+    "",
+    `Student: ${data.studentName || "-"}`,
+    `Course: ${data.courseTitle}`,
+    `Session: ${data.sessionDate} ${data.sessionTime}`,
+    "",
+    "This session no longer appears in your classroom. No action is needed.",
+  ].join("\n");
+  await sendResultEmail(to, `[Friending School] Class reassigned · ${data.studentName}`, html, text);
+}
+
 /* ===== 관리자 대상 신규 수강신청 알림 ===== */
 
 export type EnrollmentAdminEmailData = {
