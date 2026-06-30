@@ -30,6 +30,7 @@ export type AdminEnrollment = {
   teacher_note: string | null;
   created_at: string;
   is_test?: boolean;
+  priceLabel: string; // 수강료 표시(과정 고정가, 예 "₩240,000")
 };
 
 type StatusKey = AdminEnrollment["status"];
@@ -359,6 +360,7 @@ function EnrollmentDetailModal({
               ["전화", row.student_phone ?? "-"],
               ["강사", row.teacher_name ?? "-"],
               ["과정", row.course_title],
+              ["수강료", row.priceLabel || "-"],
               ["수업 일정", summarizeSlots(row.slots)],
               ["시작일", row.start_date],
               ...(row.teacher_note ? ([["메모/사유", row.teacher_note]] as [string, string][]) : []),
@@ -484,6 +486,9 @@ function EnrollmentDetailModal({
             <AlertDialogTitle>입금을 확인하고 결제완료로 처리할까요?</AlertDialogTitle>
             <AlertDialogDescription>
               <span className="text-ink font-semibold">{studentLabel}</span>님의 {row.course_title} 수업이 확정되며, 학생에게 확정 문자가 전송됩니다.
+              {row.priceLabel && (
+                <span className="text-ink mt-2 block font-semibold">입금 확인 금액: {row.priceLabel}</span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
