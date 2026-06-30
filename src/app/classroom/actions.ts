@@ -53,6 +53,15 @@ export async function enterClass(classId: string): Promise<EnterResult> {
     return { error: "강사의 화상수업 링크가 아직 등록되지 않았어요. 강사에게 문의해 주세요." };
   }
 
+  // 강사 입장 기록(수업 진행 인정 신호 ① — 첫 입장만, best-effort). 학생 입장은 기록 안 함.
+  if (cls.teacher_id === user.id) {
+    try {
+      await admin.from("classes").update({ teacher_entered_at: new Date().toISOString() }).eq("id", id).is("teacher_entered_at", null);
+    } catch (err) {
+      console.error("[enterClass] 강사 입장 기록 실패:", err);
+    }
+  }
+
   return { url: zoomUrl };
 }
 
@@ -148,7 +157,11 @@ export async function saveClassFeedback(classId: string, feedback: string): Prom
   if (!id) return { error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { data: cls } = await admin.from("classes").select("id, teacher_id, session_date, start_min, end_min, status").eq("id", id).maybeSingle();
+  const { data: cls } = await admin
+    .from("classes")
+    .select("id, teacher_id, session_date, start_min, end_min, status, teacher_entered_at, conducted_at")
+    .eq("id", id)
+    .maybeSingle();
   if (!cls) return { error: "수업을 찾을 수 없어요." };
   // 작성 권한 — 강사 본인만.
   if (cls.teacher_id !== user.id) return { error: "권한이 없습니다." };
@@ -159,14 +172,18 @@ export async function saveClassFeedback(classId: string, feedback: string): Prom
   if (Date.now() < endMs) return { error: "수업이 끝난 뒤에 작성할 수 있어요." };
 
   const text = String(feedback ?? "").trim().slice(0, MAX_FEEDBACK_LEN);
+  const now = new Date().toISOString();
+  // 수업 진행 인정(sticky): 비어있지 않은 피드백 + 강사 입장 기록 있음 + 아직 미인정 → conducted_at 박음.
+  const conduct = Boolean(text) && Boolean(cls.teacher_entered_at) && !cls.conducted_at;
 
   const { error } = await admin
     .from("classes")
-    .update({ feedback: text || null, feedback_at: text ? new Date().toISOString() : null })
+    .update({ feedback: text || null, feedback_at: text ? now : null, ...(conduct ? { conducted_at: now } : {}) })
     .eq("id", id);
   if (error) return { error: "저장 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요." };
 
   revalidatePath("/teacher", "layout");
   revalidatePath("/mypage", "layout");
+  revalidatePath("/admin/classes");
   return { ok: true };
 }

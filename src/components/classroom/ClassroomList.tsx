@@ -36,6 +36,7 @@ export type ClassItem = {
   isMakeup: boolean;
   feedback: string | null;
   feedbackAt: string | null;
+  conductedAt: string | null;
 };
 
 type CourseGroup = {
@@ -456,6 +457,9 @@ function ClassRow({
           {cancelled && <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "취소" : "Cancelled"}</span>}
           {item.isMakeup && !cancelled && (
             <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{ko ? "보강" : "Makeup"}</span>
+          )}
+          {isTeacher && item.conductedAt && !cancelled && (
+            <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5 font-bold">Conducted</span>
           )}
         </p>
       </div>

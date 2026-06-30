@@ -37,6 +37,8 @@ export type AdminClass = {
   is_makeup: boolean;
   feedback: string | null;
   feedback_at: string | null;
+  teacher_entered_at: string | null;
+  conducted_at: string | null;
 };
 
 type DisplayStatus = "예정" | "완료" | "취소";
@@ -52,6 +54,13 @@ const STATUS_BADGE: Record<DisplayStatus, string> = {
   완료: "bg-rule text-muted-fg",
   취소: "bg-brand/10 text-brand",
 };
+
+// 진행 여부 표시 — 진행됨(인정)/미진행(종료됐는데 미인정)/− (예정·취소).
+function conductInfo(r: AdminClass, now: number): { label: string; cls: string } {
+  if (r.conducted_at) return { label: "진행됨", cls: "bg-cta/10 text-cta" };
+  if (displayStatus(r, now) === "완료") return { label: "미진행", cls: "bg-brand/10 text-brand" };
+  return { label: "−", cls: "text-muted-fg-faint" };
+}
 
 const FILTERS: { key: "전체" | DisplayStatus; label: string }[] = [
   { key: "전체", label: "전체" },
@@ -184,13 +193,14 @@ export default function ClassesManager({
               <th className="px-4 py-2.5">시간</th>
               <SortHeader label="강사" sortKey="teacher" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <SortHeader label="회차" sortKey="session" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+              <th className="px-4 py-2.5">진행</th>
               <th className="px-4 py-2.5 md:px-6">피드백</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-muted-fg px-6 py-12 text-center text-sm">
+                <td colSpan={7} className="text-muted-fg px-6 py-12 text-center text-sm">
                   표시할 수업이 없습니다.
                 </td>
               </tr>
@@ -224,6 +234,12 @@ export default function ClassesManager({
                   <td className="text-muted-fg px-4 py-3.5 align-middle whitespace-nowrap">{timeRange(r.start_min, r.end_min)}</td>
                   <td className="text-muted-fg max-w-[10rem] truncate px-4 py-3.5 align-middle">{r.teacher_name ?? "강사"}</td>
                   <td className="text-muted-fg-faint px-4 py-3.5 align-middle whitespace-nowrap">#{r.session_no}</td>
+                  <td className="px-4 py-3.5 align-middle">
+                    {(() => {
+                      const ci = conductInfo(r, now);
+                      return <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", ci.cls)}>{ci.label}</span>;
+                    })()}
+                  </td>
                   <td className="px-4 py-3.5 align-middle md:px-6">
                     <button
                       type="button"
@@ -443,6 +459,8 @@ function ClassDetailModal({
               ["회차", `${row.session_no}회차${row.is_makeup ? " (보강)" : ""}`],
               ["날짜", row.session_date],
               ["시간", timeRange(row.start_min, row.end_min)],
+              ["진행 여부", conductInfo(row, now).label],
+              ["강사 입장", row.teacher_entered_at ? new Date(row.teacher_entered_at).toLocaleString("ko-KR") : "−"],
             ].map(([label, value]) => (
               <div key={label} className="flex gap-2">
                 <dt className="text-muted-fg-faint w-24 shrink-0">{label}</dt>

@@ -46,6 +46,7 @@ export type Database = {
       }
       classes: {
         Row: {
+          conducted_at: string | null
           course: string
           course_title: string
           created_at: string
@@ -62,11 +63,13 @@ export type Database = {
           student_english_name: string | null
           student_id: string
           student_name: string | null
+          teacher_entered_at: string | null
           teacher_id: string
           teacher_name: string | null
           updated_at: string
         }
         Insert: {
+          conducted_at?: string | null
           course: string
           course_title: string
           created_at?: string
@@ -83,11 +86,13 @@ export type Database = {
           student_english_name?: string | null
           student_id: string
           student_name?: string | null
+          teacher_entered_at?: string | null
           teacher_id: string
           teacher_name?: string | null
           updated_at?: string
         }
         Update: {
+          conducted_at?: string | null
           course?: string
           course_title?: string
           created_at?: string
@@ -104,6 +109,7 @@ export type Database = {
           student_english_name?: string | null
           student_id?: string
           student_name?: string | null
+          teacher_entered_at?: string | null
           teacher_id?: string
           teacher_name?: string | null
           updated_at?: string
