@@ -143,6 +143,12 @@ export default function ClassesManager({
 
   const selected = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId]);
 
+  // 과정 종료 = 남은 미래 '예정' 수업이 없음(레슨 종료 시각 기준, 강의실·booking.ts와 동일). 단일 enrollment로 스코프된 rows 전체가 한 과정.
+  const courseEnded = useMemo(
+    () => rows.length > 0 && !rows.some((r) => r.status === "예정" && now < kstDateMinToMs(r.session_date, lessonEndMin(r.end_min))),
+    [rows, now],
+  );
+
   return (
     <div>
       {backHref && (
@@ -264,6 +270,7 @@ export default function ClassesManager({
         <ClassDetailModal
           cls={selected}
           now={now}
+          courseEnded={courseEnded}
           onClose={() => setSelectedId(null)}
           onUpdated={(updated) => setRows((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
         />
@@ -344,11 +351,13 @@ function FeedbackModal({ cls, onClose }: { cls: AdminClass; onClose: () => void 
 function ClassDetailModal({
   cls: row,
   now,
+  courseEnded,
   onClose,
   onUpdated,
 }: {
   cls: AdminClass;
   now: number;
+  courseEnded: boolean;
   onClose: () => void;
   onUpdated: (updated: AdminClass) => void;
 }) {
@@ -360,7 +369,7 @@ function ClassDetailModal({
   const [startMin, setStartMin] = useState(row.start_min);
   const [endMin, setEndMin] = useState(row.end_min);
   const [pending, startTransition] = useTransition();
-  const editable = row.status === "예정";
+  const editable = row.status === "예정" && !courseEnded;
 
   const confirmingRef = useRef(false);
   confirmingRef.current = cancelOpen || rescheduleOpen;
@@ -555,8 +564,10 @@ function ClassDetailModal({
                 </button>
               </section>
             </div>
-          ) : (
+          ) : row.status === "취소" ? (
             <p className="text-muted-fg mt-5 text-sm">취소된 수업입니다(읽기 전용).</p>
+          ) : (
+            <p className="text-muted-fg mt-5 text-sm">종료된 과정의 수업입니다(읽기 전용).</p>
           )}
         </div>
 
