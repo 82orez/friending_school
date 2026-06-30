@@ -51,12 +51,10 @@ const FILTERS: { key: "전체" | StatusKey; label: string }[] = [
   { key: "취소", label: "취소" },
 ];
 
-type SortKey = "date" | "course" | "student" | "teacher" | "session";
+type SortKey = "date" | "teacher" | "session";
 
 const SORT_VALUE: Record<SortKey, (r: AdminClass) => string> = {
   date: (r) => r.session_date,
-  course: (r) => r.course_title,
-  student: (r) => r.student_name ?? "",
   teacher: (r) => r.teacher_name ?? "",
   session: (r) => String(r.session_no).padStart(3, "0"),
 };
@@ -164,16 +162,15 @@ export default function ClassesManager({
               <th className="px-4 py-2.5 md:px-6">상태</th>
               <SortHeader label="날짜" sortKey="date" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <th className="px-4 py-2.5">시간</th>
-              <SortHeader label="과정" sortKey="course" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-              <SortHeader label="학생" sortKey="student" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <SortHeader label="강사" sortKey="teacher" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-              <SortHeader label="회차" sortKey="session" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
+              <SortHeader label="회차" sortKey="session" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+              <th className="px-4 py-2.5 md:px-6">피드백</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-muted-fg px-6 py-12 text-center text-sm">
+                <td colSpan={6} className="text-muted-fg px-6 py-12 text-center text-sm">
                   표시할 수업이 없습니다.
                 </td>
               </tr>
@@ -198,15 +195,19 @@ export default function ClassesManager({
                     <div className="flex flex-col items-start gap-1.5">
                       <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[r.status])}>{r.status}</span>
                       {r.is_makeup && <span className="bg-progress/10 text-progress shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">보강</span>}
-                      {r.feedback && <span className="bg-accent-blue-soft text-accent-blue-ink shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">피드백</span>}
                     </div>
                   </td>
                   <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{r.session_date}</td>
                   <td className="text-muted-fg px-4 py-3.5 align-middle whitespace-nowrap">{timeRange(r.start_min, r.end_min)}</td>
-                  <td className="text-muted-fg max-w-[12rem] truncate px-4 py-3.5 align-middle">{r.course_title}</td>
-                  <td className="text-ink max-w-[10rem] truncate px-4 py-3.5 align-middle font-bold">{r.student_name ?? "학생"}</td>
                   <td className="text-muted-fg max-w-[10rem] truncate px-4 py-3.5 align-middle">{r.teacher_name ?? "강사"}</td>
-                  <td className="text-muted-fg-faint px-4 py-3.5 align-middle whitespace-nowrap md:px-6">#{r.session_no}</td>
+                  <td className="text-muted-fg-faint px-4 py-3.5 align-middle whitespace-nowrap">#{r.session_no}</td>
+                  <td className="px-4 py-3.5 align-middle md:px-6">
+                    {r.feedback ? (
+                      <span className="text-ink-soft block max-w-[18rem] truncate">{r.feedback}</span>
+                    ) : (
+                      <span className="text-muted-fg-faint">-</span>
+                    )}
+                  </td>
                 </tr>
               ))
             )}
