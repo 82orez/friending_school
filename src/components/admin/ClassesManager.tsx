@@ -6,7 +6,8 @@ import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarClock, Eye, Loader2
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { adminCancelClass, adminRescheduleClass } from "@/app/admin/actions";
-import { fmtTime, GRID_START_HOUR, GRID_END_HOUR, SLOT_MIN } from "@/lib/availability";
+import { fmtTime, GRID_START_HOUR, GRID_END_HOUR, SLOT_MIN, lessonEndMin } from "@/lib/availability";
+import { kstDateMinToMs } from "@/lib/classtime";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,16 +39,24 @@ export type AdminClass = {
   feedback_at: string | null;
 };
 
-type StatusKey = AdminClass["status"];
+type DisplayStatus = "예정" | "완료" | "취소";
 
-const STATUS_BADGE: Record<StatusKey, string> = {
+// 표시 상태 — DB status(예정/취소)에 시간 기반 '완료'를 더해 파생(강의실·상위 목록과 동일 기준: 레슨 종료 시각 지나면 완료).
+function displayStatus(r: AdminClass, now: number): DisplayStatus {
+  if (r.status === "취소") return "취소";
+  return now >= kstDateMinToMs(r.session_date, lessonEndMin(r.end_min)) ? "완료" : "예정";
+}
+
+const STATUS_BADGE: Record<DisplayStatus, string> = {
   예정: "bg-accent-blue-soft text-accent-blue-ink",
-  취소: "bg-rule text-muted-fg",
+  완료: "bg-rule text-muted-fg",
+  취소: "bg-brand/10 text-brand",
 };
 
-const FILTERS: { key: "전체" | StatusKey; label: string }[] = [
+const FILTERS: { key: "전체" | DisplayStatus; label: string }[] = [
   { key: "전체", label: "전체" },
   { key: "예정", label: "예정" },
+  { key: "완료", label: "완료" },
   { key: "취소", label: "취소" },
 ];
 
@@ -80,23 +89,33 @@ export default function ClassesManager({
 }) {
   const [rows, setRows] = useState(classes);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"전체" | StatusKey>("전체");
+  const [filter, setFilter] = useState<"전체" | DisplayStatus>("전체");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [feedbackTarget, setFeedbackTarget] = useState<AdminClass | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  // 완료 판정(시간 기반) 갱신용 1분 틱.
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { 전체: rows.length, 예정: 0, 취소: 0 };
-    for (const r of rows) c[r.status] = (c[r.status] ?? 0) + 1;
+    const c: Record<string, number> = { 전체: rows.length, 예정: 0, 완료: 0, 취소: 0 };
+    for (const r of rows) {
+      const s = displayStatus(r, now);
+      c[s] = (c[s] ?? 0) + 1;
+    }
     return c;
-  }, [rows]);
+  }, [rows, now]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = rows.filter((r) => {
-      if (filter !== "전체" && r.status !== filter) return false;
+      if (filter !== "전체" && displayStatus(r, now) !== filter) return false;
       if (!q) return true;
       return `${r.student_name ?? ""} ${r.student_english_name ?? ""} ${r.teacher_name ?? ""} ${r.course_title}`.toLowerCase().includes(q);
     });
@@ -111,7 +130,7 @@ export default function ClassesManager({
       const cmp = av.localeCompare(bv, "ko");
       return sort.dir === "asc" ? cmp : -cmp;
     });
-  }, [rows, query, filter, sort]);
+  }, [rows, query, filter, sort, now]);
 
   const selected = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId]);
 
@@ -194,7 +213,10 @@ export default function ClassesManager({
                 >
                   <td className="px-4 py-3.5 align-middle md:px-6">
                     <div className="flex flex-col items-start gap-1.5">
-                      <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[r.status])}>{r.status}</span>
+                      {(() => {
+                        const ds = displayStatus(r, now);
+                        return <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[ds])}>{ds}</span>;
+                      })()}
                       {r.is_makeup && <span className="bg-progress/10 text-progress shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">보강</span>}
                     </div>
                   </td>
@@ -225,6 +247,7 @@ export default function ClassesManager({
       {selected && (
         <ClassDetailModal
           cls={selected}
+          now={now}
           onClose={() => setSelectedId(null)}
           onUpdated={(updated) => setRows((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
         />
@@ -304,10 +327,12 @@ function FeedbackModal({ cls, onClose }: { cls: AdminClass; onClose: () => void 
 
 function ClassDetailModal({
   cls: row,
+  now,
   onClose,
   onUpdated,
 }: {
   cls: AdminClass;
+  now: number;
   onClose: () => void;
   onUpdated: (updated: AdminClass) => void;
 }) {
@@ -387,7 +412,10 @@ function ClassDetailModal({
       >
         <div className="border-rule flex items-center justify-between gap-3 border-b px-6 py-4">
           <div className="flex min-w-0 items-center gap-2">
-            <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[row.status])}>{row.status}</span>
+            {(() => {
+              const ds = displayStatus(row, now);
+              return <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[ds])}>{ds}</span>;
+            })()}
             {row.is_makeup && <span className="bg-progress/10 text-progress shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">보강</span>}
             <h2 className="text-ink truncate text-lg font-bold">
               {studentLabel}
