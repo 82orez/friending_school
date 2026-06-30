@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronRight, Loader2, MessageSquare, Video, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, Eye, Loader2, MessageSquare, Video, X } from "lucide-react";
 import { ko as koLocale, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -412,26 +412,7 @@ function ClassRow({
   const timeRange = `${fmtTime(item.startMin)}~${fmtTime(lessonEndMin(item.endMin))}`;
   // 수업 종료(레슨 종료 시각 이후) — 강사 피드백 작성 가능 조건.
   const ended = !cancelled && now >= item.endMs;
-  const [fbOpen, setFbOpen] = useState(false);
-  const [draft, setDraft] = useState(item.feedback ?? "");
-
-  function openFeedback() {
-    setDraft(item.feedback ?? "");
-    setFbOpen(true);
-  }
-
-  function handleSaveFeedback() {
-    startTransition(async () => {
-      const res = await saveClassFeedback(item.id, draft);
-      if (res.ok) {
-        toast.success(ko ? "피드백을 저장했어요." : "Feedback saved.");
-        setFbOpen(false);
-        router.refresh();
-      } else {
-        toast.error(res.error ?? (ko ? "저장할 수 없어요." : "Unable to save feedback."));
-      }
-    });
-  }
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   function handleEnter() {
     // 팝업 차단 회피 — 동기적으로 빈 탭을 먼저 연 뒤 액션 결과 URL로 이동.
@@ -502,60 +483,24 @@ function ClassRow({
       ) : null}
       </div>
 
-      {/* 수업 종료 후 강사 피드백 — 강사=작성/수정, 수강생=읽기 전용 */}
+      {/* 수업 종료 후 강사 피드백 — 행에는 버튼만, 내용/편집은 모달에서(긴 피드백 UX). */}
       {isTeacher && ended ? (
-        fbOpen ? (
-          <div className="border-rule bg-surface rounded-lg border p-3">
-            <textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              maxLength={2000}
-              rows={3}
-              placeholder="Write feedback for this class…"
-              className="border-rule focus:border-accent-blue-ink w-full resize-y rounded-md border bg-white px-3 py-2 text-sm outline-none" />
-            <div className="mt-2 flex items-center justify-end gap-2">
-              <span className="text-muted-fg-faint mr-auto text-xs">{draft.length}/2000</span>
-              <button
-                type="button"
-                onClick={() => setFbOpen(false)}
-                disabled={pending}
-                className="border-rule text-ink hover:bg-rule/40 inline-flex h-8 items-center rounded-md border px-3 text-sm font-bold transition-colors disabled:opacity-50">
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveFeedback}
-                disabled={pending}
-                className="bg-cta inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
-                {pending && <Loader2 className="size-3.5 animate-spin" />}
-                Save
-              </button>
-            </div>
-          </div>
-        ) : item.feedback ? (
-          <div className="border-rule bg-surface rounded-lg border p-3">
-            <p className="text-muted-fg-faint mb-1 text-xs font-bold">Your feedback</p>
-            <p className="text-ink-soft line-clamp-3 text-sm whitespace-pre-wrap">{item.feedback}</p>
-            <button type="button" onClick={openFeedback} className="text-accent-blue-ink mt-2 inline-flex items-center gap-1.5 text-sm font-bold">
-              <MessageSquare className="size-3.5" /> Edit feedback
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={openFeedback}
-            className="border-rule text-ink hover:bg-rule/40 inline-flex h-9 w-fit items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors">
-            <MessageSquare className="size-3.5" /> Write feedback
-          </button>
-        )
+        <button
+          type="button"
+          onClick={() => setFeedbackOpen(true)}
+          className="border-rule text-ink hover:bg-rule/40 inline-flex h-9 w-fit items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors">
+          <MessageSquare className="size-3.5" /> {item.feedback ? "Edit feedback" : "Write feedback"}
+        </button>
       ) : !isTeacher && item.feedback ? (
-        <div className="border-accent-blue-soft bg-accent-blue-soft/30 rounded-lg border p-3">
-          <p className="text-accent-blue-ink mb-1 text-xs font-bold">
-            강사 피드백{item.feedbackAt ? ` · ${new Date(item.feedbackAt).toLocaleDateString("ko-KR")}` : ""}
-          </p>
-          <p className="text-ink-soft text-sm whitespace-pre-wrap">{item.feedback}</p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setFeedbackOpen(true)}
+          className="border-rule text-accent-blue-ink hover:bg-accent-blue-soft/40 inline-flex h-9 w-fit items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors">
+          <Eye className="size-3.5" /> 피드백 보기
+        </button>
       ) : null}
+
+      {feedbackOpen && <ClassFeedbackModal item={item} isTeacher={isTeacher} onClose={() => setFeedbackOpen(false)} />}
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
@@ -579,5 +524,110 @@ function ClassRow({
         </AlertDialogContent>
       </AlertDialog>
     </li>
+  );
+}
+
+// 수업 피드백 모달 — 강사=보기+작성/수정, 수강생=읽기 전용. 행에는 버튼만 두고 내용/편집은 여기서(긴 피드백 UX).
+function ClassFeedbackModal({ item, isTeacher, onClose }: { item: ClassItem; isTeacher: boolean; onClose: () => void }) {
+  const ko = !isTeacher;
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [draft, setDraft] = useState(item.feedback ?? "");
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  function handleSave() {
+    startTransition(async () => {
+      const res = await saveClassFeedback(item.id, draft);
+      if (res.ok) {
+        toast.success(ko ? "피드백을 저장했어요." : "Feedback saved.");
+        router.refresh();
+        onClose();
+      } else {
+        toast.error(res.error ?? (ko ? "저장할 수 없어요." : "Unable to save feedback."));
+      }
+    });
+  }
+
+  const subtitle = `${formatSessionDate(item.sessionDate, ko)} · ${ko ? `${item.sessionNo}회차` : `Session ${item.sessionNo}`}`;
+
+  return (
+    <>
+      <div aria-hidden="true" onClick={onClose} className="fixed inset-0 z-[110] bg-black/40" />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={ko ? "강사 피드백" : "Class feedback"}
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="border-rule flex items-center justify-between gap-3 border-b px-6 py-4">
+          <div className="min-w-0">
+            <h2 className="text-ink truncate text-lg font-bold">{ko ? "강사 피드백" : "Class feedback"}</h2>
+            <p className="text-muted-fg-faint mt-0.5 truncate text-xs">{subtitle}</p>
+          </div>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            aria-label={ko ? "닫기" : "Close"}
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-1 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <div className="overflow-auto px-6 py-5">
+          {isTeacher ? (
+            <>
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                maxLength={2000}
+                rows={8}
+                placeholder="Write feedback for this class…"
+                className="border-rule focus:border-accent-blue-ink w-full resize-y rounded-md border bg-white px-3 py-2 text-sm outline-none" />
+              <p className="text-muted-fg-faint mt-1 text-right text-xs">{draft.length}/2000</p>
+            </>
+          ) : (
+            <>
+              {item.feedbackAt && <p className="text-muted-fg-faint mb-2 text-xs">{new Date(item.feedbackAt).toLocaleDateString("ko-KR")}</p>}
+              <p className="text-ink-soft text-sm break-words whitespace-pre-wrap">{item.feedback}</p>
+            </>
+          )}
+        </div>
+
+        <div className="border-rule flex justify-end gap-2 border-t px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors disabled:opacity-50">
+            {ko ? "닫기" : isTeacher ? "Cancel" : "Close"}
+          </button>
+          {isTeacher && (
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={pending}
+              className="bg-cta inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
+              {pending && <Loader2 className="size-3.5 animate-spin" />}
+              Save
+            </button>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
