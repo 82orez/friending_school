@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarClock, Loader2, Search, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarClock, Eye, Loader2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { adminCancelClass, adminRescheduleClass } from "@/app/admin/actions";
@@ -83,6 +83,7 @@ export default function ClassesManager({
   const [filter, setFilter] = useState<"전체" | StatusKey>("전체");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [feedbackTarget, setFeedbackTarget] = useState<AdminClass | null>(null);
 
   const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
@@ -202,11 +203,17 @@ export default function ClassesManager({
                   <td className="text-muted-fg max-w-[10rem] truncate px-4 py-3.5 align-middle">{r.teacher_name ?? "강사"}</td>
                   <td className="text-muted-fg-faint px-4 py-3.5 align-middle whitespace-nowrap">#{r.session_no}</td>
                   <td className="px-4 py-3.5 align-middle md:px-6">
-                    {r.feedback ? (
-                      <span className="text-ink-soft block max-w-[18rem] truncate">{r.feedback}</span>
-                    ) : (
-                      <span className="text-muted-fg-faint">-</span>
-                    )}
+                    <button
+                      type="button"
+                      disabled={!r.feedback}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFeedbackTarget(r);
+                      }}
+                      className="border-rule text-accent-blue-ink hover:bg-accent-blue-soft/40 inline-flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Eye className="size-3.5" aria-hidden /> 보기
+                    </button>
                   </td>
                 </tr>
               ))
@@ -222,7 +229,76 @@ export default function ClassesManager({
           onUpdated={(updated) => setRows((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
         />
       )}
+
+      {feedbackTarget && <FeedbackModal cls={feedbackTarget} onClose={() => setFeedbackTarget(null)} />}
     </div>
+  );
+}
+
+// 강사 피드백 전용 읽기 모달(admin) — "보기" 버튼에서 열림. ClassDetailModal과 동일 a11y 패턴.
+function FeedbackModal({ cls, onClose }: { cls: AdminClass; onClose: () => void }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const studentLabel = cls.student_name ?? "학생";
+
+  return (
+    <>
+      <div aria-hidden="true" onClick={onClose} className="fixed inset-0 z-[110] bg-black/40" />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`강사 피드백 · ${studentLabel}`}
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+      >
+        <div className="border-rule flex items-center justify-between gap-3 border-b px-6 py-4">
+          <h2 className="text-ink truncate text-lg font-bold">
+            강사 피드백
+            <span className="text-muted-fg-faint font-normal">
+              {" "}
+              · {studentLabel} · {cls.session_no}회차
+            </span>
+          </h2>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-1 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <div className="overflow-auto px-6 py-5">
+          {cls.feedback_at && <p className="text-muted-fg-faint mb-2 text-xs">{new Date(cls.feedback_at).toLocaleDateString("ko-KR")}</p>}
+          <p className="text-ink-soft text-sm break-words whitespace-pre-wrap">{cls.feedback}</p>
+        </div>
+
+        <div className="border-rule flex justify-end gap-2 border-t px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
