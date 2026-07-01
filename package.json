@@ -12,7 +12,8 @@
     "db:diff": "supabase db diff --linked",
     "db:types": "supabase gen types typescript --linked --schema public > src/types/database.types.ts",
     "seed:teachers": "node scripts/seed-teachers.mjs",
-    "seed:teachers:clean": "node scripts/seed-teachers.mjs --clean"
+    "seed:teachers:clean": "node scripts/seed-teachers.mjs --clean",
+    "sync:kitchen:audio": "node scripts/sync-kitchen-audio.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
