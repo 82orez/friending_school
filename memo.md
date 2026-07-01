@@ -19,6 +19,7 @@
 - 매출 확인 기능
 - 환불 정책
 - 카드 결제 기능(portone)
+- 테스트 강좌 생성 후 새로고침해야 함.(수정 사항)
 
 # Fake data 생성
 - npm run seed:teachers -> 12명 생성

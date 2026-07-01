@@ -13,6 +13,8 @@ import {
   sendEnrollmentPaymentConfirmedToTeacher,
   sendClassReassignToNewTeacher,
   sendClassReassignToOldTeacher,
+  sendCourseReassignToNewTeacher,
+  sendCourseReassignToOldTeacher,
 } from "@/lib/mailer";
 import { normalizeCurrency } from "@/data/currencies";
 import { getCourse } from "@/data/courses";
@@ -698,6 +700,134 @@ export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot
 
   // 향후 주간 패턴 반영(가용 차감·요약·종료일 폴백).
   await admin.from("enrollments").update({ slots: newSlots }).eq("id", id);
+
+  revalidatePath("/admin/classes");
+  revalidatePath(`/admin/classes/${id}`);
+  revalidatePath("/admin/enrollments");
+  revalidatePath("/teacher", "layout");
+  revalidatePath("/mypage", "layout");
+  return { ok: true };
+}
+
+// 남은 수업 전체 담당 강사 대체(admin) — 강사 중도 하차 시. 날짜·시간은 그대로, 담당 강사만 교체.
+// 남은='예정'이고 레슨 종료 시각이 아직 안 지난 미래 클래스. 과거·완료·취소는 원 강사로 보존.
+// 단일 대타(adminReassignClass)와 달리 enrollment.teacher_id도 새 강사로 이관(가용 차감·대시보드 정합).
+export async function adminReassignRemaining(enrollmentId: string, newTeacherId: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const id = String(enrollmentId ?? "").trim();
+  const teacherId = String(newTeacherId ?? "").trim();
+  if (!id || !teacherId) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: enr } = await admin
+    .from("enrollments")
+    .select("id, teacher_id, teacher_name, student_id, student_phone, course, course_title, student_name, student_english_name")
+    .eq("id", id)
+    .maybeSingle();
+  if (!enr) return { ok: false, error: "수강신청을 찾을 수 없습니다." };
+  if (enr.teacher_id === teacherId) return { ok: false, error: "현재 강사와 다른 강사를 선택해 주세요." };
+
+  // 새 강사 검증 — role='teacher' + 표시명.
+  const { data: prof } = await admin.from("profiles").select("first_name, last_name, role").eq("id", teacherId).maybeSingle();
+  if (!prof || prof.role !== "teacher") return { ok: false, error: "유효한 강사가 아닙니다." };
+  const newName = [prof.first_name, prof.last_name].filter(Boolean).join(" ").trim() || "강사";
+
+  // 남은(미래 '예정') 클래스 — session_no 오름차순.
+  const { data: clsRows } = await admin
+    .from("classes")
+    .select("id, session_no, session_date, start_min, end_min, status")
+    .eq("enrollment_id", id)
+    .eq("status", "예정")
+    .order("session_no", { ascending: true });
+  const now = Date.now();
+  const remaining = ((clsRows ?? []) as { id: string; session_no: number; session_date: string; start_min: number; end_min: number }[]).filter(
+    (c) => kstDateMinToMs(c.session_date, lessonEndMin(c.end_min)) >= now,
+  );
+  if (remaining.length === 0) return { ok: false, error: "변경할 남은 수업이 없습니다." };
+
+  // 요청 슬롯 union — 남은 클래스 실제 요일·시각 기준(개별 리스케줄·보강 클래스 포함).
+  const seen = new Set<string>();
+  const requestedUnion: Slot[] = [];
+  for (const c of remaining) {
+    const day = weekdayOf(c.session_date);
+    for (let min = c.start_min; min < c.end_min; min += 30) {
+      const key = `${day}-${min}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        requestedUnion.push({ day, min });
+      }
+    }
+  }
+
+  // 새 강사 주간 가용 검증 — 남은 수업 전체가 새 강사 가용시간 안에 있어야 함.
+  const { data: slotRows } = await admin.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", teacherId);
+  const teacherSlots: Slot[] = (slotRows ?? []).map((r: { day_of_week: number; start_min: number }) => ({ day: r.day_of_week, min: r.start_min }));
+  if (!teacherHasAllSlots(teacherSlots, requestedUnion)) {
+    return { ok: false, error: "선택한 강사의 주간 가용시간이 아닙니다. 다른 강사를 선택해 주세요." };
+  }
+
+  // 충돌 검증 — 새 강사의 '다른' enrollment '예정' 클래스와 날짜·시간이 겹치면 차단(학생 불변이라 학생 충돌 재검증 불필요).
+  const { data: otherRows } = await admin
+    .from("classes")
+    .select("teacher_id, enrollment_id, session_date, start_min, end_min, status")
+    .eq("status", "예정")
+    .eq("teacher_id", teacherId)
+    .neq("enrollment_id", id);
+  const others = (otherRows ?? []) as { session_date: string; start_min: number; end_min: number }[];
+  for (const c of remaining) {
+    const clash = others.find((o) => o.session_date === c.session_date && c.start_min < o.end_min && o.start_min < c.end_min);
+    if (clash) {
+      return { ok: false, error: `${c.session_date} ${fmtTime(c.start_min)}에 선택한 강사의 다른 예정 수업이 있습니다. 다른 강사를 선택해 주세요.` };
+    }
+  }
+
+  const oldTeacherId = enr.teacher_id;
+  // 적용 — 남은 클래스 담당 강사 교체(원자 가드).
+  const results = await Promise.all(
+    remaining.map((c) => admin.from("classes").update({ teacher_id: teacherId, teacher_name: newName }).eq("id", c.id).eq("status", "예정").select("id")),
+  );
+  if (results.some((r) => r.error)) return { ok: false, error: "강사 변경 처리 중 일부 오류가 발생했습니다. 목록을 새로고침해 확인해 주세요." };
+
+  // enrollment 이관 — 가용 차감·강사 대시보드·강의실 노출 정합.
+  await admin.from("enrollments").update({ teacher_id: teacherId, teacher_name: newName }).eq("id", id);
+
+  const schedule = summarizeSlots(requestedUnion, false);
+  const nextDate = remaining[0].session_date;
+
+  // 학생 결과 SMS (best-effort).
+  try {
+    if (enr.student_phone) {
+      await sendSms(
+        enr.student_phone,
+        `[프렌딩 스쿨] ${enr.course_title} 과정의 담당 강사가 ${newName} 강사로 변경되었습니다. 남은 ${remaining.length}회 수업은 그대로 진행됩니다. 자세한 내용은 마이페이지(내 강의실)에서 확인하세요.`,
+      );
+    }
+  } catch (err) {
+    console.error("[adminReassignRemaining] 학생 SMS 발송 실패:", err);
+  }
+
+  // 강사 알림 메일 (best-effort) — 새 강사(배정)·기존 강사(이관).
+  try {
+    const origin = getOrigin(await headers());
+    const base = {
+      studentName: enr.student_english_name || enr.student_name || "Student",
+      courseTitle: getCourse(enr.course)?.englishTitle || enr.course_title,
+      schedule,
+      remainingCount: remaining.length,
+      nextDate,
+      oldTeacherName: enr.teacher_name ?? undefined,
+      newTeacherName: newName,
+      teacherUrl: `${origin}/teacher`,
+    };
+    const { data: newUser } = await admin.auth.admin.getUserById(teacherId);
+    const newEmail = newUser?.user?.email;
+    if (newEmail) await sendCourseReassignToNewTeacher([newEmail], base);
+    const { data: oldUser } = await admin.auth.admin.getUserById(oldTeacherId);
+    const oldEmail = oldUser?.user?.email;
+    if (oldEmail) await sendCourseReassignToOldTeacher([oldEmail], base);
+  } catch (err) {
+    console.error("[adminReassignRemaining] 강사 알림 발송 실패:", err);
+  }
 
   revalidatePath("/admin/classes");
   revalidatePath(`/admin/classes/${id}`);

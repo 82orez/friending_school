@@ -370,6 +370,83 @@ export async function sendClassReassignToOldTeacher(to: string[], data: ClassRea
   await sendResultEmail(to, `[Friending School] Class reassigned · ${data.studentName}`, html, text);
 }
 
+/* ===== 강사 중도 하차 — 과정 전체 이관 알림 ===== */
+
+export type CourseReassignEmailData = {
+  studentName: string;
+  courseTitle: string;
+  schedule: string; // 주간 일정 요약(영문 요일)
+  remainingCount: number; // 이관되는 남은 수업 수
+  nextDate: string; // 다음(첫) 남은 수업 날짜 YYYY-MM-DD
+  oldTeacherName?: string;
+  newTeacherName?: string;
+  teacherUrl: string;
+};
+
+/**
+ * 새 담당 강사에게 과정의 남은 수업 전체가 배정됐음을 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ */
+export async function sendCourseReassignToNewTeacher(to: string[], data: CourseReassignEmailData): Promise<void> {
+  const rows: [string, string][] = [
+    ["Student", data.studentName || "-"],
+    ["Course", data.courseTitle],
+    ["Schedule", data.schedule || "-"],
+    ["Remaining sessions", String(data.remainingCount)],
+    ["Next session", data.nextDate],
+  ];
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">You are now teaching this course</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(data.studentName)} · ${escapeHtml(data.courseTitle)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 0">All remaining sessions of this course have been assigned to you. You can review them on your <a href="${escapeHtml(
+      data.teacherUrl,
+    )}" style="color:#1a4fa0">teacher page</a>.</p>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
+  </div>`;
+  const text = [
+    "You are now teaching this course.",
+    "",
+    `Student: ${data.studentName || "-"}`,
+    `Course: ${data.courseTitle}`,
+    `Schedule: ${data.schedule || "-"}`,
+    `Remaining sessions: ${data.remainingCount}`,
+    `Next session: ${data.nextDate}`,
+    "",
+    `Review them on your teacher page: ${data.teacherUrl}`,
+  ].join("\n");
+  await sendResultEmail(to, `[Friending School] Course assigned · ${data.studentName}`, html, text);
+}
+
+/**
+ * 기존(원) 강사에게 과정이 다른 강사로 이관됐음을 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ */
+export async function sendCourseReassignToOldTeacher(to: string[], data: CourseReassignEmailData): Promise<void> {
+  const rows: [string, string][] = [
+    ["Student", data.studentName || "-"],
+    ["Course", data.courseTitle],
+    ["Schedule", data.schedule || "-"],
+    ["Remaining sessions", String(data.remainingCount)],
+  ];
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">A course has been reassigned to another teacher</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(data.studentName)} · ${escapeHtml(data.courseTitle)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 0">The remaining sessions of this course have been reassigned and no longer appear in your classroom. No action is needed.</p>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
+  </div>`;
+  const text = [
+    "A course has been reassigned to another teacher.",
+    "",
+    `Student: ${data.studentName || "-"}`,
+    `Course: ${data.courseTitle}`,
+    `Schedule: ${data.schedule || "-"}`,
+    `Remaining sessions: ${data.remainingCount}`,
+    "",
+    "These sessions no longer appear in your classroom. No action is needed.",
+  ].join("\n");
+  await sendResultEmail(to, `[Friending School] Course reassigned · ${data.studentName}`, html, text);
+}
+
 /* ===== 관리자 대상 신규 수강신청 알림 ===== */
 
 export type EnrollmentAdminEmailData = {

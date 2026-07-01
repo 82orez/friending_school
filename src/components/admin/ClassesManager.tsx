@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarClock, CalendarRange, Eye, Loader2, Search, UserCog, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { adminCancelClass, adminRescheduleClass, adminReassignClass, adminRescheduleRemaining } from "@/app/admin/actions";
+import { adminCancelClass, adminRescheduleClass, adminReassignClass, adminRescheduleRemaining, adminReassignRemaining } from "@/app/admin/actions";
 import { fmtTime, GRID_START_HOUR, GRID_END_HOUR, SLOT_MIN, lessonEndMin, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
 import type { EnrollTeacherCard } from "@/app/courses/enroll-actions";
 import EnrollScheduleField from "@/components/course/EnrollScheduleField";
@@ -121,6 +121,7 @@ export default function ClassesManager({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [feedbackTarget, setFeedbackTarget] = useState<AdminClass | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkReassignOpen, setBulkReassignOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
   // 서버 재검증(router.refresh) 후 새 classes prop을 로컬 상태에 동기화(일괄 변경 반영).
@@ -173,6 +174,25 @@ export default function ClassesManager({
   const courseEnded = rows.length > 0 && remainingCount === 0;
   const canBulkReschedule = !!enrollmentId && remainingCount > 0;
 
+  // 남은 수업 전체 강사 대체용 — 남은 예정 클래스의 실제 요일·시각 union + 현재 담당 강사(단일 enrollment라 동일).
+  const bulkReassign = useMemo(() => {
+    const rem = rows.filter((r) => r.status === "예정" && now < kstDateMinToMs(r.session_date, lessonEndMin(r.end_min)));
+    const seen = new Set<string>();
+    const union: Slot[] = [];
+    for (const c of rem) {
+      const [y, m, d] = c.session_date.split("-").map(Number);
+      const day = new Date(y, m - 1, d).getDay();
+      for (let min = c.start_min; min < c.end_min; min += 30) {
+        const key = `${day}-${min}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          union.push({ day, min });
+        }
+      }
+    }
+    return { union, currentTeacherId: rem[0]?.teacher_id ?? "", currentTeacherName: rem[0]?.teacher_name ?? "" };
+  }, [rows, now]);
+
   return (
     <div>
       {backHref && (
@@ -186,13 +206,22 @@ export default function ClassesManager({
           <p className="text-muted-fg mt-1 text-sm">{subtitle}</p>
         </div>
         {canBulkReschedule && (
-          <button
-            type="button"
-            onClick={() => setBulkOpen(true)}
-            className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90"
-          >
-            <CalendarRange className="size-4" aria-hidden /> 남은 일정 일괄 변경
-          </button>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setBulkOpen(true)}
+              className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90"
+            >
+              <CalendarRange className="size-4" aria-hidden /> 남은 일정 일괄 변경
+            </button>
+            <button
+              type="button"
+              onClick={() => setBulkReassignOpen(true)}
+              className="border-cta text-cta hover:bg-cta inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors hover:text-white"
+            >
+              <UserCog className="size-4" aria-hidden /> 남은 수업 전체 강사 대체
+            </button>
+          </div>
         )}
       </div>
 
@@ -323,6 +352,18 @@ export default function ClassesManager({
           currentSlots={currentSlots}
           teacherSlots={teacherSlots}
           onClose={() => setBulkOpen(false)}
+        />
+      )}
+
+      {bulkReassignOpen && enrollmentId && (
+        <ReassignRemainingModal
+          enrollmentId={enrollmentId}
+          remainingCount={remainingCount}
+          requestedSlots={bulkReassign.union}
+          currentTeacherId={bulkReassign.currentTeacherId}
+          currentTeacherName={bulkReassign.currentTeacherName}
+          teachers={teachers}
+          onClose={() => setBulkReassignOpen(false)}
         />
       )}
     </div>
@@ -485,6 +526,174 @@ function RescheduleRemainingModal({
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction onClick={doSubmit} className="bg-cta hover:bg-cta/90 border-transparent text-white">
               일괄 변경
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+// 남은 수업 전체 담당 강사 대체 모달(admin) — 강사 중도 하차 시. 날짜·시간은 그대로, 담당 강사만 교체 + enrollment 이관.
+function ReassignRemainingModal({
+  enrollmentId,
+  remainingCount,
+  requestedSlots,
+  currentTeacherId,
+  currentTeacherName,
+  teachers,
+  onClose,
+}: {
+  enrollmentId: string;
+  remainingCount: number;
+  requestedSlots: Slot[];
+  currentTeacherId: string;
+  currentTeacherName: string;
+  teachers: EnrollTeacherCard[];
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [selectedId, setSelectedId] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  // 남은 수업 전체 요일·시각에 가용한 강사만(현재 강사 제외). teacher.slots는 확정 예약 차감 후 값.
+  const matches = useMemo(
+    () => teachers.filter((t) => t.id !== currentTeacherId && teacherHasAllSlots(t.slots, requestedSlots)),
+    [teachers, currentTeacherId, requestedSlots],
+  );
+  // 매칭에서 빠지면 선택 무효화.
+  useEffect(() => {
+    if (selectedId && !matches.some((t) => t.id === selectedId)) setSelectedId("");
+  }, [matches, selectedId]);
+  const selectedTeacher = matches.find((t) => t.id === selectedId) ?? null;
+
+  const confirmingRef = useRef(false);
+  confirmingRef.current = confirmOpen;
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !confirmingRef.current) onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const canSubmit = !!selectedId && !pending;
+
+  const doSubmit = () => {
+    setConfirmOpen(false);
+    startTransition(async () => {
+      const res = await adminReassignRemaining(enrollmentId, selectedId);
+      if (res.ok) {
+        toast.success(`남은 ${remainingCount}회 수업을 ${selectedTeacher?.name ?? "새 강사"}(으)로 이관했어요.`);
+        router.refresh();
+        onClose();
+      } else {
+        toast.error(res.error ?? "강사 대체 중 문제가 발생했어요.");
+      }
+    });
+  };
+
+  return (
+    <>
+      <div aria-hidden="true" onClick={onClose} className="fixed inset-0 z-[110] bg-black/40" />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="남은 수업 전체 강사 대체"
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+      >
+        <div className="border-rule flex items-center justify-between gap-3 border-b px-6 py-4">
+          <h2 className="text-ink truncate text-lg font-bold">
+            남은 수업 전체 강사 대체 <span className="text-muted-fg-faint font-normal">· 남은 {remainingCount}회</span>
+          </h2>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-1 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <div className="overflow-auto px-6 py-5">
+          <p className="text-muted-fg mb-1 text-sm">
+            현재 담당 강사: <span className="text-ink font-semibold">{currentTeacherName || "-"}</span>
+          </p>
+          <p className="text-muted-fg mb-1 text-sm">
+            일정: <span className="text-ink font-semibold">{requestedSlots.length > 0 ? summarizeSlots(requestedSlots) : "-"}</span>
+          </p>
+          <p className="text-muted-fg-faint mb-4 text-xs">
+            강사 중도 하차 시 사용하세요. 날짜·시간은 그대로 두고 남은 {remainingCount}회 수업의 담당 강사만 교체하며, 수강신청도 새 강사로 이관됩니다. 과거·완료·취소 수업은 원 강사로 남습니다.
+          </p>
+
+          {matches.length === 0 ? (
+            <p className="text-brand bg-brand/5 border-brand/30 rounded-md border px-3 py-2 text-xs font-semibold">
+              현재 일정(요일·시간)에 가능한 다른 강사가 없습니다. 먼저 남은 일정을 변경하거나 강사 가용시간을 확인해 주세요.
+            </p>
+          ) : (
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-fg-faint text-xs font-semibold">새 담당 강사</span>
+              <select
+                value={selectedId}
+                onChange={(e) => setSelectedId(e.target.value)}
+                className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              >
+                <option value="">강사 선택...</option>
+                {matches.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                    {t.centerName ? ` · ${t.centerName}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+
+        <div className="border-rule flex justify-end gap-2 border-t px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
+          >
+            닫기
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            disabled={!canSubmit}
+            className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {pending && <Loader2 className="size-3.5 animate-spin" />}
+            강사 대체
+          </button>
+        </div>
+      </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>남은 수업 담당 강사를 대체할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              남은 <span className="text-ink font-semibold">{remainingCount}회</span> 수업의 담당 강사가{" "}
+              <span className="text-ink font-semibold">{selectedTeacher?.name ?? "-"}</span> 강사로 변경되며, 수강신청도 새 강사로 이관됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction onClick={doSubmit} className="bg-cta hover:bg-cta/90 border-transparent text-white">
+              강사 대체
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
