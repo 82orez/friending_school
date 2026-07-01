@@ -91,8 +91,9 @@ const SORT_VALUE: Record<SortKey, (r: AdminClass) => string> = {
 const TIME_OPTIONS: { min: number; label: string }[] = [];
 for (let m = GRID_START_HOUR * 60; m <= GRID_END_HOUR * 60; m += SLOT_MIN) TIME_OPTIONS.push({ min: m, label: fmtTime(m) });
 
+// 표시 전용 — 종료는 레슨 종료(lessonEndMin=end−5, :25/:55)로 내 강의실 등과 통일. 슬롯 점유/편집 값은 30분(end) 그대로.
 function timeRange(start: number, end: number): string {
-  return `${fmtTime(start)}~${fmtTime(end)}`;
+  return `${fmtTime(start)}~${fmtTime(lessonEndMin(end))}`;
 }
 
 export default function ClassesManager({
