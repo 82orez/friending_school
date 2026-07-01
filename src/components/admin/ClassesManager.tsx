@@ -567,6 +567,8 @@ function ClassDetailModal({
   const [newTeacherId, setNewTeacherId] = useState("");
   const [pending, startTransition] = useTransition();
   const editable = row.status === "예정" && !courseEnded;
+  const isEnded = displayStatus(row, now) === "완료"; // 종료된 회차(취소 제외) — 일정 변경·강사 대체 무의미.
+  const isConducted = !!row.conducted_at; // 진행됨(conducted⇒이미 종료) — 취소까지 무의미, 완전 읽기전용.
 
   // 이 수업 시간(요일+30분 슬롯)에 가용한 대체 강사 — 원 강사 제외.
   const reassignMatches = useMemo(() => {
@@ -714,7 +716,12 @@ function ClassDetailModal({
           )}
 
           {editable ? (
+            isConducted ? (
+              <p className="text-muted-fg mt-5 text-sm">진행 완료된 수업입니다(읽기 전용).</p>
+            ) : (
             <div className="mt-6 space-y-6">
+              {!isEnded && (
+                <>
               {/* 일정 변경 */}
               <section className="border-rule rounded-lg border p-4">
                 <h3 className="text-ink flex items-center gap-1.5 text-sm font-bold">
@@ -815,6 +822,12 @@ function ClassDetailModal({
                   </div>
                 )}
               </section>
+                </>
+              )}
+
+              {isEnded && (
+                <p className="text-muted-fg-faint text-xs">이미 종료된 미진행 수업이라 일정 변경·강사 대체는 할 수 없습니다. (노쇼 사후 처리를 위한 취소만 가능)</p>
+              )}
 
               {/* 수업 취소 */}
               <section className="border-brand/30 rounded-lg border p-4">
@@ -834,6 +847,7 @@ function ClassDetailModal({
                 </button>
               </section>
             </div>
+            )
           ) : row.status === "취소" ? (
             <p className="text-muted-fg mt-5 text-sm">취소된 수업입니다(읽기 전용).</p>
           ) : (
