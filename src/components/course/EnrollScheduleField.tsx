@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DAY_LABELS_KO, DISPLAY_DAYS, GRID_END_HOUR, GRID_START_HOUR, LESSON_MIN, SLOT_MIN, fmtTime, type Slot } from "@/lib/availability";
@@ -27,10 +27,39 @@ const formatDuration = (min: number) => {
   return `${h}시간 ${m}분`;
 };
 
-export default function EnrollScheduleField({ onChange }: { onChange: (slots: Slot[]) => void }) {
-  const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set());
-  const [startMin, setStartMin] = useState(9 * 60); // 09:00
-  const [count, setCount] = useState(1); // 요일당 수업 횟수 (1회=30분)
+const DEFAULT_START = 9 * 60; // 09:00
+
+// initialSlots(현재 주간 스케줄)에서 요일·시작시각·횟수를 역산해 초기값으로 사용. 빈/무효면 기존 기본값.
+function deriveInitial(slots?: Slot[]): { days: Set<number>; startMin: number; count: number } {
+  const valid = (slots ?? []).filter((s) => Number.isInteger(s?.day) && Number.isInteger(s?.min));
+  if (valid.length === 0) return { days: new Set<number>(), startMin: DEFAULT_START, count: 1 };
+  const days = new Set<number>(valid.map((s) => s.day));
+  // 한 요일 내 30분 슬롯 수 = 횟수(균일 모델 가정). 현 UI 상한(MAX_COUNT)으로 clamp.
+  const minsByDay = new Map<number, Set<number>>();
+  for (const s of valid) {
+    const set = minsByDay.get(s.day) ?? new Set<number>();
+    set.add(s.min);
+    minsByDay.set(s.day, set);
+  }
+  let count = 1;
+  for (const set of Array.from(minsByDay.values())) count = Math.max(count, set.size);
+  count = Math.min(Math.max(count, 1), MAX_COUNT);
+  // 시작 = 최소 min을 30분 그리드로 스냅 후 범위 clamp(종료 ≤ 24:00).
+  const rawStart = Math.min(...valid.map((s) => s.min));
+  const snapped = START_MIN + Math.round((rawStart - START_MIN) / SLOT_MIN) * SLOT_MIN;
+  const startMin = Math.min(Math.max(snapped, START_MIN), END_MIN - count * SLOT_MIN);
+  return { days, startMin, count };
+}
+
+export default function EnrollScheduleField({ onChange, initialSlots }: { onChange: (slots: Slot[]) => void; initialSlots?: Slot[] }) {
+  // 마운트 1회 역산 — 이후 initialSlots 변경엔 반응하지 않음(초기값 전용).
+  const initialRef = useRef<{ days: Set<number>; startMin: number; count: number } | null>(null);
+  if (!initialRef.current) initialRef.current = deriveInitial(initialSlots);
+  const initial = initialRef.current;
+
+  const [selectedDays, setSelectedDays] = useState<Set<number>>(() => new Set(initial.days));
+  const [startMin, setStartMin] = useState(initial.startMin);
+  const [count, setCount] = useState(initial.count); // 요일당 수업 횟수 (1회=30분)
 
   // 종료 = 시작 + 횟수×30분. 종료가 24:00을 넘지 않도록 시작 옵션 제한.
   const endMin = startMin + count * SLOT_MIN;
@@ -53,11 +82,13 @@ export default function EnrollScheduleField({ onChange }: { onChange: (slots: Sl
     if (startMin > nextMaxStart) setStartMin(nextMaxStart);
   };
 
-  const isDefault = selectedDays.size === 0 && count === 1 && startMin === 9 * 60;
+  // 초기값(프리필 또는 빈값) 기준 — reset은 초기값으로 복원, 이미 초기값이면 비활성.
+  const isDefault =
+    selectedDays.size === initial.days.size && Array.from(initial.days).every((d) => selectedDays.has(d)) && count === initial.count && startMin === initial.startMin;
   const handleReset = () => {
-    setSelectedDays(new Set());
-    setCount(1);
-    setStartMin(9 * 60);
+    setSelectedDays(new Set(initial.days));
+    setCount(initial.count);
+    setStartMin(initial.startMin);
   };
 
   // 선택값 → 30분 슬롯 배열 파생(선택 요일 × 시작~종료 범위 모든 슬롯) 후 부모에 통지.

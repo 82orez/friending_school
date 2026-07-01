@@ -471,7 +471,7 @@ function RescheduleRemainingModal({
           <div className="space-y-4">
             <div>
               <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">새 수업 요일·시간</span>
-              <EnrollScheduleField onChange={setNewSlots} />
+              <EnrollScheduleField onChange={setNewSlots} initialSlots={currentSlots} />
             </div>
 
             {newSlots.length > 0 && !withinAvailability && (
