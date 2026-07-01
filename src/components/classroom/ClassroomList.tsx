@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronRight, Eye, Loader2, MessageSquare, Video, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, Circle, Eye, Loader2, MessageSquare, Triangle, Video, X } from "lucide-react";
 import { ko as koLocale, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -36,8 +36,18 @@ export type ClassItem = {
   isMakeup: boolean;
   feedback: string | null;
   feedbackAt: string | null;
+  teacherEnteredAt: string | null;
   conductedAt: string | null;
 };
+
+// 강사 수업 진행 표시 — conducted=○(진행 인정), pending=△(입장했으나 피드백 전, 종료된 수업만). 취소·미입장은 null.
+type ConductMark = "conducted" | "pending" | null;
+function conductMark(c: ClassItem, now: number): ConductMark {
+  if (c.status === "취소") return null;
+  if (c.conductedAt) return "conducted";
+  if (c.teacherEnteredAt && now >= c.endMs) return "pending";
+  return null;
+}
 
 type CourseGroup = {
   enrollmentId: string;
@@ -260,7 +270,7 @@ function ClassroomCalendar({
     return src ? parseDate(src.sessionDate) : new Date();
   });
 
-  const { byDate, upcoming, past, cancelled } = useMemo(() => {
+  const { byDate, upcoming, past, cancelled, conducted, pending } = useMemo(() => {
     const byDate = new Map<string, ClassItem[]>();
     for (const c of classes) {
       const arr = byDate.get(c.sessionDate) ?? [];
@@ -270,14 +280,22 @@ function ClassroomCalendar({
     const upcoming: Date[] = [];
     const past: Date[] = [];
     const cancelled: Date[] = [];
+    const conducted: Date[] = []; // 강사 ○ 진행 인정
+    const pending: Date[] = []; // 강사 △ 입장했으나 피드백 전
     for (const [ds, dItems] of Array.from(byDate.entries())) {
       const date = parseDate(ds);
       if (dItems.some((c) => isActive(c) && c.endMs >= now)) upcoming.push(date);
       else if (dItems.some((c) => isActive(c))) past.push(date);
       else cancelled.push(date);
+      // 강사 진행 마커 — 한 날짜에 여러 수업이면 conducted 우선.
+      if (isTeacher) {
+        const marks = dItems.map((c) => conductMark(c, now));
+        if (marks.includes("conducted")) conducted.push(date);
+        else if (marks.includes("pending")) pending.push(date);
+      }
     }
-    return { byDate, upcoming, past, cancelled };
-  }, [classes, now]);
+    return { byDate, upcoming, past, cancelled, conducted, pending };
+  }, [classes, now, isTeacher]);
 
   const selectedStr = selected ? dateToStr(selected) : "";
   const dayItems = (byDate.get(selectedStr) ?? []).slice().sort((a, b) => a.startMin - b.startMin);
@@ -296,11 +314,13 @@ function ClassroomCalendar({
             weekStartsOn={0}
             showOutsideDays={false}
             formatters={{ formatWeekdayName: (d: Date) => d.toLocaleDateString(ko ? "ko-KR" : "en-US", { weekday: "short" }) }}
-            modifiers={{ upcoming, past, cancelled, sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
+            modifiers={{ upcoming, past, cancelled, conducted, pending, sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
             modifiersClassNames={{
               upcoming: "bg-accent-blue/10 text-accent-blue-ink font-bold rounded-(--cell-radius)",
               past: "bg-rule/60 text-muted-fg rounded-(--cell-radius)",
               cancelled: "text-muted-fg-faint line-through",
+              conducted: "after:content-['●'] after:absolute after:top-0.5 after:right-1 after:text-[10px] after:leading-none after:text-cta",
+              pending: "after:content-['▲'] after:absolute after:top-0.5 after:right-1 after:text-[10px] after:leading-none after:text-[#F5A623]",
               sunday: "!text-brand",
               saturday: "!text-accent-blue-ink",
             }}
@@ -311,6 +331,17 @@ function ClassroomCalendar({
           />
         </div>
       </div>
+
+      {isTeacher && (
+        <p className="text-muted-fg-faint flex items-center justify-center gap-3 text-xs">
+          <span className="inline-flex items-center gap-1">
+            <span className="text-cta">●</span> Conducted
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="text-[#F5A623]">▲</span> Feedback pending
+          </span>
+        </p>
+      )}
 
       <Section title={selectedStr ? formatSessionDate(selectedStr, ko) : ""} count={dayItems.length} ko={ko}>
         {dayItems.length === 0 ? (
@@ -458,9 +489,23 @@ function ClassRow({
           {item.isMakeup && !cancelled && (
             <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{ko ? "보강" : "Makeup"}</span>
           )}
-          {isTeacher && item.conductedAt && !cancelled && (
-            <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5 font-bold">Conducted</span>
-          )}
+          {isTeacher &&
+            (() => {
+              const mark = conductMark(item, now);
+              if (mark === "conducted")
+                return (
+                  <span className="bg-cta/10 text-cta inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold">
+                    <Circle className="size-3 fill-current" aria-hidden /> Conducted
+                  </span>
+                );
+              if (mark === "pending")
+                return (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF7E6] px-2 py-0.5 font-bold text-[#B97400]">
+                    <Triangle className="size-3 fill-current" aria-hidden /> Feedback pending
+                  </span>
+                );
+              return null;
+            })()}
         </p>
       </div>
 
