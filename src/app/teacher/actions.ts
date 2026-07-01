@@ -1,16 +1,19 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
-import { createAdminClient } from "@/utils/supabase/admin";
+import { createAdminClient, getAdminEmails } from "@/utils/supabase/admin";
 import { getUserRole } from "@/lib/auth";
 import { isValidZoomUrl } from "@/lib/url";
+import { getOrigin } from "@/lib/origin";
+import { getCourse } from "@/data/courses";
 import { NATIONALITY_NAMES } from "@/data/nationalities";
 import { GENDER_VALUES } from "@/data/genders";
 import { resolveCenterId } from "@/lib/center";
 import { sendSms } from "@/lib/sms";
-import { isValidSlot, slotsOverlap, type Slot } from "@/lib/availability";
+import { sendEnrollmentApprovedToAdmin, sendEnrollmentRejectedToAdmin } from "@/lib/mailer";
+import { isValidSlot, slotsOverlap, summarizeSlots, lessonEndDate, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
 
 export type TeacherActionState = { ok?: boolean; error?: string };
@@ -124,7 +127,7 @@ export async function updateTeacherAvailability(slots: AvailabilitySlot[]): Prom
 async function loadOwnPendingEnrollment(admin: ReturnType<typeof createAdminClient>, enrollmentId: string, teacherId: string) {
   const { data } = await admin
     .from("enrollments")
-    .select("id, teacher_id, status, student_phone, student_name, course_title, start_date")
+    .select("id, teacher_id, status, student_phone, student_name, student_english_name, course, course_title, teacher_name, slots, total_sessions, start_date")
     .eq("id", enrollmentId)
     .maybeSingle();
   if (!data || data.teacher_id !== teacherId) return null;
@@ -134,8 +137,52 @@ async function loadOwnPendingEnrollment(admin: ReturnType<typeof createAdminClie
     status: string;
     student_phone: string | null;
     student_name: string | null;
+    student_english_name: string | null;
+    course: string;
     course_title: string;
+    teacher_name: string | null;
+    slots: unknown;
+    total_sessions: number | null;
     start_date: string;
+  };
+}
+
+// enrollment 스냅샷에서 관리자 알림 메일 데이터를 조립(승인/거절 공용). endDate는 승인 시에만 계산.
+function buildAdminEnrollmentEmail(
+  enr: {
+    student_name: string | null;
+    student_english_name: string | null;
+    course: string;
+    course_title: string;
+    teacher_name: string | null;
+    slots: unknown;
+    total_sessions: number | null;
+    start_date: string;
+  },
+  origin: string,
+  opts: { withEnd?: boolean; reason?: string },
+) {
+  const slots: Slot[] = Array.isArray(enr.slots) ? enr.slots.filter(isValidSlot).map((s) => ({ day: Number(s.day), min: Number(s.min) })) : [];
+  const totalSessions = enr.total_sessions ?? TOTAL_SESSIONS;
+  const endDate = (() => {
+    if (!opts.withEnd) return "";
+    const [sy, sm, sd] = String(enr.start_date ?? "").split("-").map(Number);
+    if (!sy || !sm || !sd) return "";
+    const endObj = lessonEndDate(new Date(sy, sm - 1, sd), slots, totalSessions);
+    return endObj ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}` : "";
+  })();
+  return {
+    studentName: enr.student_name ?? "",
+    studentEnglishName: enr.student_english_name ?? "",
+    courseTitle: enr.course_title,
+    courseEnglishTitle: getCourse(enr.course)?.englishTitle ?? "",
+    teacherName: enr.teacher_name ?? "",
+    schedule: summarizeSlots(slots, false),
+    startDate: enr.start_date,
+    endDate,
+    totalSessions,
+    adminUrl: `${origin}/admin/enrollments`,
+    ...(opts.reason ? { reason: opts.reason } : {}),
   };
 }
 
@@ -187,6 +234,15 @@ export async function approveEnrollment(enrollmentId: string): Promise<TeacherAc
     }
   }
 
+  // 관리자 알림 메일 (best-effort) — 승인=결제대기라 입금 확인 유도. SMS와 독립.
+  try {
+    const origin = getOrigin(await headers());
+    const adminEmails = await getAdminEmails();
+    await sendEnrollmentApprovedToAdmin(adminEmails, buildAdminEnrollmentEmail(enr, origin, { withEnd: true }));
+  } catch (err) {
+    console.error("[approveEnrollment] 관리자 알림 발송 실패:", err);
+  }
+
   revalidatePath("/teacher", "layout");
   return { ok: true };
 }
@@ -219,6 +275,15 @@ export async function rejectEnrollment(enrollmentId: string, note: string): Prom
     } catch (err) {
       console.error("[rejectEnrollment] SMS 발송 실패:", err);
     }
+  }
+
+  // 관리자 알림 메일 (best-effort) — 거절 사유 포함. SMS와 독립.
+  try {
+    const origin = getOrigin(await headers());
+    const adminEmails = await getAdminEmails();
+    await sendEnrollmentRejectedToAdmin(adminEmails, buildAdminEnrollmentEmail(enr, origin, { reason }));
+  } catch (err) {
+    console.error("[rejectEnrollment] 관리자 알림 발송 실패:", err);
   }
 
   revalidatePath("/teacher", "layout");

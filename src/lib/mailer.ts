@@ -383,6 +383,7 @@ export type EnrollmentAdminEmailData = {
   endDate: string; // YYYY-MM-DD, 마지막(N회째) 수업일
   totalSessions: number; // 총 수업 횟수
   adminUrl: string; // 관리자 수강신청 관리 링크
+  reason?: string; // 거절 사유(거절 알림에만 사용)
 };
 
 /**
@@ -455,6 +456,80 @@ export async function sendEnrollmentNotificationToAdmin(to: string[], data: Enro
   } catch (err) {
     console.error("[mailer] 메일 발송 예외:", err);
   }
+}
+
+/* ===== 관리자 대상 수강신청 승인/거절 알림(강사 처리 결과) ===== */
+
+// 강사가 수강신청을 승인 → '결제대기' 전환 시 관리자에 알림(입금 확인 유도). best-effort.
+export async function sendEnrollmentApprovedToAdmin(to: string[], data: EnrollmentAdminEmailData): Promise<void> {
+  const studentLabel = data.studentEnglishName ? `${data.studentName} (${data.studentEnglishName})` : data.studentName;
+  const courseLabel = data.courseEnglishTitle ? `${data.courseTitle} (${data.courseEnglishTitle})` : data.courseTitle;
+  const rows: [string, string][] = [
+    ["Student", studentLabel || "-"],
+    ["Course", courseLabel],
+    ["Teacher", data.teacherName || "-"],
+    ["Weekly schedule", data.schedule || "-"],
+    ["Start date", data.startDate || "-"],
+    ...(data.endDate ? ([["End date", data.endDate]] as [string, string][]) : []),
+    ...(data.totalSessions ? ([["Total sessions", String(data.totalSessions)]] as [string, string][]) : []),
+  ];
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">An enrollment was approved (awaiting payment)</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(courseLabel)} · ${escapeHtml(studentLabel)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">The teacher approved this enrollment and it is now awaiting payment. Please confirm the deposit on the admin page.</p>
+    <a href="${escapeHtml(data.adminUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to enrollment management</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School admin notification</p>
+  </div>`;
+  const text = [
+    "An enrollment was approved and is now awaiting payment.",
+    "",
+    `Student: ${studentLabel || "-"}`,
+    `Course: ${courseLabel}`,
+    `Teacher: ${data.teacherName || "-"}`,
+    `Weekly schedule: ${data.schedule || "-"}`,
+    `Start date: ${data.startDate || "-"}`,
+    ...(data.endDate ? [`End date: ${data.endDate}`] : []),
+    ...(data.totalSessions ? [`Total sessions: ${data.totalSessions}`] : []),
+    "",
+    `Confirm the deposit on the admin page: ${data.adminUrl}`,
+  ].join("\n");
+  await sendResultEmail(to, `[Enrollment approved] ${courseLabel} · ${studentLabel}`, html, text);
+}
+
+// 강사가 수강신청을 거절 시 관리자에 알림(사유 포함). best-effort.
+export async function sendEnrollmentRejectedToAdmin(to: string[], data: EnrollmentAdminEmailData): Promise<void> {
+  const studentLabel = data.studentEnglishName ? `${data.studentName} (${data.studentEnglishName})` : data.studentName;
+  const courseLabel = data.courseEnglishTitle ? `${data.courseTitle} (${data.courseEnglishTitle})` : data.courseTitle;
+  const rows: [string, string][] = [
+    ["Student", studentLabel || "-"],
+    ["Course", courseLabel],
+    ["Teacher", data.teacherName || "-"],
+    ["Weekly schedule", data.schedule || "-"],
+    ["Start date", data.startDate || "-"],
+    ...(data.reason ? ([["Reason", data.reason]] as [string, string][]) : []),
+  ];
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">An enrollment was declined by the teacher</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(courseLabel)} · ${escapeHtml(studentLabel)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">You can review this on the admin page (Enrollments).</p>
+    <a href="${escapeHtml(data.adminUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to enrollment management</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School admin notification</p>
+  </div>`;
+  const text = [
+    "An enrollment was declined by the teacher.",
+    "",
+    `Student: ${studentLabel || "-"}`,
+    `Course: ${courseLabel}`,
+    `Teacher: ${data.teacherName || "-"}`,
+    `Weekly schedule: ${data.schedule || "-"}`,
+    `Start date: ${data.startDate || "-"}`,
+    ...(data.reason ? [`Reason: ${data.reason}`] : []),
+    "",
+    `Enrollment management: ${data.adminUrl}`,
+  ].join("\n");
+  await sendResultEmail(to, `[Enrollment declined] ${courseLabel} · ${studentLabel}`, html, text);
 }
 
 /* ===== 지원자 대상 강사 심사 결과 알림 ===== */
