@@ -65,6 +65,13 @@ function conductInfo(r: AdminClass, now: number): { label: string; cls: string }
   return { label: "−", cls: "text-muted-fg-faint" };
 }
 
+// 미진행(완료됐으나 미인정) 사유 — conducted 규칙: 강사 입장 AND 비어있지 않은 피드백.
+function unconductedReason(r: AdminClass): string | null {
+  if (!r.teacher_entered_at) return "강사가 입장하지 않았습니다.";
+  if (!r.feedback) return "강사는 입장했으나 피드백을 작성하지 않았습니다.";
+  return null; // 입장+피드백이 모두 있으면 정상적으론 진행됨 상태(방어적 fallback)
+}
+
 const FILTERS: { key: "전체" | DisplayStatus; label: string }[] = [
   { key: "전체", label: "전체" },
   { key: "예정", label: "예정" },
@@ -696,7 +703,8 @@ function ClassDetailModal({
               ["날짜", row.session_date],
               ["시간", timeRange(row.start_min, row.end_min)],
               ["진행 여부", conductInfo(row, now).label],
-              ["강사 입장", row.teacher_entered_at ? new Date(row.teacher_entered_at).toLocaleString("ko-KR") : "−"],
+              ["강사 입장", row.teacher_entered_at ? `입장함 · ${new Date(row.teacher_entered_at).toLocaleString("ko-KR")}` : "미입장"],
+              ["피드백 작성", row.feedback ? `작성함${row.feedback_at ? ` · ${new Date(row.feedback_at).toLocaleDateString("ko-KR")}` : ""}` : "미작성"],
             ].map(([label, value]) => (
               <div key={label} className="flex gap-2">
                 <dt className="text-muted-fg-faint w-24 shrink-0">{label}</dt>
@@ -704,6 +712,13 @@ function ClassDetailModal({
               </div>
             ))}
           </dl>
+
+          {/* 미진행 사유 — 완료됐으나 미인정일 때만 */}
+          {displayStatus(row, now) === "완료" && !row.conducted_at && unconductedReason(row) && (
+            <div className="border-brand/30 bg-brand/5 mt-4 rounded-lg border p-3">
+              <p className="text-brand text-sm font-semibold">미진행 사유: {unconductedReason(row)}</p>
+            </div>
+          )}
 
           {/* 강사 피드백(읽기 전용) */}
           {row.feedback && (
