@@ -360,6 +360,7 @@ export default function ClassesManager({
           enrollmentId={enrollmentId}
           remainingCount={remainingCount}
           requestedSlots={bulkReassign.union}
+          currentSlots={currentSlots}
           currentTeacherId={bulkReassign.currentTeacherId}
           currentTeacherName={bulkReassign.currentTeacherName}
           teachers={teachers}
@@ -534,11 +535,13 @@ function RescheduleRemainingModal({
   );
 }
 
-// 남은 수업 전체 담당 강사 대체 모달(admin) — 강사 중도 하차 시. 날짜·시간은 그대로, 담당 강사만 교체 + enrollment 이관.
+// 남은 수업 전체 담당 강사 대체 모달(admin) — 강사 중도 하차 시. 담당 강사 교체 + enrollment 이관.
+// 적용 시작일(선택): 비면 날짜 유지·강사만 교체, 지정하면 그 날부터 기존 주간 패턴으로 재배치.
 function ReassignRemainingModal({
   enrollmentId,
   remainingCount,
   requestedSlots,
+  currentSlots,
   currentTeacherId,
   currentTeacherName,
   teachers,
@@ -547,6 +550,7 @@ function ReassignRemainingModal({
   enrollmentId: string;
   remainingCount: number;
   requestedSlots: Slot[];
+  currentSlots: Slot[];
   currentTeacherId: string;
   currentTeacherName: string;
   teachers: EnrollTeacherCard[];
@@ -558,10 +562,26 @@ function ReassignRemainingModal({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  // 남은 수업 전체 요일·시각에 가용한 강사만(현재 강사 제외). teacher.slots는 확정 예약 차감 후 값.
+  // 적용 시작일(선택) — 빈값=날짜 유지. 지정 시 D+1(KST)~D+7 범위.
+  const minDateStr = useMemo(() => {
+    const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    kstNow.setDate(kstNow.getDate() + 1);
+    return kstNow.toLocaleDateString("en-CA");
+  }, []);
+  const maxDateStr = useMemo(() => {
+    const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    kstNow.setDate(kstNow.getDate() + 7);
+    return kstNow.toLocaleDateString("en-CA");
+  }, []);
+  const [effectiveDate, setEffectiveDate] = useState(minDateStr);
+
+  // 재배치 주간 패턴 — enrollment.slots 우선, 없으면(레거시) 남은 클래스 union.
+  const patternSlots = currentSlots.length > 0 ? currentSlots : requestedSlots;
+
+  // 재배치 패턴에 가용한 강사만(현재 강사 제외). teacher.slots는 확정 예약 차감 후 값.
   const matches = useMemo(
-    () => teachers.filter((t) => t.id !== currentTeacherId && teacherHasAllSlots(t.slots, requestedSlots)),
-    [teachers, currentTeacherId, requestedSlots],
+    () => teachers.filter((t) => t.id !== currentTeacherId && teacherHasAllSlots(t.slots, patternSlots)),
+    [teachers, currentTeacherId, patternSlots],
   );
   // 매칭에서 빠지면 선택 무효화.
   useEffect(() => {
@@ -585,12 +605,12 @@ function ReassignRemainingModal({
     };
   }, [onClose]);
 
-  const canSubmit = !!selectedId && !pending;
+  const canSubmit = !!selectedId && effectiveDate >= minDateStr && effectiveDate <= maxDateStr && !pending;
 
   const doSubmit = () => {
     setConfirmOpen(false);
     startTransition(async () => {
-      const res = await adminReassignRemaining(enrollmentId, selectedId);
+      const res = await adminReassignRemaining(enrollmentId, selectedId, effectiveDate);
       if (res.ok) {
         toast.success(`남은 ${remainingCount}회 수업을 ${selectedTeacher?.name ?? "새 강사"}(으)로 이관했어요.`);
         router.refresh();
@@ -631,33 +651,50 @@ function ReassignRemainingModal({
             현재 담당 강사: <span className="text-ink font-semibold">{currentTeacherName || "-"}</span>
           </p>
           <p className="text-muted-fg mb-1 text-sm">
-            일정: <span className="text-ink font-semibold">{requestedSlots.length > 0 ? summarizeSlots(requestedSlots) : "-"}</span>
+            일정: <span className="text-ink font-semibold">{patternSlots.length > 0 ? summarizeSlots(patternSlots) : "-"}</span>
           </p>
           <p className="text-muted-fg-faint mb-4 text-xs">
-            강사 중도 하차 시 사용하세요. 날짜·시간은 그대로 두고 남은 {remainingCount}회 수업의 담당 강사만 교체하며, 수강신청도 새 강사로 이관됩니다. 과거·완료·취소 수업은 원 강사로 남습니다.
+            강사 중도 하차 시 사용하세요. 남은 {remainingCount}회 수업의 담당 강사를 교체하고, 선택한 시작일부터 기존 요일·시간으로 재배치하며, 수강신청도 새 강사로 이관합니다. 과거·완료·취소 수업은 원 강사로 남습니다.
           </p>
 
           {matches.length === 0 ? (
             <p className="text-brand bg-brand/5 border-brand/30 rounded-md border px-3 py-2 text-xs font-semibold">
-              현재 일정(요일·시간)에 가능한 다른 강사가 없습니다. 먼저 남은 일정을 변경하거나 강사 가용시간을 확인해 주세요.
+              해당 일정에 가능한 다른 강사가 없습니다. 먼저 남은 일정을 변경하거나 강사 가용시간을 확인해 주세요.
             </p>
           ) : (
-            <label className="flex flex-col gap-1">
-              <span className="text-muted-fg-faint text-xs font-semibold">새 담당 강사</span>
-              <select
-                value={selectedId}
-                onChange={(e) => setSelectedId(e.target.value)}
-                className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-              >
-                <option value="">강사 선택...</option>
-                {matches.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                    {t.centerName ? ` · ${t.centerName}` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="space-y-4">
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-fg-faint text-xs font-semibold">새 담당 강사</span>
+                <select
+                  value={selectedId}
+                  onChange={(e) => setSelectedId(e.target.value)}
+                  className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+                >
+                  <option value="">강사 선택...</option>
+                  {matches.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                      {t.centerName ? ` · ${t.centerName}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-fg-faint text-xs font-semibold">적용 시작일</span>
+                <input
+                  type="date"
+                  min={minDateStr}
+                  max={maxDateStr}
+                  value={effectiveDate}
+                  onChange={(e) => setEffectiveDate(e.target.value)}
+                  className="border-rule-faint focus:border-accent-blue w-fit rounded-md border bg-white px-3 py-1.5 text-sm outline-none"
+                />
+                <span className="text-muted-fg-faint text-xs">
+                  {effectiveDate ? `${effectiveDate}부터 남은 ${remainingCount}회 수업을 기존 요일·시간으로 재배치합니다.` : "적용 시작일을 선택해 주세요."}
+                </span>
+              </label>
+            </div>
           )}
         </div>
 
@@ -687,7 +724,8 @@ function ReassignRemainingModal({
             <AlertDialogTitle>남은 수업 담당 강사를 대체할까요?</AlertDialogTitle>
             <AlertDialogDescription>
               남은 <span className="text-ink font-semibold">{remainingCount}회</span> 수업의 담당 강사가{" "}
-              <span className="text-ink font-semibold">{selectedTeacher?.name ?? "-"}</span> 강사로 변경되며, 수강신청도 새 강사로 이관됩니다.
+              <span className="text-ink font-semibold">{selectedTeacher?.name ?? "-"}</span> 강사로 변경되며, 수강신청도 새 강사로 이관됩니다. 수업 일정은{" "}
+              <span className="text-ink font-semibold">{effectiveDate}</span>부터 기존 요일·시간으로 재배치됩니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -709,10 +709,11 @@ export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot
   return { ok: true };
 }
 
-// 남은 수업 전체 담당 강사 대체(admin) — 강사 중도 하차 시. 날짜·시간은 그대로, 담당 강사만 교체.
+// 남은 수업 전체 담당 강사 대체(admin) — 강사 중도 하차 시. 담당 강사 교체 + enrollment 이관.
 // 남은='예정'이고 레슨 종료 시각이 아직 안 지난 미래 클래스. 과거·완료·취소는 원 강사로 보존.
+// effectiveDate(선택): 비면 날짜 유지·강사만 교체. 지정(D+1~D+7)하면 그 날부터 기존 주간 패턴으로 재배치.
 // 단일 대타(adminReassignClass)와 달리 enrollment.teacher_id도 새 강사로 이관(가용 차감·대시보드 정합).
-export async function adminReassignRemaining(enrollmentId: string, newTeacherId: string): Promise<ActionResult> {
+export async function adminReassignRemaining(enrollmentId: string, newTeacherId: string, effectiveDate?: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   const id = String(enrollmentId ?? "").trim();
   const teacherId = String(newTeacherId ?? "").trim();
@@ -721,7 +722,7 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
   const admin = createAdminClient();
   const { data: enr } = await admin
     .from("enrollments")
-    .select("id, teacher_id, teacher_name, student_id, student_phone, course, course_title, student_name, student_english_name")
+    .select("id, teacher_id, teacher_name, student_id, student_phone, course, course_title, student_name, student_english_name, slots")
     .eq("id", id)
     .maybeSingle();
   if (!enr) return { ok: false, error: "수강신청을 찾을 수 없습니다." };
@@ -745,61 +746,94 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
   );
   if (remaining.length === 0) return { ok: false, error: "변경할 남은 수업이 없습니다." };
 
-  // 요청 슬롯 union — 남은 클래스 실제 요일·시각 기준(개별 리스케줄·보강 클래스 포함).
-  const seen = new Set<string>();
-  const requestedUnion: Slot[] = [];
-  for (const c of remaining) {
-    const day = weekdayOf(c.session_date);
-    for (let min = c.start_min; min < c.end_min; min += 30) {
-      const key = `${day}-${min}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        requestedUnion.push({ day, min });
+  // 적용 시작일(필수) — 그 날부터 기존 주간 패턴으로 재배치. D+1~D+7.
+  const effective = String(effectiveDate ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(effective)) return { ok: false, error: "적용 시작일을 선택해 주세요." };
+  if (effective <= todayKst()) return { ok: false, error: "적용 시작일은 내일 이후여야 합니다." };
+  if (effective > addDaysStr(todayKst(), 7)) return { ok: false, error: "적용 시작일은 오늘부터 일주일 이내여야 합니다." };
+
+  // 주간 패턴 — enrollment.slots 정규화. 비어 있으면(레거시) 남은 클래스 실제 요일·시각으로 폴백.
+  const wseen = new Set<string>();
+  const weekly: Slot[] = ((enr.slots as Slot[]) ?? []).filter(isValidSlot).reduce<Slot[]>((acc, s) => {
+    const day = Number(s.day);
+    const min = Number(s.min);
+    const key = `${day}-${min}`;
+    if (!wseen.has(key)) {
+      wseen.add(key);
+      acc.push({ day, min });
+    }
+    return acc;
+  }, []);
+  if (weekly.length === 0) {
+    for (const c of remaining) {
+      const day = weekdayOf(c.session_date);
+      for (let min = c.start_min; min < c.end_min; min += 30) {
+        const key = `${day}-${min}`;
+        if (!wseen.has(key)) {
+          wseen.add(key);
+          weekly.push({ day, min });
+        }
       }
     }
   }
+  if (weekly.length === 0) return { ok: false, error: "재배치할 주간 일정을 확인할 수 없습니다." };
+  const scheduleSlots = weekly;
 
   // 새 강사 주간 가용 검증 — 남은 수업 전체가 새 강사 가용시간 안에 있어야 함.
   const { data: slotRows } = await admin.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", teacherId);
   const teacherSlots: Slot[] = (slotRows ?? []).map((r: { day_of_week: number; start_min: number }) => ({ day: r.day_of_week, min: r.start_min }));
-  if (!teacherHasAllSlots(teacherSlots, requestedUnion)) {
+  if (!teacherHasAllSlots(teacherSlots, scheduleSlots)) {
     return { ok: false, error: "선택한 강사의 주간 가용시간이 아닙니다. 다른 강사를 선택해 주세요." };
   }
 
-  // 충돌 검증 — 새 강사의 '다른' enrollment '예정' 클래스와 날짜·시간이 겹치면 차단(학생 불변이라 학생 충돌 재검증 불필요).
+  // 타깃 날짜/시간 — 시작일부터 주간 패턴으로 재배치(회차·id 유지).
+  const [ey, em, ed] = effective.split("-").map(Number);
+  const sessions = enumerateLessonSessions(new Date(ey, em - 1, ed), weekly, remaining.length);
+  if (sessions.length !== remaining.length) return { ok: false, error: "새 일정을 계산할 수 없습니다. 다른 시작일을 선택해 주세요." };
+  const targets = remaining.map((c, i) => ({ id: c.id, date: toDateStr(sessions[i].date), startMin: sessions[i].startMin, endMin: sessions[i].endMin }));
+
+  // 충돌 검증 — 새 강사 또는 학생의 '다른' enrollment '예정' 클래스와 타깃 날짜·시간이 겹치면 차단(날짜 이동 시 학생 충돌도 재검증).
   const { data: otherRows } = await admin
     .from("classes")
-    .select("teacher_id, enrollment_id, session_date, start_min, end_min, status")
+    .select("teacher_id, student_id, enrollment_id, session_date, start_min, end_min, status")
     .eq("status", "예정")
-    .eq("teacher_id", teacherId)
     .neq("enrollment_id", id);
-  const others = (otherRows ?? []) as { session_date: string; start_min: number; end_min: number }[];
-  for (const c of remaining) {
-    const clash = others.find((o) => o.session_date === c.session_date && c.start_min < o.end_min && o.start_min < c.end_min);
+  const others = ((otherRows ?? []) as { teacher_id: string; student_id: string; session_date: string; start_min: number; end_min: number }[]).filter(
+    (o) => o.teacher_id === teacherId || o.student_id === enr.student_id,
+  );
+  for (const t of targets) {
+    const clash = others.find((o) => o.session_date === t.date && t.startMin < o.end_min && o.start_min < t.endMin);
     if (clash) {
-      return { ok: false, error: `${c.session_date} ${fmtTime(c.start_min)}에 선택한 강사의 다른 예정 수업이 있습니다. 다른 강사를 선택해 주세요.` };
+      return { ok: false, error: `${t.date} ${fmtTime(t.startMin)}에 선택한 강사 또는 학생의 다른 예정 수업이 있습니다. 다른 강사·시작일을 선택해 주세요.` };
     }
   }
 
   const oldTeacherId = enr.teacher_id;
-  // 적용 — 남은 클래스 담당 강사 교체(원자 가드).
+  // 적용 — 담당 강사 교체 + 타깃 날짜/시간(원자 가드). 날짜 유지 경로는 기존값과 동일해 무해.
   const results = await Promise.all(
-    remaining.map((c) => admin.from("classes").update({ teacher_id: teacherId, teacher_name: newName }).eq("id", c.id).eq("status", "예정").select("id")),
+    targets.map((t) =>
+      admin
+        .from("classes")
+        .update({ teacher_id: teacherId, teacher_name: newName, session_date: t.date, start_min: t.startMin, end_min: t.endMin })
+        .eq("id", t.id)
+        .eq("status", "예정")
+        .select("id"),
+    ),
   );
   if (results.some((r) => r.error)) return { ok: false, error: "강사 변경 처리 중 일부 오류가 발생했습니다. 목록을 새로고침해 확인해 주세요." };
 
-  // enrollment 이관 — 가용 차감·강사 대시보드·강의실 노출 정합.
+  // enrollment 이관 — 가용 차감·강사 대시보드·강의실 노출 정합. slots(주간 패턴)는 불변.
   await admin.from("enrollments").update({ teacher_id: teacherId, teacher_name: newName }).eq("id", id);
 
-  const schedule = summarizeSlots(requestedUnion, false);
-  const nextDate = remaining[0].session_date;
+  const schedule = summarizeSlots(scheduleSlots, false);
+  const nextDate = targets[0].date;
 
   // 학생 결과 SMS (best-effort).
   try {
     if (enr.student_phone) {
       await sendSms(
         enr.student_phone,
-        `[프렌딩 스쿨] ${enr.course_title} 과정의 담당 강사가 ${newName} 강사로 변경되었습니다. 남은 ${remaining.length}회 수업은 그대로 진행됩니다. 자세한 내용은 마이페이지(내 강의실)에서 확인하세요.`,
+        `[프렌딩 스쿨] ${enr.course_title} 과정의 담당 강사가 ${newName} 강사로 변경되었습니다. 남은 ${remaining.length}회 수업이 ${nextDate}부터 새 일정으로 재배치되었습니다. 자세한 내용은 마이페이지(내 강의실)에서 확인하세요.`,
       );
     }
   } catch (err) {
