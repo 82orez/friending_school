@@ -346,8 +346,13 @@ function RescheduleRemainingModal({
   const router = useRouter();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [newSlots, setNewSlots] = useState<Slot[]>([]);
-  const todayStr = useMemo(() => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }), []);
-  const [effectiveDate, setEffectiveDate] = useState(todayStr);
+  // 적용 시작일 최소값 = 내일(KST) — 오늘·과거 배치로 인한 혼선(과거 시각·같은 날 중복) 방지.
+  const minDateStr = useMemo(() => {
+    const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    kstNow.setDate(kstNow.getDate() + 1);
+    return kstNow.toLocaleDateString("en-CA");
+  }, []);
+  const [effectiveDate, setEffectiveDate] = useState(minDateStr);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -368,7 +373,7 @@ function RescheduleRemainingModal({
   }, [onClose]);
 
   const withinAvailability = newSlots.length > 0 && teacherHasAllSlots(teacherSlots, newSlots);
-  const canSubmit = newSlots.length > 0 && withinAvailability && !!effectiveDate && !pending;
+  const canSubmit = newSlots.length > 0 && withinAvailability && effectiveDate >= minDateStr && !pending;
 
   const doSubmit = () => {
     setConfirmOpen(false);
@@ -431,7 +436,7 @@ function RescheduleRemainingModal({
               <span className="text-muted-fg-faint text-xs font-semibold">적용 시작일</span>
               <input
                 type="date"
-                min={todayStr}
+                min={minDateStr}
                 value={effectiveDate}
                 onChange={(e) => setEffectiveDate(e.target.value)}
                 className="border-rule-faint focus:border-accent-blue w-fit rounded-md border bg-white px-3 py-1.5 text-sm outline-none"

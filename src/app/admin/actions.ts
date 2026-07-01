@@ -634,7 +634,8 @@ export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot
   if (newSlots.length > 7 * 36) return { ok: false, error: "선택한 시간이 너무 많습니다." };
   const effective = String(effectiveDate ?? "").trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(effective)) return { ok: false, error: "적용 시작일을 선택해 주세요." };
-  if (effective < todayKst()) return { ok: false, error: "적용 시작일은 오늘 이후여야 합니다." };
+  // 적용 시작일은 내일 이후만 — 오늘 배치 시 과거 시각·같은 날 중복 등 혼선 방지.
+  if (effective <= todayKst()) return { ok: false, error: "적용 시작일은 내일 이후여야 합니다." };
 
   const admin = createAdminClient();
   const { data: enr } = await admin.from("enrollments").select("id, teacher_id, student_id, status").eq("id", id).maybeSingle();
