@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarClock, Eye, Loader2, Search, UserCog, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarClock, CalendarRange, Eye, Loader2, Search, UserCog, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { adminCancelClass, adminRescheduleClass, adminReassignClass } from "@/app/admin/actions";
-import { fmtTime, GRID_START_HOUR, GRID_END_HOUR, SLOT_MIN, lessonEndMin, teacherHasAllSlots, type Slot } from "@/lib/availability";
+import { adminCancelClass, adminRescheduleClass, adminReassignClass, adminRescheduleRemaining } from "@/app/admin/actions";
+import { fmtTime, GRID_START_HOUR, GRID_END_HOUR, SLOT_MIN, lessonEndMin, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
 import type { EnrollTeacherCard } from "@/app/courses/enroll-actions";
+import EnrollScheduleField from "@/components/course/EnrollScheduleField";
 import { kstDateMinToMs } from "@/lib/classtime";
 import {
   AlertDialog,
@@ -89,12 +91,18 @@ function timeRange(start: number, end: number): string {
 export default function ClassesManager({
   classes,
   teachers = [],
+  enrollmentId,
+  currentSlots = [],
+  teacherSlots = [],
   title = "화상수업 관리",
   subtitle = "결제 확정 시 생성된 전체 수업입니다. 예정 수업은 강제 취소(보강 옵션)·일정 변경·강사 대체할 수 있습니다.",
   backHref,
 }: {
   classes: AdminClass[];
   teachers?: EnrollTeacherCard[];
+  enrollmentId?: string;
+  currentSlots?: Slot[];
+  teacherSlots?: Slot[];
   title?: string;
   subtitle?: string;
   backHref?: string;
@@ -105,7 +113,11 @@ export default function ClassesManager({
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [feedbackTarget, setFeedbackTarget] = useState<AdminClass | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+
+  // 서버 재검증(router.refresh) 후 새 classes prop을 로컬 상태에 동기화(일괄 변경 반영).
+  useEffect(() => setRows(classes), [classes]);
 
   // 완료 판정(시간 기반) 갱신용 1분 틱.
   useEffect(() => {
@@ -146,11 +158,13 @@ export default function ClassesManager({
 
   const selected = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId]);
 
-  // 과정 종료 = 남은 미래 '예정' 수업이 없음(레슨 종료 시각 기준, 강의실·booking.ts와 동일). 단일 enrollment로 스코프된 rows 전체가 한 과정.
-  const courseEnded = useMemo(
-    () => rows.length > 0 && !rows.some((r) => r.status === "예정" && now < kstDateMinToMs(r.session_date, lessonEndMin(r.end_min))),
+  // 남은(미래 '예정') 수업 수 — 레슨 종료 시각 기준. 0이면 과정 종료. 단일 enrollment로 스코프된 rows 전체가 한 과정.
+  const remainingCount = useMemo(
+    () => rows.filter((r) => r.status === "예정" && now < kstDateMinToMs(r.session_date, lessonEndMin(r.end_min))).length,
     [rows, now],
   );
+  const courseEnded = rows.length > 0 && remainingCount === 0;
+  const canBulkReschedule = !!enrollmentId && remainingCount > 0;
 
   return (
     <div>
@@ -159,8 +173,21 @@ export default function ClassesManager({
           <ArrowLeft className="size-4" aria-hidden /> 목록으로
         </Link>
       )}
-      <h1 className="text-ink text-2xl font-extrabold">{title}</h1>
-      <p className="text-muted-fg mt-1 text-sm">{subtitle}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-ink text-2xl font-extrabold">{title}</h1>
+          <p className="text-muted-fg mt-1 text-sm">{subtitle}</p>
+        </div>
+        {canBulkReschedule && (
+          <button
+            type="button"
+            onClick={() => setBulkOpen(true)}
+            className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90"
+          >
+            <CalendarRange className="size-4" aria-hidden /> 남은 일정 일괄 변경
+          </button>
+        )}
+      </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
         {FILTERS.map((f) => {
@@ -281,7 +308,169 @@ export default function ClassesManager({
       )}
 
       {feedbackTarget && <FeedbackModal cls={feedbackTarget} onClose={() => setFeedbackTarget(null)} />}
+
+      {bulkOpen && enrollmentId && (
+        <RescheduleRemainingModal
+          enrollmentId={enrollmentId}
+          remainingCount={remainingCount}
+          currentSlots={currentSlots}
+          teacherSlots={teacherSlots}
+          onClose={() => setBulkOpen(false)}
+        />
+      )}
     </div>
+  );
+}
+
+// 남은 수업 전체 주간 일정 일괄 변경 모달 — 담당 강사 유지, 요일·시간만. 성공 시 router.refresh로 목록 갱신.
+function RescheduleRemainingModal({
+  enrollmentId,
+  remainingCount,
+  currentSlots,
+  teacherSlots,
+  onClose,
+}: {
+  enrollmentId: string;
+  remainingCount: number;
+  currentSlots: Slot[];
+  teacherSlots: Slot[];
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [newSlots, setNewSlots] = useState<Slot[]>([]);
+  const todayStr = useMemo(() => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }), []);
+  const [effectiveDate, setEffectiveDate] = useState(todayStr);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  const confirmingRef = useRef(false);
+  confirmingRef.current = confirmOpen;
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !confirmingRef.current) onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const withinAvailability = newSlots.length > 0 && teacherHasAllSlots(teacherSlots, newSlots);
+  const canSubmit = newSlots.length > 0 && withinAvailability && !!effectiveDate && !pending;
+
+  const doSubmit = () => {
+    setConfirmOpen(false);
+    startTransition(async () => {
+      const res = await adminRescheduleRemaining(enrollmentId, newSlots, effectiveDate);
+      if (res.ok) {
+        toast.success(`남은 ${remainingCount}회 수업 일정을 변경했어요.`);
+        router.refresh();
+        onClose();
+      } else {
+        toast.error(res.error ?? "일정 변경 중 문제가 발생했어요.");
+      }
+    });
+  };
+
+  return (
+    <>
+      <div aria-hidden="true" onClick={onClose} className="fixed inset-0 z-[110] bg-black/40" />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="남은 일정 일괄 변경"
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+      >
+        <div className="border-rule flex items-center justify-between gap-3 border-b px-6 py-4">
+          <h2 className="text-ink truncate text-lg font-bold">
+            남은 일정 일괄 변경 <span className="text-muted-fg-faint font-normal">· 남은 {remainingCount}회</span>
+          </h2>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-1 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <div className="overflow-auto px-6 py-5">
+          <p className="text-muted-fg mb-1 text-sm">
+            현재 주간 일정: <span className="text-ink font-semibold">{currentSlots.length > 0 ? summarizeSlots(currentSlots) : "-"}</span>
+          </p>
+          <p className="text-muted-fg-faint mb-4 text-xs">담당 강사는 유지되며, 선택한 시작일 이후 남은 {remainingCount}회 수업이 새 요일·시간으로 다시 배치됩니다. 과거·완료·취소 수업은 그대로입니다.</p>
+
+          <div className="space-y-4">
+            <div>
+              <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">새 수업 요일·시간</span>
+              <EnrollScheduleField onChange={setNewSlots} />
+            </div>
+
+            {newSlots.length > 0 && !withinAvailability && (
+              <p className="text-brand bg-brand/5 border-brand/30 rounded-md border px-3 py-2 text-xs font-semibold">
+                선택한 요일·시간이 담당 강사의 주간 가용시간에 없습니다. 다른 시간을 선택해 주세요.
+              </p>
+            )}
+
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-fg-faint text-xs font-semibold">적용 시작일</span>
+              <input
+                type="date"
+                min={todayStr}
+                value={effectiveDate}
+                onChange={(e) => setEffectiveDate(e.target.value)}
+                className="border-rule-faint focus:border-accent-blue w-fit rounded-md border bg-white px-3 py-1.5 text-sm outline-none"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="border-rule flex justify-end gap-2 border-t px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
+          >
+            닫기
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            disabled={!canSubmit}
+            className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {pending && <Loader2 className="size-3.5 animate-spin" />}
+            일괄 변경
+          </button>
+        </div>
+      </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>남은 수업 일정을 일괄 변경할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {effectiveDate}부터 남은 <span className="text-ink font-semibold">{remainingCount}회</span> 수업이{" "}
+              <span className="text-ink font-semibold">{newSlots.length > 0 ? summarizeSlots(newSlots) : "-"}</span> 일정으로 다시 배치됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction onClick={doSubmit} className="bg-cta hover:bg-cta/90 border-transparent text-white">
+              일괄 변경
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

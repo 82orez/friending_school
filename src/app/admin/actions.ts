@@ -25,10 +25,13 @@ import {
   fmtTime,
   summarizeSlots,
   lessonEndDate,
+  lessonEndMin,
   SLOT_MIN,
   LESSON_MIN,
   type Slot,
 } from "@/lib/availability";
+import { kstDateMinToMs } from "@/lib/classtime";
+import { todayKst } from "@/lib/booking";
 import { createMakeupClass, weekdayOf, type ClassForMakeup } from "@/lib/makeup";
 
 export type ActionResult = { ok: boolean; error?: string };
@@ -602,6 +605,100 @@ export async function adminReassignClass(classId: string, newTeacherId: string):
 
   revalidatePath("/admin/classes");
   revalidatePath(`/admin/classes/${cls.enrollment_id}`);
+  revalidatePath("/teacher", "layout");
+  revalidatePath("/mypage", "layout");
+  return { ok: true };
+}
+
+// 남은 수업 전체 주간 일정 일괄 변경(admin) — 담당 강사 유지, 요일·시간만.
+// 남은='예정'이고 레슨 종료 시각이 아직 안 지난 미래 클래스. 과거·완료·취소는 그대로.
+// 남은 회차를 session_no 오름차순으로 enumerateLessonSessions(effectiveDate,newSlots,remaining)에 1:1 remap(행 id·회차 유지).
+export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot[], effectiveDate: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const id = String(enrollmentId ?? "").trim();
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  // 입력 검증 — 새 슬롯 정규화(중복 제거) + 적용 시작일.
+  const seen = new Set<string>();
+  const newSlots: Slot[] = (Array.isArray(slots) ? slots : []).filter(isValidSlot).reduce<Slot[]>((acc, s) => {
+    const day = Number(s.day);
+    const min = Number(s.min);
+    const key = `${day}-${min}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      acc.push({ day, min });
+    }
+    return acc;
+  }, []);
+  if (newSlots.length === 0) return { ok: false, error: "새 수업 요일과 시간을 선택해 주세요." };
+  if (newSlots.length > 7 * 36) return { ok: false, error: "선택한 시간이 너무 많습니다." };
+  const effective = String(effectiveDate ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(effective)) return { ok: false, error: "적용 시작일을 선택해 주세요." };
+  if (effective < todayKst()) return { ok: false, error: "적용 시작일은 오늘 이후여야 합니다." };
+
+  const admin = createAdminClient();
+  const { data: enr } = await admin.from("enrollments").select("id, teacher_id, student_id, status").eq("id", id).maybeSingle();
+  if (!enr) return { ok: false, error: "수강신청을 찾을 수 없습니다." };
+
+  // 남은(미래 '예정') 클래스 — session_no 오름차순.
+  const { data: clsRows } = await admin
+    .from("classes")
+    .select("id, session_no, session_date, start_min, end_min, status")
+    .eq("enrollment_id", id)
+    .eq("status", "예정")
+    .order("session_no", { ascending: true });
+  const now = Date.now();
+  const remaining = ((clsRows ?? []) as { id: string; session_no: number; session_date: string; start_min: number; end_min: number }[]).filter(
+    (c) => kstDateMinToMs(c.session_date, lessonEndMin(c.end_min)) >= now,
+  );
+  if (remaining.length === 0) return { ok: false, error: "변경할 남은 수업이 없습니다." };
+
+  // 강사 주간 가용 검증 — 새 슬롯 전체가 강사 가용 안에 있어야 함.
+  const { data: slotRows } = await admin.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", enr.teacher_id);
+  const teacherSlots: Slot[] = (slotRows ?? []).map((r: { day_of_week: number; start_min: number }) => ({ day: r.day_of_week, min: r.start_min }));
+  if (!teacherHasAllSlots(teacherSlots, newSlots)) {
+    return { ok: false, error: "강사의 주간 가용시간이 아닙니다. 다른 요일·시간을 선택해 주세요." };
+  }
+
+  // 새 날짜/시간 열거 — remaining.length개.
+  const [ey, em, ed] = effective.split("-").map(Number);
+  const sessions = enumerateLessonSessions(new Date(ey, em - 1, ed), newSlots, remaining.length);
+  if (sessions.length !== remaining.length) return { ok: false, error: "새 일정을 계산할 수 없습니다. 다른 요일·시간을 선택해 주세요." };
+
+  // 충돌 검증 — 이 강사·학생의 '다른' enrollment의 '예정' 클래스와 시간 겹침 차단.
+  const { data: otherRows } = await admin
+    .from("classes")
+    .select("teacher_id, student_id, session_date, start_min, end_min, status")
+    .in("status", ["예정"])
+    .neq("enrollment_id", id);
+  const others = ((otherRows ?? []) as { teacher_id: string; student_id: string; session_date: string; start_min: number; end_min: number }[]).filter(
+    (o) => o.teacher_id === enr.teacher_id || o.student_id === enr.student_id,
+  );
+  for (const s of sessions) {
+    const dateStr = toDateStr(s.date);
+    const clash = others.find((o) => o.session_date === dateStr && s.startMin < o.end_min && o.start_min < s.endMin);
+    if (clash) return { ok: false, error: `${dateStr} ${fmtTime(s.startMin)}에 강사 또는 학생의 다른 수업이 있습니다. 다른 일정을 선택해 주세요.` };
+  }
+
+  // 적용 — 남은 클래스[i] ↔ sessions[i] remap(회차·id 유지).
+  const results = await Promise.all(
+    remaining.map((c, i) =>
+      admin
+        .from("classes")
+        .update({ session_date: toDateStr(sessions[i].date), start_min: sessions[i].startMin, end_min: sessions[i].endMin })
+        .eq("id", c.id)
+        .eq("status", "예정")
+        .select("id"),
+    ),
+  );
+  if (results.some((r) => r.error)) return { ok: false, error: "일정 변경 처리 중 일부 오류가 발생했습니다. 목록을 새로고침해 확인해 주세요." };
+
+  // 향후 주간 패턴 반영(가용 차감·요약·종료일 폴백).
+  await admin.from("enrollments").update({ slots: newSlots }).eq("id", id);
+
+  revalidatePath("/admin/classes");
+  revalidatePath(`/admin/classes/${id}`);
+  revalidatePath("/admin/enrollments");
   revalidatePath("/teacher", "layout");
   revalidatePath("/mypage", "layout");
   return { ok: true };
