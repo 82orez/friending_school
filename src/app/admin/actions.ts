@@ -32,7 +32,7 @@ import {
 } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { todayKst } from "@/lib/booking";
-import { createMakeupClass, weekdayOf, type ClassForMakeup } from "@/lib/makeup";
+import { createMakeupClass, weekdayOf, addDaysStr, type ClassForMakeup } from "@/lib/makeup";
 
 export type ActionResult = { ok: boolean; error?: string };
 
@@ -636,6 +636,8 @@ export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot
   if (!/^\d{4}-\d{2}-\d{2}$/.test(effective)) return { ok: false, error: "적용 시작일을 선택해 주세요." };
   // 적용 시작일은 내일 이후만 — 오늘 배치 시 과거 시각·같은 날 중복 등 혼선 방지.
   if (effective <= todayKst()) return { ok: false, error: "적용 시작일은 내일 이후여야 합니다." };
+  // 상한: 오늘부터 일주일 이내 — 남은 일정을 과도하게 먼 미래로 미는 실수 방지.
+  if (effective > addDaysStr(todayKst(), 7)) return { ok: false, error: "적용 시작일은 오늘부터 일주일 이내여야 합니다." };
 
   const admin = createAdminClient();
   const { data: enr } = await admin.from("enrollments").select("id, teacher_id, student_id, status").eq("id", id).maybeSingle();

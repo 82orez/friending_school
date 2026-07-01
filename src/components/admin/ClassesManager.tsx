@@ -352,6 +352,12 @@ function RescheduleRemainingModal({
     kstNow.setDate(kstNow.getDate() + 1);
     return kstNow.toLocaleDateString("en-CA");
   }, []);
+  // 적용 시작일 최대값 = 오늘+7일(KST) — 남은 일정을 과도하게 먼 미래로 미는 실수 방지.
+  const maxDateStr = useMemo(() => {
+    const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+    kstNow.setDate(kstNow.getDate() + 7);
+    return kstNow.toLocaleDateString("en-CA");
+  }, []);
   const [effectiveDate, setEffectiveDate] = useState(minDateStr);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -373,7 +379,7 @@ function RescheduleRemainingModal({
   }, [onClose]);
 
   const withinAvailability = newSlots.length > 0 && teacherHasAllSlots(teacherSlots, newSlots);
-  const canSubmit = newSlots.length > 0 && withinAvailability && effectiveDate >= minDateStr && !pending;
+  const canSubmit = newSlots.length > 0 && withinAvailability && effectiveDate >= minDateStr && effectiveDate <= maxDateStr && !pending;
 
   const doSubmit = () => {
     setConfirmOpen(false);
@@ -437,6 +443,7 @@ function RescheduleRemainingModal({
               <input
                 type="date"
                 min={minDateStr}
+                max={maxDateStr}
                 value={effectiveDate}
                 onChange={(e) => setEffectiveDate(e.target.value)}
                 className="border-rule-faint focus:border-accent-blue w-fit rounded-md border bg-white px-3 py-1.5 text-sm outline-none"
