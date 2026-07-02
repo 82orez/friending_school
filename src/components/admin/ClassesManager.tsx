@@ -44,16 +44,19 @@ export type AdminClass = {
   conducted_at: string | null;
 };
 
-type DisplayStatus = "예정" | "완료" | "취소";
+type DisplayStatus = "예정" | "진행중" | "완료" | "취소";
 
-// 표시 상태 — DB status(예정/취소)에 시간 기반 '완료'를 더해 파생(강의실·상위 목록과 동일 기준: 레슨 종료 시각 지나면 완료).
+// 표시 상태 — DB status(예정/취소)에 시간 기반 '진행중'(수업 시작~레슨 종료)·'완료'(레슨 종료 후)를 더해 파생.
 function displayStatus(r: AdminClass, now: number): DisplayStatus {
   if (r.status === "취소") return "취소";
-  return now >= kstDateMinToMs(r.session_date, lessonEndMin(r.end_min)) ? "완료" : "예정";
+  if (now >= kstDateMinToMs(r.session_date, lessonEndMin(r.end_min))) return "완료";
+  if (now >= kstDateMinToMs(r.session_date, r.start_min)) return "진행중";
+  return "예정";
 }
 
 const STATUS_BADGE: Record<DisplayStatus, string> = {
   예정: "bg-accent-blue-soft text-accent-blue-ink",
+  진행중: "bg-cta text-white",
   완료: "bg-rule text-muted-fg",
   취소: "bg-brand/10 text-brand",
 };
@@ -75,6 +78,7 @@ function unconductedReason(r: AdminClass): string | null {
 const FILTERS: { key: "전체" | DisplayStatus; label: string }[] = [
   { key: "전체", label: "전체" },
   { key: "예정", label: "예정" },
+  { key: "진행중", label: "진행중" },
   { key: "완료", label: "완료" },
   { key: "취소", label: "취소" },
 ];
@@ -137,7 +141,7 @@ export default function ClassesManager({
   const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { 전체: rows.length, 예정: 0, 완료: 0, 취소: 0 };
+    const c: Record<string, number> = { 전체: rows.length, 예정: 0, 진행중: 0, 완료: 0, 취소: 0 };
     for (const r of rows) {
       const s = displayStatus(r, now);
       c[s] = (c[s] ?? 0) + 1;
