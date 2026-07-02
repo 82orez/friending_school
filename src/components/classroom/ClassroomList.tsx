@@ -145,6 +145,11 @@ function CourseDetail({ group, isTeacher, now, ko, onBack }: { group: CourseGrou
   // 학생만 취소 가능 + 과정당 6회 한도.
   const cancelledCount = group.cancelledCount;
   const cancelAllowed = !isTeacher && cancelledCount < MAX_CANCELLATIONS;
+  // 다음(가장 이른) 예정 수업 1건만 취소 가능 — 서버 cancelClass 가드와 동일 정의(미취소·미시작 중 최소 시작시각).
+  const nextUpcomingId = useMemo(() => {
+    const up = group.items.filter((it) => it.status !== "취소" && it.startMs > now).sort((a, b) => a.startMs - b.startMs);
+    return up[0]?.id ?? null;
+  }, [group.items, now]);
 
   return (
     <div className="space-y-5">
@@ -167,9 +172,26 @@ function CourseDetail({ group, isTeacher, now, ko, onBack }: { group: CourseGrou
       <ViewToggle view={view} setView={setView} ko={ko} />
 
       {view === "calendar" ? (
-        <ClassroomCalendar classes={group.items} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} total={group.total} />
+        <ClassroomCalendar
+          classes={group.items}
+          isTeacher={isTeacher}
+          now={now}
+          cancelAllowed={cancelAllowed}
+          cancelledCount={cancelledCount}
+          total={group.total}
+          nextUpcomingId={nextUpcomingId}
+        />
       ) : (
-        <SessionList items={group.items} isTeacher={isTeacher} now={now} ko={ko} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} total={group.total} />
+        <SessionList
+          items={group.items}
+          isTeacher={isTeacher}
+          now={now}
+          ko={ko}
+          cancelAllowed={cancelAllowed}
+          cancelledCount={cancelledCount}
+          total={group.total}
+          nextUpcomingId={nextUpcomingId}
+        />
       )}
     </div>
   );
@@ -208,6 +230,7 @@ function SessionList({
   cancelAllowed,
   cancelledCount,
   total,
+  nextUpcomingId,
 }: {
   items: ClassItem[];
   isTeacher: boolean;
@@ -216,6 +239,7 @@ function SessionList({
   cancelAllowed: boolean;
   cancelledCount: number;
   total: number;
+  nextUpcomingId: string | null;
 }) {
   const upcoming = items.filter((c) => isActive(c) && c.endMs >= now);
   const past = items.filter((c) => !(isActive(c) && c.endMs >= now)).reverse();
@@ -227,7 +251,16 @@ function SessionList({
         ) : (
           <ul className="list-none">
             {upcoming.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} total={total} />
+              <ClassRow
+                key={c.id}
+                item={c}
+                isTeacher={isTeacher}
+                now={now}
+                cancelAllowed={cancelAllowed}
+                cancelledCount={cancelledCount}
+                total={total}
+                nextUpcomingId={nextUpcomingId}
+              />
             ))}
           </ul>
         )}
@@ -237,7 +270,17 @@ function SessionList({
         <Section title={ko ? "지난 수업" : "Past classes"} count={past.length} ko={ko}>
           <ul className="list-none">
             {past.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} total={total} isPast />
+              <ClassRow
+                key={c.id}
+                item={c}
+                isTeacher={isTeacher}
+                now={now}
+                cancelAllowed={cancelAllowed}
+                cancelledCount={cancelledCount}
+                total={total}
+                nextUpcomingId={nextUpcomingId}
+                isPast
+              />
             ))}
           </ul>
         </Section>
@@ -254,6 +297,7 @@ function ClassroomCalendar({
   cancelAllowed,
   cancelledCount,
   total,
+  nextUpcomingId,
 }: {
   classes: ClassItem[];
   isTeacher: boolean;
@@ -261,6 +305,7 @@ function ClassroomCalendar({
   cancelAllowed: boolean;
   cancelledCount: number;
   total: number;
+  nextUpcomingId: string | null;
 }) {
   const ko = !isTeacher;
 
@@ -350,7 +395,17 @@ function ClassroomCalendar({
         ) : (
           <ul className="list-none">
             {dayItems.map((c) => (
-              <ClassRow key={c.id} item={c} isTeacher={isTeacher} now={now} cancelAllowed={cancelAllowed} cancelledCount={cancelledCount} total={total} isPast={c.endMs < now} />
+              <ClassRow
+                key={c.id}
+                item={c}
+                isTeacher={isTeacher}
+                now={now}
+                cancelAllowed={cancelAllowed}
+                cancelledCount={cancelledCount}
+                total={total}
+                nextUpcomingId={nextUpcomingId}
+                isPast={c.endMs < now}
+              />
             ))}
           </ul>
         )}
@@ -426,6 +481,7 @@ function ClassRow({
   cancelAllowed,
   cancelledCount,
   total,
+  nextUpcomingId,
 }: {
   item: ClassItem;
   isTeacher: boolean;
@@ -434,6 +490,7 @@ function ClassRow({
   cancelAllowed: boolean;
   cancelledCount: number;
   total: number;
+  nextUpcomingId: string | null;
 }) {
   const ko = !isTeacher;
   const router = useRouter();
@@ -441,7 +498,8 @@ function ClassRow({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const cancelled = item.status === "취소";
   const enterable = !cancelled && !isPast && canEnterClass(now, item.startMs, item.endMs);
-  const cancellable = cancelAllowed && !cancelled && !isPast && canCancelClass(now, item.startMs);
+  // 다음(가장 이른) 예정 수업 1건만 취소 가능(서버 cancelClass 가드와 동일).
+  const cancellable = cancelAllowed && !cancelled && !isPast && item.id === nextUpcomingId && canCancelClass(now, item.startMs);
   const timeRange = `${fmtTime(item.startMin)}~${fmtTime(lessonEndMin(item.endMin))}`;
   // 수업 종료(레슨 종료 시각 이후) — 강사 피드백 작성 가능 조건.
   const ended = !cancelled && now >= item.endMs;

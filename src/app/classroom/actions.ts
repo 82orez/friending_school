@@ -88,8 +88,23 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
   if (cls.student_id !== user.id) return { error: "권한이 없습니다." };
   if (cls.status !== "예정") return { error: "이미 취소된 수업입니다. 새로고침해 주세요." };
 
+  const now = Date.now();
   const startMs = kstDateMinToMs(cls.session_date, cls.start_min);
-  if (!canCancelClass(Date.now(), startMs)) {
+
+  // 다음(가장 이른) 예정 수업 1건만 취소 가능 — 같은 과정의 예정 수업 중 아직 시작 안 한 것들의 최소 시작시각.
+  const { data: siblings } = await admin
+    .from("classes")
+    .select("id, session_date, start_min")
+    .eq("enrollment_id", cls.enrollment_id)
+    .eq("status", "예정");
+  const nextId =
+    (siblings ?? [])
+      .map((s) => ({ id: s.id, ms: kstDateMinToMs(s.session_date, s.start_min) }))
+      .filter((s) => s.ms > now)
+      .sort((a, b) => a.ms - b.ms)[0]?.id ?? null;
+  if (nextId !== id) return { error: "다음 수업만 취소할 수 있어요." };
+
+  if (!canCancelClass(now, startMs)) {
     return { error: "수업 시작 1시간 전까지만 취소할 수 있어요." };
   }
 
