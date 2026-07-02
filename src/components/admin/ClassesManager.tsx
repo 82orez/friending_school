@@ -10,7 +10,7 @@ import { adminCancelClass, adminRescheduleClass, adminReassignClass, adminResche
 import { fmtTime, GRID_START_HOUR, GRID_END_HOUR, SLOT_MIN, lessonEndMin, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
 import type { EnrollTeacherCard } from "@/app/courses/enroll-actions";
 import EnrollScheduleField from "@/components/course/EnrollScheduleField";
-import { kstDateMinToMs } from "@/lib/classtime";
+import { kstDateMinToMs, ENTRY_LEAD_MS } from "@/lib/classtime";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,17 +46,17 @@ export type AdminClass = {
 
 type DisplayStatus = "예정" | "진행중" | "완료" | "취소";
 
-// 표시 상태 — DB status(예정/취소)에 시간 기반 '진행중'(수업 시작~레슨 종료)·'완료'(레슨 종료 후)를 더해 파생.
+// 표시 상태 — DB status(예정/취소)에 시간 기반 '진행중'(입장 가능 시점=시작 15분 전~레슨 종료)·'완료'(레슨 종료 후)를 더해 파생.
 function displayStatus(r: AdminClass, now: number): DisplayStatus {
   if (r.status === "취소") return "취소";
   if (now >= kstDateMinToMs(r.session_date, lessonEndMin(r.end_min))) return "완료";
-  if (now >= kstDateMinToMs(r.session_date, r.start_min)) return "진행중";
+  if (now >= kstDateMinToMs(r.session_date, r.start_min) - ENTRY_LEAD_MS) return "진행중";
   return "예정";
 }
 
 const STATUS_BADGE: Record<DisplayStatus, string> = {
   예정: "bg-accent-blue-soft text-accent-blue-ink",
-  진행중: "bg-cta text-white",
+  진행중: "bg-cta text-white animate-pulse",
   완료: "bg-rule text-muted-fg",
   취소: "bg-brand/10 text-brand",
 };
