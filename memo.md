@@ -19,7 +19,3 @@
 - 환불 정책
 - 카드 결제 기능(portone)
 - 테스트 강좌 생성 후 새로고침해야 함.(수정 필요)
-
-# Fake data 생성
-- npm run seed:teachers -> 12명 생성
-- npm run seed:teachers:clean -> 전부 삭제
