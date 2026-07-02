@@ -38,6 +38,7 @@ export type ClassItem = {
   feedbackAt: string | null;
   teacherEnteredAt: string | null;
   conductedAt: string | null;
+  reassignedAt: string | null; // 강사 대체 시각 — 학생 예정 수업에 "강사 변경" 표시용
 };
 
 // 강사 수업 진행 표시 — conducted=○(진행 인정), pending=△(입장했으나 피드백 전, 종료된 수업만). 취소·미입장은 null.
@@ -444,6 +445,8 @@ function ClassRow({
   const timeRange = `${fmtTime(item.startMin)}~${fmtTime(lessonEndMin(item.endMin))}`;
   // 수업 종료(레슨 종료 시각 이후) — 강사 피드백 작성 가능 조건.
   const ended = !cancelled && now >= item.endMs;
+  // 강사 대체 표시 — 학생 뷰의 예정(미취소·미종료) 수업만.
+  const reassigned = !isTeacher && !!item.reassignedAt && !cancelled && !isPast;
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   function handleEnter() {
@@ -489,6 +492,7 @@ function ClassRow({
           {item.isMakeup && !cancelled && (
             <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{ko ? "보강" : "Makeup"}</span>
           )}
+          {reassigned && <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5 font-bold">강사 변경</span>}
           {isTeacher &&
             (() => {
               const mark = conductMark(item, now);
@@ -507,6 +511,7 @@ function ClassRow({
               return null;
             })()}
         </p>
+        {reassigned && <p className="text-cta mt-1 text-xs font-semibold">담당 강사가 {item.counterpart} 강사로 변경되었어요.</p>}
       </div>
 
       {enterable ? (

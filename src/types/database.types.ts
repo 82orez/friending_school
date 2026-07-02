@@ -66,6 +66,7 @@ export type Database = {
           teacher_entered_at: string | null
           teacher_id: string
           teacher_name: string | null
+          teacher_reassigned_at: string | null
           updated_at: string
         }
         Insert: {
@@ -89,6 +90,7 @@ export type Database = {
           teacher_entered_at?: string | null
           teacher_id: string
           teacher_name?: string | null
+          teacher_reassigned_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -112,6 +114,7 @@ export type Database = {
           teacher_entered_at?: string | null
           teacher_id?: string
           teacher_name?: string | null
+          teacher_reassigned_at?: string | null
           updated_at?: string
         }
         Relationships: [

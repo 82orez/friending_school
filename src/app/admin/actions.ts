@@ -501,7 +501,7 @@ export async function adminReassignClass(classId: string, newTeacherId: string):
   const oldTeacherName = cls.teacher_name;
   const { data: updated, error: updErr } = await admin
     .from("classes")
-    .update({ teacher_id: teacherId, teacher_name: newName })
+    .update({ teacher_id: teacherId, teacher_name: newName, teacher_reassigned_at: new Date().toISOString() })
     .eq("id", id)
     .eq("status", "예정")
     .select("id");
@@ -752,11 +752,12 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
 
   const oldTeacherId = enr.teacher_id;
   // 적용 — 담당 강사 교체 + 타깃 날짜/시간(원자 가드). 날짜 유지 경로는 기존값과 동일해 무해.
+  const reassignedAt = new Date().toISOString();
   const results = await Promise.all(
     targets.map((t) =>
       admin
         .from("classes")
-        .update({ teacher_id: teacherId, teacher_name: newName, session_date: t.date, start_min: t.startMin, end_min: t.endMin })
+        .update({ teacher_id: teacherId, teacher_name: newName, session_date: t.date, start_min: t.startMin, end_min: t.endMin, teacher_reassigned_at: reassignedAt })
         .eq("id", t.id)
         .eq("status", "예정")
         .select("id"),
