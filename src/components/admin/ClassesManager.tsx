@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarClock, CalendarRange, Eye, Loader2, Search, UserCog, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarRange, Eye, Loader2, Search, UserCog, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { adminCancelClass, adminRescheduleClass, adminReassignClass, adminRescheduleRemaining, adminReassignRemaining } from "@/app/admin/actions";
-import { fmtTime, GRID_START_HOUR, GRID_END_HOUR, SLOT_MIN, lessonEndMin, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
+import { adminCancelClass, adminReassignClass, adminRescheduleRemaining, adminReassignRemaining } from "@/app/admin/actions";
+import { fmtTime, lessonEndMin, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
 import type { EnrollTeacherCard } from "@/app/courses/enroll-actions";
 import EnrollScheduleField from "@/components/course/EnrollScheduleField";
 import { kstDateMinToMs, ENTRY_LEAD_MS } from "@/lib/classtime";
@@ -91,10 +91,6 @@ const SORT_VALUE: Record<SortKey, (r: AdminClass) => string> = {
   session: (r) => String(r.session_no).padStart(3, "0"),
 };
 
-// 시각 <select> 옵션 — 06:00~24:00, 30분.
-const TIME_OPTIONS: { min: number; label: string }[] = [];
-for (let m = GRID_START_HOUR * 60; m <= GRID_END_HOUR * 60; m += SLOT_MIN) TIME_OPTIONS.push({ min: m, label: fmtTime(m) });
-
 // 표시 전용 — 종료는 레슨 종료(lessonEndMin=end−5, :25/:55)로 내 강의실 등과 통일. 슬롯 점유/편집 값은 30분(end) 그대로.
 function timeRange(start: number, end: number): string {
   return `${fmtTime(start)}~${fmtTime(lessonEndMin(end))}`;
@@ -107,7 +103,7 @@ export default function ClassesManager({
   currentSlots = [],
   teacherSlots = [],
   title = "화상수업 관리",
-  subtitle = "결제 확정 시 생성된 전체 수업입니다. 예정 수업은 강제 취소(보강 옵션)·일정 변경·강사 대체할 수 있습니다.",
+  subtitle = "결제 확정 시 생성된 전체 수업입니다. 예정 수업은 강제 취소(보강 옵션)·강사 대체할 수 있습니다.",
   backHref,
 }: {
   classes: AdminClass[];
@@ -829,16 +825,12 @@ function ClassDetailModal({
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
-  const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
   const [makeup, setMakeup] = useState(true);
-  const [date, setDate] = useState(row.session_date);
-  const [startMin, setStartMin] = useState(row.start_min);
-  const [endMin, setEndMin] = useState(row.end_min);
   const [newTeacherId, setNewTeacherId] = useState("");
   const [pending, startTransition] = useTransition();
   const editable = row.status === "예정" && !courseEnded;
-  const isEnded = displayStatus(row, now) === "완료"; // 종료된 회차(취소 제외) — 일정 변경·강사 대체 무의미.
+  const isEnded = displayStatus(row, now) === "완료"; // 종료된 회차(취소 제외) — 강사 대체 무의미.
   const isConducted = !!row.conducted_at; // 진행됨(conducted⇒이미 종료) — 취소까지 무의미, 완전 읽기전용.
 
   // 이 수업 시간(요일+30분 슬롯)에 가용한 대체 강사 — 원 강사 제외.
@@ -854,7 +846,7 @@ function ClassDetailModal({
   const selectedNewTeacher = reassignMatches.find((t) => t.id === newTeacherId) ?? null;
 
   const confirmingRef = useRef(false);
-  confirmingRef.current = cancelOpen || rescheduleOpen || reassignOpen;
+  confirmingRef.current = cancelOpen || reassignOpen;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !confirmingRef.current) onClose();
@@ -881,28 +873,6 @@ function ClassDetailModal({
         onClose();
       } else {
         toast.error(res.error ?? "취소 중 문제가 발생했어요.");
-      }
-    });
-  };
-
-  const askReschedule = () => {
-    if (startMin >= endMin) {
-      toast.error("종료 시각은 시작 시각보다 뒤여야 해요.");
-      return;
-    }
-    setRescheduleOpen(true);
-  };
-
-  const doReschedule = () => {
-    setRescheduleOpen(false);
-    startTransition(async () => {
-      const res = await adminRescheduleClass(row.id, date, startMin, endMin);
-      if (res.ok) {
-        onUpdated({ ...row, session_date: date, start_min: startMin, end_min: endMin });
-        toast.success("수업 일정을 변경했어요.");
-        onClose();
-      } else {
-        toast.error(res.error ?? "일정 변경 중 문제가 발생했어요.");
       }
     });
   };
@@ -1001,62 +971,6 @@ function ClassDetailModal({
             <div className="mt-6 space-y-6">
               {!isEnded && (
                 <>
-              {/* 일정 변경 */}
-              <section className="border-rule rounded-lg border p-4">
-                <h3 className="text-ink flex items-center gap-1.5 text-sm font-bold">
-                  <CalendarClock className="size-4" aria-hidden /> 일정 변경
-                </h3>
-                <p className="text-muted-fg-faint mt-1 text-xs">강사 가용시간 안이고 다른 예정 수업과 겹치지 않는 시간만 저장됩니다.</p>
-                <div className="mt-3 flex flex-wrap items-end gap-3">
-                  <label className="flex flex-col gap-1">
-                    <span className="text-muted-fg-faint text-xs font-semibold">날짜</span>
-                    <input
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="border-rule-faint focus:border-accent-blue rounded-md border bg-white px-3 py-1.5 text-sm outline-none"
-                    />
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-muted-fg-faint text-xs font-semibold">시작</span>
-                    <select
-                      value={startMin}
-                      onChange={(e) => setStartMin(Number(e.target.value))}
-                      className="border-rule-faint focus:border-accent-blue rounded-md border bg-white px-3 py-1.5 text-sm outline-none"
-                    >
-                      {TIME_OPTIONS.filter((o) => o.min < GRID_END_HOUR * 60).map((o) => (
-                        <option key={o.min} value={o.min}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-muted-fg-faint text-xs font-semibold">종료</span>
-                    <select
-                      value={endMin}
-                      onChange={(e) => setEndMin(Number(e.target.value))}
-                      className="border-rule-faint focus:border-accent-blue rounded-md border bg-white px-3 py-1.5 text-sm outline-none"
-                    >
-                      {TIME_OPTIONS.filter((o) => o.min > GRID_START_HOUR * 60).map((o) => (
-                        <option key={o.min} value={o.min}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={askReschedule}
-                    disabled={pending}
-                    className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                  >
-                    {pending && <Loader2 className="size-3.5 animate-spin" />}
-                    일정 변경
-                  </button>
-                </div>
-              </section>
-
               {/* 강사 대체 */}
               <section className="border-rule rounded-lg border p-4">
                 <h3 className="text-ink flex items-center gap-1.5 text-sm font-bold">
@@ -1105,7 +1019,7 @@ function ClassDetailModal({
               )}
 
               {isEnded && (
-                <p className="text-muted-fg-faint text-xs">이미 종료된 미진행 수업이라 일정 변경·강사 대체는 할 수 없습니다. (노쇼 사후 처리를 위한 취소만 가능)</p>
+                <p className="text-muted-fg-faint text-xs">이미 종료된 미진행 수업이라 강사 대체는 할 수 없습니다. (노쇼 사후 처리를 위한 취소만 가능)</p>
               )}
 
               {/* 수업 취소 */}
@@ -1158,23 +1072,6 @@ function ClassDetailModal({
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction onClick={doCancel} className="bg-brand hover:bg-brand/90 border-transparent text-white">
               수업 취소
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
-        <AlertDialogContent className="z-[130]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>일정을 변경할까요?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="text-ink font-semibold">{studentLabel}</span>님의 수업을 {date} {timeRange(startMin, endMin)}로 변경합니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>돌아가기</AlertDialogCancel>
-            <AlertDialogAction onClick={doReschedule} className="bg-cta hover:bg-cta/90 border-transparent text-white">
-              일정 변경
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
