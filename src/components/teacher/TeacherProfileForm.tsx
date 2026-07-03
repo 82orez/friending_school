@@ -31,7 +31,7 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 
 // 보기 모드(disabled)에서 값이 흐려지지 않도록 텍스트를 진하게 + 커서는 일반(default) 유지.
 // (편집 가능 필드는 보기 모드에서도 not-allowed가 아니라 default — Textarea 기본 disabled:cursor-not-allowed를 덮음.)
-const VIEW_TEXT = "disabled:opacity-100 disabled:text-ink disabled:cursor-default";
+const VIEW_TEXT = "disabled:opacity-100 disabled:text-ink disabled:cursor-default disabled:bg-transparent";
 
 // 영구 잠금 필드(강사 수정 불가: 이름·국적·성별·센터·이메일) — **편집 모드(editing)에서만** not-allowed 커서로 표시.
 // 보기 모드는 어차피 전체 수정 불가라 not-allowed가 중복 신호 → `editing && LOCKED`로 편집 모드에만 적용(보기 모드=일반 커서).
@@ -189,7 +189,7 @@ export default function TeacherProfileForm({
         <div className="space-y-4">
           <div className="grid gap-2">
             <Label>Email</Label>
-            <Input value={email} disabled readOnly className={cn("bg-surface text-muted-fg", editing && LOCKED)} />
+            <Input value={email} disabled readOnly className={cn("text-muted-fg disabled:bg-transparent disabled:opacity-100", editing && LOCKED)} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
