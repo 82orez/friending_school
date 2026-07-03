@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
 
@@ -87,12 +87,35 @@ function shiftAnchor(anchor: string, period: Period, delta: number): string {
   return shiftMonth(anchor, delta);
 }
 
+// 행 배열을 keyOf 기준으로 그룹 집계(수업 수·통화별 합·원화 합·단가 미설정 수). 메인 표·상세 모달 공용.
+function aggregate(rows: SettlementRow[], keyOf: (r: SettlementRow) => { key: string; label: string; manager?: string | null }, rates: Rates): Group[] {
+  const map = new Map<string, Group>();
+  for (const r of rows) {
+    const { key, label, manager } = keyOf(r);
+    let g = map.get(key);
+    if (!g) {
+      g = { key, label, manager: manager ?? null, count: 0, currencyTotals: new Map(), unpriced: 0, krwTotal: 0 };
+      map.set(key, g);
+    }
+    g.count += 1;
+    if (r.pricePerSession != null && r.currency) {
+      g.currencyTotals.set(r.currency, (g.currencyTotals.get(r.currency) ?? 0) + r.pricePerSession);
+      g.krwTotal += r.currency === "KRW" ? r.pricePerSession : (krwEquivalent(r.pricePerSession, r.currency, rates) ?? 0);
+    } else {
+      g.unpriced += 1;
+    }
+  }
+  return Array.from(map.values());
+}
+
 export default function SettlementsManager({ rows, rates }: { rows: SettlementRow[]; rates: Rates }) {
   const [grouping, setGrouping] = useState<Grouping>("강사별");
   const [period, setPeriod] = useState<Period>("월간");
   const [anchor, setAnchor] = useState<string>(() => todayKst());
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
+  // 센터별 상세 모달 대상(센터별 모드에서만 열림).
+  const [detailCenter, setDetailCenter] = useState<{ key: string; label: string; manager: string | null } | null>(null);
 
   const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
@@ -101,29 +124,13 @@ export default function SettlementsManager({ rows, rates }: { rows: SettlementRo
   const inRangeRows = useMemo(() => rows.filter((r) => r.sessionDate >= start && r.sessionDate <= end), [rows, start, end]);
 
   const groups = useMemo(() => {
-    const keyOf = (r: SettlementRow): { key: string; label: string } => {
-      if (grouping === "센터별") return { key: r.centerId ?? "__none__", label: r.centerName ?? "미지정 센터" };
+    // 센터별 모드에서만 매니저 표시(같은 센터=같은 매니저); 그 외 모드에선 미사용.
+    const keyOf = (r: SettlementRow): { key: string; label: string; manager?: string | null } => {
+      if (grouping === "센터별") return { key: r.centerId ?? "__none__", label: r.centerName ?? "미지정 센터", manager: r.centerManager };
       if (grouping === "강사별") return { key: r.teacherId, label: r.teacherName };
       return { key: r.course, label: r.courseTitle };
     };
-    const map = new Map<string, Group>();
-    for (const r of inRangeRows) {
-      const { key, label } = keyOf(r);
-      let g = map.get(key);
-      if (!g) {
-        // 센터별 모드에서만 매니저 표시(같은 센터=같은 매니저); 그 외 모드에선 미사용.
-        g = { key, label, manager: grouping === "센터별" ? r.centerManager : null, count: 0, currencyTotals: new Map(), unpriced: 0, krwTotal: 0 };
-        map.set(key, g);
-      }
-      g.count += 1;
-      if (r.pricePerSession != null && r.currency) {
-        g.currencyTotals.set(r.currency, (g.currencyTotals.get(r.currency) ?? 0) + r.pricePerSession);
-        g.krwTotal += r.currency === "KRW" ? r.pricePerSession : (krwEquivalent(r.pricePerSession, r.currency, rates) ?? 0);
-      } else {
-        g.unpriced += 1;
-      }
-    }
-    let list = Array.from(map.values());
+    let list = aggregate(inRangeRows, keyOf, rates);
     const q = query.trim().toLowerCase();
     if (q) list = list.filter((g) => g.label.toLowerCase().includes(q));
     list.sort((a, b) => {
@@ -163,7 +170,15 @@ export default function SettlementsManager({ rows, rates }: { rows: SettlementRo
           <span className="text-muted-fg-faint text-xs font-semibold">분류</span>
           <div className="flex gap-1.5">
             {GROUPINGS.map((g) => (
-              <ToggleChip key={g} active={grouping === g} onClick={() => setGrouping(g)} label={g} />
+              <ToggleChip
+                key={g}
+                active={grouping === g}
+                onClick={() => {
+                  setGrouping(g);
+                  if (g !== "센터별") setDetailCenter(null); // 분류 전환 시 stale 모달 닫기
+                }}
+                label={g}
+              />
             ))}
           </div>
         </div>
@@ -242,11 +257,33 @@ export default function SettlementsManager({ rows, rates }: { rows: SettlementRo
                 </td>
               </tr>
             ) : (
-              groups.map((g) => (
-                <tr key={g.key} className="border-rule border-b transition-colors last:border-b-0">
+              groups.map((g) => {
+                const clickable = grouping === "센터별";
+                const openDetail = () => setDetailCenter({ key: g.key, label: g.label, manager: g.manager });
+                return (
+                <tr
+                  key={g.key}
+                  className={cn(
+                    "border-rule border-b transition-colors last:border-b-0",
+                    clickable && "hover:bg-surface/60 focus-visible:bg-surface/60 cursor-pointer outline-none",
+                  )}
+                  onClick={clickable ? openDetail : undefined}
+                  onKeyDown={
+                    clickable
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            openDetail();
+                          }
+                        }
+                      : undefined
+                  }
+                  tabIndex={clickable ? 0 : undefined}
+                >
                   <td className="text-ink px-4 py-3.5 align-middle font-semibold md:px-6">
-                    <span>
+                    <span className="inline-flex items-center gap-1">
                       {g.label}
+                      {clickable && <ChevronRight className="text-muted-fg-faint size-4" aria-hidden />}
                       {g.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">단가 미설정 {g.unpriced}</span>}
                     </span>
                     {grouping === "센터별" && (
@@ -261,7 +298,8 @@ export default function SettlementsManager({ rows, rates }: { rows: SettlementRo
                     <AmountCell currencyTotals={g.currencyTotals} rates={rates} />
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
           {groups.length > 0 && (
@@ -280,7 +318,193 @@ export default function SettlementsManager({ rows, rates }: { rows: SettlementRo
           )}
         </table>
       </div>
+
+      {detailCenter && (
+        <SettlementDetailModal
+          center={detailCenter}
+          rows={rows}
+          rates={rates}
+          initialAnchor={anchor}
+          initialPeriod={period}
+          onClose={() => setDetailCenter(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// 센터별 상세 정산 모달 — 그 센터 소속 강사별 집계. 자체 주간/월간 토글 + 이전/다음(메인 기간과 독립).
+const MODAL_PERIODS: Period[] = ["주간", "월간"];
+
+function SettlementDetailModal({
+  center,
+  rows,
+  rates,
+  initialAnchor,
+  initialPeriod,
+  onClose,
+}: {
+  center: { key: string; label: string; manager: string | null };
+  rows: SettlementRow[];
+  rates: Rates;
+  initialAnchor: string;
+  initialPeriod: Period;
+  onClose: () => void;
+}) {
+  // 모달은 주간/월간만 — 메인이 일간이면 월간으로 시작.
+  const [period, setPeriod] = useState<Period>(initialPeriod === "일간" ? "월간" : initialPeriod);
+  const [anchor, setAnchor] = useState<string>(initialAnchor);
+
+  // 열림 시: Esc 닫기 + body scroll lock.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const { start, end } = useMemo(() => interval(anchor, period), [anchor, period]);
+
+  const groups = useMemo(() => {
+    const inRange = rows.filter((r) => (r.centerId ?? "__none__") === center.key && r.sessionDate >= start && r.sessionDate <= end);
+    const list = aggregate(inRange, (r) => ({ key: r.teacherId, label: r.teacherName }), rates);
+    list.sort((a, b) => b.count - a.count); // 수업 수 내림차순
+    return list;
+  }, [rows, center.key, start, end, rates]);
+
+  const totals = useMemo(
+    () =>
+      groups.reduce(
+        (acc, g) => ({ count: acc.count + g.count, krwTotal: acc.krwTotal + g.krwTotal, unpriced: acc.unpriced + g.unpriced }),
+        { count: 0, krwTotal: 0, unpriced: 0 },
+      ),
+    [groups],
+  );
+
+  return (
+    <>
+      {/* 오버레이 */}
+      <div aria-hidden="true" onClick={onClose} className="fixed inset-0 z-[110] bg-black/40" />
+
+      {/* 패널 */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="센터 정산 상세"
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
+      >
+        <div className="border-rule flex items-start justify-between border-b px-6 py-4">
+          <div>
+            <h2 className="text-ink text-lg font-bold">{center.label}</h2>
+            <p className="text-muted-fg-faint mt-0.5 text-xs">매니저: {center.manager || "미지정"}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="닫기"
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-4 overflow-auto px-6 py-5">
+          {/* 기간 컨트롤(주간/월간 토글 + 이전/다음/오늘) */}
+          <div className="flex flex-wrap items-center gap-2">
+            {MODAL_PERIODS.map((p) => (
+              <ToggleChip key={p} active={period === p} onClick={() => setPeriod(p)} label={p} />
+            ))}
+            <div className="ml-auto flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setAnchor((a) => shiftAnchor(a, period, -1))}
+                className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-7 items-center justify-center rounded-md border transition-colors"
+                aria-label="이전 기간"
+              >
+                <ChevronLeft className="size-4" aria-hidden />
+              </button>
+              <span className="text-ink min-w-[7.5rem] text-center text-xs font-bold whitespace-nowrap">{periodLabel(anchor, period)}</span>
+              <button
+                type="button"
+                onClick={() => setAnchor((a) => shiftAnchor(a, period, 1))}
+                className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-7 items-center justify-center rounded-md border transition-colors"
+                aria-label="다음 기간"
+              >
+                <ChevronRight className="size-4" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => setAnchor(todayKst())}
+                className="border-rule text-muted-fg hover:text-ink rounded-md border px-2.5 py-1 text-xs font-medium transition-colors"
+              >
+                오늘
+              </button>
+            </div>
+          </div>
+
+          {totals.unpriced > 0 && (
+            <p className="bg-brand/5 border-brand/30 text-brand rounded-lg border px-3 py-2 text-xs">
+              단가 미설정 {totals.unpriced}건 — 센터 회당 단가 미설정 수업입니다. 수업 수엔 포함되나 금액 합계에서는 제외됩니다.
+            </p>
+          )}
+
+          <div className="border-rule overflow-x-auto rounded-xl border">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
+                  <th className="px-4 py-2.5">강사</th>
+                  <th className="px-4 py-2.5">진행 수업</th>
+                  <th className="px-4 py-2.5">지급 예정액</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groups.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="text-muted-fg px-4 py-10 text-center text-sm">
+                      이 기간에 진행된 수업이 없습니다.
+                    </td>
+                  </tr>
+                ) : (
+                  groups.map((g) => (
+                    <tr key={g.key} className="border-rule border-b last:border-b-0">
+                      <td className="text-ink px-4 py-3 align-middle font-semibold">
+                        {g.label}
+                        {g.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">단가 미설정 {g.unpriced}</span>}
+                      </td>
+                      <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">
+                        {g.count}
+                        <span className="text-muted-fg-faint">회</span>
+                      </td>
+                      <td className="text-ink px-4 py-3 align-middle">
+                        <AmountCell currencyTotals={g.currencyTotals} rates={rates} />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              {groups.length > 0 && (
+                <tfoot>
+                  <tr className="border-rule bg-surface border-t-2 font-bold">
+                    <td className="text-ink px-4 py-3 align-middle">합계</td>
+                    <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">
+                      {totals.count}
+                      <span className="text-muted-fg-faint font-medium">회</span>
+                    </td>
+                    <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">≈ {formatPrice(totals.krwTotal, "KRW")}</td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
