@@ -142,7 +142,7 @@ export default function TeacherProfileForm({
       {/* 프로필 사진 */}
       <section className="border-rule rounded-2xl border bg-white p-6">
         <h2 className="text-ink mb-4 flex items-center gap-2 text-base font-bold">
-          <span aria-hidden>📷</span> Profile Photo <span className="text-brand">*</span>
+          <span aria-hidden>📷</span> Profile Photo {editing && <span className="text-brand">*</span>}
         </h2>
         <div className="flex items-center gap-5">
           <div className="bg-surface border-rule relative size-24 shrink-0 overflow-hidden rounded-2xl border">
@@ -195,7 +195,7 @@ export default function TeacherProfileForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="first_name">
-                First Name <span className="text-brand">*</span>
+                First Name {editing && <span className="text-brand">*</span>}
               </Label>
               <Input
                 id="first_name"
@@ -210,7 +210,7 @@ export default function TeacherProfileForm({
             </div>
             <div className="grid gap-2">
               <Label htmlFor="last_name">
-                Last Name <span className="text-brand">*</span>
+                Last Name {editing && <span className="text-brand">*</span>}
               </Label>
               <Input
                 id="last_name"
@@ -227,7 +227,7 @@ export default function TeacherProfileForm({
 
           <div className="grid gap-2">
             <Label htmlFor="bio">
-              Educational background <span className="text-brand">*</span>
+              Educational background {editing && <span className="text-brand">*</span>}
             </Label>
             <Textarea
               id="bio"
@@ -245,7 +245,7 @@ export default function TeacherProfileForm({
 
           <div className="grid gap-2">
             <Label htmlFor="experience">
-              Teaching &amp; related experience <span className="text-brand">*</span>
+              Teaching &amp; related experience {editing && <span className="text-brand">*</span>}
             </Label>
             <Textarea
               id="experience"
@@ -279,7 +279,7 @@ export default function TeacherProfileForm({
 
           <div className="grid gap-2">
             <Label htmlFor="nationality">
-              Nationality <span className="text-brand">*</span>
+              Nationality {editing && <span className="text-brand">*</span>}
             </Label>
             <select
               id="nationality"
@@ -304,7 +304,7 @@ export default function TeacherProfileForm({
 
           <div className="grid gap-2">
             <Label htmlFor="gender">
-              Gender <span className="text-brand">*</span>
+              Gender {editing && <span className="text-brand">*</span>}
             </Label>
             <select
               id="gender"
@@ -329,7 +329,7 @@ export default function TeacherProfileForm({
 
           <div className="grid gap-2">
             <Label htmlFor="center_id">
-              Center <span className="text-brand">*</span>
+              Center {editing && <span className="text-brand">*</span>}
             </Label>
             <select
               id="center_id"
@@ -354,7 +354,7 @@ export default function TeacherProfileForm({
 
           <div className="grid gap-2">
             <Label htmlFor="zoom_url" className="flex items-center gap-1.5">
-              <Video className="text-accent-blue-ink size-4" aria-hidden /> Zoom URL <span className="text-brand">*</span>
+              <Video className="text-accent-blue-ink size-4" aria-hidden /> Zoom URL {editing && <span className="text-brand">*</span>}
             </Label>
             <Input
               id="zoom_url"
