@@ -150,7 +150,10 @@ function CourseDetail({ group, isTeacher, now, ko, onBack }: { group: CourseGrou
   const cancelledCount = group.cancelledCount;
   const cancelAllowed = !isTeacher && cancelledCount < MAX_CANCELLATIONS;
   // 다음(가장 이른) 예정 수업 1건만 취소 가능 — 서버 cancelClass 가드와 동일 정의(미취소·미시작 중 최소 시작시각).
+  // 단, 진행 중(입장 가능 창)인 수업이 있으면 다음 수업 연기 버튼을 숨긴다.
   const nextUpcomingId = useMemo(() => {
+    const inProgress = group.items.some((it) => it.status !== "취소" && canEnterClass(now, it.startMs, it.endMs));
+    if (inProgress) return null;
     const up = group.items.filter((it) => it.status !== "취소" && it.startMs > now).sort((a, b) => a.startMs - b.startMs);
     return up[0]?.id ?? null;
   }, [group.items, now]);

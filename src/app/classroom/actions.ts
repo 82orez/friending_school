@@ -94,9 +94,14 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
   // 다음(가장 이른) 예정 수업 1건만 취소 가능 — 같은 과정의 예정 수업 중 아직 시작 안 한 것들의 최소 시작시각.
   const { data: siblings } = await admin
     .from("classes")
-    .select("id, session_date, start_min")
+    .select("id, session_date, start_min, end_min")
     .eq("enrollment_id", cls.enrollment_id)
     .eq("status", "예정");
+  // 진행 중(입장 가능 창)인 수업이 있으면 다음 수업 연기 불가 — 클라 nextUpcomingId 규칙과 동일.
+  const inProgress = (siblings ?? []).some((s) =>
+    canEnterClass(now, kstDateMinToMs(s.session_date, s.start_min), kstDateMinToMs(s.session_date, lessonEndMin(s.end_min))),
+  );
+  if (inProgress) return { error: "진행 중인 수업이 끝난 후에 연기할 수 있어요." };
   const nextId =
     (siblings ?? [])
       .map((s) => ({ id: s.id, ms: kstDateMinToMs(s.session_date, s.start_min) }))
