@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Camera, Loader2, UserRound, Video } from "lucide-react";
 import { toast } from "sonner";
@@ -69,15 +69,24 @@ export default function TeacherApplicationForm({
   const [finalOpen, setFinalOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
-  // 프로필 사진 — 브라우저에서 본인 폴더로 즉시 업로드, publicUrl을 hidden 필드로 제출.
-  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
-  const [uploading, startUpload] = useTransition();
+  // 프로필 사진 — 선택 시엔 미리보기만, 실제 업로드는 최종 제출 시점에.
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(initialAvatarUrl || null);
+  // 재신청 시 이미 저장돼 있던 URL — 새 파일을 고르지 않으면 이 값을 그대로 제출.
+  const [savedAvatarUrl] = useState(initialAvatarUrl);
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (state.success) toast.success("Your teacher application has been submitted.");
     else if (state.error) toast.error(state.error);
   }, [state]);
+
+  // objectURL 미리보기 메모리 정리 — 값이 바뀌거나 언마운트될 때 revoke.
+  useEffect(() => {
+    if (!avatarPreview?.startsWith("blob:")) return;
+    return () => URL.revokeObjectURL(avatarPreview);
+  }, [avatarPreview]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -91,19 +100,9 @@ export default function TeacherApplicationForm({
       toast.error("Image must be 5MB or smaller.");
       return;
     }
-    const prev = avatarUrl;
-    startUpload(async () => {
-      try {
-        const { publicUrl, path } = await uploadAvatar(file, userId);
-        setAvatarUrl(publicUrl);
-        // 제출 전이라 업로드 직후 이전 파일 정리(best-effort).
-        await cleanupOldAvatars(userId, path);
-        toast.success("Photo uploaded.");
-      } catch {
-        setAvatarUrl(prev);
-        toast.error("Image upload failed. Please try again.");
-      }
-    });
+    // 업로드하지 않고 로컬 미리보기만 — 실제 업로드는 제출 시.
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
   };
 
   const handleReview = () => {
@@ -112,31 +111,56 @@ export default function TeacherApplicationForm({
       form.reportValidity();
       return;
     }
-    // 아바타는 hidden 필드라 native 검증이 안 됨 → 수동 확인.
-    if (!avatarUrl) {
+    // 아바타는 폼 필드가 아니라 별도 상태 → 수동 확인.
+    if (!avatarFile && !savedAvatarUrl) {
       toast.error("Please upload a profile photo.");
       return;
     }
     setConfirmOpen(true);
   };
 
-  // 리뷰 다이얼로그의 Apply → 비가역 최종 확인창을 한 번 더 띄움.
-  const handleFinalConfirm = () => {
+  // 리뷰 → 최종 확인 → 이 시점에 이미지 업로드 후 텍스트와 함께 제출(액션 dispatch).
+  const handleFinalConfirm = async () => {
     setFinalOpen(false);
     setConfirmOpen(false);
-    formRef.current?.requestSubmit();
+    const form = formRef.current;
+    if (!form) return;
+    setSubmitting(true);
+    try {
+      let url = savedAvatarUrl;
+      if (avatarFile) {
+        const { publicUrl, path } = await uploadAvatar(avatarFile, userId);
+        await cleanupOldAvatars(userId, path); // best-effort
+        url = publicUrl;
+      }
+      if (!url) {
+        toast.error("Please upload a profile photo.");
+        return;
+      }
+      const fd = new FormData(form);
+      fd.set("avatar_url", url);
+      // useActionState의 dispatch는 transition 안에서 호출해야 함(await 뒤라 자동 transition 밖).
+      startTransition(() => formAction(fd));
+    } catch {
+      toast.error("Image upload failed. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <form ref={formRef} action={formAction} className="grid gap-4">
+    <form
+      ref={formRef}
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleReview();
+      }}
+      className="grid gap-4">
       {state.error && (
         <p role="alert" className="border-brand/30 bg-brand/5 text-brand rounded-md border px-3.5 py-2.5 text-sm font-medium">
           {state.error}
         </p>
       )}
-
-      {/* 제출 시 함께 저장되는 아바타 publicUrl */}
-      <input type="hidden" name="avatar_url" value={avatarUrl} />
 
       {/* 프로필 사진 */}
       <div className="grid gap-1.5">
@@ -145,14 +169,14 @@ export default function TeacherApplicationForm({
         </Label>
         <div className="flex items-center gap-4">
           <div className="bg-surface border-rule relative size-20 shrink-0 overflow-hidden rounded-2xl border">
-            {avatarUrl ? (
-              <Image src={avatarUrl} alt="Profile photo" fill sizes="80px" className="object-cover" />
+            {avatarPreview ? (
+              <Image src={avatarPreview} alt="Profile photo" fill sizes="80px" unoptimized className="object-cover" />
             ) : (
               <span className="text-muted-fg-faint flex h-full items-center justify-center">
                 <UserRound className="size-8" aria-hidden />
               </span>
             )}
-            {uploading && (
+            {submitting && (
               <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
                 <Loader2 className="size-5 animate-spin" aria-hidden />
               </span>
@@ -160,8 +184,8 @@ export default function TeacherApplicationForm({
           </div>
           <div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" aria-hidden />
-            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-              {uploading ? <Loader2 className="animate-spin" aria-hidden /> : <Camera className="size-4" aria-hidden />}
+            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={submitting || pending}>
+              <Camera className="size-4" aria-hidden />
               Change Photo
             </Button>
             <p className="text-muted-fg-faint mt-2 text-xs">JPG or PNG, up to 5MB. Square images recommended.</p>
@@ -259,14 +283,19 @@ export default function TeacherApplicationForm({
       </div>
 
       <div className="grid gap-1.5">
-        <Label htmlFor="ta-center">Center</Label>
+        <Label htmlFor="ta-center">
+          Center <span className="text-brand">*</span>
+        </Label>
         <select
           id="ta-center"
           name="center_id"
+          required
           value={centerId}
           onChange={(e) => setCenterId(e.target.value)}
+          aria-invalid={!!state.error && !centerId}
           className="border-rule-faint focus:border-accent-blue h-11 w-full rounded-md border bg-white px-3.5 text-base outline-none">
-          <option value="">None</option>
+          <option value="">Select your center</option>
+          <option value="none">None (no center)</option>
           {centers.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -327,8 +356,8 @@ export default function TeacherApplicationForm({
       </div>
 
       <div>
-        <Button type="button" variant="brand" onClick={handleReview} disabled={pending}>
-          {pending ? (
+        <Button type="button" variant="brand" onClick={handleReview} disabled={pending || submitting}>
+          {pending || submitting ? (
             <>
               <Loader2 className="animate-spin" />
               Submitting
@@ -347,6 +376,21 @@ export default function TeacherApplicationForm({
           </AlertDialogHeader>
 
           <dl className="border-rule text-ink divide-rule divide-y overflow-y-auto rounded-lg border text-left text-sm">
+            {/* 프로필 이미지 — 다른 항목과 동일한 라벨 행으로(최상단) */}
+            <div className="flex gap-3 px-3.5 py-2.5">
+              <dt className="text-muted-fg w-28 shrink-0 sm:w-36">Profile image</dt>
+              <dd className="min-w-0 flex-1">
+                <div className="bg-surface border-rule relative size-20 overflow-hidden rounded-2xl border">
+                  {avatarPreview ? (
+                    <Image src={avatarPreview} alt="Profile photo" fill sizes="80px" unoptimized className="object-cover" />
+                  ) : (
+                    <span className="text-muted-fg-faint flex h-full items-center justify-center">
+                      <UserRound className="size-8" aria-hidden />
+                    </span>
+                  )}
+                </div>
+              </dd>
+            </div>
             {[
               ["First name", firstName],
               ["Last name", lastName],
@@ -357,7 +401,6 @@ export default function TeacherApplicationForm({
               ["Bio", bio],
               ["Experience", experience],
               ["Zoom URL", zoomUrl],
-              ["Photo", "Uploaded"],
             ].map(([label, value]) => (
               <div key={label} className="flex gap-3 px-3.5 py-2.5">
                 <dt className="text-muted-fg w-28 shrink-0 sm:w-36">{label}</dt>

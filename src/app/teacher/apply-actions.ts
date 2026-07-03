@@ -56,8 +56,11 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
   const { data: pending } = await supabase.from("teacher_applications").select("id").eq("user_id", user.id).eq("status", "신청").maybeSingle();
   if (pending) return { error: "You already have an application under review." };
 
-  // 센터는 선택 — 유효한 center id가 아니면 null("None").
-  const centerId = await resolveCenterId(supabase, formData.get("center_id"));
+  // 센터 필수 — "none"(소속 없음) 또는 유효한 center id를 명시 선택해야 함. 빈 값=미선택 차단.
+  const centerRaw = String(formData.get("center_id") ?? "").trim();
+  if (!centerRaw) return { error: "Please select your center." };
+  const centerId = centerRaw === "none" ? null : await resolveCenterId(supabase, centerRaw);
+  if (centerRaw !== "none" && !centerId) return { error: "Please select a valid center." };
 
   const { error } = await supabase.from("teacher_applications").insert({
     user_id: user.id,
