@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import type { AdminCenter } from "@/components/admin/CentersManager";
-import { CURRENCIES, DEFAULT_CURRENCY, formatPrice, krwEquivalent } from "@/data/currencies";
+import { CURRENCIES, DEFAULT_CURRENCY, FOREIGN_CURRENCIES, formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
 
 // 센터 상세 편집 모달. TeacherInfoModal의 a11y 패턴(오버레이/패널/Esc/scroll lock) 미러.
 export default function CenterDetailModal({
@@ -11,21 +11,22 @@ export default function CenterDetailModal({
   onClose,
   onSave,
   pending,
-  phpToKrw,
+  rates,
 }: {
   center: AdminCenter | null;
   onClose: () => void;
   onSave: (name: string, price: string, currency: string, managerName: string) => void;
   pending: boolean;
-  phpToKrw: number;
+  rates: Rates;
 }) {
   const [name, setName] = useState("");
   const [manager, setManager] = useState("");
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
 
-  // 페소 선택 + 환율 있으면 입력값을 원화로 환산 미리보기.
-  const krw = price === "" ? null : krwEquivalent(Number(price), currency, phpToKrw);
+  // 외화 선택 + 환율 있으면 입력값을 원화로 환산 미리보기.
+  const krw = price === "" ? null : krwEquivalent(Number(price), currency, rates);
+  const foreign = FOREIGN_CURRENCIES.find((f) => f.code === currency);
 
   // 모달 대상이 바뀔 때 입력값 초기화.
   useEffect(() => {
@@ -118,13 +119,17 @@ export default function CenterDetailModal({
             <input
               type="number"
               min={0}
-              step={1}
+              step={currency === "USD" ? 0.1 : 1}
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="예: 30000"
               className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
             />
-            {krw != null && <p className="text-muted-fg-faint mt-1 text-xs">≈ {formatPrice(krw, "KRW")} (환율 1₱ = {phpToKrw}₩)</p>}
+            {krw != null && foreign && (
+              <p className="text-muted-fg-faint mt-1 text-xs">
+                ≈ {formatPrice(krw, "KRW")} (환율 1{foreign.symbol} = {rates[currency]}₩)
+              </p>
+            )}
           </div>
         </div>
 

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPrice, krwEquivalent } from "@/data/currencies";
+import { formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
 
 // 서버 page가 conducted 수업 1건씩 enriched row로 전달(단가=강사 현재 소속 센터).
 export type SettlementRow = {
@@ -87,7 +87,7 @@ function shiftAnchor(anchor: string, period: Period, delta: number): string {
   return shiftMonth(anchor, delta);
 }
 
-export default function SettlementsManager({ rows, phpToKrw }: { rows: SettlementRow[]; phpToKrw: number }) {
+export default function SettlementsManager({ rows, rates }: { rows: SettlementRow[]; rates: Rates }) {
   const [grouping, setGrouping] = useState<Grouping>("강사별");
   const [period, setPeriod] = useState<Period>("월간");
   const [anchor, setAnchor] = useState<string>(() => todayKst());
@@ -118,7 +118,7 @@ export default function SettlementsManager({ rows, phpToKrw }: { rows: Settlemen
       g.count += 1;
       if (r.pricePerSession != null && r.currency) {
         g.currencyTotals.set(r.currency, (g.currencyTotals.get(r.currency) ?? 0) + r.pricePerSession);
-        g.krwTotal += r.currency === "KRW" ? r.pricePerSession : (krwEquivalent(r.pricePerSession, r.currency, phpToKrw) ?? 0);
+        g.krwTotal += r.currency === "KRW" ? r.pricePerSession : (krwEquivalent(r.pricePerSession, r.currency, rates) ?? 0);
       } else {
         g.unpriced += 1;
       }
@@ -135,7 +135,7 @@ export default function SettlementsManager({ rows, phpToKrw }: { rows: Settlemen
       return sort.dir === "asc" ? cmp : -cmp;
     });
     return list;
-  }, [inRangeRows, grouping, query, sort, phpToKrw]);
+  }, [inRangeRows, grouping, query, sort, rates]);
 
   const totals = useMemo(() => {
     let count = 0;
@@ -258,7 +258,7 @@ export default function SettlementsManager({ rows, phpToKrw }: { rows: Settlemen
                     <span className="text-muted-fg-faint">회</span>
                   </td>
                   <td className="text-ink px-4 py-3.5 align-middle md:px-6">
-                    <AmountCell currencyTotals={g.currencyTotals} phpToKrw={phpToKrw} />
+                    <AmountCell currencyTotals={g.currencyTotals} rates={rates} />
                   </td>
                 </tr>
               ))
@@ -284,13 +284,13 @@ export default function SettlementsManager({ rows, phpToKrw }: { rows: Settlemen
   );
 }
 
-function AmountCell({ currencyTotals, phpToKrw }: { currencyTotals: Map<string, number>; phpToKrw: number }) {
+function AmountCell({ currencyTotals, rates }: { currencyTotals: Map<string, number>; rates: Rates }) {
   const entries = Array.from(currencyTotals.entries()).filter(([, amt]) => amt > 0);
   if (entries.length === 0) return <span className="text-muted-fg-faint">—</span>;
   return (
     <div className="flex flex-col gap-0.5">
       {entries.map(([cur, amt]) => {
-        const eq = krwEquivalent(amt, cur, phpToKrw);
+        const eq = krwEquivalent(amt, cur, rates);
         return (
           <span key={cur} className="whitespace-nowrap">
             {formatPrice(amt, cur)}

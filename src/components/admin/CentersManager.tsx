@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { addCenter, deleteCenter, updateCenter, updateExchangeRate } from "@/app/admin/actions";
 import CenterDetailModal from "@/components/admin/CenterDetailModal";
-import { CURRENCIES, DEFAULT_CURRENCY, formatPrice, krwEquivalent } from "@/data/currencies";
+import { CURRENCIES, DEFAULT_CURRENCY, FOREIGN_CURRENCIES, formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,13 +29,16 @@ export type AdminCenter = {
 };
 
 // 강사 신청폼·프로필의 센터 드롭다운을 채우는 마스터 데이터. YoutubeManager CRUD 패턴 축약(필드=name 1개).
-export default function CentersManager({ centers, phpToKrw }: { centers: AdminCenter[]; phpToKrw: number }) {
+export default function CentersManager({ centers, rates }: { centers: AdminCenter[]; rates: Rates }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [manager, setManager] = useState("");
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
-  const [rate, setRate] = useState(phpToKrw ? String(phpToKrw) : "");
+  // 외화별 환율 입력값(초기값=저장된 환율).
+  const [rateInputs, setRateInputs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(FOREIGN_CURRENCIES.map((f) => [f.code, rates[f.code] ? String(rates[f.code]) : ""])),
+  );
   const [editTarget, setEditTarget] = useState<AdminCenter | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminCenter | null>(null);
   const [pending, startTransition] = useTransition();
@@ -61,31 +64,40 @@ export default function CentersManager({ centers, phpToKrw }: { centers: AdminCe
 
       {/* 환율 설정 */}
       <div className="border-rule mt-5 rounded-xl border bg-white p-5">
-        <p className="text-ink mb-1 text-base font-bold">페소 환율</p>
-        <p className="text-muted-fg-faint mb-3 text-xs">페소(₱)로 입력한 단가를 원화로 환산해 표시합니다.</p>
-        <div className="flex flex-wrap items-end gap-3">
-          <span className="text-ink pb-2 text-sm font-semibold">1 페소(₱) =</span>
-          <div className="w-32">
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              value={rate}
-              onChange={(e) => setRate(e.target.value)}
-              placeholder="예: 25"
-              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-            />
-          </div>
-          <span className="text-ink pb-2 text-sm font-semibold">원(₩)</span>
-          <button
-            type="button"
-            disabled={pending || !(Number(rate) > 0)}
-            onClick={() => run(() => updateExchangeRate(rate))}
-            className="bg-ink inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
-            {pending && <Loader2 className="size-3.5 animate-spin" />}
-            환율 적용
-          </button>
+        <p className="text-ink mb-1 text-base font-bold">환율 설정</p>
+        <p className="text-muted-fg-faint mb-3 text-xs">외화(₱·$)로 입력한 단가를 원화로 환산해 표시합니다.</p>
+        <div className="flex flex-col gap-3">
+          {FOREIGN_CURRENCIES.map((f) => {
+            const val = rateInputs[f.code] ?? "";
+            return (
+              <div key={f.code} className="flex flex-wrap items-end gap-3">
+                <span className="text-ink w-28 pb-2 text-sm font-semibold">
+                  1 {f.rateLabel}({f.symbol}) =
+                </span>
+                <div className="w-32">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={val}
+                    onChange={(e) => setRateInputs((prev) => ({ ...prev, [f.code]: e.target.value }))}
+                    placeholder="예: 25"
+                    className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+                  />
+                </div>
+                <span className="text-ink pb-2 text-sm font-semibold">원(₩)</span>
+                <button
+                  type="button"
+                  disabled={pending || !(Number(val) > 0)}
+                  onClick={() => run(() => updateExchangeRate(f.code, val))}
+                  className="bg-ink inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                >
+                  {pending && <Loader2 className="size-3.5 animate-spin" />}
+                  환율 적용
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -134,7 +146,7 @@ export default function CentersManager({ centers, phpToKrw }: { centers: AdminCe
             <input
               type="number"
               min={0}
-              step={1}
+              step={currency === "USD" ? 0.1 : 1}
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="예: 30000"
@@ -195,8 +207,8 @@ export default function CentersManager({ centers, phpToKrw }: { centers: AdminCe
                       ) : (
                         <span className="text-ink">
                           {formatPrice(c.price_per_session, c.price_currency)}
-                          {krwEquivalent(c.price_per_session, c.price_currency, phpToKrw) != null && (
-                            <span className="text-muted-fg-faint ml-1.5">≈ {formatPrice(krwEquivalent(c.price_per_session, c.price_currency, phpToKrw)!, "KRW")}</span>
+                          {krwEquivalent(c.price_per_session, c.price_currency, rates) != null && (
+                            <span className="text-muted-fg-faint ml-1.5">≈ {formatPrice(krwEquivalent(c.price_per_session, c.price_currency, rates)!, "KRW")}</span>
                           )}
                         </span>
                       )}
@@ -228,7 +240,7 @@ export default function CentersManager({ centers, phpToKrw }: { centers: AdminCe
       <CenterDetailModal
         center={editTarget}
         pending={pending}
-        phpToKrw={phpToKrw}
+        rates={rates}
         onClose={() => setEditTarget(null)}
         onSave={(editName, editPrice, editCurrency, editManager) => {
           const target = editTarget;

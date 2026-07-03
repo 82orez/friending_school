@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import CentersManager, { type AdminCenter } from "@/components/admin/CentersManager";
+import { FOREIGN_CURRENCIES, ratesFromSettings } from "@/data/currencies";
 
 export default async function AdminCentersPage() {
   const admin = createAdminClient();
@@ -9,8 +10,20 @@ export default async function AdminCentersPage() {
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
-  const { data: rateRow } = await admin.from("settings").select("value").eq("key", "php_to_krw").maybeSingle();
-  const phpToKrw = Number((rateRow as { value?: string } | null)?.value) || 0;
+  const { data: rateRows } = await admin
+    .from("settings")
+    .select("key, value")
+    .in(
+      "key",
+      FOREIGN_CURRENCIES.map((f) => f.settingKey),
+    );
+  const rates = ratesFromSettings(rateRows as { key: string; value: string | null }[] | null);
 
-  return <CentersManager centers={(data ?? []) as AdminCenter[]} phpToKrw={phpToKrw} />;
+  // numeric 컬럼은 문자열로 올 수 있어 price를 숫자로 강제(null 보존).
+  const centers = ((data ?? []) as AdminCenter[]).map((c) => ({
+    ...c,
+    price_per_session: c.price_per_session == null ? null : Number(c.price_per_session),
+  }));
+
+  return <CentersManager centers={centers} rates={rates} />;
 }

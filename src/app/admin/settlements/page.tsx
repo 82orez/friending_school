@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import SettlementsManager, { type SettlementRow } from "@/components/admin/SettlementsManager";
-import { normalizeCurrency } from "@/data/currencies";
+import { FOREIGN_CURRENCIES, normalizeCurrency, ratesFromSettings } from "@/data/currencies";
 
 // 강사 정산 리포트(읽기 전용). conducted_at이 찍힌(실제 진행된) 수업만 집계하고,
 // 단가는 강사의 "현재" 소속 센터(profiles.center_id → centers.price_per_session)로 역산한다.
@@ -47,10 +47,17 @@ export default async function AdminSettlementsPage() {
     price_currency: string | null;
     manager_name: string | null;
   }[]) {
-    centerById.set(c.id, { name: c.name, price: c.price_per_session, currency: c.price_currency, manager: c.manager_name });
+    // numeric 컬럼은 문자열로 올 수 있어 price를 숫자로 강제(null 보존).
+    centerById.set(c.id, { name: c.name, price: c.price_per_session == null ? null : Number(c.price_per_session), currency: c.price_currency, manager: c.manager_name });
   }
-  const { data: rateRow } = await admin.from("settings").select("value").eq("key", "php_to_krw").maybeSingle();
-  const phpToKrw = Number((rateRow as { value?: string } | null)?.value) || 0;
+  const { data: rateRows } = await admin
+    .from("settings")
+    .select("key, value")
+    .in(
+      "key",
+      FOREIGN_CURRENCIES.map((f) => f.settingKey),
+    );
+  const rates = ratesFromSettings(rateRows as { key: string; value: string | null }[] | null);
 
   const rows: SettlementRow[] = classes.map((c) => {
     const prof = profileById.get(c.teacher_id);
@@ -74,5 +81,5 @@ export default async function AdminSettlementsPage() {
     };
   });
 
-  return <SettlementsManager rows={rows} phpToKrw={phpToKrw} />;
+  return <SettlementsManager rows={rows} rates={rates} />;
 }

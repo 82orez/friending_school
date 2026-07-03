@@ -16,7 +16,7 @@ import {
   sendCourseReassignToNewTeacher,
   sendCourseReassignToOldTeacher,
 } from "@/lib/mailer";
-import { normalizeCurrency } from "@/data/currencies";
+import { FOREIGN_CURRENCIES, normalizeCurrency } from "@/data/currencies";
 import { getCourse } from "@/data/courses";
 import { sendSms } from "@/lib/sms";
 import {
@@ -129,26 +129,28 @@ function revalidateCenterConsumers() {
   revalidatePath("/admin/teacher-requests");
 }
 
-// 1 페소당 원화 환율 저장(settings.php_to_krw). admin만, 양수만 허용.
-export async function updateExchangeRate(phpToKrw: number | string): Promise<ActionResult> {
+// 외화 1단위당 원화 환율 저장(settings.<code>_to_krw). admin만, 지원 통화·양수만 허용.
+export async function updateExchangeRate(code: string, value: number | string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
-  const n = Number(phpToKrw);
+  const foreign = FOREIGN_CURRENCIES.find((f) => f.code === code);
+  if (!foreign) return { ok: false, error: "지원하지 않는 통화입니다." };
+  const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return { ok: false, error: "유효한 환율을 입력하세요." };
 
   const admin = createAdminClient();
-  const { error } = await admin.from("settings").upsert({ key: "php_to_krw", value: String(n) }, { onConflict: "key" });
+  const { error } = await admin.from("settings").upsert({ key: foreign.settingKey, value: String(n) }, { onConflict: "key" });
   if (error) return { ok: false, error: "환율 저장 중 오류가 발생했습니다." };
 
   revalidatePath("/admin/centers");
   return { ok: true };
 }
 
-// 단가 입력(원) 정규화: 빈 값/비숫자/음수 → null, 그 외 정수로 내림.
-function normalizePrice(raw: number | string | null | undefined): number | null {
+// 단가 입력 정규화: 빈 값/비숫자/음수 → null. USD는 소수 첫째자리까지, 그 외 통화는 정수로 내림.
+function normalizePrice(raw: number | string | null | undefined, currency?: string | null): number | null {
   if (raw === null || raw === undefined || raw === "") return null;
-  const n = Math.floor(Number(raw));
+  const n = Number(raw);
   if (!Number.isFinite(n) || n < 0) return null;
-  return n;
+  return normalizeCurrency(currency) === "USD" ? Math.round(n * 10) / 10 : Math.floor(n);
 }
 
 // 매니저 이름 등 선택 텍스트 필드 정규화: trim 후 빈 값 → null.
@@ -175,7 +177,7 @@ export async function addCenter(
   const { error } = await admin.from("centers").insert({
     name: clean,
     sort_order: nextOrder,
-    price_per_session: normalizePrice(price),
+    price_per_session: normalizePrice(price, currency),
     price_currency: normalizeCurrency(currency),
     manager_name: normalizeText(managerName),
   });
@@ -199,7 +201,7 @@ export async function updateCenter(
   const admin = createAdminClient();
   const { error } = await admin
     .from("centers")
-    .update({ name: clean, price_per_session: normalizePrice(price), price_currency: normalizeCurrency(currency), manager_name: normalizeText(managerName) })
+    .update({ name: clean, price_per_session: normalizePrice(price, currency), price_currency: normalizeCurrency(currency), manager_name: normalizeText(managerName) })
     .eq("id", id);
   if (error) return { ok: false, error: "수정 중 오류가 발생했습니다." };
 
