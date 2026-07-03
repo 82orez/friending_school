@@ -32,6 +32,10 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 // 보기 모드(disabled)에서 값이 흐려지지 않도록 텍스트를 진하게(disabled: 변형은 편집 모드엔 미적용).
 const VIEW_TEXT = "disabled:opacity-100 disabled:text-ink";
 
+// 영구 잠금 필드(강사 수정 불가: 이름·국적·성별·센터) — hover 시 클릭 불가를 커서로 표시.
+// Input 기본의 disabled:pointer-events-none가 hover 자체를 막아 커서가 안 보이므로 auto로 되돌린 뒤 not-allowed 적용.
+const LOCKED = "disabled:pointer-events-auto disabled:cursor-not-allowed";
+
 export default function TeacherProfileForm({
   userId,
   email,
@@ -198,7 +202,7 @@ export default function TeacherProfileForm({
                 placeholder="e.g. Jane"
                 maxLength={40}
                 disabled
-                className={VIEW_TEXT}
+                className={cn(VIEW_TEXT, LOCKED)}
               />
             </div>
             <div className="grid gap-2">
@@ -213,7 +217,7 @@ export default function TeacherProfileForm({
                 placeholder="e.g. Kim"
                 maxLength={40}
                 disabled
-                className={VIEW_TEXT}
+                className={cn(VIEW_TEXT, LOCKED)}
               />
             </div>
           </div>
@@ -284,6 +288,7 @@ export default function TeacherProfileForm({
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                 "disabled:text-ink disabled:opacity-100",
+                LOCKED,
               )}>
               <option value="">Select your nationality</option>
               {NATIONALITIES.map((n) => (
@@ -308,6 +313,7 @@ export default function TeacherProfileForm({
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                 "disabled:text-ink disabled:opacity-100",
+                LOCKED,
               )}>
               <option value="">Select your gender</option>
               {GENDERS.map((g) => (
@@ -330,6 +336,7 @@ export default function TeacherProfileForm({
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                 "disabled:text-ink disabled:opacity-100",
+                LOCKED,
               )}>
               <option value="">None</option>
               {centers.map((c) => (
