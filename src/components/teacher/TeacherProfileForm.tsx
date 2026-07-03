@@ -177,6 +177,7 @@ export default function TeacherProfileForm({
         <h2 className="text-ink mb-4 flex items-center gap-2 text-base font-bold">
           <span aria-hidden>👤</span> Teacher Info
         </h2>
+        <p className="text-muted-fg-faint -mt-2 mb-4 text-xs">Name, nationality, gender, and center are set when your application is approved and can only be changed by an admin.</p>
 
         <div className="space-y-4">
           <div className="grid gap-2">
@@ -196,8 +197,7 @@ export default function TeacherProfileForm({
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="e.g. Jane"
                 maxLength={40}
-                required
-                disabled={!editing}
+                disabled
                 className={VIEW_TEXT}
               />
             </div>
@@ -212,8 +212,7 @@ export default function TeacherProfileForm({
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="e.g. Kim"
                 maxLength={40}
-                required
-                disabled={!editing}
+                disabled
                 className={VIEW_TEXT}
               />
             </div>
@@ -280,8 +279,7 @@ export default function TeacherProfileForm({
               name="nationality"
               value={nationality}
               onChange={(e) => setNationality(e.target.value)}
-              required
-              disabled={!editing}
+              disabled
               className={cn(
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
@@ -305,8 +303,7 @@ export default function TeacherProfileForm({
               name="gender"
               value={gender}
               onChange={(e) => setGender(e.target.value)}
-              required
-              disabled={!editing}
+              disabled
               className={cn(
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
@@ -328,7 +325,7 @@ export default function TeacherProfileForm({
               name="center_id"
               value={centerId}
               onChange={(e) => setCenterId(e.target.value)}
-              disabled={!editing}
+              disabled
               className={cn(
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",

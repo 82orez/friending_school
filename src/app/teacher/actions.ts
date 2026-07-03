@@ -8,9 +8,6 @@ import { getUserRole } from "@/lib/auth";
 import { isValidZoomUrl } from "@/lib/url";
 import { getOrigin } from "@/lib/origin";
 import { getCourse } from "@/data/courses";
-import { NATIONALITY_NAMES } from "@/data/nationalities";
-import { GENDER_VALUES } from "@/data/genders";
-import { resolveCenterId } from "@/lib/center";
 import { sendSms } from "@/lib/sms";
 import { sendEnrollmentApprovedToAdmin, sendEnrollmentRejectedToAdmin } from "@/lib/mailer";
 import { isValidSlot, slotsOverlap, summarizeSlots, lessonEndDate, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
@@ -41,40 +38,24 @@ export async function updateTeacherProfile(_prev: TeacherActionState, formData: 
   const userId = await requireTeacher();
   if (!userId) return { error: "You don't have permission." };
 
-  const firstName = clean(formData.get("first_name"), 40);
-  const lastName = clean(formData.get("last_name"), 40);
   const bio = clean(formData.get("bio"), 2000);
   const experience = clean(formData.get("experience"), 2000);
   const phone = clean(formData.get("phone"), 30);
-  const nationality = clean(formData.get("nationality"), 60);
-  const gender = clean(formData.get("gender"), 20);
   const zoomUrl = clean(formData.get("zoom_url"), 500);
 
-  // 전화번호를 제외한 항목은 필수 (clean()이 공백-only를 null로 만들어 우회 차단).
-  if (!firstName || !lastName || !bio || !experience || !nationality || !gender || !zoomUrl) {
+  // 이름·국적·성별·센터는 강사가 수정 불가(승인 시 확정, 변경은 admin만) — 서버에서 읽지도·갱신하지도 않음.
+  // 전화번호를 제외한 나머지는 필수 (clean()이 공백-only를 null로 만들어 우회 차단).
+  if (!bio || !experience || !zoomUrl) {
     return { error: "Please fill in all required fields." };
-  }
-
-  // 국적·성별은 화이트리스트 값만 허용(임의 문자열 차단).
-  if (!NATIONALITY_NAMES.includes(nationality)) {
-    return { error: "Please select your nationality." };
-  }
-  if (!GENDER_VALUES.includes(gender)) {
-    return { error: "Please select your gender." };
   }
 
   if (!isValidZoomUrl(zoomUrl)) {
     return { error: "Invalid Zoom URL. (must start with http:// or https://)" };
   }
 
-  // service_role로 본인 row의 화이트리스트 컬럼만 갱신 (role 등은 절대 미포함).
+  // service_role로 본인 row의 화이트리스트 컬럼만 갱신 (name/nationality/gender/center_id/role 등은 제외).
   const admin = createAdminClient();
-  // 센터는 선택 — 유효한 center id가 아니면 null("None").
-  const centerId = await resolveCenterId(admin, formData.get("center_id"));
-  const { error } = await admin
-    .from("profiles")
-    .update({ first_name: firstName, last_name: lastName, bio, experience, phone, nationality, gender, center_id: centerId, zoom_url: zoomUrl })
-    .eq("id", userId);
+  const { error } = await admin.from("profiles").update({ bio, experience, phone, zoom_url: zoomUrl }).eq("id", userId);
   if (error) return { error: "Something went wrong while saving." };
 
   revalidatePath("/teacher", "layout");
