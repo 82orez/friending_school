@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
 
@@ -336,6 +336,35 @@ export default function SettlementsManager({ rows, rates }: { rows: SettlementRo
 // 센터별 상세 정산 모달 — 그 센터 소속 강사별 집계. 자체 주간/월간 토글 + 이전/다음(메인 기간과 독립).
 const MODAL_PERIODS: Period[] = ["주간", "월간"];
 
+// 강사 상세: 과정별 그룹(소계) + 날짜별 세션 목록.
+type CourseDetail = {
+  course: string;
+  courseTitle: string;
+  count: number;
+  currencyTotals: Map<string, number>;
+  unpriced: number;
+  krwTotal: number;
+  sessions: SettlementRow[];
+};
+
+// 'YYYY-MM-DD' → 'M/D (요일)'.
+const fmtSessionDate = (d: string): string => {
+  const [, m, day] = d.split("-").map(Number);
+  return `${m}/${day} (${DOW_KO[weekdayOf(d)]})`;
+};
+
+// 단건 세션 금액(원화 환산 병기, 단가 미설정이면 —).
+function SessionAmount({ row, rates }: { row: SettlementRow; rates: Rates }) {
+  if (row.pricePerSession == null || !row.currency) return <span className="text-muted-fg-faint text-sm">—</span>;
+  const eq = krwEquivalent(row.pricePerSession, row.currency, rates);
+  return (
+    <span className="text-ink text-sm whitespace-nowrap">
+      {formatPrice(row.pricePerSession, row.currency)}
+      {eq != null && <span className="text-muted-fg-faint ml-1.5">≈ {formatPrice(eq, "KRW")}</span>}
+    </span>
+  );
+}
+
 function SettlementDetailModal({
   center,
   rows,
@@ -387,6 +416,40 @@ function SettlementDetailModal({
     [groups],
   );
 
+  // 강사 상세 뷰(선택된 강사의 과정별/날짜별 내역). null이면 강사 목록 뷰.
+  const [selectedTeacher, setSelectedTeacher] = useState<{ id: string; name: string } | null>(null);
+
+  const detail = useMemo(() => {
+    if (!selectedTeacher) return null;
+    const teacherRows = rows.filter(
+      (r) => (r.centerId ?? "__none__") === center.key && r.teacherId === selectedTeacher.id && r.sessionDate >= start && r.sessionDate <= end,
+    );
+    const map = new Map<string, CourseDetail>();
+    for (const r of teacherRows) {
+      let g = map.get(r.course);
+      if (!g) {
+        g = { course: r.course, courseTitle: r.courseTitle, count: 0, currencyTotals: new Map(), unpriced: 0, krwTotal: 0, sessions: [] };
+        map.set(r.course, g);
+      }
+      g.count += 1;
+      g.sessions.push(r);
+      if (r.pricePerSession != null && r.currency) {
+        g.currencyTotals.set(r.currency, (g.currencyTotals.get(r.currency) ?? 0) + r.pricePerSession);
+        g.krwTotal += r.currency === "KRW" ? r.pricePerSession : (krwEquivalent(r.pricePerSession, r.currency, rates) ?? 0);
+      } else {
+        g.unpriced += 1;
+      }
+    }
+    const list = Array.from(map.values());
+    for (const g of list) g.sessions.sort((a, b) => a.sessionDate.localeCompare(b.sessionDate));
+    list.sort((a, b) => (a.sessions[0]?.sessionDate ?? "").localeCompare(b.sessions[0]?.sessionDate ?? ""));
+    const tot = list.reduce(
+      (acc, g) => ({ count: acc.count + g.count, krwTotal: acc.krwTotal + g.krwTotal, unpriced: acc.unpriced + g.unpriced }),
+      { count: 0, krwTotal: 0, unpriced: 0 },
+    );
+    return { list, tot };
+  }, [selectedTeacher, rows, center.key, start, end, rates]);
+
   return (
     <>
       {/* 오버레이 */}
@@ -400,9 +463,28 @@ function SettlementDetailModal({
         className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
       >
         <div className="border-rule flex items-start justify-between border-b px-6 py-4">
-          <div>
-            <h2 className="text-ink text-lg font-bold">{center.label}</h2>
-            <p className="text-muted-fg-faint mt-0.5 text-xs">매니저: {center.manager || "미지정"}</p>
+          <div className="min-w-0">
+            {selectedTeacher ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTeacher(null)}
+                  className="text-muted-fg hover:text-ink focus-visible:ring-accent-blue/50 -ml-1 mb-1 inline-flex items-center gap-1 rounded px-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                >
+                  <ArrowLeft className="size-3.5" aria-hidden />
+                  뒤로
+                </button>
+                <h2 className="text-ink truncate text-lg font-bold">{selectedTeacher.name}</h2>
+                <p className="text-muted-fg-faint mt-0.5 truncate text-xs">
+                  {center.label} · 매니저 {center.manager || "미지정"}
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-ink truncate text-lg font-bold">{center.label}</h2>
+                <p className="text-muted-fg-faint mt-0.5 text-xs">매니저: {center.manager || "미지정"}</p>
+              </>
+            )}
           </div>
           <button
             type="button"
@@ -448,60 +530,119 @@ function SettlementDetailModal({
             </div>
           </div>
 
-          {totals.unpriced > 0 && (
+          {!selectedTeacher && totals.unpriced > 0 && (
             <p className="bg-brand/5 border-brand/30 text-brand rounded-lg border px-3 py-2 text-xs">
               단가 미설정 {totals.unpriced}건 — 센터 회당 단가 미설정 수업입니다. 수업 수엔 포함되나 금액 합계에서는 제외됩니다.
             </p>
           )}
 
-          <div className="border-rule overflow-x-auto rounded-xl border">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
-                  <th className="px-4 py-2.5">강사</th>
-                  <th className="px-4 py-2.5">진행 수업</th>
-                  <th className="px-4 py-2.5">지급 예정액</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groups.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="text-muted-fg px-4 py-10 text-center text-sm">
-                      이 기간에 진행된 수업이 없습니다.
-                    </td>
+          {/* 강사 목록 뷰 */}
+          {!selectedTeacher && (
+            <div className="border-rule overflow-x-auto rounded-xl border">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
+                    <th className="px-4 py-2.5">강사</th>
+                    <th className="px-4 py-2.5">진행 수업</th>
+                    <th className="px-4 py-2.5">지급 예정액</th>
                   </tr>
-                ) : (
-                  groups.map((g) => (
-                    <tr key={g.key} className="border-rule border-b last:border-b-0">
-                      <td className="text-ink px-4 py-3 align-middle font-semibold">
-                        {g.label}
-                        {g.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">단가 미설정 {g.unpriced}</span>}
-                      </td>
-                      <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">
-                        {g.count}
-                        <span className="text-muted-fg-faint">회</span>
-                      </td>
-                      <td className="text-ink px-4 py-3 align-middle">
-                        <AmountCell currencyTotals={g.currencyTotals} rates={rates} />
+                </thead>
+                <tbody>
+                  {groups.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} className="text-muted-fg px-4 py-10 text-center text-sm">
+                        이 기간에 진행된 수업이 없습니다.
                       </td>
                     </tr>
-                  ))
+                  ) : (
+                    groups.map((g) => {
+                      const openTeacher = () => setSelectedTeacher({ id: g.key, name: g.label });
+                      return (
+                        <tr
+                          key={g.key}
+                          className="border-rule hover:bg-surface/60 focus-visible:bg-surface/60 cursor-pointer border-b outline-none last:border-b-0"
+                          onClick={openTeacher}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openTeacher();
+                            }
+                          }}
+                          tabIndex={0}
+                        >
+                          <td className="text-ink px-4 py-3 align-middle font-semibold">
+                            <span className="inline-flex items-center gap-1">
+                              {g.label}
+                              <ChevronRight className="text-muted-fg-faint size-4" aria-hidden />
+                              {g.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">단가 미설정 {g.unpriced}</span>}
+                            </span>
+                          </td>
+                          <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">
+                            {g.count}
+                            <span className="text-muted-fg-faint">회</span>
+                          </td>
+                          <td className="text-ink px-4 py-3 align-middle">
+                            <AmountCell currencyTotals={g.currencyTotals} rates={rates} />
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+                {groups.length > 0 && (
+                  <tfoot>
+                    <tr className="border-rule bg-surface border-t-2 font-bold">
+                      <td className="text-ink px-4 py-3 align-middle">합계</td>
+                      <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">
+                        {totals.count}
+                        <span className="text-muted-fg-faint font-medium">회</span>
+                      </td>
+                      <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">≈ {formatPrice(totals.krwTotal, "KRW")}</td>
+                    </tr>
+                  </tfoot>
                 )}
-              </tbody>
-              {groups.length > 0 && (
-                <tfoot>
-                  <tr className="border-rule bg-surface border-t-2 font-bold">
-                    <td className="text-ink px-4 py-3 align-middle">합계</td>
-                    <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">
-                      {totals.count}
-                      <span className="text-muted-fg-faint font-medium">회</span>
-                    </td>
-                    <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">≈ {formatPrice(totals.krwTotal, "KRW")}</td>
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
+              </table>
+            </div>
+          )}
+
+          {/* 강사 상세 뷰(과정별 그룹 + 날짜별 세션) */}
+          {selectedTeacher && detail && (
+            detail.list.length === 0 ? (
+              <p className="text-muted-fg py-10 text-center text-sm">이 기간에 진행된 수업이 없습니다.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {detail.list.map((c) => (
+                  <div key={c.course} className="border-rule overflow-hidden rounded-xl border">
+                    <div className="border-rule bg-surface flex items-center justify-between gap-2 border-b px-4 py-2.5">
+                      <span className="text-ink text-sm font-bold">
+                        {c.courseTitle}
+                        <span className="text-muted-fg-faint ml-1.5 font-medium">{c.count}회</span>
+                        {c.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">단가 미설정 {c.unpriced}</span>}
+                      </span>
+                      <AmountCell currencyTotals={c.currencyTotals} rates={rates} />
+                    </div>
+                    <ul>
+                      {c.sessions.map((s) => (
+                        <li key={s.id} className="border-rule flex items-center justify-between gap-2 border-b px-4 py-2 last:border-b-0">
+                          <span className="text-ink text-sm">
+                            {fmtSessionDate(s.sessionDate)}
+                            {s.isMakeup && <span className="text-accent-blue-ink ml-1.5 text-xs font-medium">·보강</span>}
+                          </span>
+                          <SessionAmount row={s} rates={rates} />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                <div className="border-rule bg-surface flex items-center justify-between rounded-xl border px-4 py-3 font-bold">
+                  <span className="text-ink text-sm">
+                    합계 <span className="text-muted-fg-faint font-medium">{detail.tot.count}회</span>
+                  </span>
+                  <span className="text-ink text-sm whitespace-nowrap">≈ {formatPrice(detail.tot.krwTotal, "KRW")}</span>
+                </div>
+              </div>
+            )
+          )}
         </div>
       </div>
     </>
