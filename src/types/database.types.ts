@@ -50,6 +50,7 @@ export type Database = {
       classes: {
         Row: {
           conducted_at: string | null
+          conducted_override: boolean | null
           course: string
           course_title: string
           created_at: string
@@ -74,6 +75,7 @@ export type Database = {
         }
         Insert: {
           conducted_at?: string | null
+          conducted_override?: boolean | null
           course: string
           course_title: string
           created_at?: string
@@ -98,6 +100,7 @@ export type Database = {
         }
         Update: {
           conducted_at?: string | null
+          conducted_override?: boolean | null
           course?: string
           course_title?: string
           created_at?: string

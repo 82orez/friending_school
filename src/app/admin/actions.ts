@@ -430,6 +430,33 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
 const CLASS_MANAGE_SELECT =
   "id, enrollment_id, student_id, teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup";
 
+// 수업 진행 여부 수동 보정(admin) — 종료된 수업만. override: true=강제 진행됨 / false=강제 미진행 / null=자동 판정 복귀.
+// conducted_at(자동 신호)은 건드리지 않고 conducted_override로 위에 얹는다. 유효값=override ?? (conducted_at!=null).
+export async function adminSetClassConducted(classId: string, override: boolean | null): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const id = String(classId ?? "").trim();
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+  if (override !== true && override !== false && override !== null) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: cls } = await admin.from("classes").select("id, enrollment_id, session_date, start_min, end_min, status").eq("id", id).maybeSingle();
+  if (!cls) return { ok: false, error: "수업을 찾을 수 없습니다." };
+  if (cls.status === "취소") return { ok: false, error: "취소된 수업은 진행 여부를 지정할 수 없습니다." };
+  if (Date.now() < kstDateMinToMs(cls.session_date, lessonEndMin(cls.end_min))) {
+    return { ok: false, error: "수업이 종료된 후에만 진행 여부를 지정할 수 있습니다." };
+  }
+
+  const { error: updErr } = await admin.from("classes").update({ conducted_override: override }).eq("id", id);
+  if (updErr) return { ok: false, error: "진행 여부 저장 중 오류가 발생했습니다." };
+
+  revalidatePath("/admin/classes");
+  revalidatePath(`/admin/classes/${cls.enrollment_id}`);
+  revalidatePath("/admin/settlements");
+  revalidatePath("/teacher", "layout");
+  revalidatePath("/mypage", "layout");
+  return { ok: true };
+}
+
 // 개별 수업 강제 취소(admin) — 상태 '예정'만. generateMakeup=true면 보강 1회 자동 생성(학생 취소와 공유 로직).
 // 학생 취소와 달리 6회 한도·시작 1시간 컷오프 미적용(admin 재량). 강사 알림 이메일 best-effort.
 export async function adminCancelClass(classId: string, generateMakeup: boolean): Promise<ActionResult> {

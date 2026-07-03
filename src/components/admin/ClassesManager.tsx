@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarRange, Eye, Loader2, Search, UserCog, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { adminCancelClass, adminReassignClass, adminRescheduleRemaining, adminReassignRemaining } from "@/app/admin/actions";
+import { adminCancelClass, adminReassignClass, adminRescheduleRemaining, adminReassignRemaining, adminSetClassConducted } from "@/app/admin/actions";
 import { fmtTime, lessonEndMin, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
 import type { EnrollTeacherCard } from "@/app/courses/enroll-actions";
 import EnrollScheduleField from "@/components/course/EnrollScheduleField";
@@ -42,6 +42,7 @@ export type AdminClass = {
   feedback_at: string | null;
   teacher_entered_at: string | null;
   conducted_at: string | null;
+  conducted_override: boolean | null;
 };
 
 type DisplayStatus = "예정" | "진행중" | "완료" | "취소";
@@ -61,10 +62,16 @@ const STATUS_BADGE: Record<DisplayStatus, string> = {
   취소: "bg-brand/10 text-brand",
 };
 
-// 진행 여부 표시 — 진행됨(인정)/미진행(종료됐는데 미인정)/− (예정·취소).
+// 유효 진행여부 — admin 수동 보정(conducted_override)이 자동 판정(conducted_at)을 덮는다.
+function effectiveConducted(r: AdminClass): boolean {
+  return r.conducted_override ?? !!r.conducted_at;
+}
+
+// 진행 여부 표시 — 진행됨(인정)/미진행(종료됐는데 미인정)/− (예정·취소). override 걸린 행은 "(수동)" 표기.
 function conductInfo(r: AdminClass, now: number): { label: string; cls: string } {
-  if (r.conducted_at) return { label: "진행됨", cls: "bg-cta/10 text-cta" };
-  if (displayStatus(r, now) === "완료") return { label: "미진행", cls: "bg-brand/10 text-brand" };
+  const manual = r.conducted_override !== null ? " (수동)" : "";
+  if (effectiveConducted(r)) return { label: `진행됨${manual}`, cls: "bg-cta/10 text-cta" };
+  if (r.conducted_override === false || displayStatus(r, now) === "완료") return { label: `미진행${manual}`, cls: "bg-brand/10 text-brand" };
   return { label: "−", cls: "text-muted-fg-faint" };
 }
 
@@ -826,12 +833,15 @@ function ClassDetailModal({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [conductOpen, setConductOpen] = useState(false);
+  const [conductTarget, setConductTarget] = useState<boolean | null>(null);
   const [makeup, setMakeup] = useState(true);
   const [newTeacherId, setNewTeacherId] = useState("");
   const [pending, startTransition] = useTransition();
   const editable = row.status === "예정" && !courseEnded;
   const isEnded = displayStatus(row, now) === "완료"; // 종료된 회차(취소 제외) — 강사 대체 무의미.
   const isConducted = !!row.conducted_at; // 진행됨(conducted⇒이미 종료) — 취소까지 무의미, 완전 읽기전용.
+  const canEditConducted = isEnded && row.status !== "취소"; // 진행 여부 수동 보정 — 종료된 수업만.
 
   // 이 수업 시간(요일+30분 슬롯)에 가용한 대체 강사 — 원 강사 제외.
   const reassignMatches = useMemo(() => {
@@ -846,7 +856,7 @@ function ClassDetailModal({
   const selectedNewTeacher = reassignMatches.find((t) => t.id === newTeacherId) ?? null;
 
   const confirmingRef = useRef(false);
-  confirmingRef.current = cancelOpen || reassignOpen;
+  confirmingRef.current = cancelOpen || reassignOpen || conductOpen;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !confirmingRef.current) onClose();
@@ -889,6 +899,21 @@ function ClassDetailModal({
         onClose();
       } else {
         toast.error(res.error ?? "강사 변경 중 문제가 발생했어요.");
+      }
+    });
+  };
+
+  // 진행 여부 수동 보정 — 확인 후 override 저장(모달은 닫지 않고 값만 갱신).
+  const doSetConducted = () => {
+    const target = conductTarget;
+    setConductOpen(false);
+    startTransition(async () => {
+      const res = await adminSetClassConducted(row.id, target);
+      if (res.ok) {
+        onUpdated({ ...row, conducted_override: target });
+        toast.success(target === null ? "자동 판정으로 되돌렸어요." : target ? "진행됨으로 지정했어요." : "미진행으로 지정했어요.");
+      } else {
+        toast.error(res.error ?? "진행 여부 저장 중 문제가 발생했어요.");
       }
     });
   };
@@ -947,8 +972,8 @@ function ClassDetailModal({
             ))}
           </dl>
 
-          {/* 미진행 사유 — 완료됐으나 미인정일 때만 */}
-          {displayStatus(row, now) === "완료" && !row.conducted_at && unconductedReason(row) && (
+          {/* 미진행 사유 — 완료·자동판정(override 없음)·미인정일 때만 */}
+          {displayStatus(row, now) === "완료" && row.conducted_override === null && !row.conducted_at && unconductedReason(row) && (
             <div className="border-brand/30 bg-brand/5 mt-4 rounded-lg border p-3">
               <p className="text-brand text-sm font-semibold">미진행 사유: {unconductedReason(row)}</p>
             </div>
@@ -962,6 +987,46 @@ function ClassDetailModal({
               </p>
               <p className="text-ink-soft text-sm break-words whitespace-pre-wrap">{row.feedback}</p>
             </div>
+          )}
+
+          {/* 진행 여부 수동 보정 — 종료된 수업만(취소 제외). 취소/대체 읽기전용 여부와 독립. */}
+          {canEditConducted && (
+            <section className="border-rule mt-6 rounded-lg border p-4">
+              <h3 className="text-ink text-sm font-bold">진행 여부 수정</h3>
+              <p className="text-muted-fg-faint mt-1 text-xs">
+                자동 판정(강사 입장 + 피드백 작성)이 실제와 다를 때 직접 지정합니다. 정산·강사 강의실 표시에 반영됩니다. 자동 판정 결과:{" "}
+                <span className="font-semibold">{row.conducted_at ? "진행됨" : "미진행"}</span>
+              </p>
+              <div className="mt-3 inline-flex overflow-hidden rounded-md border border-rule-faint">
+                {(
+                  [
+                    { value: null, label: "자동" },
+                    { value: true, label: "진행됨" },
+                    { value: false, label: "미진행" },
+                  ] as { value: boolean | null; label: string }[]
+                ).map((opt, i) => {
+                  const active = row.conducted_override === opt.value;
+                  return (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      disabled={pending || active}
+                      onClick={() => {
+                        setConductTarget(opt.value);
+                        setConductOpen(true);
+                      }}
+                      className={cn(
+                        "px-4 py-1.5 text-sm font-semibold transition-colors disabled:opacity-100",
+                        i > 0 && "border-l border-rule-faint",
+                        active ? "bg-cta text-white" : "text-muted-fg hover:bg-surface",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
           )}
 
           {editable ? (
@@ -1090,6 +1155,36 @@ function ClassDetailModal({
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction onClick={doReassign} className="bg-cta hover:bg-cta/90 border-transparent text-white">
               강사 대체
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={conductOpen} onOpenChange={setConductOpen}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {conductTarget === null ? "자동 판정으로 되돌릴까요?" : conductTarget ? "진행됨으로 지정할까요?" : "미진행으로 지정할까요?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="text-ink font-semibold">{studentLabel}</span>님의 {row.session_date} {timeRange(row.start_min, row.end_min)} 수업을{" "}
+              {conductTarget === null ? (
+                <>자동 판정(강사 입장 + 피드백)으로 되돌립니다.</>
+              ) : conductTarget ? (
+                <>
+                  <span className="text-cta font-semibold">진행됨</span>으로 처리합니다. 강사 정산 지급 대상에 포함됩니다.
+                </>
+              ) : (
+                <>
+                  <span className="text-brand font-semibold">미진행</span>으로 처리합니다. 강사 정산 지급 대상에서 제외됩니다.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction onClick={doSetConducted} className="bg-cta hover:bg-cta/90 border-transparent text-white">
+              지정
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

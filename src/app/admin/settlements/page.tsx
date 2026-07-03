@@ -13,8 +13,8 @@ export default async function AdminSettlementsPage() {
   // conducted 수업(취소 제외 방어, 보강 포함). CLASS_SELECT는 teacher_id 미포함이라 전용 select.
   const { data: clsData } = await admin
     .from("classes")
-    .select("id, teacher_id, teacher_name, course, course_title, session_date, is_makeup, conducted_at")
-    .not("conducted_at", "is", null)
+    .select("id, teacher_id, teacher_name, course, course_title, session_date, is_makeup, conducted_at, conducted_override")
+    .or("conducted_override.eq.true,and(conducted_override.is.null,conducted_at.not.is.null)")
     .neq("status", "취소")
     .order("session_date", { ascending: true });
   const classes = (clsData ?? []) as {

@@ -38,14 +38,18 @@ export type ClassItem = {
   feedbackAt: string | null;
   teacherEnteredAt: string | null;
   conductedAt: string | null;
+  conductedOverride: boolean | null; // admin 수동 보정 — null=자동, true=강제 진행됨, false=강제 미진행
   reassignedAt: string | null; // 강사 대체 시각 — 학생 예정 수업에 "강사 변경" 표시용
 };
 
 // 강사 수업 진행 표시 — conducted=○(진행 인정), pending=△(입장했으나 피드백 전, 종료된 수업만). 취소·미입장은 null.
+// 유효 진행여부 = conductedOverride ?? (conductedAt!=null) — admin 수동 보정이 자동 판정을 덮는다.
 type ConductMark = "conducted" | "pending" | null;
 function conductMark(c: ClassItem, now: number): ConductMark {
   if (c.status === "취소") return null;
-  if (c.conductedAt) return "conducted";
+  const effective = c.conductedOverride ?? !!c.conductedAt;
+  if (effective) return "conducted"; // ○ (override=true 포함)
+  if (c.conductedOverride === false) return null; // admin이 미진행 확정 → 마커 없음(△도 아님)
   if (c.teacherEnteredAt && now >= c.endMs) return "pending";
   return null;
 }

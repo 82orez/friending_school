@@ -5,7 +5,7 @@ import type { ClassItem } from "@/components/classroom/ClassroomList";
 
 // classes 조회 컬럼(내 강의실 학생/강사 공용).
 export const CLASS_SELECT =
-  "id, enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, feedback, feedback_at, teacher_entered_at, conducted_at, teacher_reassigned_at";
+  "id, enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, feedback, feedback_at, teacher_entered_at, conducted_at, conducted_override, teacher_reassigned_at";
 
 type ClassRow = {
   id: string;
@@ -25,6 +25,7 @@ type ClassRow = {
   feedback_at: string | null;
   teacher_entered_at: string | null;
   conducted_at: string | null;
+  conducted_override: boolean | null;
   teacher_reassigned_at: string | null;
 };
 
@@ -47,6 +48,7 @@ export function mapClassRows(rows: ClassRow[], isTeacher: boolean): ClassItem[] 
     feedbackAt: c.feedback_at,
     teacherEnteredAt: c.teacher_entered_at,
     conductedAt: c.conducted_at,
+    conductedOverride: c.conducted_override,
     reassignedAt: c.teacher_reassigned_at,
   }));
 }
