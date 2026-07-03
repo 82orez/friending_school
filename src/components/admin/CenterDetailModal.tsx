@@ -15,11 +15,12 @@ export default function CenterDetailModal({
 }: {
   center: AdminCenter | null;
   onClose: () => void;
-  onSave: (name: string, price: string, currency: string) => void;
+  onSave: (name: string, price: string, currency: string, managerName: string) => void;
   pending: boolean;
   phpToKrw: number;
 }) {
   const [name, setName] = useState("");
+  const [manager, setManager] = useState("");
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
 
@@ -30,6 +31,7 @@ export default function CenterDetailModal({
   useEffect(() => {
     if (!center) return;
     setName(center.name);
+    setManager(center.manager_name ?? "");
     setPrice(center.price_per_session == null ? "" : String(center.price_per_session));
     setCurrency(center.price_currency ?? DEFAULT_CURRENCY);
   }, [center]);
@@ -87,6 +89,17 @@ export default function CenterDetailModal({
             />
           </div>
           <div>
+            <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">센터 매니저</label>
+            <input
+              type="text"
+              value={manager}
+              onChange={(e) => setManager(e.target.value)}
+              placeholder="예: 홍길동 (선택)"
+              maxLength={100}
+              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+            />
+          </div>
+          <div>
             <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">통화</label>
             <select
               value={currency}
@@ -126,7 +139,7 @@ export default function CenterDetailModal({
           <button
             type="button"
             disabled={pending || !name.trim()}
-            onClick={() => onSave(name, price, currency)}
+            onClick={() => onSave(name, price, currency, manager)}
             className="bg-cta inline-flex items-center gap-1.5 rounded-md px-5 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {pending && <Loader2 className="size-3.5 animate-spin" />}

@@ -25,12 +25,14 @@ export type AdminCenter = {
   created_at: string;
   price_per_session: number | null;
   price_currency: string | null;
+  manager_name: string | null;
 };
 
 // 강사 신청폼·프로필의 센터 드롭다운을 채우는 마스터 데이터. YoutubeManager CRUD 패턴 축약(필드=name 1개).
 export default function CentersManager({ centers, phpToKrw }: { centers: AdminCenter[]; phpToKrw: number }) {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [manager, setManager] = useState("");
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
   const [rate, setRate] = useState(phpToKrw ? String(phpToKrw) : "");
@@ -102,6 +104,17 @@ export default function CentersManager({ centers, phpToKrw }: { centers: AdminCe
               className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
             />
           </div>
+          <div className="flex-1">
+            <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">센터 매니저</label>
+            <input
+              type="text"
+              value={manager}
+              onChange={(e) => setManager(e.target.value)}
+              placeholder="예: 홍길동 (선택)"
+              maxLength={100}
+              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+            />
+          </div>
           <div className="sm:w-40">
             <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">통화</label>
             <select
@@ -133,9 +146,10 @@ export default function CentersManager({ centers, phpToKrw }: { centers: AdminCe
             disabled={pending || !name.trim()}
             onClick={() =>
               run(
-                () => addCenter(name, price, currency),
+                () => addCenter(name, price, currency, manager),
                 () => {
                   setName("");
+                  setManager("");
                   setPrice("");
                   setCurrency(DEFAULT_CURRENCY);
                 },
@@ -155,11 +169,12 @@ export default function CentersManager({ centers, phpToKrw }: { centers: AdminCe
           <p className="text-muted-fg px-6 py-12 text-center text-sm">등록된 센터가 없습니다.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[480px] border-collapse text-sm">
+            <table className="w-full min-w-[560px] border-collapse text-sm">
               <thead>
                 <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
                   <th className="w-12 px-4 py-2.5 text-center md:px-6">#</th>
                   <th className="px-4 py-2.5">센터명</th>
+                  <th className="px-4 py-2.5">매니저</th>
                   <th className="px-4 py-2.5">회당 단가</th>
                   <th className="px-4 py-2.5 text-right md:px-6">
                     <span className="sr-only">관리</span>
@@ -171,6 +186,9 @@ export default function CentersManager({ centers, phpToKrw }: { centers: AdminCe
                   <tr key={c.id} className="border-rule border-b last:border-b-0">
                     <td className="text-muted-fg-faint px-4 py-3.5 text-center text-xs align-middle md:px-6">{i + 1}</td>
                     <td className="text-ink px-4 py-3.5 align-middle text-sm font-semibold">{c.name}</td>
+                    <td className="px-4 py-3.5 align-middle text-sm">
+                      {c.manager_name ? <span className="text-ink">{c.manager_name}</span> : <span className="text-muted-fg-faint">미지정</span>}
+                    </td>
                     <td className="px-4 py-3.5 align-middle whitespace-nowrap">
                       {c.price_per_session == null ? (
                         <span className="text-muted-fg-faint">단가 미설정</span>
@@ -212,11 +230,11 @@ export default function CentersManager({ centers, phpToKrw }: { centers: AdminCe
         pending={pending}
         phpToKrw={phpToKrw}
         onClose={() => setEditTarget(null)}
-        onSave={(editName, editPrice, editCurrency) => {
+        onSave={(editName, editPrice, editCurrency, editManager) => {
           const target = editTarget;
           if (!target) return;
           run(
-            () => updateCenter(target.id, editName, editPrice, editCurrency),
+            () => updateCenter(target.id, editName, editPrice, editCurrency, editManager),
             () => setEditTarget(null),
           );
         }}

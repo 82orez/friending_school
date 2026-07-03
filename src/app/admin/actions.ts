@@ -151,7 +151,18 @@ function normalizePrice(raw: number | string | null | undefined): number | null 
   return n;
 }
 
-export async function addCenter(name: string, price?: number | string | null, currency?: string | null): Promise<ActionResult> {
+// 매니저 이름 등 선택 텍스트 필드 정규화: trim 후 빈 값 → null.
+function normalizeText(raw: string | null | undefined): string | null {
+  const t = raw?.trim();
+  return t ? t : null;
+}
+
+export async function addCenter(
+  name: string,
+  price?: number | string | null,
+  currency?: string | null,
+  managerName?: string | null,
+): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   const clean = name?.trim();
   if (!clean) return { ok: false, error: "센터 이름은 필수입니다." };
@@ -161,16 +172,26 @@ export async function addCenter(name: string, price?: number | string | null, cu
   const { data: maxRow } = await admin.from("centers").select("sort_order").order("sort_order", { ascending: false }).limit(1).maybeSingle();
   const nextOrder = ((maxRow as { sort_order?: number } | null)?.sort_order ?? 0) + 1;
 
-  const { error } = await admin
-    .from("centers")
-    .insert({ name: clean, sort_order: nextOrder, price_per_session: normalizePrice(price), price_currency: normalizeCurrency(currency) });
+  const { error } = await admin.from("centers").insert({
+    name: clean,
+    sort_order: nextOrder,
+    price_per_session: normalizePrice(price),
+    price_currency: normalizeCurrency(currency),
+    manager_name: normalizeText(managerName),
+  });
   if (error) return { ok: false, error: "등록 중 오류가 발생했습니다." };
 
   revalidateCenterConsumers();
   return { ok: true };
 }
 
-export async function updateCenter(id: string, name: string, price?: number | string | null, currency?: string | null): Promise<ActionResult> {
+export async function updateCenter(
+  id: string,
+  name: string,
+  price?: number | string | null,
+  currency?: string | null,
+  managerName?: string | null,
+): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   const clean = name?.trim();
   if (!id || !clean) return { ok: false, error: "센터 이름은 필수입니다." };
@@ -178,7 +199,7 @@ export async function updateCenter(id: string, name: string, price?: number | st
   const admin = createAdminClient();
   const { error } = await admin
     .from("centers")
-    .update({ name: clean, price_per_session: normalizePrice(price), price_currency: normalizeCurrency(currency) })
+    .update({ name: clean, price_per_session: normalizePrice(price), price_currency: normalizeCurrency(currency), manager_name: normalizeText(managerName) })
     .eq("id", id);
   if (error) return { ok: false, error: "수정 중 오류가 발생했습니다." };
 
