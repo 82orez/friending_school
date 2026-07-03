@@ -12,6 +12,7 @@ export type SettlementRow = {
   teacherName: string;
   centerId: string | null;
   centerName: string | null;
+  centerManager: string | null; // 센터 담당 매니저 이름(선택), 센터별 정산 표시용
   course: string;
   courseTitle: string;
   sessionDate: string; // 'YYYY-MM-DD' (KST)
@@ -54,6 +55,7 @@ type SortKey = "name" | "count" | "amount";
 type Group = {
   key: string;
   label: string;
+  manager: string | null; // 센터별 모드에서만 표시(센터 담당 매니저)
   count: number;
   currencyTotals: Map<string, number>;
   unpriced: number;
@@ -109,7 +111,8 @@ export default function SettlementsManager({ rows, phpToKrw }: { rows: Settlemen
       const { key, label } = keyOf(r);
       let g = map.get(key);
       if (!g) {
-        g = { key, label, count: 0, currencyTotals: new Map(), unpriced: 0, krwTotal: 0 };
+        // 센터별 모드에서만 매니저 표시(같은 센터=같은 매니저); 그 외 모드에선 미사용.
+        g = { key, label, manager: grouping === "센터별" ? r.centerManager : null, count: 0, currencyTotals: new Map(), unpriced: 0, krwTotal: 0 };
         map.set(key, g);
       }
       g.count += 1;
@@ -242,8 +245,13 @@ export default function SettlementsManager({ rows, phpToKrw }: { rows: Settlemen
               groups.map((g) => (
                 <tr key={g.key} className="border-rule border-b transition-colors last:border-b-0">
                   <td className="text-ink px-4 py-3.5 align-middle font-semibold md:px-6">
-                    {g.label}
-                    {g.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">단가 미설정 {g.unpriced}</span>}
+                    <span>
+                      {g.label}
+                      {g.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">단가 미설정 {g.unpriced}</span>}
+                    </span>
+                    {grouping === "센터별" && (
+                      <span className="text-muted-fg-faint mt-0.5 block text-xs font-medium">매니저: {g.manager || "미지정"}</span>
+                    )}
                   </td>
                   <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">
                     {g.count}

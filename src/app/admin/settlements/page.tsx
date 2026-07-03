@@ -37,11 +37,17 @@ export default async function AdminSettlementsPage() {
     }
   }
 
-  // 센터 단가/통화 + 페소 환율.
-  const { data: centerData } = await admin.from("centers").select("id, name, price_per_session, price_currency");
-  const centerById = new Map<string, { name: string; price: number | null; currency: string | null }>();
-  for (const c of (centerData ?? []) as { id: string; name: string; price_per_session: number | null; price_currency: string | null }[]) {
-    centerById.set(c.id, { name: c.name, price: c.price_per_session, currency: c.price_currency });
+  // 센터 단가/통화/매니저 + 페소 환율.
+  const { data: centerData } = await admin.from("centers").select("id, name, price_per_session, price_currency, manager_name");
+  const centerById = new Map<string, { name: string; price: number | null; currency: string | null; manager: string | null }>();
+  for (const c of (centerData ?? []) as {
+    id: string;
+    name: string;
+    price_per_session: number | null;
+    price_currency: string | null;
+    manager_name: string | null;
+  }[]) {
+    centerById.set(c.id, { name: c.name, price: c.price_per_session, currency: c.price_currency, manager: c.manager_name });
   }
   const { data: rateRow } = await admin.from("settings").select("value").eq("key", "php_to_krw").maybeSingle();
   const phpToKrw = Number((rateRow as { value?: string } | null)?.value) || 0;
@@ -58,6 +64,7 @@ export default async function AdminSettlementsPage() {
       teacherName,
       centerId: prof?.center_id ?? null,
       centerName: center?.name ?? null,
+      centerManager: center?.manager ?? null,
       course: c.course,
       courseTitle: c.course_title,
       sessionDate: c.session_date,
