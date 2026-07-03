@@ -164,7 +164,7 @@ function CourseDetail({ group, isTeacher, now, ko, onBack }: { group: CourseGrou
         <h2 className="text-ink truncate text-base font-bold">{group.courseTitle}</h2>
         {!isTeacher && (
           <span className="text-muted-fg-faint ml-auto shrink-0 text-xs">
-            취소 {group.cancelledCount}/{MAX_CANCELLATIONS}
+            연기 {group.cancelledCount}/{MAX_CANCELLATIONS}
           </span>
         )}
       </div>
@@ -528,11 +528,11 @@ function ClassRow({
       const res = await cancelClass(item.id);
       if (res.ok) {
         const label = res.makeupDate ? formatSessionDate(res.makeupDate, true) : "";
-        const remainingText = typeof res.remaining === "number" ? ` (남은 취소 ${res.remaining}회)` : "";
-        toast.success((res.makeupDate ? `수업을 취소했어요. 보강이 ${label}로 잡혔어요.` : "수업을 취소했어요.") + remainingText);
+        const remainingText = typeof res.remaining === "number" ? ` (남은 연기 ${res.remaining}회)` : "";
+        toast.success((res.makeupDate ? `수업을 연기했어요. 보강이 ${label}로 잡혔어요.` : "수업을 연기했어요.") + remainingText);
         router.refresh();
       } else {
-        toast.error(res.error ?? "취소할 수 없어요.");
+        toast.error(res.error ?? "연기할 수 없어요.");
       }
     });
   }
@@ -546,7 +546,7 @@ function ClassRow({
         </p>
         <p className="text-muted-fg-faint mt-0.5 flex items-center gap-1.5 text-xs">
           <span>{ko ? `${item.sessionNo}/${total}회차` : `Session ${item.sessionNo}/${total}`}</span>
-          {cancelled && <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "취소" : "Cancelled"}</span>}
+          {cancelled && <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "연기" : "Postponed"}</span>}
           {item.isMakeup && !cancelled && (
             <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{ko ? "보강" : "Makeup"}</span>
           )}
@@ -588,7 +588,7 @@ function ClassRow({
           disabled={pending}
           className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50">
           {pending ? <Loader2 className="size-3.5 animate-spin" /> : <X className="size-3.5" />}
-          {ko ? "취소" : "Cancel"}
+          {ko ? "수업 연기" : "Postpone"}
         </button>
       ) : !cancelled && !isPast ? (
         <span className="text-muted-fg-faint shrink-0 text-xs">{ko ? "시작 15분 전 입장" : "Opens 15 min before"}</span>
@@ -617,12 +617,12 @@ function ClassRow({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>수업을 취소할까요?</AlertDialogTitle>
+            <AlertDialogTitle>이 수업을 연기할까요?</AlertDialogTitle>
             <AlertDialogDescription>
               <span className="text-ink font-semibold">
                 {formatSessionDate(item.sessionDate, true)} {timeRange}
               </span>{" "}
-              수업이 취소되고, 보강이 자동 배정돼요. 이번에 취소하면{" "}
+              수업이 연기되고, 보강이 자동 배정돼요. 이번에 연기하면{" "}
               <span className="text-brand font-semibold">{Math.max(0, MAX_CANCELLATIONS - cancelledCount - 1)}회</span> 남습니다. (과정당 {MAX_CANCELLATIONS}
               회까지)
             </AlertDialogDescription>
@@ -630,7 +630,7 @@ function ClassRow({
           <AlertDialogFooter>
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction onClick={handleCancel} className="bg-brand hover:bg-brand/90 border-transparent text-white">
-              수업 취소
+              수업 연기
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

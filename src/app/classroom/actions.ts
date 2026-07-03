@@ -86,7 +86,7 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
   if (!cls) return { error: "수업을 찾을 수 없어요." };
   // 소유 검증 — 학생 본인 수업만 취소 가능.
   if (cls.student_id !== user.id) return { error: "권한이 없습니다." };
-  if (cls.status !== "예정") return { error: "이미 취소된 수업입니다. 새로고침해 주세요." };
+  if (cls.status !== "예정") return { error: "이미 연기된 수업입니다. 새로고침해 주세요." };
 
   const now = Date.now();
   const startMs = kstDateMinToMs(cls.session_date, cls.start_min);
@@ -102,10 +102,10 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
       .map((s) => ({ id: s.id, ms: kstDateMinToMs(s.session_date, s.start_min) }))
       .filter((s) => s.ms > now)
       .sort((a, b) => a.ms - b.ms)[0]?.id ?? null;
-  if (nextId !== id) return { error: "다음 수업만 취소할 수 있어요." };
+  if (nextId !== id) return { error: "다음 수업만 연기할 수 있어요." };
 
   if (!canCancelClass(now, startMs)) {
-    return { error: "수업 시작 1시간 전까지만 취소할 수 있어요." };
+    return { error: "수업 시작 1시간 전까지만 연기할 수 있어요." };
   }
 
   // 과정(enrollment)당 취소 한도.
@@ -115,7 +115,7 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
     .eq("enrollment_id", cls.enrollment_id)
     .eq("status", "취소");
   if ((cancelledCount ?? 0) >= MAX_CANCELLATIONS) {
-    return { error: `취소는 과정당 ${MAX_CANCELLATIONS}회까지 가능해요.` };
+    return { error: `연기는 과정당 ${MAX_CANCELLATIONS}회까지 가능해요.` };
   }
 
   // 상태 가드: '예정'일 때만 '취소'로 전환(동시 처리 방지).
@@ -125,7 +125,7 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
     .eq("id", id)
     .eq("status", "예정")
     .select("id");
-  if (updErr) return { error: "취소 처리 중 문제가 발생했어요." };
+  if (updErr) return { error: "연기 처리 중 문제가 발생했어요." };
   if (!updated || updated.length === 0) return { error: "이미 처리된 수업입니다. 새로고침해 주세요." };
 
   // 이번 취소 반영 후 남은 취소 가능 횟수.
@@ -180,7 +180,7 @@ export async function saveClassFeedback(classId: string, feedback: string): Prom
   if (!cls) return { error: "수업을 찾을 수 없어요." };
   // 작성 권한 — 강사 본인만.
   if (cls.teacher_id !== user.id) return { error: "권한이 없습니다." };
-  if (cls.status === "취소") return { error: "취소된 수업에는 피드백을 남길 수 없어요." };
+  if (cls.status === "취소") return { error: "연기된 수업에는 피드백을 남길 수 없어요." };
 
   // 종료 가드 — 레슨 종료 시각(end_min−5) 이후에만.
   const endMs = kstDateMinToMs(cls.session_date, lessonEndMin(cls.end_min));

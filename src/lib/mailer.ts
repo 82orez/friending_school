@@ -252,13 +252,13 @@ export type ClassCancellationEmailData = {
 };
 
 /**
- * 강사에게 학생의 개별 수업 취소 + 자동 보강 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ * 강사에게 학생의 개별 수업 연기 + 자동 보강 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
  */
 export async function sendClassCancellationToTeacher(to: string[], data: ClassCancellationEmailData): Promise<void> {
   const rows: [string, string][] = [
     ["Student", data.studentName || "-"],
     ["Course", data.courseTitle],
-    ["Cancelled session", `${data.sessionDate} ${data.sessionTime}`],
+    ["Postponed session", `${data.sessionDate} ${data.sessionTime}`],
     ...(data.makeupDate ? ([["Makeup scheduled", `${data.makeupDate} ${data.sessionTime}`]] as [string, string][]) : []),
   ];
   const tr = rows
@@ -270,7 +270,7 @@ export async function sendClassCancellationToTeacher(to: string[], data: ClassCa
     )
     .join("");
   const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
-    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">A class has been cancelled by the student</h2>
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">A class has been postponed by the student</h2>
     <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(data.studentName)} · ${escapeHtml(data.courseTitle)}</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
     <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 0">${
@@ -279,14 +279,14 @@ export async function sendClassCancellationToTeacher(to: string[], data: ClassCa
     <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
   </div>`;
   const text = [
-    "A class has been cancelled by the student.",
+    "A class has been postponed by the student.",
     "",
     `Student: ${data.studentName || "-"}`,
     `Course: ${data.courseTitle}`,
-    `Cancelled session: ${data.sessionDate} ${data.sessionTime}`,
+    `Postponed session: ${data.sessionDate} ${data.sessionTime}`,
     ...(data.makeupDate ? [`Makeup scheduled: ${data.makeupDate} ${data.sessionTime}`] : []),
   ].join("\n");
-  await sendResultEmail(to, `[Friending School] Class cancelled · ${data.studentName}`, html, text);
+  await sendResultEmail(to, `[Friending School] Class postponed · ${data.studentName}`, html, text);
 }
 
 /* ===== 강사 대체(교체) 알림 ===== */
