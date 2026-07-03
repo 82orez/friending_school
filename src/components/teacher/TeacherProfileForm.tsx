@@ -29,11 +29,14 @@ export type TeacherProfile = {
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 
-// 보기 모드(disabled)에서 값이 흐려지지 않도록 텍스트를 진하게(disabled: 변형은 편집 모드엔 미적용).
-const VIEW_TEXT = "disabled:opacity-100 disabled:text-ink";
+// 보기 모드(disabled)에서 값이 흐려지지 않도록 텍스트를 진하게 + 커서는 일반(default) 유지.
+// (편집 가능 필드는 보기 모드에서도 not-allowed가 아니라 default — Textarea 기본 disabled:cursor-not-allowed를 덮음.)
+const VIEW_TEXT = "disabled:opacity-100 disabled:text-ink disabled:cursor-default";
 
-// 영구 잠금 필드(강사 수정 불가: 이름·국적·성별·센터) — hover 시 클릭 불가를 커서로 표시.
-// Input 기본의 disabled:pointer-events-none가 hover 자체를 막아 커서가 안 보이므로 auto로 되돌린 뒤 not-allowed 적용.
+// 영구 잠금 필드(강사 수정 불가: 이름·국적·성별·센터·이메일) — **편집 모드(editing)에서만** not-allowed 커서로 표시.
+// 보기 모드는 어차피 전체 수정 불가라 not-allowed가 중복 신호 → `editing && LOCKED`로 편집 모드에만 적용(보기 모드=일반 커서).
+// Input 기본의 disabled:pointer-events-none가 hover 자체를 막으므로 auto로 되돌린 뒤 not-allowed 적용.
+// cn(VIEW_TEXT, editing && LOCKED) 순서라 편집 모드일 때 LOCKED의 cursor-not-allowed가 VIEW_TEXT의 cursor-default를 덮음(tailwind-merge).
 const LOCKED = "disabled:pointer-events-auto disabled:cursor-not-allowed";
 
 export default function TeacherProfileForm({
@@ -186,7 +189,7 @@ export default function TeacherProfileForm({
         <div className="space-y-4">
           <div className="grid gap-2">
             <Label>Email</Label>
-            <Input value={email} disabled readOnly className="bg-surface text-muted-fg" />
+            <Input value={email} disabled readOnly className={cn("bg-surface text-muted-fg", editing && LOCKED)} />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -202,7 +205,7 @@ export default function TeacherProfileForm({
                 placeholder="e.g. Jane"
                 maxLength={40}
                 disabled
-                className={cn(VIEW_TEXT, LOCKED)}
+                className={cn(VIEW_TEXT, editing && LOCKED)}
               />
             </div>
             <div className="grid gap-2">
@@ -217,7 +220,7 @@ export default function TeacherProfileForm({
                 placeholder="e.g. Kim"
                 maxLength={40}
                 disabled
-                className={cn(VIEW_TEXT, LOCKED)}
+                className={cn(VIEW_TEXT, editing && LOCKED)}
               />
             </div>
           </div>
@@ -288,7 +291,7 @@ export default function TeacherProfileForm({
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                 "disabled:text-ink disabled:opacity-100",
-                LOCKED,
+                editing && LOCKED,
               )}>
               <option value="">Select your nationality</option>
               {NATIONALITIES.map((n) => (
@@ -313,7 +316,7 @@ export default function TeacherProfileForm({
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                 "disabled:text-ink disabled:opacity-100",
-                LOCKED,
+                editing && LOCKED,
               )}>
               <option value="">Select your gender</option>
               {GENDERS.map((g) => (
@@ -325,7 +328,9 @@ export default function TeacherProfileForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="center_id">Center</Label>
+            <Label htmlFor="center_id">
+              Center <span className="text-brand">*</span>
+            </Label>
             <select
               id="center_id"
               name="center_id"
@@ -336,7 +341,7 @@ export default function TeacherProfileForm({
                 "border-input h-9 w-full rounded-md border bg-transparent px-3 text-base shadow-xs outline-none md:text-sm",
                 "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
                 "disabled:text-ink disabled:opacity-100",
-                LOCKED,
+                editing && LOCKED,
               )}>
               <option value="">None</option>
               {centers.map((c) => (
