@@ -207,7 +207,10 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
                     <td className="text-ink max-w-[12rem] truncate px-4 py-3.5 align-middle font-bold">{r.student_name ?? "학생"}</td>
                     <td className="text-muted-fg max-w-[12rem] truncate px-4 py-3.5 align-middle">{r.teacher_name ?? "강사"}</td>
                     <td className="text-muted-fg max-w-[12rem] truncate px-4 py-3.5 align-middle">{r.course_title}</td>
-                    <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{r.start_date}</td>
+                    <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">
+                      <span className="block">{r.start_date}</span>
+                      {r.slots.length > 0 && <span className="text-muted-fg-faint mt-0.5 block text-xs font-medium">{summarizeSlots(r.slots, true)}</span>}
+                    </td>
                     <td className="text-muted-fg-faint px-4 py-3.5 align-middle whitespace-nowrap md:px-6">{formatDate(r.created_at)}</td>
                   </tr>
                 );
