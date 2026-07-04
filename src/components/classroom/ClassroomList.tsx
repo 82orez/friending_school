@@ -851,8 +851,9 @@ function WeekSchedule({
                     ))}
                     {/* 수업 블록 */}
                     {items.map((c) => {
-                      const top = Math.max(0, ((c.startMin - gridBottom) / SLOT_MIN) * ROW_H);
-                      const height = Math.max(ROW_H - 2, ((c.endMin - c.startMin) / SLOT_MIN) * ROW_H - 2);
+                      // 상하 각 2px 여백(좌우 inset-x-0.5와 대칭) — 정시 구분선을 블록이 덮지 않게.
+                      const top = Math.max(0, ((c.startMin - gridBottom) / SLOT_MIN) * ROW_H) + 2;
+                      const height = Math.max(ROW_H - 4, ((c.endMin - c.startMin) / SLOT_MIN) * ROW_H - 4);
                       const cancelled = c.status === "취소";
                       const live = !cancelled && canEnterClass(now, c.startMs, c.endMs);
                       const color = COURSE_PALETTE[colorIndex.get(c.enrollmentId) ?? 0];
