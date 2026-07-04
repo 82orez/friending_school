@@ -10,7 +10,7 @@ export default async function AdminClassDetailPage({ params }: { params: Promise
   const { data } = await admin
     .from("classes")
     .select(
-      "id, enrollment_id, student_id, teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, feedback, feedback_at, teacher_entered_at, conducted_at, conducted_override",
+      "id, enrollment_id, student_id, teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, cancel_reason, feedback, feedback_at, teacher_entered_at, conducted_at, conducted_override",
     )
     .eq("enrollment_id", enrollmentId)
     .order("session_no", { ascending: true });

@@ -21,13 +21,14 @@ type Row = {
   end_min: number;
   status: "예정" | "취소";
   is_makeup: boolean;
+  cancel_reason: string | null;
 };
 
 export default async function AdminClassesPage() {
   const admin = createAdminClient();
   const { data } = await admin
     .from("classes")
-    .select("enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup")
+    .select("enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup, cancel_reason")
     .order("session_date", { ascending: true });
 
   const rows = (data ?? []) as Row[];
@@ -52,6 +53,7 @@ export default async function AdminClassesPage() {
         upcoming: 0,
         done: 0,
         cancelled: 0,
+        postponed: 0,
         makeup: 0,
         firstDate: r.session_date,
         lastDate: r.session_date,
@@ -62,7 +64,10 @@ export default async function AdminClassesPage() {
     }
     g.total += 1;
     if (r.is_makeup) g.makeup += 1;
-    if (r.status === "취소") g.cancelled += 1;
+    if (r.status === "취소") {
+      g.cancelled += 1;
+      if (r.cancel_reason === "student") g.postponed += 1; // 학생 연기만 '남은 연기' 차감
+    }
     else if (kstDateMinToMs(r.session_date, lessonEndMin(r.end_min)) >= now) g.upcoming += 1;
     else g.done += 1;
     if (r.session_date < g.firstDate) g.firstDate = r.session_date;

@@ -10,7 +10,7 @@ import { adminCancelClass, adminReassignClass, adminRescheduleRemaining, adminRe
 import { fmtTime, lessonEndMin, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
 import type { EnrollTeacherCard } from "@/app/courses/enroll-actions";
 import EnrollScheduleField from "@/components/course/EnrollScheduleField";
-import { kstDateMinToMs, ENTRY_LEAD_MS } from "@/lib/classtime";
+import { kstDateMinToMs, ENTRY_LEAD_MS, MAX_CANCELLATIONS } from "@/lib/classtime";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +38,7 @@ export type AdminClass = {
   end_min: number;
   status: "예정" | "취소";
   is_makeup: boolean;
+  cancel_reason: string | null;
   feedback: string | null;
   feedback_at: string | null;
   teacher_entered_at: string | null;
@@ -346,6 +347,7 @@ export default function ClassesManager({
           now={now}
           courseEnded={courseEnded}
           teachers={teachers}
+          postponedCount={rows.filter((r) => r.status === "취소" && r.cancel_reason === "student").length}
           onClose={() => setSelectedId(null)}
           onUpdated={(updated) => setRows((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))}
         />
@@ -820,6 +822,7 @@ function ClassDetailModal({
   now,
   courseEnded,
   teachers,
+  postponedCount,
   onClose,
   onUpdated,
 }: {
@@ -827,6 +830,7 @@ function ClassDetailModal({
   now: number;
   courseEnded: boolean;
   teachers: EnrollTeacherCard[];
+  postponedCount: number; // 이 과정의 학생 연기(cancel_reason='student') 누적 수
   onClose: () => void;
   onUpdated: (updated: AdminClass) => void;
 }) {
@@ -835,7 +839,9 @@ function ClassDetailModal({
   const [reassignOpen, setReassignOpen] = useState(false);
   const [conductOpen, setConductOpen] = useState(false);
   const [conductTarget, setConductTarget] = useState<boolean | null>(null);
-  const [makeup, setMakeup] = useState(true);
+  // 연기/취소 사유: 'student' 수강생 요구(보강·차감) / 'company' 회사 사유(보강·미차감) / 'cancel' 취소(보강 없음).
+  const [cancelReason, setCancelReason] = useState<"student" | "company" | "cancel">("student");
+  const remainingPostpone = Math.max(0, MAX_CANCELLATIONS - postponedCount);
   const [newTeacherId, setNewTeacherId] = useState("");
   const [pending, startTransition] = useTransition();
   const editable = row.status === "예정" && !courseEnded;
@@ -876,13 +882,19 @@ function ClassDetailModal({
   const doCancel = () => {
     setCancelOpen(false);
     startTransition(async () => {
-      const res = await adminCancelClass(row.id, makeup);
+      const res = await adminCancelClass(row.id, cancelReason);
       if (res.ok) {
-        onUpdated({ ...row, status: "취소" });
-        toast.success(makeup ? "수업을 취소하고 보강을 생성했어요." : "수업을 취소했어요.");
+        onUpdated({ ...row, status: "취소", cancel_reason: cancelReason });
+        toast.success(
+          cancelReason === "cancel"
+            ? "수업을 취소했어요."
+            : cancelReason === "student"
+              ? "수업을 연기하고 보강을 생성했어요. (남은 연기 1회 차감)"
+              : "수업을 연기하고 보강을 생성했어요.",
+        );
         onClose();
       } else {
-        toast.error(res.error ?? "취소 중 문제가 발생했어요.");
+        toast.error(res.error ?? "처리 중 문제가 발생했어요.");
       }
     });
   };
@@ -1087,13 +1099,37 @@ function ClassDetailModal({
                 <p className="text-muted-fg-faint text-xs">이미 종료된 미진행 수업이라 강사 대체는 할 수 없습니다. (노쇼 사후 처리를 위한 취소만 가능)</p>
               )}
 
-              {/* 수업 취소 */}
+              {/* 수업 연기/취소 */}
               <section className="border-brand/30 rounded-lg border p-4">
-                <h3 className="text-brand text-sm font-bold">수업 취소</h3>
-                <label className="text-muted-fg mt-3 flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={makeup} onChange={(e) => setMakeup(e.target.checked)} className="size-4" />
-                  보강 수업 생성 (과정 마지막 수업 다음 빈 날짜)
-                </label>
+                <h3 className="text-brand text-sm font-bold">수업 연기/취소</h3>
+                <div className="mt-3 flex flex-col gap-2.5">
+                  {(
+                    [
+                      { value: "student", label: "수업 연기 (수강생 요구)", desc: "보강 생성 · 남은 연기 1회 차감" },
+                      { value: "company", label: "수업 연기 (강사·회사 사유)", desc: "보강 생성 · 차감 없음" },
+                      { value: "cancel", label: "수업 취소", desc: "보강 없음" },
+                    ] as const
+                  ).map((opt) => (
+                    <label key={opt.value} className="flex cursor-pointer items-start gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="cancel-reason"
+                        value={opt.value}
+                        checked={cancelReason === opt.value}
+                        onChange={() => setCancelReason(opt.value)}
+                        className="mt-0.5 size-4"
+                      />
+                      <span>
+                        <span className="text-ink font-semibold">{opt.label}</span>
+                        <span className="text-muted-fg-faint block text-xs">{opt.desc}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-muted-fg-faint mt-3 text-xs">
+                  남은 연기{" "}
+                  <span className={cn("font-bold", remainingPostpone === 0 ? "text-brand" : "text-ink")}>{remainingPostpone}</span> / {MAX_CANCELLATIONS}
+                </p>
                 <button
                   type="button"
                   onClick={() => setCancelOpen(true)}
@@ -1101,7 +1137,7 @@ function ClassDetailModal({
                   className="border-brand/40 text-brand hover:bg-brand/5 mt-3 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50"
                 >
                   {pending && <Loader2 className="size-3.5 animate-spin" />}
-                  수업 취소
+                  적용
                 </button>
               </section>
             </div>
@@ -1127,16 +1163,20 @@ function ClassDetailModal({
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <AlertDialogContent className="z-[130]">
           <AlertDialogHeader>
-            <AlertDialogTitle>이 수업을 취소할까요?</AlertDialogTitle>
+            <AlertDialogTitle>{cancelReason === "cancel" ? "이 수업을 취소할까요?" : "이 수업을 연기할까요?"}</AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="text-ink font-semibold">{studentLabel}</span>님의 {row.session_date} {timeRange(row.start_min, row.end_min)} 수업이 취소됩니다.
-              {makeup ? " 보강 수업이 자동 생성됩니다." : " 보강은 생성되지 않습니다."}
+              <span className="text-ink font-semibold">{studentLabel}</span>님의 {row.session_date} {timeRange(row.start_min, row.end_min)} 수업을{" "}
+              {cancelReason === "cancel" ? "취소합니다. 보강은 생성되지 않습니다." : "연기하고 보강 수업을 자동 생성합니다."}
+              {cancelReason === "student" &&
+                (remainingPostpone <= 0
+                  ? " 남은 연기가 없지만 관리자 재량으로 진행합니다(한도 초과)."
+                  : " 남은 연기 1회가 차감됩니다.")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction onClick={doCancel} className="bg-brand hover:bg-brand/90 border-transparent text-white">
-              수업 취소
+              {cancelReason === "cancel" ? "수업 취소" : "수업 연기"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

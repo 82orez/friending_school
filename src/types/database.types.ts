@@ -49,6 +49,7 @@ export type Database = {
       }
       classes: {
         Row: {
+          cancel_reason: string | null
           conducted_at: string | null
           conducted_override: boolean | null
           course: string
@@ -74,6 +75,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancel_reason?: string | null
           conducted_at?: string | null
           conducted_override?: boolean | null
           course: string
@@ -99,6 +101,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancel_reason?: string | null
           conducted_at?: string | null
           conducted_override?: boolean | null
           course?: string

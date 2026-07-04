@@ -34,6 +34,7 @@ export type ClassItem = {
   endMs: number;
   status: "예정" | "취소";
   isMakeup: boolean;
+  cancelReason: string | null; // 'student' 연기(차감) · 'company' 회사 연기 · 'cancel' 취소(보강 없음)
   feedback: string | null;
   feedbackAt: string | null;
   teacherEnteredAt: string | null;
@@ -108,7 +109,8 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
     }
     const out = Array.from(map.values());
     for (const g of out) {
-      g.cancelledCount = g.items.filter((c) => c.status === "취소").length;
+      // '남은 연기' 차감은 학생 연기(cancel_reason='student')만 — 회사 사유 연기·취소는 미차감.
+      g.cancelledCount = g.items.filter((c) => c.status === "취소" && c.cancelReason === "student").length;
       g.total = g.items.filter((c) => !c.isMakeup).length; // 보강 제외 = 계획 회차 수
     }
     const nextStart = (g: CourseGroup) => g.items.find((c) => isActive(c) && c.endMs >= now)?.startMs ?? Infinity;
@@ -553,7 +555,12 @@ function ClassRow({
         </p>
         <p className="text-muted-fg-faint mt-0.5 flex items-center gap-1.5 text-xs">
           <span>{ko ? `${item.sessionNo}/${total}회차` : `Session ${item.sessionNo}/${total}`}</span>
-          {cancelled && <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "연기" : "Postponed"}</span>}
+          {cancelled &&
+            (item.cancelReason === "cancel" ? (
+              <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "취소" : "Cancelled"}</span>
+            ) : (
+              <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "연기" : "Postponed"}</span>
+            ))}
           {item.isMakeup && !cancelled && (
             <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{ko ? "보강" : "Makeup"}</span>
           )}

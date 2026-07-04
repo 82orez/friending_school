@@ -459,23 +459,31 @@ export async function adminSetClassConducted(classId: string, override: boolean 
   return { ok: true };
 }
 
-// 개별 수업 강제 취소(admin) — 상태 '예정'만. generateMakeup=true면 보강 1회 자동 생성(학생 취소와 공유 로직).
-// 학생 취소와 달리 6회 한도·시작 1시간 컷오프 미적용(admin 재량). 강사 알림 이메일 best-effort.
-export async function adminCancelClass(classId: string, generateMakeup: boolean): Promise<ActionResult> {
+// 개별 수업 강제 취소/연기(admin) — 상태 '예정'만. 사유별 분기:
+//   'student' 수강생 요구 연기(보강 O, 남은 연기 차감), 'company' 회사 사유 연기(보강 O, 차감 없음), 'cancel' 수업 취소(보강 X).
+// 학생 취소와 달리 6회 한도·시작 1시간 컷오프 미적용(admin 재량 — 차감은 cancel_reason='student' 집계로 자연 반영). 강사 알림 이메일 best-effort.
+export async function adminCancelClass(classId: string, reason: "student" | "company" | "cancel"): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   const id = String(classId ?? "").trim();
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
+  if (reason !== "student" && reason !== "company" && reason !== "cancel") return { ok: false, error: "잘못된 요청입니다." };
+  const generateMakeup = reason !== "cancel";
 
   const admin = createAdminClient();
   const { data: cls } = await admin.from("classes").select(CLASS_MANAGE_SELECT).eq("id", id).maybeSingle();
   if (!cls) return { ok: false, error: "수업을 찾을 수 없습니다." };
   if (cls.status !== "예정") return { ok: false, error: "예정 상태의 수업만 취소할 수 있습니다." };
 
-  const { data: updated, error: updErr } = await admin.from("classes").update({ status: "취소" }).eq("id", id).eq("status", "예정").select("id");
+  const { data: updated, error: updErr } = await admin
+    .from("classes")
+    .update({ status: "취소", cancel_reason: reason })
+    .eq("id", id)
+    .eq("status", "예정")
+    .select("id");
   if (updErr) return { ok: false, error: "취소 처리 중 오류가 발생했습니다." };
   if (!updated || updated.length === 0) return { ok: false, error: "이미 처리된 수업입니다." };
 
-  // 보강 자동 생성(옵션, best-effort).
+  // 보강 자동 생성(연기 모드만, best-effort).
   let makeupDate: string | undefined;
   if (generateMakeup) makeupDate = await createMakeupClass(admin, cls as ClassForMakeup);
 

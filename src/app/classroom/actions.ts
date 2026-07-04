@@ -113,20 +113,21 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
     return { error: "수업 시작 1시간 전까지만 연기할 수 있어요." };
   }
 
-  // 과정(enrollment)당 취소 한도.
+  // 과정(enrollment)당 연기 한도 — 학생 연기(cancel_reason='student')만 집계(회사 사유 연기·취소는 미차감).
   const { count: cancelledCount } = await admin
     .from("classes")
     .select("id", { count: "exact", head: true })
     .eq("enrollment_id", cls.enrollment_id)
-    .eq("status", "취소");
+    .eq("status", "취소")
+    .eq("cancel_reason", "student");
   if ((cancelledCount ?? 0) >= MAX_CANCELLATIONS) {
     return { error: `연기는 과정당 ${MAX_CANCELLATIONS}회까지 가능해요.` };
   }
 
-  // 상태 가드: '예정'일 때만 '취소'로 전환(동시 처리 방지).
+  // 상태 가드: '예정'일 때만 '취소'로 전환(동시 처리 방지). 학생 연기이므로 cancel_reason='student'.
   const { data: updated, error: updErr } = await admin
     .from("classes")
-    .update({ status: "취소" })
+    .update({ status: "취소", cancel_reason: "student" })
     .eq("id", id)
     .eq("status", "예정")
     .select("id");

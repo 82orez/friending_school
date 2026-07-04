@@ -17,6 +17,7 @@ export type ClassEnrollmentSummary = {
   upcoming: number;
   done: number;
   cancelled: number;
+  postponed: number; // 학생 연기(cancel_reason='student') 수 — '남은 연기' 차감분
   makeup: number;
   firstDate: string;
   lastDate: string;
@@ -134,7 +135,7 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
                 const ongoing = isOngoing(r);
                 const active = r.total - r.cancelled;
                 const pct = active > 0 ? Math.round((r.done / active) * 100) : 0;
-                const remaining = Math.max(0, MAX_CANCELLATIONS - r.cancelled);
+                const remaining = Math.max(0, MAX_CANCELLATIONS - r.postponed);
                 return (
                   <tr
                     key={r.enrollmentId}
