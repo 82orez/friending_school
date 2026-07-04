@@ -851,9 +851,9 @@ function WeekSchedule({
                     ))}
                     {/* 수업 블록 */}
                     {items.map((c) => {
-                      // 상하 각 2px 여백(좌우 inset-x-0.5와 대칭) — 정시 구분선을 블록이 덮지 않게.
-                      const top = Math.max(0, ((c.startMin - gridBottom) / SLOT_MIN) * ROW_H) + 2;
-                      const height = Math.max(ROW_H - 4, ((c.endMin - c.startMin) / SLOT_MIN) * ROW_H - 4);
+                      // 상하 각 4px 여백 — 블록과 정시/반시 구분선 사이에 숨 쉴 공간.
+                      const top = Math.max(0, ((c.startMin - gridBottom) / SLOT_MIN) * ROW_H) + 4;
+                      const height = Math.max(ROW_H - 8, ((c.endMin - c.startMin) / SLOT_MIN) * ROW_H - 8);
                       const cancelled = c.status === "취소";
                       const live = !cancelled && canEnterClass(now, c.startMs, c.endMs);
                       const color = COURSE_PALETTE[colorIndex.get(c.enrollmentId) ?? 0];
@@ -864,7 +864,7 @@ function WeekSchedule({
                           onClick={() => onSelectCourse(c.enrollmentId)}
                           title={`${c.courseTitle} · ${c.counterpart}`}
                           className={cn(
-                            "absolute inset-x-0.5 overflow-hidden rounded-md px-1.5 py-0.5 text-left text-[11px] leading-[1.15] transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
+                            "absolute inset-x-0.5 flex flex-col justify-center overflow-hidden rounded-md px-1.5 text-left text-[11px] leading-[1.15] transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
                             cancelled ? "bg-rule/60 text-muted-fg line-through" : cn(color.grid, live && "ring-2 ring-cta"),
                           )}
                           style={{ top, height }}>
