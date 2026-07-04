@@ -72,6 +72,8 @@ function formatDate(iso: string): string {
 
 export default function EnrollmentsManager({ enrollments }: { enrollments: AdminEnrollment[] }) {
   const [rows, setRows] = useState(enrollments);
+  // router.refresh() 후 새 prop(테스트 신청 생성 등)을 로컬 rows에 동기화 — 전체 새로고침 없이 목록 반영.
+  useEffect(() => setRows(enrollments), [enrollments]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"전체" | StatusKey>("전체");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
