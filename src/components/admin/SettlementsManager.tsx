@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
+import { fmtTime } from "@/lib/availability";
 
 // 서버 page가 conducted 수업 1건씩 enriched row로 전달(단가=강사 현재 소속 센터).
 export type SettlementRow = {
@@ -16,6 +17,9 @@ export type SettlementRow = {
   course: string;
   courseTitle: string;
   sessionDate: string; // 'YYYY-MM-DD' (KST)
+  startMin: number; // 수업 시작 분(자정 기준)
+  studentName: string | null;
+  studentEnglishName: string | null;
   isMakeup: boolean;
   pricePerSession: number | null; // 센터 단가 미설정/센터 미지정 시 null
   currency: string | null; // pricePerSession 있을 때만
@@ -623,10 +627,18 @@ function SettlementDetailModal({
                     </div>
                     <ul>
                       {c.sessions.map((s) => (
-                        <li key={s.id} className="border-rule flex items-center justify-between gap-2 border-b px-4 py-2 last:border-b-0">
-                          <span className="text-ink text-sm">
-                            {fmtSessionDate(s.sessionDate)}
-                            {s.isMakeup && <span className="text-accent-blue-ink ml-1.5 text-xs font-medium">·보강</span>}
+                        <li key={s.id} className="border-rule flex items-center justify-between gap-3 border-b px-4 py-2 last:border-b-0">
+                          <span className="min-w-0">
+                            <span className="text-ink block text-sm">
+                              {fmtSessionDate(s.sessionDate)} {fmtTime(s.startMin)}
+                              {s.isMakeup && <span className="text-accent-blue-ink ml-1.5 text-xs font-medium">·보강</span>}
+                            </span>
+                            {(s.studentName || s.studentEnglishName) && (
+                              <span className="text-muted-fg-faint mt-0.5 block truncate text-xs">
+                                {s.studentName || s.studentEnglishName}
+                                {s.studentName && s.studentEnglishName && ` (${s.studentEnglishName})`}
+                              </span>
+                            )}
                           </span>
                           <SessionAmount row={s} rates={rates} />
                         </li>

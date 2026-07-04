@@ -13,7 +13,9 @@ export default async function AdminSettlementsPage() {
   // conducted 수업(취소 제외 방어, 보강 포함). CLASS_SELECT는 teacher_id 미포함이라 전용 select.
   const { data: clsData } = await admin
     .from("classes")
-    .select("id, teacher_id, teacher_name, course, course_title, session_date, is_makeup, conducted_at, conducted_override")
+    .select(
+      "id, teacher_id, teacher_name, student_name, student_english_name, course, course_title, session_date, start_min, is_makeup, conducted_at, conducted_override",
+    )
     .or("conducted_override.eq.true,and(conducted_override.is.null,conducted_at.not.is.null)")
     .neq("status", "취소")
     .order("session_date", { ascending: true });
@@ -21,9 +23,12 @@ export default async function AdminSettlementsPage() {
     id: string;
     teacher_id: string;
     teacher_name: string | null;
+    student_name: string | null;
+    student_english_name: string | null;
     course: string;
     course_title: string;
     session_date: string;
+    start_min: number;
     is_makeup: boolean;
   }[];
 
@@ -75,6 +80,9 @@ export default async function AdminSettlementsPage() {
       course: c.course,
       courseTitle: c.course_title,
       sessionDate: c.session_date,
+      startMin: c.start_min,
+      studentName: c.student_name,
+      studentEnglishName: c.student_english_name,
       isMakeup: c.is_makeup,
       pricePerSession: priced ? center!.price! : null,
       currency: priced ? normalizeCurrency(center!.currency) : null,
