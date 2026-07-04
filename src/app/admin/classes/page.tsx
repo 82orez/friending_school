@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import ClassEnrollmentsManager, { type ClassEnrollmentSummary } from "@/components/admin/ClassEnrollmentsManager";
-import { kstDateMinToMs } from "@/lib/classtime";
+import { kstDateMinToMs, ENTRY_LEAD_MS } from "@/lib/classtime";
 import { lessonEndMin, summarizeSlots, type Slot } from "@/lib/availability";
 
 // KST 날짜(YYYY-MM-DD) → 요일(0=일). TZ 비종속.
@@ -58,18 +58,29 @@ export default async function AdminClassesPage() {
         firstDate: r.session_date,
         lastDate: r.session_date,
         schedule: "",
+        liveStartMs: null,
+        liveEndMs: null,
       };
       map.set(r.enrollment_id, g);
       slotSets.set(r.enrollment_id, new Map());
     }
     g.total += 1;
     if (r.is_makeup) g.makeup += 1;
+    const endMs = kstDateMinToMs(r.session_date, lessonEndMin(r.end_min));
     if (r.status === "취소") {
       g.cancelled += 1;
       if (r.cancel_reason === "student") g.postponed += 1; // 학생 연기만 '남은 연기' 차감
     }
-    else if (kstDateMinToMs(r.session_date, lessonEndMin(r.end_min)) >= now) g.upcoming += 1;
+    else if (endMs >= now) g.upcoming += 1;
     else g.done += 1;
+    // 라이브 창 — 비취소 회차 중 아직 종료 안 된(endMs>=now) 가장 이른 회차의 입장창(시작 15분 전~레슨 종료).
+    if (r.status !== "취소" && endMs >= now) {
+      const startMs = kstDateMinToMs(r.session_date, r.start_min);
+      if (g.liveStartMs === null || startMs - ENTRY_LEAD_MS < g.liveStartMs) {
+        g.liveStartMs = startMs - ENTRY_LEAD_MS;
+        g.liveEndMs = endMs;
+      }
+    }
     if (r.session_date < g.firstDate) g.firstDate = r.session_date;
     if (r.session_date > g.lastDate) g.lastDate = r.session_date;
     // 정규 수업(취소·보강 아님)만 주간 패턴에 반영.

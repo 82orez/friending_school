@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,11 +22,15 @@ export type ClassEnrollmentSummary = {
   firstDate: string;
   lastDate: string;
   schedule: string; // 주간 요일·시작시각 요약(예: "월 14:00 · 수 14:00")
+  liveStartMs: number | null; // 가장 이른 미종료 회차의 입장 가능 시작(시작 15분 전) — 없으면 null
+  liveEndMs: number | null; // 그 회차의 레슨 종료 시각
 };
 
 type FilterKey = "전체" | "진행중" | "완료";
 const FILTERS: FilterKey[] = ["전체", "진행중", "완료"];
 const isOngoing = (r: ClassEnrollmentSummary) => r.upcoming > 0;
+// 지금 라이브(입장 15분 전~레슨 종료) 회차가 있는 과정 — 상세 뷰 "진행중" 기준과 동일.
+const isLive = (r: ClassEnrollmentSummary, now: number) => r.liveStartMs !== null && now >= r.liveStartMs && now < (r.liveEndMs ?? 0);
 
 type SortKey = "course" | "student" | "teacher" | "start";
 
@@ -42,6 +46,12 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("전체");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
+  // 1분 틱 — 라이브 배지·정렬 실시간 갱신(상세 뷰와 동일 관례).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
@@ -59,18 +69,22 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
       if (!q) return true;
       return `${r.studentName ?? ""} ${r.studentEnglishName ?? ""} ${r.teacherName ?? ""} ${r.courseTitle}`.toLowerCase().includes(q);
     });
-    if (!sort) return base;
-    const val = (r: ClassEnrollmentSummary) => SORT_VALUE[sort.key](r).trim();
-    return [...base].sort((a, b) => {
-      const av = val(a);
-      const bv = val(b);
-      if (!av && !bv) return 0;
-      if (!av) return 1;
-      if (!bv) return -1;
-      const cmp = av.localeCompare(bv, "ko");
-      return sort.dir === "asc" ? cmp : -cmp;
-    });
-  }, [rows, query, filter, sort]);
+    let arr = base;
+    if (sort) {
+      const val = (r: ClassEnrollmentSummary) => SORT_VALUE[sort.key](r).trim();
+      arr = [...base].sort((a, b) => {
+        const av = val(a);
+        const bv = val(b);
+        if (!av && !bv) return 0;
+        if (!av) return 1;
+        if (!bv) return -1;
+        const cmp = av.localeCompare(bv, "ko");
+        return sort.dir === "asc" ? cmp : -cmp;
+      });
+    }
+    // 라이브 과정을 항상 최상단으로(안정 정렬 — 기존 순서·사용자 정렬은 그룹 내에서 보존).
+    return [...arr].sort((a, b) => Number(isLive(b, now)) - Number(isLive(a, now)));
+  }, [rows, query, filter, sort, now]);
 
   const open = (id: string) => router.push(`/admin/classes/${id}`);
 
@@ -133,6 +147,7 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
             ) : (
               filtered.map((r) => {
                 const ongoing = isOngoing(r);
+                const live = isLive(r, now);
                 const active = r.total - r.cancelled;
                 const pct = active > 0 ? Math.round((r.done / active) * 100) : 0;
                 const remaining = Math.max(0, MAX_CANCELLATIONS - r.postponed);
@@ -151,6 +166,9 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
                   >
                     <td className="px-4 py-3.5 align-middle md:px-6">
                       <div className="flex flex-col items-start gap-1.5">
+                        {live && (
+                          <span className="bg-cta shrink-0 animate-pulse rounded-full px-2.5 py-0.5 text-xs font-bold text-white">● 수업 중</span>
+                        )}
                         <span
                           className={cn(
                             "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold",
