@@ -20,6 +20,7 @@ export type ClassEnrollmentSummary = {
   makeup: number;
   firstDate: string;
   lastDate: string;
+  schedule: string; // 주간 요일·시작시각 요약(예: "월 14:00 · 수 14:00")
 };
 
 type FilterKey = "전체" | "진행중" | "완료";
@@ -167,8 +168,11 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
                     </td>
                     <td className="text-muted-fg max-w-[10rem] truncate px-4 py-3.5 align-middle">{r.teacherName ?? "강사"}</td>
                     <td className="text-muted-fg px-4 py-3.5 align-middle whitespace-nowrap">
-                      {r.firstDate}
-                      <span className="text-muted-fg-faint"> ~ {r.lastDate}</span>
+                      <span className="block">
+                        {r.firstDate}
+                        <span className="text-muted-fg-faint"> ~ {r.lastDate}</span>
+                      </span>
+                      {r.schedule && <span className="text-muted-fg-faint mt-0.5 block text-xs font-medium">{r.schedule}</span>}
                     </td>
                     <td className="px-4 py-3.5 align-middle">
                       <div className="flex flex-col gap-1">

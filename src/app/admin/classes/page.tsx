@@ -1,7 +1,13 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import ClassEnrollmentsManager, { type ClassEnrollmentSummary } from "@/components/admin/ClassEnrollmentsManager";
 import { kstDateMinToMs } from "@/lib/classtime";
-import { lessonEndMin } from "@/lib/availability";
+import { lessonEndMin, summarizeSlots, type Slot } from "@/lib/availability";
+
+// KST 날짜(YYYY-MM-DD) → 요일(0=일). TZ 비종속.
+const weekdayOf = (d: string): number => {
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, day)).getUTCDay();
+};
 
 type Row = {
   enrollment_id: string;
@@ -30,6 +36,8 @@ export default async function AdminClassesPage() {
 
   // enrollment_id별 그룹핑 → 과정 인스턴스 요약(클래스 JS 집계).
   const map = new Map<string, ClassEnrollmentSummary>();
+  // 주간 시작시각 파생용 — 취소·보강 제외한 정규 수업의 {요일,시작분} 유니크 집합.
+  const slotSets = new Map<string, Map<string, Slot>>();
   for (const r of rows) {
     let g = map.get(r.enrollment_id);
     if (!g) {
@@ -47,8 +55,10 @@ export default async function AdminClassesPage() {
         makeup: 0,
         firstDate: r.session_date,
         lastDate: r.session_date,
+        schedule: "",
       };
       map.set(r.enrollment_id, g);
+      slotSets.set(r.enrollment_id, new Map());
     }
     g.total += 1;
     if (r.is_makeup) g.makeup += 1;
@@ -57,7 +67,17 @@ export default async function AdminClassesPage() {
     else g.done += 1;
     if (r.session_date < g.firstDate) g.firstDate = r.session_date;
     if (r.session_date > g.lastDate) g.lastDate = r.session_date;
+    // 정규 수업(취소·보강 아님)만 주간 패턴에 반영.
+    if (r.status !== "취소" && !r.is_makeup) {
+      const day = weekdayOf(r.session_date);
+      slotSets.get(r.enrollment_id)!.set(`${day}-${r.start_min}`, { day, min: r.start_min });
+    }
   }
+
+  // 파생 주간 요일·시작시각 요약(예: "월 14:00 · 수 14:00").
+  map.forEach((g, id) => {
+    g.schedule = summarizeSlots(Array.from(slotSets.get(id)!.values()), true);
+  });
 
   // 진행중(예정 있음) 먼저, 그 안에서 가장 가까운 시작일 순.
   const summaries = Array.from(map.values()).sort((a, b) => {
