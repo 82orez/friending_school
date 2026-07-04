@@ -810,10 +810,15 @@ function WeekSchedule({
               <div className="sticky left-0 z-10 w-14 shrink-0 bg-white" />
               {days.map((d, i) => {
                 const today = dateToStr(d) === dateToStr(new Date(now));
+                const dow = d.getDay();
+                // 주말 색은 today보다 우선(한국 달력 관례): 일=빨강, 토=파랑.
+                const weekendColor = dow === 0 ? "text-brand" : dow === 6 ? "text-accent-blue-ink" : null;
                 return (
                   <div key={i} className="flex-1 py-1.5 text-center">
-                    <div className={cn("text-xs font-bold", today ? "text-accent-blue-ink" : "text-muted-fg")}>{(ko ? DAY_LABELS_KO_MON : DAY_LABELS)[i]}</div>
-                    <div className={cn("text-[11px]", today ? "text-accent-blue-ink font-bold" : "text-muted-fg-faint")}>
+                    <div className={cn("text-xs font-bold", weekendColor ?? (today ? "text-accent-blue-ink" : "text-muted-fg"))}>
+                      {(ko ? DAY_LABELS_KO_MON : DAY_LABELS)[i]}
+                    </div>
+                    <div className={cn("text-[11px]", today && "font-bold", weekendColor ?? (today ? "text-accent-blue-ink" : "text-muted-fg-faint"))}>
                       {d.getMonth() + 1}/{d.getDate()}
                     </div>
                   </div>
@@ -892,10 +897,12 @@ function WeekSchedule({
           days.map((d, i) => {
             const items = byDay.get(i) ?? [];
             if (items.length === 0) return null;
+            const dow = d.getDay();
+            const weekendColor = dow === 0 ? "text-brand" : dow === 6 ? "text-accent-blue-ink" : "text-ink";
             return (
               <section key={i} className="border-rule overflow-hidden rounded-2xl border bg-white">
                 <div className="border-rule flex items-center gap-2 border-b px-5 py-3">
-                  <h3 className="text-ink text-sm font-bold">{formatSessionDate(dateToStr(d), ko)}</h3>
+                  <h3 className={cn("text-sm font-bold", weekendColor)}>{formatSessionDate(dateToStr(d), ko)}</h3>
                   <span className="text-muted-fg-faint ml-auto text-xs">
                     {items.length}
                     {ko ? "개" : ""}
