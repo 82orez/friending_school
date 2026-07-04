@@ -430,7 +430,7 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
 
 // admin이 조회·관리하는 클래스 행에 필요한 필드(액션 내부 로드용).
 const CLASS_MANAGE_SELECT =
-  "id, enrollment_id, student_id, teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup";
+  "id, enrollment_id, student_id, teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override";
 
 // 수업 진행 여부 수동 보정(admin) — 종료된 수업만. override: true=강제 진행됨 / false=강제 미진행 / null=자동 판정 복귀.
 // conducted_at(자동 신호)은 건드리지 않고 conducted_override로 위에 얹는다. 유효값=override ?? (conducted_at!=null).
@@ -473,6 +473,8 @@ export async function adminCancelClass(classId: string, reason: "student" | "com
   const { data: cls } = await admin.from("classes").select(CLASS_MANAGE_SELECT).eq("id", id).maybeSingle();
   if (!cls) return { ok: false, error: "수업을 찾을 수 없습니다." };
   if (cls.status !== "예정") return { ok: false, error: "예정 상태의 수업만 취소할 수 있습니다." };
+  // 유효 진행여부='진행됨'이면 거부(종료-미진행은 통과, 미래 예정은 conducted 없어 통과).
+  if ((cls.conducted_override ?? !!cls.conducted_at) === true) return { ok: false, error: "진행 완료된 수업은 연기·취소할 수 없습니다." };
 
   const { data: updated, error: updErr } = await admin
     .from("classes")

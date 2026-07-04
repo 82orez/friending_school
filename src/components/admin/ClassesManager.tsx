@@ -846,7 +846,8 @@ function ClassDetailModal({
   const [pending, startTransition] = useTransition();
   const editable = row.status === "예정" && !courseEnded;
   const isEnded = displayStatus(row, now) === "완료"; // 종료된 회차(취소 제외) — 강사 대체 무의미.
-  const isConducted = !!row.conducted_at; // 진행됨(conducted⇒이미 종료) — 취소까지 무의미, 완전 읽기전용.
+  // 유효 진행여부(정산·마커와 동일 기준=override ?? conducted_at). 진행됨만 완전 읽기전용, 미진행(자동/수동)은 종료돼도 연기/취소 허용.
+  const isConducted = row.conducted_override ?? !!row.conducted_at;
   const canEditConducted = isEnded && row.status !== "취소"; // 진행 여부 수동 보정 — 종료된 수업만.
 
   // 이 수업 시간(요일+30분 슬롯)에 가용한 대체 강사 — 원 강사 제외.
@@ -1096,7 +1097,7 @@ function ClassDetailModal({
               )}
 
               {isEnded && (
-                <p className="text-muted-fg-faint text-xs">이미 종료된 미진행 수업이라 강사 대체는 할 수 없습니다. (노쇼 사후 처리를 위한 취소만 가능)</p>
+                <p className="text-muted-fg-faint text-xs">이미 종료된 미진행 수업이라 강사 대체는 할 수 없습니다. (노쇼 사후 처리를 위한 연기·취소만 가능)</p>
               )}
 
               {/* 수업 연기/취소 */}
