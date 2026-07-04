@@ -119,7 +119,7 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
               <SortHeader label="강사" sortKey="teacher" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <SortHeader label="기간" sortKey="start" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <th className="px-4 py-2.5">진행</th>
-              <th className="px-4 py-2.5 md:px-6">남은 취소</th>
+              <th className="px-4 py-2.5 md:px-6">남은 연기</th>
             </tr>
           </thead>
           <tbody>
