@@ -708,6 +708,18 @@ function EnterClassButton({ item, ko, compact = false }: { item: ClassItem; ko: 
 const ROW_H = 48; // 30분 슬롯 셀 높이(px). 한 수업=한 슬롯이라, 블록 3줄(시각/과정/학생)이 들어갈 높이 확보.
 const DAY_LABELS_KO_MON = DISPLAY_DAYS.map((d) => DAY_LABELS_KO[d]); // 월~일 순 한국어 요일(그리드 헤더용).
 
+// 주간 그리드 수강건별 배경색 팔레트 — enrollment마다 고유 색. 완전한 리터럴 문자열(JIT 스캔 대상).
+const COURSE_PALETTE = [
+  { grid: "bg-sky-100 text-sky-800", dot: "bg-sky-400" },
+  { grid: "bg-violet-100 text-violet-800", dot: "bg-violet-400" },
+  { grid: "bg-emerald-100 text-emerald-800", dot: "bg-emerald-400" },
+  { grid: "bg-amber-100 text-amber-900", dot: "bg-amber-400" },
+  { grid: "bg-rose-100 text-rose-800", dot: "bg-rose-400" },
+  { grid: "bg-teal-100 text-teal-800", dot: "bg-teal-400" },
+  { grid: "bg-indigo-100 text-indigo-800", dot: "bg-indigo-400" },
+  { grid: "bg-fuchsia-100 text-fuchsia-800", dot: "bg-fuchsia-400" },
+];
+
 // 주간 스케줄 — 전체 과정·학생 통합. 데스크톱=월~일 타임그리드, 모바일=요일별 아젠다. 주 이동 지원.
 function WeekSchedule({
   classes,
@@ -725,6 +737,14 @@ function WeekSchedule({
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date(now)));
   const thisMonday = mondayOf(new Date(now));
   const isThisWeek = weekStart.getTime() === thisMonday.getTime();
+
+  // 수강건(enrollment)별 색 인덱스 — 전체 classes 기준으로 고정(주 이동해도 색 불변).
+  const colorIndex = useMemo(() => {
+    const ids = Array.from(new Set(classes.map((c) => c.enrollmentId))).sort();
+    const m = new Map<string, number>();
+    ids.forEach((id, i) => m.set(id, i % COURSE_PALETTE.length));
+    return m;
+  }, [classes]);
 
   // 주 7일 + 요일별 수업 그룹(월~일). DISPLAY_DAYS 순서(월 시작).
   const { days, byDay } = useMemo(() => {
@@ -835,7 +855,7 @@ function WeekSchedule({
                       const height = Math.max(ROW_H - 2, ((c.endMin - c.startMin) / SLOT_MIN) * ROW_H - 2);
                       const cancelled = c.status === "취소";
                       const live = !cancelled && canEnterClass(now, c.startMs, c.endMs);
-                      const done = conductMark(c, now) === "conducted";
+                      const color = COURSE_PALETTE[colorIndex.get(c.enrollmentId) ?? 0];
                       return (
                         <button
                           key={c.id}
@@ -844,13 +864,7 @@ function WeekSchedule({
                           title={`${c.courseTitle} · ${c.counterpart}`}
                           className={cn(
                             "absolute inset-x-0.5 overflow-hidden rounded-md px-1.5 py-0.5 text-left text-[11px] leading-[1.15] transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
-                            cancelled
-                              ? "bg-rule/60 text-muted-fg line-through"
-                              : live
-                                ? "bg-cta text-white ring-cta/40"
-                                : done
-                                  ? "bg-cta/15 text-cta ring-cta/30"
-                                  : "bg-accent-blue/15 text-accent-blue-ink ring-accent-blue/30",
+                            cancelled ? "bg-rule/60 text-muted-fg line-through" : cn(color.grid, live && "ring-2 ring-cta"),
                           )}
                           style={{ top, height }}>
                           <span className="block font-bold">{fmtTime(c.startMin)}</span>
@@ -888,7 +902,15 @@ function WeekSchedule({
                 </div>
                 <ul className="list-none">
                   {items.map((c) => (
-                    <WeekAgendaRow key={c.id} item={c} isTeacher={isTeacher} now={now} ko={ko} onSelect={() => onSelectCourse(c.enrollmentId)} />
+                    <WeekAgendaRow
+                      key={c.id}
+                      item={c}
+                      isTeacher={isTeacher}
+                      now={now}
+                      ko={ko}
+                      dotClass={COURSE_PALETTE[colorIndex.get(c.enrollmentId) ?? 0].dot}
+                      onSelect={() => onSelectCourse(c.enrollmentId)}
+                    />
                   ))}
                 </ul>
               </section>
@@ -906,12 +928,14 @@ function WeekAgendaRow({
   isTeacher,
   now,
   ko,
+  dotClass,
   onSelect,
 }: {
   item: ClassItem;
   isTeacher: boolean;
   now: number;
   ko: boolean;
+  dotClass: string;
   onSelect: () => void;
 }) {
   const cancelled = item.status === "취소";
@@ -920,6 +944,7 @@ function WeekAgendaRow({
   const mark = isTeacher ? conductMark(item, now) : null;
   return (
     <li className="border-rule flex items-center gap-3 border-b px-5 py-3 last:border-b-0">
+      <span aria-hidden className={cn("size-2.5 shrink-0 rounded-full", dotClass, cancelled && "opacity-40")} />
       <button type="button" onClick={onSelect} className={cn("min-w-0 flex-1 text-left", cancelled && "opacity-60")}>
         <p className={cn("text-ink text-sm font-bold", cancelled && "line-through")}>{timeRange}</p>
         <p className="text-muted-fg mt-0.5 flex items-center gap-1.5 truncate text-xs">
