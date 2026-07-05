@@ -919,6 +919,8 @@ function WeekSchedule({
                       const ended = !cancelled && now >= c.endMs;
                       const live = !cancelled && canEnterClass(now, c.startMs, c.endMs);
                       const color = COURSE_PALETTE[colorIndex.get(c.enrollmentId) ?? 0];
+                      // 강사 진행 표시 — ○ 진행 인정 / △ 피드백 대기(종료·미인정). 리스트/아젠다와 동일.
+                      const mark = isTeacher ? conductMark(c, now) : null;
                       return (
                         <button
                           key={c.id}
@@ -930,6 +932,8 @@ function WeekSchedule({
                             cancelled ? "bg-rule/60 text-muted-fg line-through" : ended ? "bg-rule/40 text-muted-fg-faint" : cn(color.grid, live && "ring-2 ring-cta"),
                           )}
                           style={{ top, height }}>
+                          {mark === "conducted" && <Circle className="text-cta absolute top-1 right-1 size-2.5 fill-current" aria-hidden />}
+                          {mark === "pending" && <Triangle className="absolute top-1 right-1 size-2.5 fill-current text-[#F5A623]" aria-hidden />}
                           <span className="block font-bold">{fmtTime(c.startMin)}</span>
                           <span className="block truncate">{c.courseTitle}</span>
                           <span className="block truncate opacity-80">{c.counterpart}</span>
