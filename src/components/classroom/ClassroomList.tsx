@@ -101,6 +101,15 @@ function formatSessionDate(d: string, ko: boolean): string {
 
 const isActive = (c: ClassItem) => c.status !== "취소";
 
+// 다음(가장 이른) 예정 수업 1건 — 학생 연기 가능 대상(서버 cancelClass 가드와 동일 정의).
+// 진행 중(입장 가능 창)인 수업이 하나라도 있으면 null(진행 중 수업 입장과 다음 수업 연기 동시 노출 방지).
+function nextUpcomingIdOf(items: ClassItem[], now: number): string | null {
+  const inProgress = items.some((it) => it.status !== "취소" && canEnterClass(now, it.startMs, it.endMs));
+  if (inProgress) return null;
+  const up = items.filter((it) => it.status !== "취소" && it.startMs > now).sort((a, b) => a.startMs - b.startMs);
+  return up[0]?.id ?? null;
+}
+
 export default function ClassroomList({ classes, isTeacher }: { classes: ClassItem[]; isTeacher: boolean }) {
   // 강사 화면은 영문, 학생 화면은 한국어.
   const ko = !isTeacher;
@@ -175,7 +184,7 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
       </div>
 
       {landingView === "weekly" ? (
-        <WeekSchedule classes={classes} isTeacher={isTeacher} now={now} ko={ko} onSelectCourse={setSelectedId} />
+        <WeekSchedule classes={classes} groups={groups} isTeacher={isTeacher} now={now} ko={ko} onSelectCourse={setSelectedId} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {groups.map((g) => (
@@ -193,14 +202,8 @@ function CourseDetail({ group, isTeacher, now, ko, onBack }: { group: CourseGrou
   // 학생만 취소 가능 + 과정당 6회 한도.
   const cancelledCount = group.cancelledCount;
   const cancelAllowed = !isTeacher && cancelledCount < MAX_CANCELLATIONS;
-  // 다음(가장 이른) 예정 수업 1건만 취소 가능 — 서버 cancelClass 가드와 동일 정의(미취소·미시작 중 최소 시작시각).
-  // 단, 진행 중(입장 가능 창)인 수업이 있으면 다음 수업 연기 버튼을 숨긴다.
-  const nextUpcomingId = useMemo(() => {
-    const inProgress = group.items.some((it) => it.status !== "취소" && canEnterClass(now, it.startMs, it.endMs));
-    if (inProgress) return null;
-    const up = group.items.filter((it) => it.status !== "취소" && it.startMs > now).sort((a, b) => a.startMs - b.startMs);
-    return up[0]?.id ?? null;
-  }, [group.items, now]);
+  // 다음(가장 이른) 예정 수업 1건만 취소 가능 — nextUpcomingIdOf(서버 cancelClass 가드와 동일 정의).
+  const nextUpcomingId = useMemo(() => nextUpcomingIdOf(group.items, now), [group.items, now]);
 
   return (
     <div className="space-y-5">
@@ -545,11 +548,8 @@ function ClassRow({
 }) {
   const ko = !isTeacher;
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const cancelled = item.status === "취소";
   const enterable = !cancelled && !isPast && canEnterClass(now, item.startMs, item.endMs);
-  // enterable이 아닐 때만 로컬 pending을 취소 전이에 쓴다(입장은 EnterClassButton이 자체 pending 소유).
   // 다음(가장 이른) 예정 수업 1건만 취소 가능(서버 cancelClass 가드와 동일).
   const cancellable = cancelAllowed && !cancelled && !isPast && item.id === nextUpcomingId && canCancelClass(now, item.startMs);
   const timeRange = `${fmtTime(item.startMin)}~${fmtTime(lessonEndMin(item.endMin))}`;
@@ -558,21 +558,6 @@ function ClassRow({
   // 강사 대체 표시 — 학생 뷰의 예정(미취소·미종료) 수업만.
   const reassigned = !isTeacher && !!item.reassignedAt && !cancelled && !isPast;
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-
-  function handleCancel() {
-    setConfirmOpen(false);
-    startTransition(async () => {
-      const res = await cancelClass(item.id);
-      if (res.ok) {
-        const label = res.makeupDate ? formatSessionDate(res.makeupDate, true) : "";
-        const remainingText = typeof res.remaining === "number" ? ` (남은 연기 ${res.remaining}회)` : "";
-        toast.success((res.makeupDate ? `수업을 연기했어요. 보강이 ${label}로 잡혔어요.` : "수업을 연기했어요.") + remainingText);
-        router.refresh();
-      } else {
-        toast.error(res.error ?? "연기할 수 없어요.");
-      }
-    });
-  }
 
   return (
     <li className="border-rule flex flex-col gap-3 border-b px-6 py-4 last:border-b-0">
@@ -617,14 +602,7 @@ function ClassRow({
       {enterable ? (
         <EnterClassButton item={item} ko={ko} />
       ) : cancellable ? (
-        <button
-          type="button"
-          onClick={() => setConfirmOpen(true)}
-          disabled={pending}
-          className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50">
-          {pending ? <Loader2 className="size-3.5 animate-spin" /> : <X className="size-3.5" />}
-          {ko ? "수업 연기" : "Postpone"}
-        </button>
+        <PostponeButton item={item} cancelledCount={cancelledCount} ko={ko} onDone={() => router.refresh()} />
       ) : !cancelled && !isPast ? (
         <span className="text-muted-fg-faint shrink-0 text-xs">{ko ? "시작 15분 전 입장" : "Opens 15 min before"}</span>
       ) : null}
@@ -648,6 +626,91 @@ function ClassRow({
       ) : null}
 
       {feedbackOpen && <ClassFeedbackModal item={item} isTeacher={isTeacher} onClose={() => setFeedbackOpen(false)} />}
+    </li>
+  );
+}
+
+// 입장 버튼 — 팝업 차단 회피(빈 탭 먼저 열고 액션 URL로 이동). ClassRow·주간 아젠다·모달 공용.
+function EnterClassButton({ item, ko, compact = false, fullWidth = false }: { item: ClassItem; ko: boolean; compact?: boolean; fullWidth?: boolean }) {
+  const [pending, startTransition] = useTransition();
+  function handleEnter() {
+    const w = window.open("", "_blank");
+    startTransition(async () => {
+      const res = await enterClass(item.id);
+      if (res.url) {
+        if (w) w.location.href = res.url;
+        else window.open(res.url, "_blank");
+      } else {
+        w?.close();
+        toast.error(res.error ?? (ko ? "입장할 수 없어요." : "Unable to enter the class."));
+      }
+    });
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleEnter}
+      disabled={pending}
+      className={cn(
+        "bg-cta inline-flex items-center gap-1.5 rounded-md font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50",
+        fullWidth ? "h-10 w-full justify-center text-sm" : "shrink-0",
+        !fullWidth && (compact ? "h-8 px-3 text-xs" : "h-9 px-4 text-sm"),
+      )}>
+      {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Video className="size-3.5" />}
+      {ko ? "입장하기" : "Enter"}
+    </button>
+  );
+}
+
+// 수업 연기 버튼 + 확인 다이얼로그 — 학생 전용, 다음 예정 1건에만 노출(호출부가 cancellable 판정).
+// ClassRow·주간 아젠다·모달 공용. 연기 성공 시 onDone(부모 갱신) 호출.
+function PostponeButton({
+  item,
+  cancelledCount,
+  ko,
+  onDone,
+  fullWidth = false,
+  compact = false,
+}: {
+  item: ClassItem;
+  cancelledCount: number;
+  ko: boolean;
+  onDone: () => void;
+  fullWidth?: boolean;
+  compact?: boolean;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const timeRange = `${fmtTime(item.startMin)}~${fmtTime(lessonEndMin(item.endMin))}`;
+
+  function handleCancel() {
+    setConfirmOpen(false);
+    startTransition(async () => {
+      const res = await cancelClass(item.id);
+      if (res.ok) {
+        const label = res.makeupDate ? formatSessionDate(res.makeupDate, true) : "";
+        const remainingText = typeof res.remaining === "number" ? ` (남은 연기 ${res.remaining}회)` : "";
+        toast.success((res.makeupDate ? `수업을 연기했어요. 보강이 ${label}로 잡혔어요.` : "수업을 연기했어요.") + remainingText);
+        onDone();
+      } else {
+        toast.error(res.error ?? "연기할 수 없어요.");
+      }
+    });
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setConfirmOpen(true)}
+        disabled={pending}
+        className={cn(
+          "border-brand/40 text-brand hover:bg-brand/5 inline-flex items-center gap-1.5 rounded-md border font-bold transition-colors disabled:opacity-50",
+          fullWidth ? "h-10 w-full justify-center text-sm" : compact ? "h-8 shrink-0 px-3 text-xs" : "h-9 shrink-0 px-4 text-sm",
+        )}>
+        {pending ? <Loader2 className="size-3.5 animate-spin" /> : <X className="size-3.5" />}
+        {ko ? "수업 연기" : "Postpone"}
+      </button>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
@@ -670,38 +733,7 @@ function ClassRow({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </li>
-  );
-}
-
-// 입장 버튼 — 팝업 차단 회피(빈 탭 먼저 열고 액션 URL로 이동). ClassRow·주간 아젠다 공용.
-function EnterClassButton({ item, ko, compact = false }: { item: ClassItem; ko: boolean; compact?: boolean }) {
-  const [pending, startTransition] = useTransition();
-  function handleEnter() {
-    const w = window.open("", "_blank");
-    startTransition(async () => {
-      const res = await enterClass(item.id);
-      if (res.url) {
-        if (w) w.location.href = res.url;
-        else window.open(res.url, "_blank");
-      } else {
-        w?.close();
-        toast.error(res.error ?? (ko ? "입장할 수 없어요." : "Unable to enter the class."));
-      }
-    });
-  }
-  return (
-    <button
-      type="button"
-      onClick={handleEnter}
-      disabled={pending}
-      className={cn(
-        "bg-cta inline-flex shrink-0 items-center gap-1.5 rounded-md font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50",
-        compact ? "h-8 px-3 text-xs" : "h-9 px-4 text-sm",
-      )}>
-      {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Video className="size-3.5" />}
-      {ko ? "입장하기" : "Enter"}
-    </button>
+    </>
   );
 }
 
@@ -720,25 +752,44 @@ const COURSE_PALETTE = [
   { grid: "bg-fuchsia-100 text-fuchsia-800", dot: "bg-fuchsia-400" },
 ];
 
+// 과정(enrollment)별 연기 컨텍스트 — 주간 뷰 모달·아젠다의 연기 버튼 노출 판정에 필요.
+type PostponeCtx = { cancelAllowed: boolean; cancelledCount: number; nextUpcomingId: string | null };
+
 // 주간 스케줄 — 전체 과정·학생 통합. 데스크톱=월~일 타임그리드, 모바일=요일별 아젠다. 주 이동 지원.
 function WeekSchedule({
   classes,
+  groups,
   isTeacher,
   now,
   ko,
   onSelectCourse,
 }: {
   classes: ClassItem[];
+  groups: CourseGroup[];
   isTeacher: boolean;
   now: number;
   ko: boolean;
   onSelectCourse: (enrollmentId: string) => void;
 }) {
+  const router = useRouter();
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date(now)));
   const thisMonday = mondayOf(new Date(now));
   const isThisWeek = weekStart.getTime() === thisMonday.getTime();
-  // 블록/행 클릭 시 먼저 기본 정보 모달을 띄우고, 모달 하단 버튼으로 강좌 이동.
+  // 블록/행 클릭 시 먼저 기본 정보 모달을 띄우고, 모달 하단 버튼으로 강좌 이동/입장/연기.
   const [infoItem, setInfoItem] = useState<ClassItem | null>(null);
+
+  // enrollment별 연기 컨텍스트 — 다음 예정 1건·남은 연기 한도(학생만). now 갱신마다 재계산.
+  const ctxByEnrollment = useMemo(() => {
+    const m = new Map<string, PostponeCtx>();
+    for (const g of groups) {
+      m.set(g.enrollmentId, {
+        cancelledCount: g.cancelledCount,
+        cancelAllowed: !isTeacher && g.cancelledCount < MAX_CANCELLATIONS,
+        nextUpcomingId: nextUpcomingIdOf(g.items, now),
+      });
+    }
+    return m;
+  }, [groups, isTeacher, now]);
 
   // 수강건(enrollment)별 색 인덱스 — 전체 classes 기준으로 고정(주 이동해도 색 불변).
   const colorIndex = useMemo(() => {
@@ -918,8 +969,10 @@ function WeekSchedule({
                       isTeacher={isTeacher}
                       now={now}
                       ko={ko}
+                      ctx={ctxByEnrollment.get(c.enrollmentId)}
                       dotClass={COURSE_PALETTE[colorIndex.get(c.enrollmentId) ?? 0].dot}
                       onSelect={() => setInfoItem(c)}
+                      onPostponed={() => router.refresh()}
                     />
                   ))}
                 </ul>
@@ -933,7 +986,13 @@ function WeekSchedule({
         <ClassInfoModal
           item={infoItem}
           isTeacher={isTeacher}
+          now={now}
+          ctx={ctxByEnrollment.get(infoItem.enrollmentId)}
           onClose={() => setInfoItem(null)}
+          onPostponed={() => {
+            setInfoItem(null);
+            router.refresh();
+          }}
           onGoToCourse={() => {
             onSelectCourse(infoItem.enrollmentId);
             setInfoItem(null);
@@ -944,20 +1003,30 @@ function WeekSchedule({
   );
 }
 
-// 수업 기본 정보 모달 — 블록/아젠다 클릭 시. 과정·상대방·날짜·시간 + 하단 "해당 강좌로 이동".
+// 수업 기본 정보 모달 — 블록/아젠다 클릭 시. 과정·상대방·날짜·시간 + 입장/연기 + 하단 "해당 강좌로 이동".
 function ClassInfoModal({
   item,
   isTeacher,
+  now,
+  ctx,
   onGoToCourse,
+  onPostponed,
   onClose,
 }: {
   item: ClassItem;
   isTeacher: boolean;
+  now: number;
+  ctx?: PostponeCtx;
   onGoToCourse: () => void;
+  onPostponed: () => void;
   onClose: () => void;
 }) {
   const ko = !isTeacher;
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  // ClassRow와 동일 판정 — 입장(양쪽)·연기(학생·다음 예정 1건, cancelAllowed에 !isTeacher 포함).
+  const cancelled = item.status === "취소";
+  const enterable = !cancelled && canEnterClass(now, item.startMs, item.endMs);
+  const cancellable = !!ctx && ctx.cancelAllowed && !cancelled && item.id === ctx.nextUpcomingId && canCancelClass(now, item.startMs);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1011,11 +1080,16 @@ function ClassInfoModal({
           </div>
         </dl>
 
-        <div className="border-rule border-t px-6 py-4">
+        <div className="border-rule flex flex-col gap-2 border-t px-6 py-4">
+          {enterable && <EnterClassButton item={item} ko={ko} fullWidth />}
+          {cancellable && ctx && <PostponeButton item={item} cancelledCount={ctx.cancelledCount} ko={ko} onDone={onPostponed} fullWidth />}
           <button
             type="button"
             onClick={onGoToCourse}
-            className="bg-cta inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md text-sm font-bold text-white transition-opacity hover:opacity-90">
+            className={cn(
+              "inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md text-sm font-bold transition-opacity hover:opacity-90",
+              enterable || cancellable ? "border-rule text-ink hover:bg-rule/40 border" : "bg-cta text-white",
+            )}>
             {ko ? "해당 강좌로 이동" : "Go to course"}
             <ChevronRight className="size-4" />
           </button>
@@ -1025,24 +1099,29 @@ function ClassInfoModal({
   );
 }
 
-// 주간 아젠다 컴팩트 행(모바일) — 시간·과정·상대방·상태 + 입장 버튼.
+// 주간 아젠다 컴팩트 행(모바일) — 시간·과정·상대방·상태 + 입장/연기 버튼.
 function WeekAgendaRow({
   item,
   isTeacher,
   now,
   ko,
+  ctx,
   dotClass,
   onSelect,
+  onPostponed,
 }: {
   item: ClassItem;
   isTeacher: boolean;
   now: number;
   ko: boolean;
+  ctx?: PostponeCtx;
   dotClass: string;
   onSelect: () => void;
+  onPostponed: () => void;
 }) {
   const cancelled = item.status === "취소";
   const enterable = !cancelled && canEnterClass(now, item.startMs, item.endMs);
+  const cancellable = !!ctx && ctx.cancelAllowed && !cancelled && item.id === ctx.nextUpcomingId && canCancelClass(now, item.startMs);
   const timeRange = `${fmtTime(item.startMin)}~${fmtTime(lessonEndMin(item.endMin))}`;
   const mark = isTeacher ? conductMark(item, now) : null;
   return (
@@ -1066,7 +1145,11 @@ function WeekAgendaRow({
           {mark === "pending" && <Triangle className="size-3 shrink-0 fill-current text-[#F5A623]" aria-hidden />}
         </p>
       </button>
-      {enterable && <EnterClassButton item={item} ko={ko} compact />}
+      {enterable ? (
+        <EnterClassButton item={item} ko={ko} compact />
+      ) : cancellable && ctx ? (
+        <PostponeButton item={item} cancelledCount={ctx.cancelledCount} ko={ko} onDone={onPostponed} compact />
+      ) : null}
     </li>
   );
 }
