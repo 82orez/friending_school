@@ -737,6 +737,8 @@ function WeekSchedule({
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date(now)));
   const thisMonday = mondayOf(new Date(now));
   const isThisWeek = weekStart.getTime() === thisMonday.getTime();
+  // 블록/행 클릭 시 먼저 기본 정보 모달을 띄우고, 모달 하단 버튼으로 강좌 이동.
+  const [infoItem, setInfoItem] = useState<ClassItem | null>(null);
 
   // 수강건(enrollment)별 색 인덱스 — 전체 classes 기준으로 고정(주 이동해도 색 불변).
   const colorIndex = useMemo(() => {
@@ -866,7 +868,7 @@ function WeekSchedule({
                         <button
                           key={c.id}
                           type="button"
-                          onClick={() => onSelectCourse(c.enrollmentId)}
+                          onClick={() => setInfoItem(c)}
                           title={`${c.courseTitle} · ${c.counterpart}`}
                           className={cn(
                             "absolute inset-x-0.5 flex flex-col justify-center overflow-hidden rounded-md px-1.5 text-left text-[11px] leading-[1.15] transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
@@ -917,7 +919,7 @@ function WeekSchedule({
                       now={now}
                       ko={ko}
                       dotClass={COURSE_PALETTE[colorIndex.get(c.enrollmentId) ?? 0].dot}
-                      onSelect={() => onSelectCourse(c.enrollmentId)}
+                      onSelect={() => setInfoItem(c)}
                     />
                   ))}
                 </ul>
@@ -926,7 +928,100 @@ function WeekSchedule({
           })
         )}
       </div>
+
+      {infoItem && (
+        <ClassInfoModal
+          item={infoItem}
+          isTeacher={isTeacher}
+          onClose={() => setInfoItem(null)}
+          onGoToCourse={() => {
+            onSelectCourse(infoItem.enrollmentId);
+            setInfoItem(null);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// 수업 기본 정보 모달 — 블록/아젠다 클릭 시. 과정·상대방·날짜·시간 + 하단 "해당 강좌로 이동".
+function ClassInfoModal({
+  item,
+  isTeacher,
+  onGoToCourse,
+  onClose,
+}: {
+  item: ClassItem;
+  isTeacher: boolean;
+  onGoToCourse: () => void;
+  onClose: () => void;
+}) {
+  const ko = !isTeacher;
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const timeRange = `${fmtTime(item.startMin)}~${fmtTime(lessonEndMin(item.endMin))}`;
+
+  return (
+    <>
+      <div aria-hidden="true" onClick={onClose} className="fixed inset-0 z-[110] bg-black/40" />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={ko ? "수업 정보" : "Class info"}
+        className="fixed top-1/2 left-1/2 z-[120] flex w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="border-rule flex items-start justify-between gap-3 border-b px-6 py-4">
+          <h2 className="text-ink min-w-0 text-lg font-bold">{item.courseTitle}</h2>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            aria-label={ko ? "닫기" : "Close"}
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <dl className="space-y-3 px-6 py-5 text-sm">
+          <div className="flex gap-3">
+            <dt className="text-muted-fg-faint w-14 shrink-0">{isTeacher ? "Student" : "강사"}</dt>
+            <dd className="text-ink font-semibold">{item.counterpart}</dd>
+          </div>
+          <div className="flex gap-3">
+            <dt className="text-muted-fg-faint w-14 shrink-0">{ko ? "날짜" : "Date"}</dt>
+            <dd className="text-ink font-semibold">{formatSessionDate(item.sessionDate, ko)}</dd>
+          </div>
+          <div className="flex gap-3">
+            <dt className="text-muted-fg-faint w-14 shrink-0">{ko ? "시간" : "Time"}</dt>
+            <dd className="text-ink font-semibold">{timeRange}</dd>
+          </div>
+        </dl>
+
+        <div className="border-rule border-t px-6 py-4">
+          <button
+            type="button"
+            onClick={onGoToCourse}
+            className="bg-cta inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md text-sm font-bold text-white transition-opacity hover:opacity-90">
+            {ko ? "해당 강좌로 이동" : "Go to course"}
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
