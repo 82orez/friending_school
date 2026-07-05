@@ -775,8 +775,10 @@ function WeekSchedule({
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date(now)));
   const thisMonday = mondayOf(new Date(now));
   const isThisWeek = weekStart.getTime() === thisMonday.getTime();
-  // 블록/행 클릭 시 먼저 기본 정보 모달을 띄우고, 모달 하단 버튼으로 강좌 이동/입장/연기.
+  // 블록/행 클릭 시 먼저 기본 정보 모달을 띄우고, 모달 하단 버튼으로 강좌 이동/입장/연기/피드백.
   const [infoItem, setInfoItem] = useState<ClassItem | null>(null);
+  // 피드백 모달은 정보 모달 위에 겹치지 않게 launcher 패턴으로 승격(정보 모달 닫고 피드백 모달 오픈).
+  const [feedbackItem, setFeedbackItem] = useState<ClassItem | null>(null);
 
   // enrollment별 연기 컨텍스트 — 다음 예정 1건·남은 연기 한도(학생만). now 갱신마다 재계산.
   const ctxByEnrollment = useMemo(() => {
@@ -993,12 +995,18 @@ function WeekSchedule({
             setInfoItem(null);
             router.refresh();
           }}
+          onFeedback={() => {
+            setFeedbackItem(infoItem);
+            setInfoItem(null);
+          }}
           onGoToCourse={() => {
             onSelectCourse(infoItem.enrollmentId);
             setInfoItem(null);
           }}
         />
       )}
+
+      {feedbackItem && <ClassFeedbackModal item={feedbackItem} isTeacher={isTeacher} onClose={() => setFeedbackItem(null)} />}
     </div>
   );
 }
@@ -1011,6 +1019,7 @@ function ClassInfoModal({
   ctx,
   onGoToCourse,
   onPostponed,
+  onFeedback,
   onClose,
 }: {
   item: ClassItem;
@@ -1019,6 +1028,7 @@ function ClassInfoModal({
   ctx?: PostponeCtx;
   onGoToCourse: () => void;
   onPostponed: () => void;
+  onFeedback: () => void;
   onClose: () => void;
 }) {
   const ko = !isTeacher;
@@ -1027,6 +1037,10 @@ function ClassInfoModal({
   const cancelled = item.status === "취소";
   const enterable = !cancelled && canEnterClass(now, item.startMs, item.endMs);
   const cancellable = !!ctx && ctx.cancelAllowed && !cancelled && item.id === ctx.nextUpcomingId && canCancelClass(now, item.startMs);
+  // 피드백 — 종료 수업만: 강사=작성/수정, 학생=피드백 있을 때 보기(ClassRow와 동일).
+  const ended = !cancelled && now >= item.endMs;
+  const canFeedback = isTeacher ? ended : !!item.feedback;
+  const hasAction = enterable || cancellable || canFeedback;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1083,12 +1097,28 @@ function ClassInfoModal({
         <div className="border-rule flex flex-col gap-2 border-t px-6 py-4">
           {enterable && <EnterClassButton item={item} ko={ko} fullWidth />}
           {cancellable && ctx && <PostponeButton item={item} cancelledCount={ctx.cancelledCount} ko={ko} onDone={onPostponed} fullWidth />}
+          {canFeedback && (
+            <button
+              type="button"
+              onClick={onFeedback}
+              className="border-rule text-ink hover:bg-rule/40 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md border text-sm font-bold transition-colors">
+              {isTeacher ? (
+                <>
+                  <MessageSquare className="size-4" /> {item.feedback ? "Edit feedback" : "Write feedback"}
+                </>
+              ) : (
+                <>
+                  <Eye className="size-4" /> 피드백 보기
+                </>
+              )}
+            </button>
+          )}
           <button
             type="button"
             onClick={onGoToCourse}
             className={cn(
               "inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md text-sm font-bold transition-opacity hover:opacity-90",
-              enterable || cancellable ? "border-rule text-ink hover:bg-rule/40 border" : "bg-cta text-white",
+              hasAction ? "border-rule text-ink hover:bg-rule/40 border" : "bg-cta text-white",
             )}>
             {ko ? "해당 강좌로 이동" : "Go to course"}
             <ChevronRight className="size-4" />
