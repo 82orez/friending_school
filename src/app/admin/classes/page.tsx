@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import ClassEnrollmentsManager, { type ClassEnrollmentSummary } from "@/components/admin/ClassEnrollmentsManager";
+import { type AdminSession } from "@/components/admin/ClassWeekGrid";
 import { kstDateMinToMs, ENTRY_LEAD_MS } from "@/lib/classtime";
 import { lessonEndMin, summarizeSlots, type Slot } from "@/lib/availability";
 
@@ -103,5 +104,20 @@ export default async function AdminClassesPage() {
     return a.firstDate.localeCompare(b.firstDate);
   });
 
-  return <ClassEnrollmentsManager rows={summaries} />;
+  // 주간 뷰용 — 진행 예정 세션만(취소·연기 제외, 보강 포함).
+  const sessions: AdminSession[] = rows
+    .filter((r) => r.status !== "취소")
+    .map((r) => ({
+      enrollmentId: r.enrollment_id,
+      courseTitle: r.course_title,
+      teacherName: r.teacher_name,
+      studentName: r.student_name,
+      studentEnglishName: r.student_english_name,
+      sessionDate: r.session_date,
+      startMin: r.start_min,
+      endMin: r.end_min,
+      isMakeup: r.is_makeup,
+    }));
+
+  return <ClassEnrollmentsManager rows={summaries} sessions={sessions} />;
 }

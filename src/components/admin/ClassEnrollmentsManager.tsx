@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MAX_CANCELLATIONS } from "@/lib/classtime";
+import ClassWeekGrid, { type AdminSession } from "./ClassWeekGrid";
 
 export type ClassEnrollmentSummary = {
   enrollmentId: string;
@@ -41,8 +42,9 @@ const SORT_VALUE: Record<SortKey, (r: ClassEnrollmentSummary) => string> = {
   start: (r) => r.firstDate,
 };
 
-export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmentSummary[] }) {
+export default function ClassEnrollmentsManager({ rows, sessions }: { rows: ClassEnrollmentSummary[]; sessions: AdminSession[] }) {
   const router = useRouter();
+  const [view, setView] = useState<"list" | "weekly">("list");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("전체");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
@@ -93,6 +95,28 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
       <h1 className="text-ink text-2xl font-extrabold">화상수업 관리</h1>
       <p className="text-muted-fg mt-1 text-sm">수강신청으로 생성된 과정 목록입니다. 행을 클릭하면 해당 과정의 수업을 관리할 수 있습니다.</p>
 
+      <div className="bg-surface mt-5 inline-flex rounded-lg p-1">
+        {(["list", "weekly"] as const).map((v) => (
+          <button
+            key={v}
+            type="button"
+            aria-pressed={view === v}
+            onClick={() => setView(v)}
+            className={cn(
+              "focus-visible:ring-accent-blue/50 rounded-md px-4 py-1.5 text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:outline-none",
+              view === v ? "text-ink bg-white shadow-sm" : "text-muted-fg",
+            )}>
+            {v === "list" ? "목록" : "주간"}
+          </button>
+        ))}
+      </div>
+
+      {view === "weekly" ? (
+        <div className="mt-5">
+          <ClassWeekGrid sessions={sessions} now={now} />
+        </div>
+      ) : (
+        <>
       <div className="mt-5 flex flex-wrap gap-2">
         {FILTERS.map((f) => {
           const active = filter === f;
@@ -226,6 +250,8 @@ export default function ClassEnrollmentsManager({ rows }: { rows: ClassEnrollmen
           </tbody>
         </table>
       </div>
+        </>
+      )}
     </div>
   );
 }
