@@ -99,6 +99,20 @@ function formatSessionDate(d: string, ko: boolean): string {
   return ko ? `${m}월 ${day}일 (${DAY_LABELS_KO[dow]})` : `${MONTHS_EN[m - 1]} ${day} (${WEEKDAYS_EN[dow]})`;
 }
 
+// 요일 없는 컴팩트 날짜(기간 표시용). ko="7월 1일" / en="Jul 1".
+function shortDate(d: string, ko: boolean): string {
+  const [y, m, day] = d.split("-").map(Number);
+  if (!y || !m || !day) return d;
+  return ko ? `${m}월 ${day}일` : `${MONTHS_EN[m - 1]} ${day}`;
+}
+
+// 과정 주간 수업 요일 요약. 취소·보강 제외 정규 수업의 요일 집합 → ko "화/목/토" / en "Tue/Thu/Sat".
+function weekdaySummary(items: ClassItem[], ko: boolean): string {
+  const dows = new Set(items.filter((c) => c.status !== "취소" && !c.isMakeup).map((c) => parseDate(c.sessionDate).getDay()));
+  const labels = DISPLAY_DAYS.filter((d) => dows.has(d)).map((d) => (ko ? DAY_LABELS_KO[d] : DAY_LABELS[DISPLAY_DAYS.indexOf(d)]));
+  return labels.join("/");
+}
+
 const isActive = (c: ClassItem) => c.status !== "취소";
 
 // 다음(가장 이른) 예정 수업 1건 — 학생 연기 가능 대상(서버 cancelClass 가드와 동일 정의).
@@ -475,6 +489,11 @@ function CourseCard({ group, isTeacher, now, onSelect }: { group: CourseGroup; i
   const done = active.filter((c) => c.endMs < now).length;
   const next = active.find((c) => c.endMs >= now);
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  // 기간(첫~마지막 수업, 보강 포함 실제 범위) + 주간 요일.
+  const dates = group.items.map((c) => c.sessionDate).sort();
+  const startDate = dates[0];
+  const endDate = dates[dates.length - 1];
+  const weekdays = weekdaySummary(group.items, ko);
 
   return (
     <button
@@ -498,6 +517,21 @@ function CourseCard({ group, isTeacher, now, onSelect }: { group: CourseGroup; i
             ? "수업 종료"
             : "Completed"}
       </p>
+
+      <dl className="border-rule mt-3 space-y-1 border-t pt-3 text-xs">
+        <div className="flex gap-2">
+          <dt className="text-muted-fg-faint w-12 shrink-0">{ko ? "기간" : "Period"}</dt>
+          <dd className="text-muted-fg font-medium">
+            {shortDate(startDate, ko)} ~ {shortDate(endDate, ko)}
+          </dd>
+        </div>
+        {weekdays && (
+          <div className="flex gap-2">
+            <dt className="text-muted-fg-faint w-12 shrink-0">{ko ? "요일" : "Days"}</dt>
+            <dd className="text-muted-fg font-medium">{weekdays}</dd>
+          </div>
+        )}
+      </dl>
 
       <div className="mt-3">
         <div className="bg-rule h-1.5 w-full overflow-hidden rounded-full">
