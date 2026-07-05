@@ -1041,6 +1041,8 @@ function ClassInfoModal({
   const ended = !cancelled && now >= item.endMs;
   const canFeedback = isTeacher ? ended : !!item.feedback;
   const hasAction = enterable || cancellable || canFeedback;
+  // 입장 시간창(시작 15분 전) 전의 미래 수업 — ClassRow와 동일하게 안내 문구 노출.
+  const showEntryHint = !enterable && !cancellable && !cancelled && !ended;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1113,6 +1115,7 @@ function ClassInfoModal({
               )}
             </button>
           )}
+          {showEntryHint && <p className="text-muted-fg-faint text-center text-xs">{ko ? "시작 15분 전 입장" : "Opens 15 min before"}</p>}
           <button
             type="button"
             onClick={onGoToCourse}
