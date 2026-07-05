@@ -915,6 +915,8 @@ function WeekSchedule({
                       const top = Math.max(0, ((c.startMin - gridBottom) / SLOT_MIN) * ROW_H) + 4;
                       const height = Math.max(ROW_H - 8, ((c.endMin - c.startMin) / SLOT_MIN) * ROW_H - 8);
                       const cancelled = c.status === "취소";
+                      // 종료된 수업(입장창 종료=레슨 종료 지남)은 회색 음영 처리.
+                      const ended = !cancelled && now >= c.endMs;
                       const live = !cancelled && canEnterClass(now, c.startMs, c.endMs);
                       const color = COURSE_PALETTE[colorIndex.get(c.enrollmentId) ?? 0];
                       return (
@@ -925,7 +927,7 @@ function WeekSchedule({
                           title={`${c.courseTitle} · ${c.counterpart}`}
                           className={cn(
                             "absolute inset-x-0.5 flex flex-col justify-center overflow-hidden rounded-md px-1.5 text-left text-[11px] leading-[1.15] transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
-                            cancelled ? "bg-rule/60 text-muted-fg line-through" : cn(color.grid, live && "ring-2 ring-cta"),
+                            cancelled ? "bg-rule/60 text-muted-fg line-through" : ended ? "bg-rule/40 text-muted-fg-faint" : cn(color.grid, live && "ring-2 ring-cta"),
                           )}
                           style={{ top, height }}>
                           <span className="block font-bold">{fmtTime(c.startMin)}</span>
@@ -1153,14 +1155,16 @@ function WeekAgendaRow({
   onPostponed: () => void;
 }) {
   const cancelled = item.status === "취소";
+  // 종료된 수업(레슨 종료 지남)은 회색 음영 처리.
+  const ended = !cancelled && now >= item.endMs;
   const enterable = !cancelled && canEnterClass(now, item.startMs, item.endMs);
   const cancellable = !!ctx && ctx.cancelAllowed && !cancelled && item.id === ctx.nextUpcomingId && canCancelClass(now, item.startMs);
   const timeRange = `${fmtTime(item.startMin)}~${fmtTime(lessonEndMin(item.endMin))}`;
   const mark = isTeacher ? conductMark(item, now) : null;
   return (
     <li className="border-rule flex items-center gap-3 border-b px-5 py-3 last:border-b-0">
-      <span aria-hidden className={cn("size-2.5 shrink-0 rounded-full", dotClass, cancelled && "opacity-40")} />
-      <button type="button" onClick={onSelect} className={cn("min-w-0 flex-1 text-left", cancelled && "opacity-60")}>
+      <span aria-hidden className={cn("size-2.5 shrink-0 rounded-full", dotClass, (cancelled || ended) && "opacity-40")} />
+      <button type="button" onClick={onSelect} className={cn("min-w-0 flex-1 text-left", (cancelled || ended) && "opacity-60")}>
         <p className={cn("text-ink text-sm font-bold", cancelled && "line-through")}>{timeRange}</p>
         <p className="text-muted-fg mt-0.5 flex items-center gap-1.5 truncate text-xs">
           <span className="truncate">
