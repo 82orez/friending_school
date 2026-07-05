@@ -846,14 +846,13 @@ function WeekSchedule({
           className="text-muted-fg hover:text-ink border-rule focus-visible:ring-accent-blue/50 inline-flex size-8 items-center justify-center rounded-md border transition-colors focus-visible:ring-2 focus-visible:outline-none">
           <ChevronRight className="size-4" />
         </button>
-        {!isThisWeek && (
-          <button
-            type="button"
-            onClick={() => setWeekStart(mondayOf(new Date(now)))}
-            className="text-accent-blue-ink hover:bg-accent-blue-soft/40 border-accent-blue/40 focus-visible:ring-accent-blue/50 ml-1 inline-flex h-8 items-center rounded-md border px-3 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:outline-none">
-            {ko ? "이번 주" : "This week"}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setWeekStart(mondayOf(new Date(now)))}
+          disabled={isThisWeek}
+          className="text-accent-blue-ink hover:bg-accent-blue-soft/40 border-accent-blue/40 focus-visible:ring-accent-blue/50 ml-1 inline-flex h-8 items-center rounded-md border px-3 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:opacity-40 disabled:hover:bg-transparent">
+          {ko ? "이번 주" : "This week"}
+        </button>
       </div>
 
       {/* 데스크톱 타임그리드 */}
