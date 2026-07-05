@@ -7,7 +7,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarRange, Eye, Loader2
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { adminCancelClass, adminReassignClass, adminRescheduleRemaining, adminReassignRemaining, adminSetClassConducted } from "@/app/admin/actions";
-import { fmtTime, lessonEndMin, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
+import { fmtTime, formatDateKo, lessonEndMin, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
 import type { EnrollTeacherCard } from "@/app/courses/enroll-actions";
 import EnrollScheduleField from "@/components/course/EnrollScheduleField";
 import { kstDateMinToMs, ENTRY_LEAD_MS, MAX_CANCELLATIONS } from "@/lib/classtime";
@@ -311,7 +311,7 @@ export default function ClassesManager({
                       {r.is_makeup && <span className="bg-progress/10 text-progress shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">보강</span>}
                     </div>
                   </td>
-                  <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{r.session_date}</td>
+                  <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{formatDateKo(r.session_date)}</td>
                   <td className="text-muted-fg px-4 py-3.5 align-middle whitespace-nowrap">{timeRange(r.start_min, r.end_min)}</td>
                   <td className="text-muted-fg max-w-[10rem] truncate px-4 py-3.5 align-middle">{r.teacher_name ?? "강사"}</td>
                   <td className="text-muted-fg-faint px-4 py-3.5 align-middle whitespace-nowrap">#{r.session_no}</td>
@@ -972,7 +972,7 @@ function ClassDetailModal({
               ["강사", row.teacher_name ?? "-"],
               ["과정", row.course_title],
               ["회차", `${row.session_no}회차${row.is_makeup ? " (보강)" : ""}`],
-              ["날짜", row.session_date],
+              ["날짜", formatDateKo(row.session_date)],
               ["시간", timeRange(row.start_min, row.end_min)],
               ["진행 여부", conductInfo(row, now).label],
               ["강사 입장", row.teacher_entered_at ? `입장함 · ${new Date(row.teacher_entered_at).toLocaleString("ko-KR")}` : "미입장"],

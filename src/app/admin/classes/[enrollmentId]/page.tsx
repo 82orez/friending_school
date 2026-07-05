@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { loadEnrollTeachers } from "@/app/courses/enroll-actions";
-import { isValidSlot, type Slot } from "@/lib/availability";
+import { DAY_LABELS_KO, DISPLAY_DAYS, dowOf, isValidSlot, type Slot } from "@/lib/availability";
 import ClassesManager, { type AdminClass } from "@/components/admin/ClassesManager";
 
 export default async function AdminClassDetailPage({ params }: { params: Promise<{ enrollmentId: string }> }) {
@@ -31,7 +31,12 @@ export default async function AdminClassDetailPage({ params }: { params: Promise
   const dates = classes.map((c) => c.session_date).sort();
   const studentLabel = first.student_name ?? "학생";
   const title = `${first.course_title} · ${studentLabel}`;
-  const subtitle = `강사 ${first.teacher_name ?? "-"} · 기간 ${dates[0]} ~ ${dates[dates.length - 1]} · 총 ${classes.length}회`;
+  // 주간 요일 요약(예: "월수금") — 정규 수업(취소·보강 제외) 날짜에서 파생.
+  const regularDows = new Set(classes.filter((c) => c.status !== "취소" && !c.is_makeup).map((c) => dowOf(c.session_date)));
+  const weekdayLabel = DISPLAY_DAYS.filter((d) => regularDows.has(d))
+    .map((d) => DAY_LABELS_KO[d])
+    .join("");
+  const subtitle = `강사 ${first.teacher_name ?? "-"}${weekdayLabel ? ` · 요일 ${weekdayLabel}` : ""} · 기간 ${dates[0]} ~ ${dates[dates.length - 1]} · 총 ${classes.length}회`;
 
   return (
     <ClassesManager

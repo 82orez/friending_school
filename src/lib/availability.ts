@@ -26,6 +26,15 @@ export const slotKey = (day: number, min: number) => `${day}-${min}`;
 
 export const fmtTime = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 
+// YYYY-MM-DD → 요일 인덱스(0=일 ~ 6=토). UTC 파싱으로 TZ 비종속.
+export const dowOf = (dateStr: string): number => {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+};
+
+// YYYY-MM-DD → "2026-07-04 (토)". 날짜 원문 유지 + 요일 접미.
+export const formatDateKo = (dateStr: string): string => `${dateStr} (${DAY_LABELS_KO[dowOf(dateStr)]})`;
+
 // 그리드 행(시작 분) 목록: 360(06:00) ~ 1410(23:30).
 export const ROW_MINS: number[] = [];
 for (let m = GRID_START_HOUR * 60; m < GRID_END_HOUR * 60; m += SLOT_MIN) ROW_MINS.push(m);
