@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, Circle, Eye, Loader2, MessageSquare, Triangle, Video, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Circle, Eye, Info, Loader2, MessageSquare, Triangle, Video, X } from "lucide-react";
 import { ko as koLocale, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -1048,6 +1048,27 @@ function ClassInfoModal({
   const hasAction = enterable || cancellable || canFeedback;
   // 입장 시간창(시작 15분 전) 전의 미래 수업 — ClassRow와 동일하게 안내 문구 노출.
   const showEntryHint = !enterable && !cancellable && !cancelled && !ended;
+  // 상태 배지·설명 — 그리드/목록(ClassRow·WeekAgendaRow)과 동일 문구·색 재사용.
+  const badge = cancelled
+    ? { text: item.cancelReason === "cancel" ? (ko ? "취소" : "Cancelled") : ko ? "연기" : "Postponed", cls: "bg-brand/10 text-brand" }
+    : item.isMakeup
+      ? { text: ko ? "보강" : "Makeup", cls: "bg-accent-blue-soft text-accent-blue-ink" }
+      : !isTeacher && item.reassignedAt && !ended
+        ? { text: "강사 변경", cls: "bg-cta/10 text-cta" }
+        : null;
+  const note = cancelled
+    ? item.cancelReason === "cancel"
+      ? ko
+        ? "이 수업은 취소되었습니다."
+        : "This class was cancelled."
+      : ko
+        ? "이 수업은 연기되어 맨 뒤에 보강 수업이 편성됩니다."
+        : "This class was postponed; a makeup class is added at the end."
+    : item.isMakeup
+      ? ko
+        ? "연기된 수업을 대신하는 보강 수업입니다."
+        : "This is a makeup class for a postponed session."
+      : null;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1075,7 +1096,10 @@ function ClassInfoModal({
         aria-label={ko ? "수업 정보" : "Class info"}
         className="fixed top-1/2 left-1/2 z-[120] flex w-[min(92vw,420px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-start justify-between gap-3 border-b px-6 py-4">
-          <h2 className="text-ink min-w-0 text-lg font-bold">{item.courseTitle}</h2>
+          <div className="flex min-w-0 items-center gap-2">
+            <h2 className="text-ink min-w-0 truncate text-lg font-bold">{item.courseTitle}</h2>
+            {badge && <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", badge.cls)}>{badge.text}</span>}
+          </div>
           <button
             ref={closeButtonRef}
             type="button"
@@ -1100,6 +1124,15 @@ function ClassInfoModal({
             <dd className="text-ink font-semibold">{timeRange}</dd>
           </div>
         </dl>
+
+        {note && (
+          <div className="px-6 pb-4">
+            <p className="text-muted-fg flex items-start gap-1.5 text-xs leading-relaxed">
+              <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              <span>{note}</span>
+            </p>
+          </div>
+        )}
 
         <div className="border-rule flex flex-col gap-2 border-t px-6 py-4">
           {enterable && <EnterClassButton item={item} ko={ko} fullWidth />}
