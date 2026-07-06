@@ -17,6 +17,8 @@ export type AdminSession = {
   startMin: number;
   endMin: number;
   isMakeup: boolean;
+  conductedAt: string | null;
+  conductedOverride: boolean | null;
 };
 
 const ROW_H = 48; // 30분 슬롯 셀 높이(px)
@@ -192,7 +194,7 @@ export default function ClassWeekGrid({ sessions, now }: { sessions: AdminSessio
         </div>
       </div>
 
-      {slot && <SlotModal slot={slot} onClose={() => setSlot(null)} />}
+      {slot && <SlotModal slot={slot} now={now} onClose={() => setSlot(null)} />}
     </div>
   );
 }
@@ -202,7 +204,7 @@ function formatDayLabel(d: Date): string {
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_LABELS_KO[dow]})`;
 }
 
-function SlotModal({ slot, onClose }: { slot: SlotSel; onClose: () => void }) {
+function SlotModal({ slot, now, onClose }: { slot: SlotSel; now: number; onClose: () => void }) {
   const router = useRouter();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const list = useMemo(() => [...slot.list].sort((a, b) => a.startMin - b.startMin), [slot.list]);
@@ -255,6 +257,12 @@ function SlotModal({ slot, onClose }: { slot: SlotSel; onClose: () => void }) {
                 <div className="flex items-center gap-2">
                   <span className="text-ink text-sm font-bold">{fmtTime(s.startMin)}~{fmtTime(lessonEndMin(s.endMin))}</span>
                   {s.isMakeup && <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 text-xs font-bold">보강</span>}
+                  {now >= kstDateMinToMs(s.sessionDate, lessonEndMin(s.endMin)) &&
+                    ((s.conductedOverride ?? !!s.conductedAt) ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">진행됨</span>
+                    ) : (
+                      <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 text-xs font-bold">미진행</span>
+                    ))}
                 </div>
                 <span className="text-ink truncate text-sm font-semibold">{s.courseTitle}</span>
                 <span className="text-muted-fg truncate text-xs">
