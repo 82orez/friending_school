@@ -62,7 +62,10 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
         className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
       >
         <div className="border-rule flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-ink truncate text-lg font-bold">{title}</h2>
+          <div className="flex min-w-0 items-center gap-2">
+            <h2 className="text-ink truncate text-lg font-bold">{name}</h2>
+            <span className="bg-accent-blue-soft text-accent-blue-ink shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold">진행 중인 수업</span>
+          </div>
           <button
             ref={closeButtonRef}
             type="button"
