@@ -20,12 +20,14 @@ const SORT_VALUE: Record<SortKey, (t: CurrentTeacher) => string> = {
 export default function CurrentTeacherTable({
   teachers,
   onView,
+  onViewClasses,
   onDelete,
   deleting,
   className,
 }: {
   teachers: CurrentTeacher[];
   onView: (t: CurrentTeacher) => void;
+  onViewClasses?: (t: CurrentTeacher) => void;
   onDelete?: (t: CurrentTeacher) => void;
   deleting?: boolean;
   className?: string;
@@ -58,6 +60,7 @@ export default function CurrentTeacherTable({
             <SortHeader label="센터" sortKey="center" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
             <SortHeader label="국적" sortKey="nationality" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
             <SortHeader label="성별" sortKey="gender" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+            {onViewClasses && <th className="px-4 py-2.5 whitespace-nowrap">수업 목록</th>}
             <th className="px-4 py-2.5 text-right md:px-6">
               <span className="sr-only">관리</span>
             </th>
@@ -73,6 +76,17 @@ export default function CurrentTeacherTable({
               <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{t.centerName ?? "None"}</td>
               <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{nationalityLabel(t.nationality)}</td>
               <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{genderLabelKo(t.gender)}</td>
+              {onViewClasses && (
+                <td className="px-4 py-3.5 align-middle">
+                  <button
+                    type="button"
+                    onClick={() => onViewClasses(t)}
+                    className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
+                  >
+                    수업 보기
+                  </button>
+                </td>
+              )}
               <td className="px-4 py-3.5 align-middle md:px-6">
                 <div className="flex justify-end gap-2">
                   <button

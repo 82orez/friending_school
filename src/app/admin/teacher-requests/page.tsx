@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/utils/supabase/admin";
-import TeacherRequestsManager, { type TeacherApplication, type CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
-import { deriveBookedSlots, type BookedSlot } from "@/lib/availability";
+import TeacherRequestsManager, { type TeacherApplication, type CurrentTeacher, type TeacherClassItem } from "@/components/admin/TeacherRequestsManager";
+import { deriveBookedSlots, lessonEndMin, type BookedSlot } from "@/lib/availability";
+import { kstDateMinToMs } from "@/lib/classtime";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
 
 const STATUS_ORDER: Record<string, number> = { 신청: 0, 거절: 1, 승인: 2 };
@@ -48,15 +49,16 @@ export default async function AdminTeacherRequestsPage() {
     }
   }
 
-  // 현재 강사별 예약(가용 그리드 오버레이용) — 승인 후 전부(승인/결제대기/결제완료) 조회 후 강사별 파생.
+  // 현재 강사별 예약(가용 그리드 오버레이용) + 진행 중인 수업 목록 — 승인 후 전부(승인/결제대기/결제완료) 조회 후 강사별 파생.
   const bookedByTeacher = new Map<string, BookedSlot[]>();
+  const classesByTeacher = new Map<string, TeacherClassItem[]>();
   if (teacherIds.length > 0) {
     const { data: enrollRows } = await admin
       .from("enrollments")
-      .select("id, teacher_id, slots, status, student_name, student_english_name")
+      .select("id, teacher_id, course, course_title, slots, status, start_date, student_name, student_english_name")
       .in("teacher_id", teacherIds)
       .in("status", ["승인", "결제대기", "결제완료"]);
-    // 종료된 '결제완료'(남은 예정 수업 없음)는 그리드 오버레이에서 제외.
+    // 종료된 '결제완료'(남은 예정 수업 없음)는 그리드 오버레이·수업 목록에서 제외.
     const ended = await loadEndedEnrollmentIds(admin, teacherIds);
     const rowsByTeacher = new Map<string, NonNullable<typeof enrollRows>>();
     for (const r of enrollRows ?? []) {
@@ -66,6 +68,56 @@ export default async function AdminTeacherRequestsPage() {
       rowsByTeacher.set(r.teacher_id, list);
     }
     rowsByTeacher.forEach((rows, tid) => bookedByTeacher.set(tid, deriveBookedSlots(rows)));
+
+    // 강사별 classes 집계(진행률·다음 수업일). 승인/결제대기 enrollment는 아직 classes 없음.
+    const { data: clsRows } = await admin
+      .from("classes")
+      .select("enrollment_id, session_date, start_min, end_min, status, is_makeup")
+      .in("teacher_id", teacherIds);
+    const now = Date.now();
+    const aggByEnrollment = new Map<string, { total: number; done: number; nextDate: string | null; nextMin: number | null }>();
+    for (const c of clsRows ?? []) {
+      const a = aggByEnrollment.get(c.enrollment_id) ?? { total: 0, done: 0, nextDate: null, nextMin: null };
+      if (c.status !== "취소") {
+        if (!c.is_makeup) a.total += 1; // 계획 회차(보강 제외)
+        const endMs = kstDateMinToMs(c.session_date, lessonEndMin(c.end_min));
+        if (endMs < now) {
+          a.done += 1;
+        } else if (a.nextDate === null || c.session_date < a.nextDate || (c.session_date === a.nextDate && c.start_min < (a.nextMin ?? Infinity))) {
+          a.nextDate = c.session_date;
+          a.nextMin = c.start_min;
+        }
+      }
+      aggByEnrollment.set(c.enrollment_id, a);
+    }
+
+    rowsByTeacher.forEach((rows, tid) => {
+      const items: TeacherClassItem[] = rows.map((r) => {
+        const agg = aggByEnrollment.get(r.id);
+        return {
+          enrollmentId: r.id,
+          course: r.course,
+          courseTitle: r.course_title,
+          studentName: r.student_name,
+          studentEnglishName: r.student_english_name,
+          status: r.status,
+          slots: (r.slots ?? []) as { day: number; min: number }[],
+          startDate: r.start_date,
+          total: agg?.total ?? 0,
+          done: agg?.done ?? 0,
+          nextDate: agg?.nextDate ?? null,
+          nextMin: agg?.nextMin ?? null,
+        };
+      });
+      // 다음 수업일 오름차순(없으면 뒤), 그다음 시작일.
+      items.sort((a, b) => {
+        const an = a.nextDate ?? "9999-99-99";
+        const bn = b.nextDate ?? "9999-99-99";
+        if (an !== bn) return an < bn ? -1 : 1;
+        return (a.startDate ?? "").localeCompare(b.startDate ?? "");
+      });
+      classesByTeacher.set(tid, items);
+    });
   }
 
   const currentTeachers: CurrentTeacher[] = (
@@ -96,6 +148,7 @@ export default async function AdminTeacherRequestsPage() {
     avatarUrl: p.avatar_url,
     slots: slotsByTeacher.get(p.id) ?? [],
     bookedSlots: bookedByTeacher.get(p.id) ?? [],
+    classes: classesByTeacher.get(p.id) ?? [],
   }));
 
   return <TeacherRequestsManager applications={applications} currentTeachers={currentTeachers} />;

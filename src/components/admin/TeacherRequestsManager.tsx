@@ -10,6 +10,7 @@ import { approveTeacherApplication, rejectTeacherApplication, deleteTeacher } fr
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 import TeacherInfoModal from "@/components/admin/TeacherInfoModal";
+import TeacherClassesModal from "@/components/admin/TeacherClassesModal";
 import TeacherAvailabilityFinder from "@/components/admin/TeacherAvailabilityFinder";
 import CurrentTeacherTable from "@/components/admin/CurrentTeacherTable";
 import {
@@ -41,6 +42,22 @@ export type TeacherApplication = {
   created_at: string;
 };
 
+// 진행 중인 수업(과정) 한 건 — 「수업 보기」 모달용.
+export type TeacherClassItem = {
+  enrollmentId: string;
+  course: string;
+  courseTitle: string;
+  studentName: string;
+  studentEnglishName: string | null;
+  status: string; // 승인 | 결제대기 | 결제완료
+  slots: { day: number; min: number }[];
+  startDate: string | null;
+  total: number; // 계획 회차(보강 제외)
+  done: number; // 완료 회차
+  nextDate: string | null; // 다음 예정 수업일
+  nextMin: number | null;
+};
+
 export type CurrentTeacher = {
   id: string;
   email: string;
@@ -55,6 +72,7 @@ export type CurrentTeacher = {
   avatarUrl: string | null;
   slots: { day: number; min: number }[];
   bookedSlots: BookedSlot[];
+  classes: TeacherClassItem[];
 };
 
 const STATUSES = ["신청", "승인", "거절"] as const;
@@ -97,6 +115,8 @@ export default function TeacherRequestsManager({
   const [openId, setOpenId] = useState<string | null>(null);
   const [infoTarget, setInfoTarget] = useState<CurrentTeacher | null>(null);
   const closeInfo = useCallback(() => setInfoTarget(null), []);
+  const [classesTarget, setClassesTarget] = useState<CurrentTeacher | null>(null);
+  const closeClasses = useCallback(() => setClassesTarget(null), []);
   const [deleteTarget, setDeleteTarget] = useState<CurrentTeacher | null>(null);
   const [deleting, startDelete] = useTransition();
 
@@ -201,11 +221,21 @@ export default function TeacherRequestsManager({
           <p className="text-muted-fg px-6 py-12 text-center text-sm">현재 강사가 없습니다.</p>
         </div>
       ) : (
-        <CurrentTeacherTable teachers={teachers} onView={setInfoTarget} onDelete={setDeleteTarget} deleting={deleting} className="mt-4" />
+        <CurrentTeacherTable
+          teachers={teachers}
+          onView={setInfoTarget}
+          onViewClasses={setClassesTarget}
+          onDelete={setDeleteTarget}
+          deleting={deleting}
+          className="mt-4"
+        />
       )}
 
       {/* 강사 정보 보기 */}
       <TeacherInfoModal teacher={infoTarget} onClose={closeInfo} />
+
+      {/* 진행 중인 수업 목록 */}
+      <TeacherClassesModal teacher={classesTarget} onClose={closeClasses} />
 
       {/* 삭제 확인 */}
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -274,6 +304,7 @@ function ApplicationRow({
           avatarUrl: row.avatar_url,
           slots: [],
           bookedSlots: [],
+          classes: [],
         });
         toast.success("강사로 승인했습니다.");
       } else {
