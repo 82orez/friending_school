@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtTime, lessonEndMin, DAY_LABELS_KO, DISPLAY_DAYS, ROW_MINS, SLOT_MIN, GRID_START_HOUR } from "@/lib/availability";
+import { kstDateMinToMs } from "@/lib/classtime";
 
 export type AdminSession = {
   enrollmentId: string;
@@ -145,15 +146,22 @@ export default function ClassWeekGrid({ sessions, now }: { sessions: AdminSessio
               {/* 요일 칼럼 */}
               {days.map((d, i) => {
                 const byMin = byDaySlot.get(i);
+                const dStr = dateToStr(d);
                 return (
                   <div key={i} className="border-rule-faint relative flex-1 border-l first:border-l-0">
                     {ROW_MINS.map((min) => {
                       const list = byMin?.get(min);
                       const count = list?.length ?? 0;
+                      // 슬롯 종료(min+30분)가 지났으면 지나간 시간대 — 배경/셀 회색 음영.
+                      const past = now >= kstDateMinToMs(dStr, min + SLOT_MIN);
                       return (
                         <div
                           key={min}
-                          className={cn("border-t", min % 60 === 0 ? "border-muted-fg-faint border-t-2" : "border-rule-faint border-dotted")}
+                          className={cn(
+                            "border-t",
+                            min % 60 === 0 ? "border-muted-fg-faint border-t-2" : "border-rule-faint border-dotted",
+                            past && "bg-surface",
+                          )}
                           style={{ height: ROW_H }}>
                           {count > 0 && list && (
                             <button
@@ -162,7 +170,13 @@ export default function ClassWeekGrid({ sessions, now }: { sessions: AdminSessio
                               title={`${fmtTime(min)} · ${count}개 수업`}
                               className={cn(
                                 "focus-visible:ring-cta/50 flex size-[calc(100%-4px)] m-0.5 items-center justify-center rounded-md text-xs font-bold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:outline-none",
-                                count >= 3 ? "bg-accent-blue/50 text-white" : count === 2 ? "bg-accent-blue/30 text-accent-blue-ink" : "bg-accent-blue-soft text-accent-blue-ink",
+                                past
+                                  ? "bg-rule/60 text-muted-fg-faint"
+                                  : count >= 3
+                                    ? "bg-accent-blue/50 text-white"
+                                    : count === 2
+                                      ? "bg-accent-blue/30 text-accent-blue-ink"
+                                      : "bg-accent-blue-soft text-accent-blue-ink",
                               )}>
                               {count}
                             </button>
