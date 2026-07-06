@@ -156,6 +156,9 @@ export default function ClassWeekGrid({ sessions, now }: { sessions: AdminSessio
                       const count = list?.length ?? 0;
                       // 슬롯 종료(min+30분)가 지났으면 지나간 시간대 — 배경/셀 회색 음영.
                       const past = now >= kstDateMinToMs(dStr, min + SLOT_MIN);
+                      // 종료됐는데 미진행(강사 미입장/피드백 없음)인 수업이 하나라도 있으면 붉은색 강조.
+                      const hasUnconducted =
+                        past && !!list?.some((s) => now >= kstDateMinToMs(s.sessionDate, lessonEndMin(s.endMin)) && !(s.conductedOverride ?? !!s.conductedAt));
                       return (
                         <div
                           key={min}
@@ -173,7 +176,9 @@ export default function ClassWeekGrid({ sessions, now }: { sessions: AdminSessio
                               className={cn(
                                 "focus-visible:ring-cta/50 flex size-[calc(100%-4px)] m-0.5 items-center justify-center rounded-md text-xs font-bold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:outline-none",
                                 past
-                                  ? "bg-rule/60 text-muted-fg-faint"
+                                  ? hasUnconducted
+                                    ? "bg-brand/15 text-brand"
+                                    : "bg-rule/60 text-muted-fg-faint"
                                   : count >= 3
                                     ? "bg-accent-blue/50 text-white"
                                     : count === 2
