@@ -527,6 +527,10 @@ export async function adminReassignClass(classId: string, newTeacherId: string):
   const { data: cls } = await admin.from("classes").select(CLASS_MANAGE_SELECT).eq("id", id).maybeSingle();
   if (!cls) return { ok: false, error: "수업을 찾을 수 없습니다." };
   if (cls.status !== "예정") return { ok: false, error: "예정 상태의 수업만 강사를 변경할 수 있습니다." };
+  // 시작 시각 지난 회차는 대체 불가 — 진행 중/지난 수업은 강사가 바뀔 여지가 없음(노쇼 사후 처리는 연기/취소로).
+  if (Date.now() >= kstDateMinToMs(cls.session_date, cls.start_min)) {
+    return { ok: false, error: "이미 시작된 수업은 강사를 변경할 수 없습니다." };
+  }
   if (cls.teacher_id === teacherId) return { ok: false, error: "현재 강사와 다른 강사를 선택해 주세요." };
 
   // 새 강사 검증 — role='teacher' + 표시명.
