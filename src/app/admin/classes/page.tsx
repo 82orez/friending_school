@@ -2,7 +2,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import ClassEnrollmentsManager, { type ClassEnrollmentSummary } from "@/components/admin/ClassEnrollmentsManager";
 import { type AdminSession } from "@/components/admin/ClassWeekGrid";
 import { kstDateMinToMs, ENTRY_LEAD_MS } from "@/lib/classtime";
-import { lessonEndMin, summarizeSlots, type Slot } from "@/lib/availability";
+import { lessonEndMin, summarizeSlots, summarizeWeekdays, type Slot } from "@/lib/availability";
 
 // KST 날짜(YYYY-MM-DD) → 요일(0=일). TZ 비종속.
 const weekdayOf = (d: string): number => {
@@ -98,6 +98,12 @@ export default async function AdminClassesPage() {
     g.schedule = summarizeSlots(Array.from(slotSets.get(id)!.values()), true);
   });
 
+  // 주간 뷰 SlotModal용 — enrollment별 요일-only 요약(예: "월/수/금"). 정규 수업(취소·보강 제외) 기준.
+  const weekdaysByEnrollment = new Map<string, string>();
+  slotSets.forEach((set, id) => {
+    weekdaysByEnrollment.set(id, summarizeWeekdays(Array.from(set.values()), true));
+  });
+
   // 진행중(예정 있음) 먼저, 그 안에서 가장 가까운 시작일 순.
   const summaries = Array.from(map.values()).sort((a, b) => {
     const ao = a.upcoming > 0 ? 0 : 1;
@@ -112,6 +118,7 @@ export default async function AdminClassesPage() {
     .map((r) => ({
       enrollmentId: r.enrollment_id,
       courseTitle: r.course_title,
+      weekdays: weekdaysByEnrollment.get(r.enrollment_id) ?? "",
       teacherName: r.teacher_name,
       studentName: r.student_name,
       studentEnglishName: r.student_english_name,

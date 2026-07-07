@@ -10,6 +10,7 @@ import { kstDateMinToMs } from "@/lib/classtime";
 export type AdminSession = {
   enrollmentId: string;
   courseTitle: string;
+  weekdays: string; // 과정 주간 요일 요약(예: "월/수/금") — 정규 수업 기준.
   teacherName: string | null;
   studentName: string | null;
   studentEnglishName: string | null;
@@ -269,7 +270,10 @@ function SlotModal({ slot, now, onClose }: { slot: SlotSel; now: number; onClose
                       <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 text-xs font-bold">미진행</span>
                     ))}
                 </div>
-                <span className="text-ink truncate text-sm font-semibold">{s.courseTitle}</span>
+                <span className="text-ink truncate text-sm font-semibold">
+                  {s.courseTitle}
+                  {s.weekdays && <span className="text-muted-fg-faint font-normal"> · {s.weekdays}</span>}
+                </span>
                 <span className="text-muted-fg truncate text-xs">
                   강사 {s.teacherName ?? "-"} · 학생 {s.studentName ?? "-"}
                   {s.studentEnglishName ? ` (${s.studentEnglishName})` : ""}

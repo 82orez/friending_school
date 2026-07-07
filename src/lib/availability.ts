@@ -111,6 +111,14 @@ export function summarizeSlots(slots: Slot[], ko = true): string {
     .join(" · ");
 }
 
+// 슬롯의 요일 집합 → 월~일 순 요일 라벨. ko "월/수/금" / en "Mon/Wed/Fri". (시간 제외)
+export function summarizeWeekdays(slots: Slot[], ko = true): string {
+  const days = new Set(slots.map((s) => s.day));
+  return DISPLAY_DAYS.filter((d) => days.has(d))
+    .map((d) => (ko ? DAY_LABELS_KO[d] : DAY_LABELS[DISPLAY_DAYS.indexOf(d)]))
+    .join("/");
+}
+
 // 예약 슬롯(가용 그리드 오버레이용) — confirmed='승인'/'결제완료'(하드 확정), pending='결제대기'.
 export type BookedSlot = { day: number; min: number; tier: "confirmed" | "pending"; label?: string };
 
