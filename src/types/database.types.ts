@@ -136,6 +136,69 @@ export type Database = {
           },
         ]
       }
+      enrollment_events: {
+        Row: {
+          actor_id: string | null
+          actor_name: string | null
+          actor_role: string | null
+          class_id: string | null
+          course: string | null
+          course_title: string | null
+          created_at: string
+          detail: Json | null
+          enrollment_id: string | null
+          event_type: string
+          id: string
+          student_name: string | null
+          teacher_name: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_role?: string | null
+          class_id?: string | null
+          course?: string | null
+          course_title?: string | null
+          created_at?: string
+          detail?: Json | null
+          enrollment_id?: string | null
+          event_type: string
+          id?: string
+          student_name?: string | null
+          teacher_name?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_name?: string | null
+          actor_role?: string | null
+          class_id?: string | null
+          course?: string | null
+          course_title?: string | null
+          created_at?: string
+          detail?: Json | null
+          enrollment_id?: string | null
+          event_type?: string
+          id?: string
+          student_name?: string | null
+          teacher_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_events_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollment_events_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollments: {
         Row: {
           course: string

@@ -9,6 +9,7 @@ import { fmtTime, lessonEndMin } from "@/lib/availability";
 import { isValidZoomUrl } from "@/lib/url";
 import { sendClassCancellationToTeacher } from "@/lib/mailer";
 import { createMakeupClass } from "@/lib/makeup";
+import { logEnrollmentEvent } from "@/lib/events";
 
 export type EnterResult = { url?: string; error?: string };
 export type CancelResult = { ok?: boolean; error?: string; makeupDate?: string; remaining?: number };
@@ -80,7 +81,7 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
   const admin = createAdminClient();
   const { data: cls } = await admin
     .from("classes")
-    .select("id, student_id, teacher_id, enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status")
+    .select("id, student_id, teacher_id, enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status")
     .eq("id", id)
     .maybeSingle();
   if (!cls) return { error: "수업을 찾을 수 없어요." };
@@ -158,6 +159,19 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
   } catch (err) {
     console.error("[cancelClass] 강사 알림 발송 실패:", err);
   }
+
+  await logEnrollmentEvent(admin, {
+    enrollmentId: cls.enrollment_id,
+    classId: cls.id,
+    eventType: "class_postponed",
+    actorId: user.id,
+    actorRole: "student",
+    course: cls.course,
+    courseTitle: cls.course_title,
+    studentName: cls.student_name,
+    teacherName: cls.teacher_name,
+    detail: { reason: "student", sessionNo: cls.session_no, sessionDate: cls.session_date, makeupDate: makeupDate ?? null, remaining },
+  });
 
   revalidatePath("/mypage", "layout");
   revalidatePath("/teacher", "layout");

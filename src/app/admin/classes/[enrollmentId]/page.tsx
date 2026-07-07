@@ -3,6 +3,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { loadEnrollTeachers } from "@/app/courses/enroll-actions";
 import { DAY_LABELS_KO, DISPLAY_DAYS, dowOf, isValidSlot, type Slot } from "@/lib/availability";
 import ClassesManager, { type AdminClass } from "@/components/admin/ClassesManager";
+import EventTimeline, { type AdminEvent } from "@/components/admin/EventTimeline";
 
 export default async function AdminClassDetailPage({ params }: { params: Promise<{ enrollmentId: string }> }) {
   const { enrollmentId } = await params;
@@ -28,6 +29,14 @@ export default async function AdminClassDetailPage({ params }: { params: Promise
   const { data: availRows } = await admin.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", first.teacher_id);
   const teacherSlots: Slot[] = (availRows ?? []).map((r: { day_of_week: number; start_min: number }) => ({ day: r.day_of_week, min: r.start_min }));
 
+  // 이 과정의 변경 이력(감사 로그) — 최신순.
+  const { data: eventRows } = await admin
+    .from("enrollment_events")
+    .select("id, class_id, event_type, actor_role, actor_name, detail, created_at")
+    .eq("enrollment_id", enrollmentId)
+    .order("created_at", { ascending: false });
+  const events = (eventRows ?? []) as AdminEvent[];
+
   const dates = classes.map((c) => c.session_date).sort();
   const studentLabel = first.student_name ?? "학생";
   const title = `${first.course_title} · ${studentLabel}`;
@@ -39,15 +48,18 @@ export default async function AdminClassDetailPage({ params }: { params: Promise
   const subtitle = `강사 ${first.teacher_name ?? "-"}${weekdayLabel ? ` · 요일 ${weekdayLabel}` : ""} · 기간 ${dates[0]} ~ ${dates[dates.length - 1]} · 총 ${classes.length}회`;
 
   return (
-    <ClassesManager
-      classes={classes}
-      teachers={teachers}
-      enrollmentId={enrollmentId}
-      currentSlots={currentSlots}
-      teacherSlots={teacherSlots}
-      title={title}
-      subtitle={subtitle}
-      backHref="/admin/classes"
-    />
+    <div>
+      <ClassesManager
+        classes={classes}
+        teachers={teachers}
+        enrollmentId={enrollmentId}
+        currentSlots={currentSlots}
+        teacherSlots={teacherSlots}
+        title={title}
+        subtitle={subtitle}
+        backHref="/admin/classes"
+      />
+      <EventTimeline events={events} />
+    </div>
   );
 }

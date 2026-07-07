@@ -35,17 +35,20 @@ import {
 import { kstDateMinToMs } from "@/lib/classtime";
 import { todayKst } from "@/lib/booking";
 import { createMakeupClass, weekdayOf, addDaysStr, type ClassForMakeup } from "@/lib/makeup";
+import { logEnrollmentEvent } from "@/lib/events";
 
 export type ActionResult = { ok: boolean; error?: string };
 
 // 모든 admin 액션의 진입 가드 — 세션 클라이언트로 admin 확인 후에만 service_role 쓰기 허용.
-async function requireAdmin(): Promise<boolean> {
+// 성공 시 admin user id 반환(감사 로그 actor_id용), 실패 시 null. 호출부 `if (!(await requireAdmin()))`는
+// null=falsy / uuid=truthy로 동작 불변(requireTeacher와 동일 규약).
+async function requireAdmin(): Promise<string | null> {
   const supabase = createClient(await cookies());
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return false;
-  return isAdmin(supabase, user.id);
+  if (!user) return null;
+  return (await isAdmin(supabase, user.id)) ? user.id : null;
 }
 
 /* ===== 유튜브 관리 ===== */
@@ -261,14 +264,19 @@ export async function deleteTeacher(userId: string): Promise<ActionResult> {
 // 관리자 강제 취소 — 상태 '신청'/'승인'/'결제대기'일 때만. 성공 시 학생에게 SMS 통보(best-effort).
 // 슬롯은 동적 차감이라('승인'·'결제대기'가 강사 가용 소비) 취소 즉시 자동 해제.
 export async function adminCancelEnrollment(id: string, note: string): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const adminId = await requireAdmin();
+  if (!adminId) return { ok: false, error: "권한이 없습니다." };
   const enrollmentId = String(id ?? "").trim();
   const reason = String(note ?? "").trim();
   if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
   if (!reason) return { ok: false, error: "취소 사유를 입력해 주세요." };
 
   const admin = createAdminClient();
-  const { data: enr } = await admin.from("enrollments").select("status, student_phone, course_title").eq("id", enrollmentId).maybeSingle();
+  const { data: enr } = await admin
+    .from("enrollments")
+    .select("status, student_phone, course, course_title, student_name, teacher_name")
+    .eq("id", enrollmentId)
+    .maybeSingle();
   if (!enr) return { ok: false, error: "신청을 찾을 수 없습니다." };
   if (enr.status !== "신청" && enr.status !== "승인" && enr.status !== "결제대기") return { ok: false, error: "취소할 수 없는 상태입니다." };
 
@@ -289,6 +297,18 @@ export async function adminCancelEnrollment(id: string, note: string): Promise<A
       console.error("[adminCancelEnrollment] SMS 발송 실패:", err);
     }
   }
+
+  await logEnrollmentEvent(admin, {
+    enrollmentId,
+    eventType: "enrollment_cancelled",
+    actorId: adminId,
+    actorRole: "admin",
+    course: enr.course,
+    courseTitle: enr.course_title,
+    studentName: enr.student_name,
+    teacherName: enr.teacher_name,
+    detail: { reason, fromStatus: enr.status },
+  });
 
   revalidatePath("/admin/enrollments");
   revalidatePath("/admin/classes");
@@ -347,7 +367,8 @@ async function generateClassesForEnrollment(admin: ReturnType<typeof createAdmin
 // 입금 확인(무통장 1단계) — 상태 '결제대기'일 때만 '결제완료'로 전환. 성공 시 클래스 생성 + 학생에게 SMS 통보(best-effort).
 // 회사 계좌 입금이라 확인 주체는 admin. (2단계 PortOne 도입 시 PG 웹훅이 동일 전환을 수행.)
 export async function confirmPayment(id: string): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const adminId = await requireAdmin();
+  if (!adminId) return { ok: false, error: "권한이 없습니다." };
   const enrollmentId = String(id ?? "").trim();
   if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
 
@@ -419,6 +440,18 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
     console.error("[confirmPayment] 강사 알림 발송 실패:", err);
   }
 
+  await logEnrollmentEvent(admin, {
+    enrollmentId,
+    eventType: "payment_confirmed",
+    actorId: adminId,
+    actorRole: "admin",
+    course: enr.course,
+    courseTitle: enr.course_title,
+    studentName: enr.student_name,
+    teacherName: enr.teacher_name,
+    detail: { sessionsGenerated: enr.total_sessions ?? TOTAL_SESSIONS, startDate: enr.start_date },
+  });
+
   revalidatePath("/admin/enrollments");
   revalidatePath("/admin/classes");
   revalidatePath("/teacher", "layout");
@@ -435,13 +468,18 @@ const CLASS_MANAGE_SELECT =
 // 수업 진행 여부 수동 보정(admin) — 종료된 수업만. override: true=강제 진행됨 / false=강제 미진행 / null=자동 판정 복귀.
 // conducted_at(자동 신호)은 건드리지 않고 conducted_override로 위에 얹는다. 유효값=override ?? (conducted_at!=null).
 export async function adminSetClassConducted(classId: string, override: boolean | null): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const adminId = await requireAdmin();
+  if (!adminId) return { ok: false, error: "권한이 없습니다." };
   const id = String(classId ?? "").trim();
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
   if (override !== true && override !== false && override !== null) return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { data: cls } = await admin.from("classes").select("id, enrollment_id, session_date, start_min, end_min, status").eq("id", id).maybeSingle();
+  const { data: cls } = await admin
+    .from("classes")
+    .select("id, enrollment_id, course, course_title, student_name, teacher_name, session_no, session_date, start_min, end_min, status")
+    .eq("id", id)
+    .maybeSingle();
   if (!cls) return { ok: false, error: "수업을 찾을 수 없습니다." };
   if (cls.status === "취소") return { ok: false, error: "취소된 수업은 진행 여부를 지정할 수 없습니다." };
   if (Date.now() < kstDateMinToMs(cls.session_date, lessonEndMin(cls.end_min))) {
@@ -450,6 +488,19 @@ export async function adminSetClassConducted(classId: string, override: boolean 
 
   const { error: updErr } = await admin.from("classes").update({ conducted_override: override }).eq("id", id);
   if (updErr) return { ok: false, error: "진행 여부 저장 중 오류가 발생했습니다." };
+
+  await logEnrollmentEvent(admin, {
+    enrollmentId: cls.enrollment_id,
+    classId: cls.id,
+    eventType: "conducted_overridden",
+    actorId: adminId,
+    actorRole: "admin",
+    course: cls.course,
+    courseTitle: cls.course_title,
+    studentName: cls.student_name,
+    teacherName: cls.teacher_name,
+    detail: { sessionNo: cls.session_no, sessionDate: cls.session_date, override },
+  });
 
   revalidatePath("/admin/classes");
   revalidatePath(`/admin/classes/${cls.enrollment_id}`);
@@ -463,7 +514,8 @@ export async function adminSetClassConducted(classId: string, override: boolean 
 //   'student' 수강생 요구 연기(보강 O, 남은 연기 차감), 'company' 회사 사유 연기(보강 O, 차감 없음), 'cancel' 수업 취소(보강 X).
 // 학생 취소와 달리 6회 한도·시작 1시간 컷오프 미적용(admin 재량 — 차감은 cancel_reason='student' 집계로 자연 반영). 강사 알림 이메일 best-effort.
 export async function adminCancelClass(classId: string, reason: "student" | "company" | "cancel"): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const adminId = await requireAdmin();
+  if (!adminId) return { ok: false, error: "권한이 없습니다." };
   const id = String(classId ?? "").trim();
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
   if (reason !== "student" && reason !== "company" && reason !== "cancel") return { ok: false, error: "잘못된 요청입니다." };
@@ -507,6 +559,19 @@ export async function adminCancelClass(classId: string, reason: "student" | "com
     console.error("[adminCancelClass] 강사 알림 발송 실패:", err);
   }
 
+  await logEnrollmentEvent(admin, {
+    enrollmentId: cls.enrollment_id,
+    classId: cls.id,
+    eventType: reason === "cancel" ? "class_cancelled" : "class_postponed",
+    actorId: adminId,
+    actorRole: "admin",
+    course: cls.course,
+    courseTitle: cls.course_title,
+    studentName: cls.student_name,
+    teacherName: cls.teacher_name,
+    detail: { reason, sessionNo: cls.session_no, sessionDate: cls.session_date, makeupDate: makeupDate ?? null },
+  });
+
   revalidatePath("/admin/classes");
   revalidatePath(`/admin/classes/${cls.enrollment_id}`);
   revalidatePath("/teacher", "layout");
@@ -518,7 +583,8 @@ export async function adminCancelClass(classId: string, reason: "student" | "com
 // 새 강사가 그 요일·시간에 주간 가용이 있고, 같은 날짜에 시간이 겹치는 다른 예정 수업이 없을 때만 허용.
 // teacher_id/teacher_name만 교체(시간·학생 불변) — 입장 시 zoom은 teacher_id로 실시간 조회되므로 새 강사로 라우팅됨.
 export async function adminReassignClass(classId: string, newTeacherId: string): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const adminId = await requireAdmin();
+  if (!adminId) return { ok: false, error: "권한이 없습니다." };
   const id = String(classId ?? "").trim();
   const teacherId = String(newTeacherId ?? "").trim();
   if (!id || !teacherId) return { ok: false, error: "잘못된 요청입니다." };
@@ -611,6 +677,24 @@ export async function adminReassignClass(classId: string, newTeacherId: string):
     console.error("[adminReassignClass] 강사 알림 발송 실패:", err);
   }
 
+  await logEnrollmentEvent(admin, {
+    enrollmentId: cls.enrollment_id,
+    classId: cls.id,
+    eventType: "class_reassigned",
+    actorId: adminId,
+    actorRole: "admin",
+    course: cls.course,
+    courseTitle: cls.course_title,
+    studentName: cls.student_name,
+    teacherName: newName,
+    detail: {
+      sessionNo: cls.session_no,
+      sessionDate: cls.session_date,
+      oldTeacher: { id: oldTeacherId, name: oldTeacherName },
+      newTeacher: { id: teacherId, name: newName },
+    },
+  });
+
   revalidatePath("/admin/classes");
   revalidatePath(`/admin/classes/${cls.enrollment_id}`);
   revalidatePath("/teacher", "layout");
@@ -622,7 +706,8 @@ export async function adminReassignClass(classId: string, newTeacherId: string):
 // 남은='예정'이고 레슨 종료 시각이 아직 안 지난 미래 클래스. 과거·완료·취소는 그대로.
 // 남은 회차를 session_no 오름차순으로 enumerateLessonSessions(effectiveDate,newSlots,remaining)에 1:1 remap(행 id·회차 유지).
 export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot[], effectiveDate: string): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const adminId = await requireAdmin();
+  if (!adminId) return { ok: false, error: "권한이 없습니다." };
   const id = String(enrollmentId ?? "").trim();
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
 
@@ -648,8 +733,13 @@ export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot
   if (effective > addDaysStr(todayKst(), 7)) return { ok: false, error: "적용 시작일은 오늘부터 일주일 이내여야 합니다." };
 
   const admin = createAdminClient();
-  const { data: enr } = await admin.from("enrollments").select("id, teacher_id, student_id, status").eq("id", id).maybeSingle();
+  const { data: enr } = await admin
+    .from("enrollments")
+    .select("id, teacher_id, student_id, status, course, course_title, student_name, teacher_name, slots")
+    .eq("id", id)
+    .maybeSingle();
   if (!enr) return { ok: false, error: "수강신청을 찾을 수 없습니다." };
+  const oldSlots = enr.slots;
 
   // 남은(미래 '예정') 클래스 — session_no 오름차순.
   const { data: clsRows } = await admin
@@ -707,6 +797,18 @@ export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot
   // 향후 주간 패턴 반영(가용 차감·요약·종료일 폴백).
   await admin.from("enrollments").update({ slots: newSlots }).eq("id", id);
 
+  await logEnrollmentEvent(admin, {
+    enrollmentId: id,
+    eventType: "remaining_rescheduled",
+    actorId: adminId,
+    actorRole: "admin",
+    course: enr.course,
+    courseTitle: enr.course_title,
+    studentName: enr.student_name,
+    teacherName: enr.teacher_name,
+    detail: { effectiveDate: effective, affectedCount: remaining.length, oldSlots, newSlots },
+  });
+
   revalidatePath("/admin/classes");
   revalidatePath(`/admin/classes/${id}`);
   revalidatePath("/admin/enrollments");
@@ -720,7 +822,8 @@ export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot
 // effectiveDate(선택): 비면 날짜 유지·강사만 교체. 지정(D+1~D+7)하면 그 날부터 기존 주간 패턴으로 재배치.
 // 단일 대타(adminReassignClass)와 달리 enrollment.teacher_id도 새 강사로 이관(가용 차감·대시보드 정합).
 export async function adminReassignRemaining(enrollmentId: string, newTeacherId: string, effectiveDate?: string): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const adminId = await requireAdmin();
+  if (!adminId) return { ok: false, error: "권한이 없습니다." };
   const id = String(enrollmentId ?? "").trim();
   const teacherId = String(newTeacherId ?? "").trim();
   if (!id || !teacherId) return { ok: false, error: "잘못된 요청입니다." };
@@ -870,6 +973,24 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
     console.error("[adminReassignRemaining] 강사 알림 발송 실패:", err);
   }
 
+  await logEnrollmentEvent(admin, {
+    enrollmentId: id,
+    eventType: "remaining_reassigned",
+    actorId: adminId,
+    actorRole: "admin",
+    course: enr.course,
+    courseTitle: enr.course_title,
+    studentName: enr.student_name,
+    teacherName: newName,
+    detail: {
+      effectiveDate: effective,
+      affectedCount: remaining.length,
+      nextDate,
+      oldTeacher: { id: oldTeacherId, name: enr.teacher_name },
+      newTeacher: { id: teacherId, name: newName },
+    },
+  });
+
   revalidatePath("/admin/classes");
   revalidatePath(`/admin/classes/${id}`);
   revalidatePath("/admin/enrollments");
@@ -942,21 +1063,37 @@ export async function createTestEnrollment(input: {
   const { data: student } = await admin.from("profiles").select("first_name, last_name, english_name, phone").eq("id", studentId).maybeSingle();
   const studentName = student ? [student.last_name, student.first_name].filter(Boolean).join("").trim() || null : null;
 
-  const { error: insErr } = await admin.from("enrollments").insert({
-    student_id: studentId,
-    teacher_id: teacherId,
-    course: course.slug,
-    course_title: course.title,
-    start_date: startDate,
-    slots,
-    teacher_name: teacherName,
-    student_name: studentName,
-    student_english_name: student?.english_name ?? null,
-    student_phone: student?.phone ?? null,
-    total_sessions: sessions,
-    is_test: true,
-  });
+  const { data: inserted, error: insErr } = await admin
+    .from("enrollments")
+    .insert({
+      student_id: studentId,
+      teacher_id: teacherId,
+      course: course.slug,
+      course_title: course.title,
+      start_date: startDate,
+      slots,
+      teacher_name: teacherName,
+      student_name: studentName,
+      student_english_name: student?.english_name ?? null,
+      student_phone: student?.phone ?? null,
+      total_sessions: sessions,
+      is_test: true,
+    })
+    .select("id")
+    .maybeSingle();
   if (insErr) return { ok: false, error: "테스트 수강신청 생성 중 오류가 발생했습니다." };
+
+  await logEnrollmentEvent(admin, {
+    enrollmentId: inserted?.id ?? null,
+    eventType: "enrollment_created",
+    actorId: user.id,
+    actorRole: "admin",
+    course: course.slug,
+    courseTitle: course.title,
+    studentName,
+    teacherName,
+    detail: { isTest: true, totalSessions: sessions, startDate, slots },
+  });
 
   revalidatePath("/admin/enrollments");
   return { ok: true };

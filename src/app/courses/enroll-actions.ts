@@ -9,6 +9,7 @@ import { getCourse } from "@/data/courses";
 import { sendEnrollmentNotificationToTeacher, sendEnrollmentNotificationToAdmin } from "@/lib/mailer";
 import { getAdminEmails } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
+import { logEnrollmentEvent } from "@/lib/events";
 import {
   TOTAL_SESSIONS,
   isValidSlot,
@@ -241,20 +242,36 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
     return { error: "이미 같은 시간에 신청한 수업이 있어요. 일정을 다시 선택해 주세요." };
   }
 
-  // 본인 세션 client로 insert(RLS enrollments_insert: student_id=auth.uid()).
-  const { error: insErr } = await supabase.from("enrollments").insert({
-    student_id: user.id,
-    teacher_id: teacherId,
-    course: course.slug,
-    course_title: course.title,
-    start_date: startDate,
-    slots,
-    teacher_name: teacherName,
-    student_name: studentName,
-    student_english_name: profile.english_name,
-    student_phone: profile.phone,
-  });
+  // 본인 세션 client로 insert(RLS enrollments_insert: student_id=auth.uid()). RLS _select_own_student로 id 회수.
+  const { data: inserted, error: insErr } = await supabase
+    .from("enrollments")
+    .insert({
+      student_id: user.id,
+      teacher_id: teacherId,
+      course: course.slug,
+      course_title: course.title,
+      start_date: startDate,
+      slots,
+      teacher_name: teacherName,
+      student_name: studentName,
+      student_english_name: profile.english_name,
+      student_phone: profile.phone,
+    })
+    .select("id")
+    .maybeSingle();
   if (insErr) return { error: "신청 저장 중 오류가 발생했어요. 잠시 후 다시 시도해 주세요." };
+
+  await logEnrollmentEvent(admin, {
+    enrollmentId: inserted?.id ?? null,
+    eventType: "enrollment_created",
+    actorId: user.id,
+    actorRole: "student",
+    course: course.slug,
+    courseTitle: course.title,
+    studentName,
+    teacherName,
+    detail: { startDate, slots },
+  });
 
   // 알림 메일 공유 값 — 강사/관리자 알림이 함께 사용.
   const origin = getOrigin(await headers());

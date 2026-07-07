@@ -12,6 +12,7 @@ import { sendSms } from "@/lib/sms";
 import { sendEnrollmentApprovedToAdmin, sendEnrollmentRejectedToAdmin } from "@/lib/mailer";
 import { isValidSlot, slotsOverlap, summarizeSlots, lessonEndDate, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
+import { logEnrollmentEvent } from "@/lib/events";
 
 export type TeacherActionState = { ok?: boolean; error?: string };
 
@@ -224,6 +225,18 @@ export async function approveEnrollment(enrollmentId: string): Promise<TeacherAc
     console.error("[approveEnrollment] 관리자 알림 발송 실패:", err);
   }
 
+  await logEnrollmentEvent(admin, {
+    enrollmentId,
+    eventType: "enrollment_approved",
+    actorId: userId,
+    actorRole: "teacher",
+    course: enr.course,
+    courseTitle: enr.course_title,
+    studentName: enr.student_name,
+    teacherName: enr.teacher_name,
+    detail: { from: "신청", to: "결제대기" },
+  });
+
   revalidatePath("/teacher", "layout");
   return { ok: true };
 }
@@ -266,6 +279,18 @@ export async function rejectEnrollment(enrollmentId: string, note: string): Prom
   } catch (err) {
     console.error("[rejectEnrollment] 관리자 알림 발송 실패:", err);
   }
+
+  await logEnrollmentEvent(admin, {
+    enrollmentId,
+    eventType: "enrollment_rejected",
+    actorId: userId,
+    actorRole: "teacher",
+    course: enr.course,
+    courseTitle: enr.course_title,
+    studentName: enr.student_name,
+    teacherName: enr.teacher_name,
+    detail: { reason },
+  });
 
   revalidatePath("/teacher", "layout");
   return { ok: true };

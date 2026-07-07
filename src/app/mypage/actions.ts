@@ -11,6 +11,7 @@ import { sendSms } from "@/lib/sms";
 import { summarizeSlots, type Slot } from "@/lib/availability";
 import { getOrigin } from "@/lib/origin";
 import { sendEnrollmentCancellationToTeacher } from "@/lib/mailer";
+import { logEnrollmentEvent } from "@/lib/events";
 
 export type StudentActionState = { ok?: boolean; error?: string };
 
@@ -80,7 +81,7 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
   const admin = createAdminClient();
   const { data: enr } = await admin
     .from("enrollments")
-    .select("id, student_id, teacher_id, status, course_title, start_date, slots, student_name")
+    .select("id, student_id, teacher_id, status, course, course_title, start_date, slots, student_name, teacher_name")
     .eq("id", id)
     .maybeSingle();
   if (!enr || enr.student_id !== user.id) return { error: "신청을 찾을 수 없어요. 목록을 새로고침해 주세요." };
@@ -116,6 +117,18 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
   } catch (err) {
     console.error("[cancelEnrollment] 강사 알림 발송 실패:", err);
   }
+
+  await logEnrollmentEvent(admin, {
+    enrollmentId: id,
+    eventType: "enrollment_cancelled",
+    actorId: user.id,
+    actorRole: "student",
+    course: enr.course,
+    courseTitle: enr.course_title,
+    studentName: enr.student_name,
+    teacherName: enr.teacher_name,
+    detail: { fromStatus: enr.status },
+  });
 
   revalidatePath("/mypage", "layout");
   revalidatePath("/teacher", "layout");
