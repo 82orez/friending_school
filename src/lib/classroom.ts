@@ -3,13 +3,15 @@ import { kstDateMinToMs } from "@/lib/classtime";
 import { lessonEndMin, isValidSlot, type Slot } from "@/lib/availability";
 import type { ClassItem } from "@/components/classroom/ClassroomList";
 
-// classes 조회 컬럼(내 강의실 학생/강사 공용).
+// classes 조회 컬럼(내 강의실 학생/강사 공용). teacher_id·original_teacher_id는 대체됨(reassigned-away) 판정용.
 export const CLASS_SELECT =
-  "id, enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, cancel_reason, feedback, feedback_at, teacher_entered_at, conducted_at, conducted_override, teacher_reassigned_at";
+  "id, enrollment_id, teacher_id, original_teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, cancel_reason, feedback, feedback_at, teacher_entered_at, conducted_at, conducted_override, teacher_reassigned_at";
 
 type ClassRow = {
   id: string;
   enrollment_id: string;
+  teacher_id: string;
+  original_teacher_id: string | null;
   course: string;
   course_title: string;
   teacher_name: string | null;
@@ -32,10 +34,16 @@ type ClassRow = {
 
 // classes 행 → ClassItem(클라 표시용). 강사 화면은 영문 과정명·학생 영문명, 학생 화면은 한글 스냅샷.
 // slotsByEnrollment: enrollment_id → 현재 주간 템플릿(enrollments.slots). 주간 요일 요약(weekdaySummary)용.
-export function mapClassRows(rows: ClassRow[], isTeacher: boolean, slotsByEnrollment?: Map<string, Slot[]>): ClassItem[] {
-  return rows.map((c) => ({
+// userId: 강사 뷰에서 1회성 대체로 남에게 넘어간 회차(reassigned-away) 판정용(원 강사만 read-only 노출).
+export function mapClassRows(rows: ClassRow[], isTeacher: boolean, slotsByEnrollment?: Map<string, Slot[]>, userId?: string): ClassItem[] {
+  return rows.map((c) => {
+    // 원 강사(original_teacher_id=본인)인데 현재 담당(teacher_id)이 대타면 read-only 표시.
+    const reassignedAway = isTeacher && !!userId && c.original_teacher_id === userId && c.teacher_id !== userId;
+    return {
     id: c.id,
     enrollmentId: c.enrollment_id,
+    reassignedAway,
+    coveredByName: reassignedAway ? c.teacher_name : null, // teacher_name = 현재=대타 강사명
     enrollmentSlots: slotsByEnrollment?.get(c.enrollment_id),
     courseTitle: isTeacher ? (getCourse(c.course)?.englishTitle ?? c.course_title) : c.course_title,
     counterpart: isTeacher ? c.student_english_name || c.student_name || "학생" : c.teacher_name || "강사",
@@ -54,7 +62,8 @@ export function mapClassRows(rows: ClassRow[], isTeacher: boolean, slotsByEnroll
     conductedAt: c.conducted_at,
     conductedOverride: c.conducted_override,
     reassignedAt: c.teacher_reassigned_at,
-  }));
+    };
+  });
 }
 
 // 본인(학생 또는 강사) 클래스 로드. supabase = 요청 스코프 SSR 클라(RLS로 본인 것만).
@@ -64,12 +73,11 @@ export async function loadClasses(
   userId: string,
   isTeacher: boolean,
 ): Promise<ClassItem[]> {
-  const { data } = await supabase
-    .from("classes")
-    .select(CLASS_SELECT)
-    .eq(isTeacher ? "teacher_id" : "student_id", userId)
-    .order("session_date", { ascending: true })
-    .order("start_min", { ascending: true });
+  // 강사는 현재 담당(teacher_id) + 1회성 대체로 넘어간 원 강사 회차(original_teacher_id)까지(read-only 표시).
+  // 학생은 본인 것만. RLS(own_teacher/original_teacher/own_student)가 각 행 접근을 허용.
+  let q = supabase.from("classes").select(CLASS_SELECT);
+  q = isTeacher ? q.or(`teacher_id.eq.${userId},original_teacher_id.eq.${userId}`) : q.eq("student_id", userId);
+  const { data } = await q.order("session_date", { ascending: true }).order("start_min", { ascending: true });
   const rows = (data ?? []) as ClassRow[];
 
   // 현재 주간 템플릿(enrollments.slots) 조회 — 주간 요일 요약을 일정 변경 반영값으로 표시.
@@ -84,5 +92,5 @@ export async function loadClasses(
     }
   }
 
-  return mapClassRows(rows, isTeacher, slotsByEnrollment);
+  return mapClassRows(rows, isTeacher, slotsByEnrollment, userId);
 }

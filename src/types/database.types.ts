@@ -61,6 +61,7 @@ export type Database = {
           feedback_at: string | null
           id: string
           is_makeup: boolean
+          original_teacher_id: string | null
           session_date: string
           session_no: number
           start_min: number
@@ -87,6 +88,7 @@ export type Database = {
           feedback_at?: string | null
           id?: string
           is_makeup?: boolean
+          original_teacher_id?: string | null
           session_date: string
           session_no: number
           start_min: number
@@ -113,6 +115,7 @@ export type Database = {
           feedback_at?: string | null
           id?: string
           is_makeup?: boolean
+          original_teacher_id?: string | null
           session_date?: string
           session_no?: number
           start_min?: number

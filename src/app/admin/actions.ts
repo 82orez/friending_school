@@ -463,7 +463,7 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
 
 // admin이 조회·관리하는 클래스 행에 필요한 필드(액션 내부 로드용).
 const CLASS_MANAGE_SELECT =
-  "id, enrollment_id, student_id, teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override";
+  "id, enrollment_id, student_id, teacher_id, original_teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override";
 
 // 수업 진행 여부 수동 보정(admin) — 종료된 수업만. override: true=강제 진행됨 / false=강제 미진행 / null=자동 판정 복귀.
 // conducted_at(자동 신호)은 건드리지 않고 conducted_override로 위에 얹는다. 유효값=override ?? (conducted_at!=null).
@@ -631,7 +631,13 @@ export async function adminReassignClass(classId: string, newTeacherId: string):
   const oldTeacherName = cls.teacher_name;
   const { data: updated, error: updErr } = await admin
     .from("classes")
-    .update({ teacher_id: teacherId, teacher_name: newName, teacher_reassigned_at: new Date().toISOString() })
+    // original_teacher_id: 최초 대체 시의 원 강사만 보존(coalesce) — 원 강사 read-only 조회용.
+    .update({
+      teacher_id: teacherId,
+      teacher_name: newName,
+      teacher_reassigned_at: new Date().toISOString(),
+      original_teacher_id: cls.original_teacher_id ?? oldTeacherId,
+    })
     .eq("id", id)
     .eq("status", "예정")
     .select("id");
