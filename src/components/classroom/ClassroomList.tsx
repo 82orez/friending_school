@@ -391,7 +391,7 @@ function ClassroomCalendar({
     return src ? parseDate(src.sessionDate) : new Date();
   });
 
-  const { byDate, upcoming, past, cancelled, conducted, pending } = useMemo(() => {
+  const { byDate, upcoming, past, cancelled, reassignedAway, conducted, pending } = useMemo(() => {
     const byDate = new Map<string, ClassItem[]>();
     for (const c of classes) {
       const arr = byDate.get(c.sessionDate) ?? [];
@@ -401,12 +401,16 @@ function ClassroomCalendar({
     const upcoming: Date[] = [];
     const past: Date[] = [];
     const cancelled: Date[] = [];
+    const reassignedAway: Date[] = []; // 대체됨(원 강사 미담당)만 있는 날 — 취소선 표시
     const conducted: Date[] = []; // 강사 ○ 진행 인정
     const pending: Date[] = []; // 강사 △ 입장했으나 피드백 전
     for (const [ds, dItems] of Array.from(byDate.entries())) {
       const date = parseDate(ds);
-      if (dItems.some((c) => isActive(c) && c.endMs >= now)) upcoming.push(date);
-      else if (dItems.some((c) => isActive(c))) past.push(date);
+      // 원 강사가 실제 담당하는(대체됨 아님) 활성 수업 기준으로 예정/지난 판정.
+      const mine = dItems.filter((c) => isActive(c) && !c.reassignedAway);
+      if (mine.some((c) => c.endMs >= now)) upcoming.push(date);
+      else if (mine.length > 0) past.push(date);
+      else if (dItems.some((c) => c.reassignedAway)) reassignedAway.push(date); // 그날 내 수업은 없고 대체된 회차만
       else cancelled.push(date);
       // 강사 진행 마커 — 한 날짜에 여러 수업이면 conducted 우선. 대체됨(원 강사 미담당)은 제외.
       if (isTeacher) {
@@ -415,7 +419,7 @@ function ClassroomCalendar({
         else if (marks.includes("pending")) pending.push(date);
       }
     }
-    return { byDate, upcoming, past, cancelled, conducted, pending };
+    return { byDate, upcoming, past, cancelled, reassignedAway, conducted, pending };
   }, [classes, now, isTeacher]);
 
   const selectedStr = selected ? dateToStr(selected) : "";
@@ -435,11 +439,12 @@ function ClassroomCalendar({
             weekStartsOn={0}
             showOutsideDays={false}
             formatters={{ formatWeekdayName: (d: Date) => d.toLocaleDateString(ko ? "ko-KR" : "en-US", { weekday: "short" }) }}
-            modifiers={{ upcoming, past, cancelled, conducted, pending, sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
+            modifiers={{ upcoming, past, cancelled, reassignedAway, conducted, pending, sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
             modifiersClassNames={{
               upcoming: "bg-accent-blue/10 text-accent-blue-ink font-bold rounded-(--cell-radius)",
               past: "bg-rule/60 text-muted-fg rounded-(--cell-radius)",
               cancelled: "text-muted-fg-faint line-through",
+              reassignedAway: "text-muted-fg-faint line-through", // 대체된 회차 날짜 — 취소선(취소일과 동일 스타일)
               conducted: "after:content-['●'] after:absolute after:top-0.5 after:right-1 after:text-[10px] after:leading-none after:text-cta",
               pending: "after:content-['▲'] after:absolute after:top-0.5 after:right-1 after:text-[10px] after:leading-none after:text-[#F5A623]",
               sunday: "!text-brand",
