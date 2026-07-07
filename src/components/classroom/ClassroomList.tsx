@@ -985,9 +985,11 @@ function WeekSchedule({
                             "absolute inset-x-0.5 flex flex-col justify-center overflow-hidden rounded-md px-1.5 text-left text-[11px] leading-[1.15] transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:outline-none",
                             cancelled
                               ? "bg-rule/60 text-muted-fg line-through"
-                              : reassignedAway || ended
-                                ? "bg-rule/40 text-muted-fg-faint"
-                                : cn(color.grid, live && "ring-2 ring-cta"),
+                              : reassignedAway
+                                ? "bg-rule/40 text-muted-fg-faint line-through"
+                                : ended
+                                  ? "bg-rule/40 text-muted-fg-faint"
+                                  : cn(color.grid, live && "ring-2 ring-cta"),
                           )}
                           style={{ top, height }}>
                           {mark === "conducted" && <Circle className="text-cta absolute top-1 right-1 size-2.5 fill-current" aria-hidden />}
@@ -1268,7 +1270,7 @@ function WeekAgendaRow({
     <li className="border-rule flex items-center gap-3 border-b px-5 py-3 last:border-b-0">
       <span aria-hidden className={cn("size-2.5 shrink-0 rounded-full", dotClass, (cancelled || ended || reassignedAway) && "opacity-40")} />
       <button type="button" onClick={onSelect} className={cn("min-w-0 flex-1 text-left", (cancelled || ended || reassignedAway) && "opacity-60")}>
-        <p className={cn("text-ink text-sm font-bold", cancelled && "line-through")}>{timeRange}</p>
+        <p className={cn("text-ink text-sm font-bold", (cancelled || reassignedAway) && "line-through")}>{timeRange}</p>
         <p className="text-muted-fg mt-0.5 flex items-center gap-1.5 truncate text-xs">
           <span className="truncate">
             {item.courseTitle} · {reassignedAway ? "Reassigned" : item.counterpart}
