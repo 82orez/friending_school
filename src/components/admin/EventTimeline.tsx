@@ -1,5 +1,7 @@
 "use client";
 
+import { summarizeSlots, isValidSlot, type Slot } from "@/lib/availability";
+
 // 과정(enrollment) 라이프사이클 이벤트 타임라인(admin 읽기 전용).
 // 서버가 enrollment_events를 created_at desc로 조회해 prop으로 전달. 최신이 위.
 
@@ -50,6 +52,9 @@ function fmtKst(iso: string): string {
 const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
 const num = (v: unknown): number | null => (typeof v === "number" ? v : null);
 const teacherName = (v: unknown): string | null => (v && typeof v === "object" ? str((v as { name?: unknown }).name) : null);
+// jsonb detail의 slots(unknown) → Slot[] 코어션(요일·시각 요약용).
+const asSlots = (v: unknown): Slot[] =>
+  Array.isArray(v) ? v.filter(isValidSlot).map((x) => ({ day: Number((x as Slot).day), min: Number((x as Slot).min) })) : [];
 
 // 이벤트별 detail 요약 문구.
 function summarize(e: AdminEvent): string {
@@ -84,8 +89,12 @@ function summarize(e: AdminEvent): string {
       const when = str(d.sessionDate) ? ` · ${str(d.sessionDate)}` : "";
       return `${from} → ${to}${when}`;
     }
-    case "remaining_rescheduled":
-      return `${str(d.effectiveDate) ?? "-"}부터 ${num(d.affectedCount) ?? "-"}건 재배치`;
+    case "remaining_rescheduled": {
+      const oldS = asSlots(d.oldSlots);
+      const newS = asSlots(d.newSlots);
+      const sched = oldS.length && newS.length ? `${summarizeSlots(oldS, true)} → ${summarizeSlots(newS, true)} · ` : "";
+      return `${sched}${str(d.effectiveDate) ?? "-"}부터 ${num(d.affectedCount) ?? "-"}건 재배치`;
+    }
     case "remaining_reassigned": {
       const from = teacherName(d.oldTeacher) ?? "-";
       const to = teacherName(d.newTeacher) ?? "-";

@@ -2,7 +2,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import ClassEnrollmentsManager, { type ClassEnrollmentSummary } from "@/components/admin/ClassEnrollmentsManager";
 import { type AdminSession } from "@/components/admin/ClassWeekGrid";
 import { kstDateMinToMs, ENTRY_LEAD_MS } from "@/lib/classtime";
-import { lessonEndMin, summarizeSlots, summarizeWeekdays, type Slot } from "@/lib/availability";
+import { lessonEndMin, summarizeSlots, summarizeWeekdays, isValidSlot, type Slot } from "@/lib/availability";
 
 // KST 날짜(YYYY-MM-DD) → 요일(0=일). TZ 비종속.
 const weekdayOf = (d: string): number => {
@@ -93,15 +93,25 @@ export default async function AdminClassesPage() {
     }
   }
 
-  // 파생 주간 요일·시작시각 요약(예: "월 14:00 · 수 14:00").
-  map.forEach((g, id) => {
-    g.schedule = summarizeSlots(Array.from(slotSets.get(id)!.values()), true);
-  });
+  // 주간 스케줄 소스 = enrollments.slots(현재 템플릿, 일정 변경 시 갱신됨). 과거 회차 오염 방지.
+  // slots 비어있는 레거시만 클래스 session_date 파생(slotSets)으로 폴백.
+  const enrollmentIds = Array.from(map.keys());
+  const slotsByEnrollment = new Map<string, Slot[]>();
+  if (enrollmentIds.length > 0) {
+    const { data: enrRows } = await admin.from("enrollments").select("id, slots").in("id", enrollmentIds);
+    for (const e of (enrRows ?? []) as { id: string; slots: unknown }[]) {
+      const s = (Array.isArray(e.slots) ? e.slots : []).filter(isValidSlot).map((x) => ({ day: Number(x.day), min: Number(x.min) }));
+      slotsByEnrollment.set(e.id, s);
+    }
+  }
 
-  // 주간 뷰 SlotModal용 — enrollment별 요일-only 요약(예: "월/수/금"). 정규 수업(취소·보강 제외) 기준.
+  // 파생 주간 요일·시작시각 요약(예: "월 14:00 · 수 14:00") + 요일-only(예: "월/수/금", 주간 뷰 SlotModal용).
   const weekdaysByEnrollment = new Map<string, string>();
-  slotSets.forEach((set, id) => {
-    weekdaysByEnrollment.set(id, summarizeWeekdays(Array.from(set.values()), true));
+  map.forEach((g, id) => {
+    const s = slotsByEnrollment.get(id) ?? [];
+    const src = s.length ? s : Array.from(slotSets.get(id)!.values());
+    g.schedule = summarizeSlots(src, true);
+    weekdaysByEnrollment.set(id, summarizeWeekdays(src, true));
   });
 
   // 진행중(예정 있음) 먼저, 그 안에서 가장 가까운 시작일 순.

@@ -6,7 +6,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Circle, Eye, Info, Loader2, Messa
 import { ko as koLocale, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { fmtTime, DAY_LABELS, DAY_LABELS_KO, DISPLAY_DAYS, ROW_MINS, GRID_START_HOUR, SLOT_MIN, lessonEndMin } from "@/lib/availability";
+import { fmtTime, DAY_LABELS, DAY_LABELS_KO, DISPLAY_DAYS, ROW_MINS, GRID_START_HOUR, SLOT_MIN, lessonEndMin, summarizeWeekdays, type Slot } from "@/lib/availability";
 import { canEnterClass, canCancelClass, MAX_CANCELLATIONS } from "@/lib/classtime";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -41,6 +41,7 @@ export type ClassItem = {
   conductedAt: string | null;
   conductedOverride: boolean | null; // admin 수동 보정 — null=자동, true=강제 진행됨, false=강제 미진행
   reassignedAt: string | null; // 강사 대체 시각 — 학생 예정 수업에 "강사 변경" 표시용
+  enrollmentSlots?: Slot[]; // 현재 주간 템플릿(enrollments.slots) — 주간 요일 요약용(일정 변경 반영)
 };
 
 // 강사 수업 진행 표시 — conducted=○(진행 인정), pending=△(입장했으나 피드백 전, 종료된 수업만). 취소·미입장은 null.
@@ -106,8 +107,11 @@ function shortDate(d: string, ko: boolean): string {
   return ko ? `${m}월 ${day}일` : `${MONTHS_EN[m - 1]} ${day}`;
 }
 
-// 과정 주간 수업 요일 요약. 취소·보강 제외 정규 수업의 요일 집합 → ko "화/목/토" / en "Tue/Thu/Sat".
+// 과정 주간 수업 요일 요약 → ko "월/수/금" / en "Mon/Wed/Fri".
+// 소스 = 현재 주간 템플릿(enrollments.slots) — 일정 변경 반영. 없으면 취소·보강 제외 정규 수업 날짜로 폴백.
 function weekdaySummary(items: ClassItem[], ko: boolean): string {
+  const slots = items[0]?.enrollmentSlots;
+  if (slots && slots.length > 0) return summarizeWeekdays(slots, ko);
   const dows = new Set(items.filter((c) => c.status !== "취소" && !c.isMakeup).map((c) => parseDate(c.sessionDate).getDay()));
   const labels = DISPLAY_DAYS.filter((d) => dows.has(d)).map((d) => (ko ? DAY_LABELS_KO[d] : DAY_LABELS[DISPLAY_DAYS.indexOf(d)]));
   return labels.join("/");

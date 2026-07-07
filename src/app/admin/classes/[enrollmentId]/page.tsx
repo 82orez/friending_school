@@ -40,9 +40,12 @@ export default async function AdminClassDetailPage({ params }: { params: Promise
   const dates = classes.map((c) => c.session_date).sort();
   const studentLabel = first.student_name ?? "학생";
   const title = `${first.course_title} · ${studentLabel}`;
-  // 주간 요일 요약(예: "월수금") — 정규 수업(취소·보강 제외) 날짜에서 파생.
-  const regularDows = new Set(classes.filter((c) => c.status !== "취소" && !c.is_makeup).map((c) => dowOf(c.session_date)));
-  const weekdayLabel = DISPLAY_DAYS.filter((d) => regularDows.has(d))
+  // 주간 요일 요약(예: "월수금") — 현재 주간 템플릿(enrollments.slots) 기준. 일정 변경 시 과거 회차 오염 방지.
+  // slots 비어있는 레거시만 정규 수업(취소·보강 제외) 날짜로 폴백.
+  const scheduleDays = currentSlots.length
+    ? new Set(currentSlots.map((s) => s.day))
+    : new Set(classes.filter((c) => c.status !== "취소" && !c.is_makeup).map((c) => dowOf(c.session_date)));
+  const weekdayLabel = DISPLAY_DAYS.filter((d) => scheduleDays.has(d))
     .map((d) => DAY_LABELS_KO[d])
     .join("");
   const subtitle = `강사 ${first.teacher_name ?? "-"}${weekdayLabel ? ` · 요일 ${weekdayLabel}` : ""} · 기간 ${dates[0]} ~ ${dates[dates.length - 1]} · 총 ${classes.length}회`;
