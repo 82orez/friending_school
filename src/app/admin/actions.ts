@@ -33,7 +33,8 @@ import { kstDateMinToMs } from "@/lib/classtime";
 import { todayKst } from "@/lib/booking";
 import { createMakeupClass, weekdayOf, addDaysStr, type ClassForMakeup } from "@/lib/makeup";
 import { logEnrollmentEvent } from "@/lib/events";
-import { finalizeEnrollmentPayment } from "@/lib/payment";
+import { finalizeEnrollmentPayment, refundEnrollmentPayment } from "@/lib/payment";
+import { cancelPortonePayment } from "@/lib/portone";
 
 export type ActionResult = { ok: boolean; error?: string };
 
@@ -329,6 +330,43 @@ export async function confirmPayment(id: string): Promise<ActionResult> {
   const enrollmentId = String(id ?? "").trim();
   if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
   return finalizeEnrollmentPayment(enrollmentId, { id: adminId, role: "admin" });
+}
+
+// 환불(전액/부분) — 결제완료 enrollment의 카드 결제를 PortOne 취소 후 DB 동기화(수강 취소 + 미래 수업 취소).
+export async function refundPayment(enrollmentId: string, opts: { reason: string; amount?: number }): Promise<ActionResult> {
+  const adminId = await requireAdmin();
+  if (!adminId) return { ok: false, error: "권한이 없습니다." };
+  const id = String(enrollmentId ?? "").trim();
+  const reason = String(opts?.reason ?? "").trim();
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+  if (!reason) return { ok: false, error: "환불 사유를 입력해 주세요." };
+
+  const admin = createAdminClient();
+  const { data: payments } = await admin
+    .from("payments")
+    .select("payment_id, enrollment_id, amount, cancelled_amount, status")
+    .eq("enrollment_id", id)
+    .eq("status", "paid")
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const payment = payments?.[0];
+  if (!payment) return { ok: false, error: "환불할 결제 내역이 없습니다." };
+
+  const remaining = (payment.amount ?? 0) - (payment.cancelled_amount ?? 0);
+  const refundAmount = typeof opts.amount === "number" && opts.amount > 0 ? Math.floor(opts.amount) : remaining;
+  if (refundAmount <= 0 || refundAmount > remaining) return { ok: false, error: "환불 금액이 올바르지 않습니다." };
+
+  // PortOne 취소(부분이면 amount 지정, 잔액 전부면 미지정=잔액 전액 취소).
+  const cancel = await cancelPortonePayment(payment.payment_id, { reason, amount: refundAmount < remaining ? refundAmount : undefined });
+  if (!cancel.ok) return { ok: false, error: cancel.error ?? "환불 처리에 실패했습니다." };
+
+  const totalCancelled = (payment.cancelled_amount ?? 0) + refundAmount;
+  return refundEnrollmentPayment(admin, {
+    payment: { payment_id: payment.payment_id, enrollment_id: payment.enrollment_id, amount: payment.amount },
+    totalCancelledAmount: totalCancelled,
+    reason,
+    actor: { id: adminId, role: "admin" },
+  });
 }
 
 /* ===== 화상수업(클래스) 관리 ===== */

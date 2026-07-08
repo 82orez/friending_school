@@ -5,10 +5,12 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
 import { sendSms } from "@/lib/sms";
-import { sendEnrollmentPaymentConfirmedToTeacher } from "@/lib/mailer";
+import { sendEnrollmentPaymentConfirmedToTeacher, sendEnrollmentRefundToTeacher } from "@/lib/mailer";
 import { getCourse } from "@/data/courses";
 import { logEnrollmentEvent } from "@/lib/events";
-import { TOTAL_SESSIONS, enumerateLessonSessions, isValidSlot, summarizeSlots, lessonEndDate, type Slot } from "@/lib/availability";
+import { TOTAL_SESSIONS, enumerateLessonSessions, isValidSlot, summarizeSlots, lessonEndDate, lessonEndMin, type Slot } from "@/lib/availability";
+import { kstDateMinToMs } from "@/lib/classtime";
+import { getVerifiedPortonePayment, cancelPortonePayment } from "@/lib/portone";
 
 export type PaymentResult = { ok: boolean; error?: string };
 
@@ -153,6 +155,183 @@ export async function finalizeEnrollmentPayment(
       ...(actor.role === "student" ? { via: "portone_card" } : actor.role === "system" ? { via: "portone_webhook" } : {}),
     },
   });
+
+  revalidatePath("/admin/enrollments");
+  revalidatePath("/admin/classes");
+  revalidatePath("/teacher", "layout");
+  revalidatePath("/mypage", "layout");
+  return { ok: true };
+}
+
+/* ===== 결제 기록 · 정산 파이프라인 · 환불(PortOne) ===== */
+
+type RecordPaymentInput = {
+  paymentId: string;
+  enrollmentId?: string | null;
+  studentId?: string | null;
+  amount?: number;
+  currency?: string;
+  pgTxId?: string;
+  method?: string;
+  receiptUrl?: string;
+  raw?: unknown;
+};
+
+// payments 기록(멱등 insert-once) — 같은 payment_id 재기록은 no-op(이후 취소 상태를 덮어쓰지 않도록).
+export async function recordPayment(admin: ReturnType<typeof createAdminClient>, input: RecordPaymentInput): Promise<void> {
+  const { error } = await admin.from("payments").upsert(
+    {
+      payment_id: input.paymentId,
+      enrollment_id: input.enrollmentId ?? null,
+      student_id: input.studentId ?? null,
+      amount: Number.isFinite(input.amount) ? input.amount : 0,
+      currency: input.currency ?? "KRW",
+      status: "paid",
+      pg_tx_id: input.pgTxId ?? null,
+      method: input.method ?? null,
+      receipt_url: input.receiptUrl ?? null,
+      raw: input.raw ?? null,
+    },
+    { onConflict: "payment_id", ignoreDuplicates: true },
+  );
+  if (error) console.error("[recordPayment] 결제 기록 실패:", error);
+}
+
+export type SettleResult = { ok: boolean; enrollmentId?: string; error?: string; transient?: boolean; overpaid?: boolean };
+
+// PortOne 결제 정산 파이프라인(학생 confirm·웹훅 Paid 공용): 검증 → 기록 → 확정 → 과오납(중복결제) 자동 환불.
+export async function settlePortonePayment(paymentId: string, actor: { id: string; role: "student" | "system" }): Promise<SettleResult> {
+  const v = await getVerifiedPortonePayment(paymentId);
+  if (!v.ok) return { ok: false, error: v.error, transient: v.transient };
+
+  const admin = createAdminClient();
+  const enrollmentId = v.enrollmentId!;
+  const { data: enrRow } = await admin.from("enrollments").select("student_id, status").eq("id", enrollmentId).maybeSingle();
+
+  await recordPayment(admin, {
+    paymentId,
+    enrollmentId,
+    studentId: enrRow?.student_id ?? null,
+    amount: v.amount,
+    currency: v.currency,
+    pgTxId: v.pgTxId,
+    method: v.method,
+    receiptUrl: v.receiptUrl,
+    raw: v.raw,
+  });
+
+  const fin = await finalizeEnrollmentPayment(enrollmentId, actor);
+  if (fin.ok) return { ok: true, enrollmentId };
+
+  // 확정 실패가 "이미 처리"이고 enrollment가 이미 결제완료 + 이 결제와 다른 'paid' 결제가 있으면 = 과오납 → 자동 전액 환불.
+  const alreadyPaid = enrRow?.status === "결제완료" || fin.error === "이미 처리된 신청입니다.";
+  if (alreadyPaid) {
+    const { data: others } = await admin
+      .from("payments")
+      .select("payment_id")
+      .eq("enrollment_id", enrollmentId)
+      .eq("status", "paid")
+      .neq("payment_id", paymentId);
+    if (others && others.length > 0) {
+      const cancel = await cancelPortonePayment(paymentId, { reason: "중복 결제 자동 환불" });
+      if (cancel.ok) {
+        await admin.from("payments").update({ status: "cancelled", cancelled_amount: v.amount ?? 0 }).eq("payment_id", paymentId);
+        await logEnrollmentEvent(admin, {
+          enrollmentId,
+          eventType: "payment_refunded",
+          actorId: null,
+          actorRole: actor.role,
+          detail: { auto: true, reason: "중복 결제", refundAmount: v.amount },
+        });
+      } else {
+        console.error("[settlePortonePayment] 과오납 자동환불 실패:", paymentId, cancel.error);
+      }
+      return { ok: false, overpaid: true, error: "이미 결제된 신청이라 이번 결제는 자동 환불됩니다." };
+    }
+  }
+  return { ok: false, error: fin.error };
+}
+
+type RefundSyncInput = {
+  payment: { payment_id: string; enrollment_id?: string | null; amount?: number };
+  totalCancelledAmount: number; // PortOne 기준 누적 취소금액(절대값 — 멱등)
+  reason: string;
+  actor: { id: string; role: "admin" | "system" };
+};
+
+// 환불 후 DB 동기화 코어(admin 환불·취소 웹훅 공용) — PortOne 취소는 호출측에서 이미 수행됨.
+// 멱등: totalCancelledAmount는 절대값으로 set, enrollment 취소는 CAS(결제완료→취소)라 재호출 시 no-op.
+export async function refundEnrollmentPayment(admin: ReturnType<typeof createAdminClient>, input: RefundSyncInput): Promise<PaymentResult> {
+  const { payment, totalCancelledAmount, reason, actor } = input;
+  const isFull = totalCancelledAmount >= (payment.amount ?? 0);
+
+  await admin
+    .from("payments")
+    .update({ status: isFull ? "cancelled" : "partial_cancelled", cancelled_amount: totalCancelledAmount })
+    .eq("payment_id", payment.payment_id);
+
+  const enrollmentId = payment.enrollment_id;
+  if (!enrollmentId) return { ok: true }; // enrollment 없는 결제 — payments만 갱신.
+
+  const { data: enr } = await admin
+    .from("enrollments")
+    .select("id, status, student_phone, student_name, course, course_title, teacher_id, teacher_name")
+    .eq("id", enrollmentId)
+    .maybeSingle();
+
+  const { data: updated } = await admin
+    .from("enrollments")
+    .update({ status: "취소", teacher_note: `[관리자] 환불: ${reason}`.slice(0, 1000) })
+    .eq("id", enrollmentId)
+    .eq("status", "결제완료")
+    .select("id");
+  const cancelledNow = updated && updated.length > 0; // 이번 호출에서 실제로 취소 전환됐는지(중복 알림 방지)
+
+  if (cancelledNow) {
+    // 미래 예정 수업 일괄 취소(보강 없음). 과거·진행된 수업은 유지.
+    const { data: classes } = await admin.from("classes").select("id, session_date, end_min").eq("enrollment_id", enrollmentId).eq("status", "예정");
+    const now = Date.now();
+    const futureIds = (classes ?? []).filter((c) => now < kstDateMinToMs(c.session_date, lessonEndMin(c.end_min))).map((c) => c.id);
+    if (futureIds.length > 0) {
+      const { error } = await admin.from("classes").update({ status: "취소", cancel_reason: "cancel" }).in("id", futureIds);
+      if (error) console.error("[refundEnrollmentPayment] 미래 수업 취소 실패:", error);
+    }
+
+    if (enr?.student_phone) {
+      try {
+        await sendSms(enr.student_phone, `[프렌딩 스쿨] 환불이 처리되어 수강이 취소되었습니다. ${enr.course_title}. 문의는 고객센터로 연락해 주세요.`);
+      } catch (err) {
+        console.error("[refundEnrollmentPayment] SMS 실패:", err);
+      }
+    }
+    try {
+      const origin = getOrigin(await headers());
+      const { data: teacherUser } = await admin.auth.admin.getUserById(enr.teacher_id);
+      const teacherEmail = teacherUser?.user?.email;
+      if (teacherEmail) {
+        await sendEnrollmentRefundToTeacher([teacherEmail], {
+          studentName: enr.student_name,
+          courseTitle: enr.course_title,
+          courseEnglishTitle: getCourse(enr.course)?.englishTitle,
+          teacherUrl: `${origin}/teacher`,
+        });
+      }
+    } catch (err) {
+      console.error("[refundEnrollmentPayment] 강사 메일 실패:", err);
+    }
+
+    await logEnrollmentEvent(admin, {
+      enrollmentId,
+      eventType: "payment_refunded",
+      actorId: actor.role === "system" ? null : actor.id,
+      actorRole: actor.role,
+      course: enr?.course,
+      courseTitle: enr?.course_title,
+      studentName: enr?.student_name,
+      teacherName: enr?.teacher_name,
+      detail: { refundAmount: totalCancelledAmount, reason, full: isFull },
+    });
+  }
 
   revalidatePath("/admin/enrollments");
   revalidatePath("/admin/classes");

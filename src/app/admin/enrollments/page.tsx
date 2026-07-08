@@ -19,11 +19,21 @@ export default async function AdminEnrollmentsPage() {
     .select("id, teacher_id, course, course_title, teacher_name, student_name, student_phone, slots, start_date, status, teacher_note, created_at, is_test")
     .order("created_at", { ascending: false });
 
+  // 결제 기록(payments) 병합 — enrollment_id별 최신 1건(카드 결제/환불 상태·금액). 환불 버튼·배지용.
+  const { data: payRows } = await admin.from("payments").select("enrollment_id, payment_id, status, amount, cancelled_amount, created_at").order("created_at", { ascending: false });
+  const paymentByEnrollment = new Map<string, { paymentId: string; status: string; amount: number; cancelledAmount: number }>();
+  for (const p of (payRows ?? []) as { enrollment_id: string | null; payment_id: string; status: string; amount: number; cancelled_amount: number }[]) {
+    if (p.enrollment_id && !paymentByEnrollment.has(p.enrollment_id)) {
+      paymentByEnrollment.set(p.enrollment_id, { paymentId: p.payment_id, status: p.status, amount: p.amount, cancelledAmount: p.cancelled_amount });
+    }
+  }
+
   const enrollments: AdminEnrollment[] = ((data ?? []) as (AdminEnrollment & { course: string })[]).map((e) => ({
     ...e,
     slots: (Array.isArray(e.slots) ? e.slots : []) as Slot[],
     // 수강료 = 과정 고정가(슬러그로 live 해석, 미해석 레거시는 빈 값). 학생 결제대기 패널과 동일 표기.
     priceLabel: getCourse(e.course)?.price ?? "",
+    payment: paymentByEnrollment.get(e.id) ?? null,
   }));
 
   const teachers = await loadEnrollTeachers();

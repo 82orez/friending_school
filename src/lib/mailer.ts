@@ -243,6 +243,38 @@ export async function sendEnrollmentCancellationToTeacher(to: string[], data: En
   await sendResultEmail(to, `[Friending School] Enrollment cancelled · ${data.studentName}`, html, text);
 }
 
+export type EnrollmentRefundEmailData = {
+  studentName: string | null;
+  courseTitle: string;
+  courseEnglishTitle?: string;
+  teacherUrl: string;
+};
+
+/**
+ * 강사에게 환불로 인한 수강 취소 알림(미래 수업이 취소됨). best-effort — 호출 측에서 try/catch로 감쌀 것.
+ */
+export async function sendEnrollmentRefundToTeacher(to: string[], data: EnrollmentRefundEmailData): Promise<void> {
+  const title = data.courseEnglishTitle || data.courseTitle;
+  const student = data.studentName || "-";
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">A course has been refunded and cancelled</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(student)} · ${escapeHtml(title)}</p>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 12px">This student's payment was refunded, so the course and its upcoming classes have been cancelled. No action is needed — the cancelled sessions are removed from My Classroom.</p>
+    <a href="${escapeHtml(data.teacherUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to teacher page</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
+  </div>`;
+  const text = [
+    "A course has been refunded and cancelled.",
+    "",
+    `Student: ${student}`,
+    `Course: ${title}`,
+    "The upcoming classes have been cancelled. No action is needed.",
+    "",
+    `Teacher page: ${data.teacherUrl}`,
+  ].join("\n");
+  await sendResultEmail(to, `[Friending School] Course refunded · ${student}`, html, text);
+}
+
 export type ClassCancellationEmailData = {
   studentName: string;
   courseTitle: string;

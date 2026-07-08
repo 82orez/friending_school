@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, Search, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { adminCancelEnrollment, confirmPayment, deleteTestEnrollment } from "@/app/admin/actions";
+import { adminCancelEnrollment, confirmPayment, deleteTestEnrollment, refundPayment } from "@/app/admin/actions";
 import { overlappingIds, summarizeSlots, type Slot } from "@/lib/availability";
 import {
   AlertDialog,
@@ -31,6 +31,7 @@ export type AdminEnrollment = {
   created_at: string;
   is_test?: boolean;
   priceLabel: string; // 수강료 표시(과정 고정가, 예 "₩240,000")
+  payment?: { paymentId: string; status: string; amount: number; cancelledAmount: number } | null; // 카드 결제 기록(환불용)
 };
 
 type StatusKey = AdminEnrollment["status"];
@@ -250,14 +251,20 @@ function EnrollmentDetailModal({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [payConfirmOpen, setPayConfirmOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundAmountStr, setRefundAmountStr] = useState("");
   const [pending, startTransition] = useTransition();
   const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
   const payable = row.status === "결제대기"; // 입금 확인 → 결제완료
+  const pay = row.payment;
+  const refundable = row.status === "결제완료" && pay?.status === "paid"; // 카드 결제 환불 가능
+  const paidRemaining = pay ? (pay.amount ?? 0) - (pay.cancelledAmount ?? 0) : 0;
 
   // Esc 닫기(확인창 열림 시 무시) + body scroll lock + 닫기 버튼 포커스.
   const confirmingRef = useRef(false);
-  confirmingRef.current = confirmOpen || payConfirmOpen || deleteOpen;
+  confirmingRef.current = confirmOpen || payConfirmOpen || deleteOpen || refundOpen;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !confirmingRef.current) onClose();
@@ -304,6 +311,40 @@ function EnrollmentDetailModal({
         onClose();
       } else {
         toast.error(res.error ?? "결제 확인 중 문제가 발생했어요.");
+      }
+    });
+  };
+
+  const askRefund = () => {
+    if (!refundReason.trim()) {
+      toast.error("환불 사유를 입력해 주세요.");
+      return;
+    }
+    const amt = refundAmountStr.trim() ? Number(refundAmountStr) : paidRemaining;
+    if (!Number.isFinite(amt) || amt <= 0 || amt > paidRemaining) {
+      toast.error(`환불 금액은 1~${paidRemaining.toLocaleString()}원 사이여야 합니다.`);
+      return;
+    }
+    setRefundOpen(true);
+  };
+
+  const doRefund = () => {
+    setRefundOpen(false);
+    const amt = refundAmountStr.trim() ? Math.floor(Number(refundAmountStr)) : undefined; // 미입력=잔액 전액
+    startTransition(async () => {
+      const res = await refundPayment(row.id, { reason: refundReason.trim(), amount: amt });
+      if (res.ok) {
+        const refunded = amt ?? paidRemaining;
+        const partial = refunded < paidRemaining;
+        onUpdated({
+          ...row,
+          status: "취소",
+          payment: pay ? { ...pay, status: partial ? "partial_cancelled" : "cancelled", cancelledAmount: (pay.cancelledAmount ?? 0) + refunded } : pay,
+        });
+        toast.success("환불 처리했어요. 학생에게 안내 문자가 발송됩니다.");
+        onClose();
+      } else {
+        toast.error(res.error ?? "환불 중 문제가 발생했어요.");
       }
     });
   };
@@ -388,8 +429,38 @@ function EnrollmentDetailModal({
                 className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
               />
             </div>
+          ) : refundable ? (
+            <div className="mt-5">
+              <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">환불 사유 (학생에게 문자로 전송됩니다)</label>
+              <textarea
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                rows={2}
+                placeholder="환불 사유를 입력하세요..."
+                className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              />
+              <label className="text-muted-fg-faint mt-3 mb-1 block text-xs font-semibold">환불 금액 (비우면 전액 ₩{paidRemaining.toLocaleString()})</label>
+              <input
+                type="number"
+                value={refundAmountStr}
+                onChange={(e) => setRefundAmountStr(e.target.value)}
+                min={1}
+                max={paidRemaining}
+                placeholder={String(paidRemaining)}
+                className="border-rule-faint focus:border-accent-blue w-40 rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              />
+              <p className="text-muted-fg-faint mt-1.5 text-xs">환불 시 수강이 취소되고 남은(예정) 수업이 모두 취소됩니다.</p>
+            </div>
           ) : (
-            <p className="text-muted-fg mt-5 text-sm">처리 완료된 신청입니다(읽기 전용).</p>
+            <div className="mt-5">
+              <p className="text-muted-fg text-sm">처리 완료된 신청입니다(읽기 전용).</p>
+              {pay && (pay.status === "cancelled" || pay.status === "partial_cancelled") && (
+                <p className="text-brand mt-1 text-xs font-semibold">
+                  환불됨: ₩{(pay.cancelledAmount ?? 0).toLocaleString()}
+                  {pay.status === "partial_cancelled" ? " (부분)" : ""}
+                </p>
+              )}
+            </div>
           )}
         </div>
 
@@ -439,13 +510,26 @@ function EnrollmentDetailModal({
               </button>
             </>
           ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
-            >
-              닫기
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
+              >
+                닫기
+              </button>
+              {refundable && (
+                <button
+                  type="button"
+                  onClick={askRefund}
+                  disabled={pending}
+                  className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50"
+                >
+                  {pending && <Loader2 className="size-3.5 animate-spin" />}
+                  환불
+                </button>
+              )}
+            </>
           )}
           </div>
         </div>
@@ -480,6 +564,28 @@ function EnrollmentDetailModal({
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction onClick={cancel} className="bg-brand hover:bg-brand/90 border-transparent text-white">
               취소 처리
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={refundOpen} onOpenChange={setRefundOpen}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 결제를 환불할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="text-ink font-semibold">{studentLabel}</span>님의 {row.course_title} 결제가 PortOne에서 취소되고,{" "}
+              <span className="text-ink font-semibold">수강이 취소</span>되며 남은 예정 수업이 모두 취소됩니다. 학생에게 안내 문자가 전송됩니다.
+              <span className="text-ink mt-2 block font-semibold">
+                환불 금액: ₩{(refundAmountStr.trim() ? Math.floor(Number(refundAmountStr)) : paidRemaining).toLocaleString()}
+                {refundAmountStr.trim() && Math.floor(Number(refundAmountStr)) < paidRemaining ? " (부분)" : ""}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction onClick={doRefund} className="bg-brand hover:bg-brand/90 border-transparent text-white">
+              환불 처리
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

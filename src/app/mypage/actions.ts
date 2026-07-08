@@ -12,8 +12,7 @@ import { summarizeSlots, type Slot } from "@/lib/availability";
 import { getOrigin } from "@/lib/origin";
 import { sendEnrollmentCancellationToTeacher } from "@/lib/mailer";
 import { logEnrollmentEvent } from "@/lib/events";
-import { finalizeEnrollmentPayment } from "@/lib/payment";
-import { getVerifiedPortonePayment } from "@/lib/portone";
+import { settlePortonePayment } from "@/lib/payment";
 
 export type StudentActionState = { ok?: boolean; error?: string };
 
@@ -137,9 +136,9 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
   return { ok: true };
 }
 
-// 학생 카드 결제(PortOne V2) 확정 — 클라 결제창 성공 후 호출. 서버가 PortOne REST로 결제를 authoritative하게 재검증
-// (status=PAID·금액·통화·enrollmentId 일치)한 뒤에만 공유 코어 finalizeEnrollmentPayment로 '결제완료' 확정.
-// 금액은 절대 클라 신뢰 금지 — COURSE_PRICE_KRW와 대조. 소유권·상태('결제대기')는 헬퍼가 재검증(중복/재요청 안전).
+// 학생 카드 결제(PortOne V2) 확정 — 클라 결제창 성공 후 호출. 공유 파이프라인 settlePortonePayment가
+// 서버 authoritative 검증(status=PAID·금액·통화) → payments 기록 → '결제완료' 확정 → 과오납(중복결제) 자동 환불까지 수행.
+// 소유권·상태 재검증은 finalize가 authoritative(중복/재요청 안전). 금액은 절대 클라 신뢰 금지.
 export async function confirmPortonePayment(enrollmentId: string, paymentId: string): Promise<StudentActionState> {
   const supabase = createClient(await cookies());
   const {
@@ -147,15 +146,16 @@ export async function confirmPortonePayment(enrollmentId: string, paymentId: str
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다." };
   const id = String(enrollmentId ?? "").trim();
-  if (!id) return { error: "결제 정보를 확인할 수 없어요." };
+  const pid = String(paymentId ?? "").trim();
+  if (!id || !pid) return { error: "결제 정보를 확인할 수 없어요." };
 
-  // PortOne REST로 결제 상태·금액·통화·enrollmentId를 서버 authoritative하게 검증(공유 헬퍼, 웹훅과 동일).
-  const verified = await getVerifiedPortonePayment(paymentId);
-  if (!verified.ok) return { error: verified.error };
-  // 결제에 담긴 enrollmentId가 클라가 확정 요청한 신청과 일치해야 함.
-  if (verified.enrollmentId !== id) return { error: "결제 정보가 일치하지 않아요." };
-
-  return finalizeEnrollmentPayment(id, { id: user.id, role: "student" });
+  const res = await settlePortonePayment(pid, { id: user.id, role: "student" });
+  if (res.ok) {
+    // 결제의 enrollmentId는 customData(서버 검증)가 authoritative — 클릭한 신청과 다르면 로깅만(소유권은 finalize가 보장).
+    if (res.enrollmentId && res.enrollmentId !== id) console.warn("[confirmPortonePayment] enrollmentId mismatch", id, res.enrollmentId);
+    return { ok: true };
+  }
+  return { error: res.error };
 }
 
 /* ===== 전화번호 SMS 인증 (Solapi) ===== */

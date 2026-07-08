@@ -262,6 +262,65 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          cancelled_amount: number
+          created_at: string
+          currency: string
+          enrollment_id: string | null
+          id: string
+          method: string | null
+          payment_id: string
+          pg_tx_id: string | null
+          raw: Json | null
+          receipt_url: string | null
+          status: string
+          student_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          cancelled_amount?: number
+          created_at?: string
+          currency?: string
+          enrollment_id?: string | null
+          id?: string
+          method?: string | null
+          payment_id: string
+          pg_tx_id?: string | null
+          raw?: Json | null
+          receipt_url?: string | null
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          cancelled_amount?: number
+          created_at?: string
+          currency?: string
+          enrollment_id?: string | null
+          id?: string
+          method?: string | null
+          payment_id?: string
+          pg_tx_id?: string | null
+          raw?: Json | null
+          receipt_url?: string | null
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       phone_verifications: {
         Row: {
           attempts: number
