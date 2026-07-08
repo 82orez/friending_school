@@ -166,13 +166,22 @@ export async function confirmPortonePayment(enrollmentId: string, paymentId: str
       cache: "no-store",
     });
     if (!res.ok) {
-      console.error("[confirmPortonePayment] PortOne 조회 실패:", res.status, await res.text().catch(() => ""));
-      return { error: "결제 확인에 실패했어요. 잠시 후 다시 시도해 주세요." };
+      const body = await res.text().catch(() => "");
+      console.error("[confirmPortonePayment] PortOne 조회 실패:", res.status, body);
+      // 테스트 단계: 원인 파악이 쉽도록 상태코드·PortOne 오류 타입을 노출. ⚠️ 운영 전환 시 일반 문구로 되돌릴 것.
+      let detail = "";
+      try {
+        const j = JSON.parse(body);
+        detail = j?.type ?? j?.message ?? "";
+      } catch {
+        detail = "";
+      }
+      return { error: `결제 확인 실패(PortOne ${res.status}${detail ? ` · ${detail}` : ""}). 결제 설정(API Secret·상점)을 확인해 주세요.` };
     }
     pay = await res.json();
   } catch (err) {
     console.error("[confirmPortonePayment] PortOne 조회 예외:", err);
-    return { error: "결제 확인에 실패했어요. 잠시 후 다시 시도해 주세요." };
+    return { error: "결제 확인 중 네트워크 오류가 발생했어요. 잠시 후 다시 시도해 주세요." };
   }
 
   // customData는 V2에서 문자열로 반환될 수 있음 → 파싱.
@@ -183,7 +192,7 @@ export async function confirmPortonePayment(enrollmentId: string, paymentId: str
     custom = {};
   }
 
-  if (pay.status !== "PAID") return { error: "결제가 완료되지 않았어요." };
+  if (pay.status !== "PAID") return { error: `결제가 완료되지 않았어요(상태 ${pay.status ?? "알 수 없음"}).` };
   if (custom.enrollmentId !== id) return { error: "결제 정보가 일치하지 않아요." };
   if (pay.currency !== "KRW" || Number(pay.amount?.total) !== COURSE_PRICE_KRW) return { error: "결제 금액이 일치하지 않아요." };
 
