@@ -29,9 +29,23 @@ export default async function AdminEnrollmentsPage() {
   const teachers = await loadEnrollTeachers();
   const courses = COURSE_SLUGS.map((slug) => ({ slug, title: getCourse(slug)?.title ?? slug }));
 
+  // 테스트 수강신청 학생 후보 — 가입 회원 중 강사 제외·이메일 인증 완료만(회원 관리와 동일 merge 패턴).
+  const { data: usersData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const { data: profs } = await admin.from("profiles").select("id, role, first_name, last_name, english_name");
+  const profById = new Map((profs ?? []).map((p: { id: string; role: string; first_name: string | null; last_name: string | null; english_name: string | null }) => [p.id, p]));
+  const students = (usersData?.users ?? [])
+    .filter((u) => u.email && u.email_confirmed_at)
+    .map((u) => ({ u, p: profById.get(u.id) }))
+    .filter(({ p }) => (p?.role ?? "student") !== "teacher")
+    .map(({ u, p }) => {
+      const name = p ? [p.last_name, p.first_name].filter(Boolean).join("") || p.english_name || "" : "";
+      return { email: u.email as string, label: name ? `${name} (${u.email})` : (u.email as string) };
+    })
+    .sort((a, b) => a.email.localeCompare(b.email));
+
   return (
     <div className="space-y-6">
-      <TestEnrollmentCreator teachers={teachers} courses={courses} defaultStudentEmail={user?.email ?? ""} />
+      <TestEnrollmentCreator teachers={teachers} courses={courses} students={students} defaultStudentEmail={user?.email ?? ""} />
       <EnrollmentsManager enrollments={enrollments} />
     </div>
   );

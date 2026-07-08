@@ -9,6 +9,7 @@ export type AdminMember = {
   email: string;
   created_at: string;
   role: string;
+  email_confirmed: boolean;
 };
 
 function formatDate(iso: string): string {
@@ -79,6 +80,7 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
               <li key={m.id} className="border-rule flex items-center gap-3 border-b px-4 py-3.5 last:border-b-0 md:px-6">
                 <span className="text-muted-fg-faint w-7 shrink-0 text-center text-xs">{filtered.length - i}</span>
                 <span className="text-ink min-w-0 flex-1 truncate text-sm font-medium">{m.email}</span>
+                {!m.email_confirmed && <span className="bg-brand/10 text-brand shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">미인증</span>}
                 <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", ROLE_BADGE[m.role] ?? ROLE_BADGE.student)}>{m.role}</span>
                 <span className="text-muted-fg-faint shrink-0 text-xs">{formatDate(m.created_at)}</span>
               </li>

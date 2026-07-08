@@ -13,6 +13,7 @@ export default async function AdminMembersPage() {
       email: u.email ?? "(이메일 없음)",
       created_at: u.created_at ?? "",
       role: roleById.get(u.id) ?? "student",
+      email_confirmed: !!u.email_confirmed_at,
     }))
     .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
 

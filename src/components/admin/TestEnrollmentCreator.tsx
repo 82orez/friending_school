@@ -14,6 +14,7 @@ import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 
 type CourseOpt = { slug: string; title: string };
+type StudentOpt = { email: string; label: string };
 
 // 오늘(KST) YYYY-MM-DD — date input 기본값.
 function todayKst(): string {
@@ -23,10 +24,12 @@ function todayKst(): string {
 export default function TestEnrollmentCreator({
   teachers,
   courses,
+  students,
   defaultStudentEmail,
 }: {
   teachers: EnrollTeacherCard[];
   courses: CourseOpt[];
+  students: StudentOpt[];
   defaultStudentEmail: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -50,7 +53,7 @@ export default function TestEnrollmentCreator({
         </button>
       </div>
       {open && (
-        <CreatorModal teachers={teachers} courses={courses} defaultStudentEmail={defaultStudentEmail} onClose={() => setOpen(false)} />
+        <CreatorModal teachers={teachers} courses={courses} students={students} defaultStudentEmail={defaultStudentEmail} onClose={() => setOpen(false)} />
       )}
     </div>
   );
@@ -59,17 +62,21 @@ export default function TestEnrollmentCreator({
 function CreatorModal({
   teachers,
   courses,
+  students,
   defaultStudentEmail,
   onClose,
 }: {
   teachers: EnrollTeacherCard[];
   courses: CourseOpt[];
+  students: StudentOpt[];
   defaultStudentEmail: string;
   onClose: () => void;
 }) {
   const router = useRouter();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const [studentEmail, setStudentEmail] = useState(defaultStudentEmail);
+  const [studentEmail, setStudentEmail] = useState(
+    students.some((s) => s.email === defaultStudentEmail) ? defaultStudentEmail : (students[0]?.email ?? ""),
+  );
   const [course, setCourse] = useState(courses[0]?.slug ?? "");
   const [slots, setSlots] = useState<Slot[]>([]);
   const [teacherId, setTeacherId] = useState<string | null>(null);
@@ -148,14 +155,19 @@ function CreatorModal({
 
         <div className="space-y-4 overflow-auto px-6 py-5">
           <label className="block">
-            <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">학생 이메일 (비우면 본인 계정)</span>
-            <input
-              type="email"
+            <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">학생 (가입 회원 · 강사·미인증 제외)</span>
+            <select
               value={studentEmail}
               onChange={(e) => setStudentEmail(e.target.value)}
-              placeholder="student@example.com"
               className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-            />
+            >
+              {students.length === 0 && <option value="">선택 가능한 회원이 없습니다</option>}
+              {students.map((s) => (
+                <option key={s.email} value={s.email}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="block">
