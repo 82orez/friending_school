@@ -13,7 +13,7 @@ import { getOrigin } from "@/lib/origin";
 import { sendEnrollmentCancellationToTeacher } from "@/lib/mailer";
 import { logEnrollmentEvent } from "@/lib/events";
 import { finalizeEnrollmentPayment } from "@/lib/payment";
-import { COURSE_PRICE_KRW } from "@/data/pricing";
+import { getVerifiedPortonePayment } from "@/lib/portone";
 
 export type StudentActionState = { ok?: boolean; error?: string };
 
@@ -147,54 +147,13 @@ export async function confirmPortonePayment(enrollmentId: string, paymentId: str
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다." };
   const id = String(enrollmentId ?? "").trim();
-  const pid = String(paymentId ?? "").trim();
-  if (!id || !pid) return { error: "결제 정보를 확인할 수 없어요." };
+  if (!id) return { error: "결제 정보를 확인할 수 없어요." };
 
-  const secret = process.env.PORTONE_V2_API_SECRET;
-  if (!secret) return { error: "결제 설정이 필요합니다. 관리자에게 문의해 주세요." };
-
-  // PortOne 결제 단건 조회(서버 authoritative). 실패 시 확정하지 않음.
-  let pay: {
-    status?: string;
-    currency?: string;
-    amount?: { total?: number };
-    customData?: unknown;
-  };
-  try {
-    const res = await fetch(`https://api.portone.io/payments/${encodeURIComponent(pid)}`, {
-      headers: { Authorization: `PortOne ${secret}` },
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.error("[confirmPortonePayment] PortOne 조회 실패:", res.status, body);
-      // 테스트 단계: 원인 파악이 쉽도록 상태코드·PortOne 오류 타입을 노출. ⚠️ 운영 전환 시 일반 문구로 되돌릴 것.
-      let detail = "";
-      try {
-        const j = JSON.parse(body);
-        detail = j?.type ?? j?.message ?? "";
-      } catch {
-        detail = "";
-      }
-      return { error: `결제 확인 실패(PortOne ${res.status}${detail ? ` · ${detail}` : ""}). 결제 설정(API Secret·상점)을 확인해 주세요.` };
-    }
-    pay = await res.json();
-  } catch (err) {
-    console.error("[confirmPortonePayment] PortOne 조회 예외:", err);
-    return { error: "결제 확인 중 네트워크 오류가 발생했어요. 잠시 후 다시 시도해 주세요." };
-  }
-
-  // customData는 V2에서 문자열로 반환될 수 있음 → 파싱.
-  let custom: { enrollmentId?: string } = {};
-  try {
-    custom = typeof pay.customData === "string" ? JSON.parse(pay.customData) : ((pay.customData as { enrollmentId?: string }) ?? {});
-  } catch {
-    custom = {};
-  }
-
-  if (pay.status !== "PAID") return { error: `결제가 완료되지 않았어요(상태 ${pay.status ?? "알 수 없음"}).` };
-  if (custom.enrollmentId !== id) return { error: "결제 정보가 일치하지 않아요." };
-  if (pay.currency !== "KRW" || Number(pay.amount?.total) !== COURSE_PRICE_KRW) return { error: "결제 금액이 일치하지 않아요." };
+  // PortOne REST로 결제 상태·금액·통화·enrollmentId를 서버 authoritative하게 검증(공유 헬퍼, 웹훅과 동일).
+  const verified = await getVerifiedPortonePayment(paymentId);
+  if (!verified.ok) return { error: verified.error };
+  // 결제에 담긴 enrollmentId가 클라가 확정 요청한 신청과 일치해야 함.
+  if (verified.enrollmentId !== id) return { error: "결제 정보가 일치하지 않아요." };
 
   return finalizeEnrollmentPayment(id, { id: user.id, role: "student" });
 }

@@ -61,9 +61,13 @@ export async function generateClassesForEnrollment(admin: ReturnType<typeof crea
 }
 
 // 결제 확정 코어 — '결제대기' → '결제완료' 전환 + 클래스 생성 + 알림 + 감사 로그 + revalidate.
-// admin 입금 확인(confirmPayment)과 학생 PortOne 카드 결제(confirmPortonePayment)가 공유. 호출부는 각자 권한 가드를 통과한 뒤 호출하고,
-// student는 소유권까지 이 헬퍼가 authoritative하게 재검증한다. ⚠️ "use server" 아닌 server-only 모듈이라 클라가 직접 호출 불가.
-export async function finalizeEnrollmentPayment(enrollmentId: string, actor: { id: string; role: "admin" | "student" }): Promise<PaymentResult> {
+// admin 입금 확인(confirmPayment)·학생 PortOne 카드 결제(confirmPortonePayment)·PortOne 웹훅(role:"system")이 공유.
+// 호출부는 각자 권한/서명 가드를 통과한 뒤 호출하고, student는 소유권까지 이 헬퍼가 authoritative하게 재검증한다
+// (system=웹훅은 서명+결제 재조회로 이미 authoritative라 소유권 skip). ⚠️ "use server" 아닌 server-only 모듈이라 클라가 직접 호출 불가.
+export async function finalizeEnrollmentPayment(
+  enrollmentId: string,
+  actor: { id: string; role: "admin" | "student" | "system" },
+): Promise<PaymentResult> {
   const admin = createAdminClient();
   const { data: enr } = await admin
     .from("enrollments")
@@ -137,7 +141,7 @@ export async function finalizeEnrollmentPayment(enrollmentId: string, actor: { i
   await logEnrollmentEvent(admin, {
     enrollmentId,
     eventType: "payment_confirmed",
-    actorId: actor.id,
+    actorId: actor.role === "system" ? null : actor.id, // system=웹훅은 auth.users FK가 없어 null
     actorRole: actor.role,
     course: enr.course,
     courseTitle: enr.course_title,
@@ -146,7 +150,7 @@ export async function finalizeEnrollmentPayment(enrollmentId: string, actor: { i
     detail: {
       sessionsGenerated: enr.total_sessions ?? TOTAL_SESSIONS,
       startDate: enr.start_date,
-      ...(actor.role === "student" ? { via: "test_card" } : {}),
+      ...(actor.role === "student" ? { via: "portone_card" } : actor.role === "system" ? { via: "portone_webhook" } : {}),
     },
   });
 
