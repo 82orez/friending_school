@@ -344,7 +344,7 @@ export async function refundPayment(enrollmentId: string, opts: { reason: string
   const admin = createAdminClient();
   const { data: payments } = await admin
     .from("payments")
-    .select("payment_id, enrollment_id, amount, cancelled_amount, status")
+    .select("payment_id, enrollment_id, amount, cancelled_amount, status, method")
     .eq("enrollment_id", id)
     .eq("status", "paid")
     .order("created_at", { ascending: false })
@@ -356,9 +356,13 @@ export async function refundPayment(enrollmentId: string, opts: { reason: string
   const refundAmount = typeof opts.amount === "number" && opts.amount > 0 ? Math.floor(opts.amount) : remaining;
   if (refundAmount <= 0 || refundAmount > remaining) return { ok: false, error: "환불 금액이 올바르지 않습니다." };
 
-  // PortOne 취소(부분이면 amount 지정, 잔액 전부면 미지정=잔액 전액 취소).
-  const cancel = await cancelPortonePayment(payment.payment_id, { reason, amount: refundAmount < remaining ? refundAmount : undefined });
-  if (!cancel.ok) return { ok: false, error: cancel.error ?? "환불 처리에 실패했습니다." };
+  // 무통장 입금은 PG 취소 불가(실제 환불=계좌 수동 송금) → PortOne 취소 건너뛰고 DB 동기화만.
+  const isBank = payment.method === "bank_transfer" || payment.payment_id?.startsWith("bank-");
+  if (!isBank) {
+    // PortOne 취소(부분이면 amount 지정, 잔액 전부면 미지정=잔액 전액 취소).
+    const cancel = await cancelPortonePayment(payment.payment_id, { reason, amount: refundAmount < remaining ? refundAmount : undefined });
+    if (!cancel.ok) return { ok: false, error: cancel.error ?? "환불 처리에 실패했습니다." };
+  }
 
   const totalCancelled = (payment.cancelled_amount ?? 0) + refundAmount;
   return refundEnrollmentPayment(admin, {

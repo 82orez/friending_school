@@ -7,6 +7,7 @@ import { getOrigin } from "@/lib/origin";
 import { sendSms } from "@/lib/sms";
 import { sendEnrollmentPaymentConfirmedToTeacher, sendEnrollmentRefundToTeacher } from "@/lib/mailer";
 import { getCourse } from "@/data/courses";
+import { COURSE_PRICE_KRW } from "@/data/pricing";
 import { logEnrollmentEvent } from "@/lib/events";
 import { TOTAL_SESSIONS, enumerateLessonSessions, isValidSlot, summarizeSlots, lessonEndDate, lessonEndMin, type Slot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
@@ -89,6 +90,19 @@ export async function finalizeEnrollmentPayment(
     .select("id");
   if (error) return { ok: false, error: "결제 처리 중 오류가 발생했습니다." };
   if (!data || data.length === 0) return { ok: false, error: "이미 처리된 신청입니다." };
+
+  // 무통장 입금(admin 확인) 결제 기록 — 매출·환불 관리 단일 소스화. 합성 payment_id로 멱등.
+  // 카드/웹훅(student/system)은 상류 settlePortonePayment가 이미 기록하므로 admin 경로만.
+  if (actor.role === "admin") {
+    await recordPayment(admin, {
+      paymentId: `bank-${enrollmentId}`,
+      enrollmentId,
+      studentId: enr.student_id,
+      amount: COURSE_PRICE_KRW,
+      currency: "KRW",
+      method: "bank_transfer",
+    });
+  }
 
   // 날짜별 클래스 생성 (best-effort, 멱등) — 실패해도 결제 확정은 유지.
   try {

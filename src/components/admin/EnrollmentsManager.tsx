@@ -31,7 +31,7 @@ export type AdminEnrollment = {
   created_at: string;
   is_test?: boolean;
   priceLabel: string; // 수강료 표시(과정 고정가, 예 "₩240,000")
-  payment?: { paymentId: string; status: string; amount: number; cancelledAmount: number } | null; // 카드 결제 기록(환불용)
+  payment?: { paymentId: string; status: string; amount: number; cancelledAmount: number; method?: string | null } | null; // 결제 기록(카드/무통장, 환불용)
 };
 
 type StatusKey = AdminEnrollment["status"];
@@ -259,8 +259,9 @@ function EnrollmentDetailModal({
   const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
   const payable = row.status === "결제대기"; // 입금 확인 → 결제완료
   const pay = row.payment;
-  const refundable = row.status === "결제완료" && pay?.status === "paid"; // 카드 결제 환불 가능
+  const refundable = row.status === "결제완료" && pay?.status === "paid"; // 결제 환불 가능(카드/무통장)
   const paidRemaining = pay ? (pay.amount ?? 0) - (pay.cancelledAmount ?? 0) : 0;
+  const isBankPay = pay?.method === "bank_transfer" || pay?.paymentId?.startsWith("bank-"); // 무통장=PG 취소 불가, 계좌 수동 송금
 
   // Esc 닫기(확인창 열림 시 무시) + body scroll lock + 닫기 버튼 포커스.
   const confirmingRef = useRef(false);
@@ -450,6 +451,11 @@ function EnrollmentDetailModal({
                 className="border-rule-faint focus:border-accent-blue w-40 rounded-md border bg-white px-3 py-2 text-sm outline-none"
               />
               <p className="text-muted-fg-faint mt-1.5 text-xs">환불 시 수강이 취소되고 남은(예정) 수업이 모두 취소됩니다.</p>
+              {isBankPay && (
+                <p className="text-brand mt-2 rounded-md bg-brand/5 px-3 py-2 text-xs font-semibold">
+                  무통장 입금 건입니다. 실제 환불 금액은 학생 계좌로 직접 송금해 주세요(시스템은 수강 취소·기록만 처리합니다).
+                </p>
+              )}
             </div>
           ) : (
             <div className="mt-5">
@@ -574,12 +580,14 @@ function EnrollmentDetailModal({
           <AlertDialogHeader>
             <AlertDialogTitle>이 결제를 환불할까요?</AlertDialogTitle>
             <AlertDialogDescription>
-              <span className="text-ink font-semibold">{studentLabel}</span>님의 {row.course_title} 결제가 PortOne에서 취소되고,{" "}
+              <span className="text-ink font-semibold">{studentLabel}</span>님의 {row.course_title}{" "}
+              {isBankPay ? "무통장 입금 건이 환불 처리되고," : "결제가 PortOne에서 취소되고,"}{" "}
               <span className="text-ink font-semibold">수강이 취소</span>되며 남은 예정 수업이 모두 취소됩니다. 학생에게 안내 문자가 전송됩니다.
               <span className="text-ink mt-2 block font-semibold">
                 환불 금액: ₩{(refundAmountStr.trim() ? Math.floor(Number(refundAmountStr)) : paidRemaining).toLocaleString()}
                 {refundAmountStr.trim() && Math.floor(Number(refundAmountStr)) < paidRemaining ? " (부분)" : ""}
               </span>
+              {isBankPay && <span className="text-brand mt-1 block text-xs">실제 환불금은 계좌로 직접 송금해 주세요.</span>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
