@@ -12,6 +12,7 @@ import { summarizeSlots, type Slot } from "@/lib/availability";
 import { getOrigin } from "@/lib/origin";
 import { sendEnrollmentCancellationToTeacher } from "@/lib/mailer";
 import { logEnrollmentEvent } from "@/lib/events";
+import { finalizeEnrollmentPayment } from "@/lib/payment";
 
 export type StudentActionState = { ok?: boolean; error?: string };
 
@@ -133,6 +134,20 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
   revalidatePath("/mypage", "layout");
   revalidatePath("/teacher", "layout");
   return { ok: true };
+}
+
+// [테스트/개발용] 학생 테스트 카드 결제 — PortOne 도입 전 임시 스텁. 실제 PG 없이 결제 성공을 시뮬레이션해
+// admin 입금 확인(confirmPayment)과 동일한 '결제완료' 전환·클래스 생성·알림을 수행(공유 코어 finalizeEnrollmentPayment).
+// 소유권·상태('결제대기') 게이트는 헬퍼가 서버 authoritative하게 재검증. PortOne 연동 시 이 액션을 PG 위젯/웹훅으로 교체.
+export async function testCardPay(enrollmentId: string): Promise<StudentActionState> {
+  const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "로그인이 필요합니다." };
+  const id = String(enrollmentId ?? "").trim();
+  if (!id) return { error: "신청을 찾을 수 없어요. 목록을 새로고침해 주세요." };
+  return finalizeEnrollmentPayment(id, { id: user.id, role: "student" });
 }
 
 /* ===== 전화번호 SMS 인증 (Solapi) ===== */

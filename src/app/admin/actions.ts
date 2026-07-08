@@ -10,7 +10,6 @@ import {
   sendTeacherApprovalNotification,
   sendTeacherRejectionNotification,
   sendClassCancellationToTeacher,
-  sendEnrollmentPaymentConfirmedToTeacher,
   sendClassReassignToNewTeacher,
   sendClassReassignToOldTeacher,
   sendCourseReassignToNewTeacher,
@@ -20,13 +19,11 @@ import { FOREIGN_CURRENCIES, normalizeCurrency } from "@/data/currencies";
 import { getCourse } from "@/data/courses";
 import { sendSms } from "@/lib/sms";
 import {
-  TOTAL_SESSIONS,
   enumerateLessonSessions,
   isValidSlot,
   teacherHasAllSlots,
   fmtTime,
   summarizeSlots,
-  lessonEndDate,
   lessonEndMin,
   SLOT_MIN,
   LESSON_MIN,
@@ -36,6 +33,7 @@ import { kstDateMinToMs } from "@/lib/classtime";
 import { todayKst } from "@/lib/booking";
 import { createMakeupClass, weekdayOf, addDaysStr, type ClassForMakeup } from "@/lib/makeup";
 import { logEnrollmentEvent } from "@/lib/events";
+import { finalizeEnrollmentPayment } from "@/lib/payment";
 
 export type ActionResult = { ok: boolean; error?: string };
 
@@ -322,141 +320,15 @@ function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// enrollment에서 날짜별 클래스를 생성(멱등). 결제 확정 시 호출. best-effort — 실패해도 결제 확정은 유지.
-type EnrollmentForClasses = {
-  id: string;
-  student_id: string;
-  teacher_id: string;
-  course: string;
-  course_title: string;
-  teacher_name: string | null;
-  student_name: string | null;
-  student_english_name: string | null;
-  slots: unknown;
-  start_date: string;
-  total_sessions?: number | null;
-};
-async function generateClassesForEnrollment(admin: ReturnType<typeof createAdminClient>, enr: EnrollmentForClasses): Promise<void> {
-  const slots: Slot[] = (Array.isArray(enr.slots) ? enr.slots : []).filter(isValidSlot).map((s) => ({ day: Number(s.day), min: Number(s.min) }));
-  if (slots.length === 0) return;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(enr.start_date)) return;
-  const [y, m, d] = enr.start_date.split("-").map(Number);
-  const total = enr.total_sessions ?? TOTAL_SESSIONS; // 테스트 enrollment는 자유 횟수, 실 신청은 기본 24.
-  const sessions = enumerateLessonSessions(new Date(y, m - 1, d), slots, total);
-  if (sessions.length === 0) return;
-
-  const rows = sessions.map((s) => ({
-    enrollment_id: enr.id,
-    student_id: enr.student_id,
-    teacher_id: enr.teacher_id,
-    course: enr.course,
-    course_title: enr.course_title,
-    teacher_name: enr.teacher_name,
-    student_name: enr.student_name,
-    student_english_name: enr.student_english_name,
-    session_no: s.sessionNo,
-    session_date: toDateStr(s.date),
-    start_min: s.startMin,
-    end_min: s.endMin,
-  }));
-  // 멱등 — 같은 (enrollment_id, session_no)는 중복 생성하지 않음.
-  const { error } = await admin.from("classes").upsert(rows, { onConflict: "enrollment_id,session_no", ignoreDuplicates: true });
-  if (error) console.error("[generateClassesForEnrollment] 클래스 생성 실패:", error);
-}
-
 // 입금 확인(무통장 1단계) — 상태 '결제대기'일 때만 '결제완료'로 전환. 성공 시 클래스 생성 + 학생에게 SMS 통보(best-effort).
-// 회사 계좌 입금이라 확인 주체는 admin. (2단계 PortOne 도입 시 PG 웹훅이 동일 전환을 수행.)
+// 회사 계좌 입금이라 확인 주체는 admin. 결제 확정 코어는 `finalizeEnrollmentPayment`(src/lib/payment.ts)로 공유
+// (학생 테스트 카드 결제 testCardPay와 동일 로직 재사용). 2단계 PortOne 도입 시 PG 웹훅이 이 코어를 호출.
 export async function confirmPayment(id: string): Promise<ActionResult> {
   const adminId = await requireAdmin();
   if (!adminId) return { ok: false, error: "권한이 없습니다." };
   const enrollmentId = String(id ?? "").trim();
   if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
-
-  const admin = createAdminClient();
-  const { data: enr } = await admin
-    .from("enrollments")
-    .select("status, student_phone, course_title, start_date, id, student_id, teacher_id, course, teacher_name, student_name, student_english_name, slots, total_sessions")
-    .eq("id", enrollmentId)
-    .maybeSingle();
-  if (!enr) return { ok: false, error: "신청을 찾을 수 없습니다." };
-  if (enr.status !== "결제대기") return { ok: false, error: "결제 대기 상태에서만 확인할 수 있습니다." };
-
-  const { data, error } = await admin
-    .from("enrollments")
-    .update({ status: "결제완료" })
-    .eq("id", enrollmentId)
-    .eq("status", "결제대기")
-    .select("id");
-  if (error) return { ok: false, error: "결제 확인 처리 중 오류가 발생했습니다." };
-  if (!data || data.length === 0) return { ok: false, error: "이미 처리된 신청입니다." };
-
-  // 날짜별 클래스 생성 (best-effort, 멱등) — 실패해도 결제 확정은 유지.
-  try {
-    await generateClassesForEnrollment(admin, enr as EnrollmentForClasses);
-  } catch (err) {
-    console.error("[confirmPayment] 클래스 생성 실패:", err);
-  }
-
-  // 학생 결과 SMS (best-effort).
-  if (enr.student_phone) {
-    try {
-      await sendSms(
-        enr.student_phone,
-        `[프렌딩 스쿨] 결제가 확인되어 수업이 확정되었습니다. ${enr.course_title} · 시작 ${enr.start_date}. 자세한 내용은 마이페이지(내 강의실)에서 확인하세요.`,
-      );
-    } catch (err) {
-      console.error("[confirmPayment] SMS 발송 실패:", err);
-    }
-  }
-
-  // 강사 결제 확정 알림 메일(best-effort) — 수업이 생성되어 My Classroom에 잡히므로 강사에게 통보. 실패해도 결제 확정은 유지.
-  try {
-    const origin = getOrigin(await headers());
-    const sessions = enr.total_sessions ?? TOTAL_SESSIONS;
-    const endDate = (() => {
-      const [sy, sm, sd] = String(enr.start_date ?? "").split("-").map(Number);
-      if (!sy || !sm || !sd) return "";
-      const endObj = lessonEndDate(new Date(sy, sm - 1, sd), (enr.slots as Slot[]) ?? [], sessions);
-      return endObj
-        ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}`
-        : "";
-    })();
-    const { data: teacherUser } = await admin.auth.admin.getUserById(enr.teacher_id);
-    const teacherEmail = teacherUser?.user?.email;
-    if (teacherEmail) {
-      await sendEnrollmentPaymentConfirmedToTeacher([teacherEmail], {
-        studentName: enr.student_name,
-        courseTitle: enr.course_title,
-        schedule: summarizeSlots((enr.slots as Slot[]) ?? [], false),
-        startDate: enr.start_date,
-        teacherUrl: `${origin}/teacher`,
-        studentEnglishName: enr.student_english_name ?? "",
-        courseEnglishTitle: getCourse(enr.course)?.englishTitle,
-        endDate,
-        totalSessions: sessions,
-      });
-    }
-  } catch (err) {
-    console.error("[confirmPayment] 강사 알림 발송 실패:", err);
-  }
-
-  await logEnrollmentEvent(admin, {
-    enrollmentId,
-    eventType: "payment_confirmed",
-    actorId: adminId,
-    actorRole: "admin",
-    course: enr.course,
-    courseTitle: enr.course_title,
-    studentName: enr.student_name,
-    teacherName: enr.teacher_name,
-    detail: { sessionsGenerated: enr.total_sessions ?? TOTAL_SESSIONS, startDate: enr.start_date },
-  });
-
-  revalidatePath("/admin/enrollments");
-  revalidatePath("/admin/classes");
-  revalidatePath("/teacher", "layout");
-  revalidatePath("/mypage", "layout");
-  return { ok: true };
+  return finalizeEnrollmentPayment(enrollmentId, { id: adminId, role: "admin" });
 }
 
 /* ===== 화상수업(클래스) 관리 ===== */

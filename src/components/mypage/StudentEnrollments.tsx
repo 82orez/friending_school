@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, CreditCard, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { cancelEnrollment } from "@/app/mypage/actions";
+import { cancelEnrollment, testCardPay } from "@/app/mypage/actions";
 import { summarizeSlots, type Slot } from "@/lib/availability";
 import { PAYMENT_BANK } from "@/data/payment";
 import {
@@ -91,6 +91,7 @@ export default function StudentEnrollments({ enrollments }: { enrollments: Stude
 
 function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: (updated: StudentEnrollment) => void }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
 
@@ -103,6 +104,19 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
         toast.success("신청을 취소했어요.");
       } else {
         toast.error(res.error ?? "취소 중 문제가 발생했어요.");
+      }
+    });
+  };
+
+  const payWithCard = () => {
+    setPayOpen(false);
+    startTransition(async () => {
+      const res = await testCardPay(row.id);
+      if (res.ok) {
+        onUpdated({ ...row, status: "결제완료" });
+        toast.success("테스트 결제가 완료되어 수업이 확정되었어요.");
+      } else {
+        toast.error(res.error ?? "결제 중 문제가 발생했어요.");
       }
     });
   };
@@ -171,6 +185,24 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
               </button>
             </div>
           )}
+
+          {/* 테스트 카드 결제(개발용) — 입금 안내·신청 취소 아래에 별도 배치. PortOne 연동 전 임시 스텁. */}
+          {row.status === "결제대기" && (
+            <div className="border-rule-faint mt-3 rounded-lg border border-dashed px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setPayOpen(true)}
+                disabled={pending}
+                className="bg-cta inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {pending ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" aria-hidden />}
+                테스트 카드 결제
+              </button>
+              <p className="text-muted-fg-faint mt-1.5 text-center text-[11px] leading-relaxed">
+                개발용 테스트 결제입니다. 실제 청구는 발생하지 않으며, 결제 시스템(PortOne) 연동 전까지만 제공됩니다.
+              </p>
+            </div>
+          )}
         </div>
       </details>
 
@@ -187,6 +219,24 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction onClick={cancel} className="bg-brand hover:bg-brand/90 border-transparent text-white">
               신청 취소
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={payOpen} onOpenChange={setPayOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>테스트 카드 결제를 진행할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="text-ink font-semibold">{row.courseTitle}</span> 수업이 바로 확정됩니다(결제 금액{" "}
+              <span className="text-ink font-semibold">{row.priceLabel || "-"}</span>). 개발용 테스트 결제라 실제 청구는 발생하지 않아요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction onClick={payWithCard} className="bg-cta hover:bg-cta/90 border-transparent text-white">
+              테스트 결제
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
