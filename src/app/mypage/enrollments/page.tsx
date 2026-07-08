@@ -29,6 +29,15 @@ export default async function MyPageEnrollments() {
     .select("id, course, course_title, teacher_name, start_date, slots, status, teacher_note, created_at")
     .eq("student_id", user.id)
     .order("created_at", { ascending: false });
+
+  // 환불된 수강 판별 — 본인 결제 중 취소/부분취소된 enrollment id 집합(RLS payments_select_own).
+  const { data: refundRows } = await supabase
+    .from("payments")
+    .select("enrollment_id, status")
+    .eq("student_id", user.id)
+    .in("status", ["cancelled", "partial_cancelled"]);
+  const refundedIds = new Set<string>((refundRows ?? []).map((p: { enrollment_id: string | null }) => p.enrollment_id).filter(Boolean) as string[]);
+
   const enrollments: StudentEnrollment[] = ((data ?? []) as EnrollmentRow[]).map((e) => ({
     id: e.id,
     courseTitle: e.course_title,
@@ -40,6 +49,7 @@ export default async function MyPageEnrollments() {
     status: e.status,
     teacherNote: e.teacher_note,
     createdAt: e.created_at,
+    refunded: refundedIds.has(e.id),
   }));
 
   return <StudentEnrollments enrollments={enrollments} />;

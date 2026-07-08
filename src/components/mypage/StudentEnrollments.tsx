@@ -30,6 +30,7 @@ export type StudentEnrollment = {
   status: "신청" | "승인" | "결제대기" | "결제완료" | "거절" | "취소";
   teacherNote: string | null;
   createdAt: string;
+  refunded?: boolean; // 상태 '취소' 중 환불로 취소된 건(payment cancelled/partial) — '환불됨'으로 구분 표시
 };
 
 // 학생 화면 상태 라벨(강사 승인 흐름 — 승인 시 결제대기, 입금 확인 시 결제완료).
@@ -50,6 +51,13 @@ const STATUS_BADGE: Record<StudentEnrollment["status"], string> = {
   거절: "bg-brand/10 text-brand",
   취소: "bg-rule text-muted-fg",
 };
+
+const REFUND_BADGE = "bg-[#FFF4E5] text-[#B45309]";
+
+// 환불로 취소된 건은 '환불됨'으로 구분(일반 취소는 '취소됨').
+function isRefunded(r: StudentEnrollment): boolean {
+  return r.status === "취소" && !!r.refunded;
+}
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -156,7 +164,9 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
             </p>
             <p className="text-muted-fg-faint mt-0.5 text-xs">신청일 {formatDate(row.createdAt)}</p>
           </div>
-          <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[row.status])}>{STATUS_LABEL[row.status]}</span>
+          <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", isRefunded(row) ? REFUND_BADGE : STATUS_BADGE[row.status])}>
+            {isRefunded(row) ? "환불됨" : STATUS_LABEL[row.status]}
+          </span>
           <ChevronDown aria-hidden className="text-muted-fg-faint size-4 shrink-0 transition-transform group-open:rotate-180" />
         </summary>
         <div className="mx-6 mb-4">

@@ -30,6 +30,7 @@ export type TeacherEnrollment = {
   status: "신청" | "승인" | "결제대기" | "결제완료" | "거절" | "취소";
   teacherNote: string | null;
   createdAt: string;
+  refunded?: boolean; // 상태 '취소' 중 환불로 취소된 건 — 'Refunded'로 구분 표시
 };
 
 const STATUS_LABEL: Record<TeacherEnrollment["status"], string> = {
@@ -49,6 +50,13 @@ const STATUS_BADGE: Record<TeacherEnrollment["status"], string> = {
   거절: "bg-brand/10 text-brand",
   취소: "bg-rule text-muted-fg",
 };
+
+const REFUND_BADGE = "bg-[#FFF4E5] text-[#B45309]";
+
+// 환불로 취소된 건은 'Refunded'로 구분(일반 취소는 'Cancelled').
+function isRefunded(r: TeacherEnrollment): boolean {
+  return r.status === "취소" && !!r.refunded;
+}
 
 type StatusKey = TeacherEnrollment["status"];
 
@@ -185,7 +193,9 @@ export default function TeacherEnrollments({ enrollments }: { enrollments: Teach
                     )}>
                     <td className="px-4 py-3.5 align-middle md:px-6">
                       <div className="flex flex-col items-start gap-1.5">
-                        <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[r.status])}>{STATUS_LABEL[r.status]}</span>
+                        <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", isRefunded(r) ? REFUND_BADGE : STATUS_BADGE[r.status])}>
+                          {isRefunded(r) ? "Refunded" : STATUS_LABEL[r.status]}
+                        </span>
                         {conflict && (
                           <span
                             className="bg-brand inline-flex w-fit shrink-0 animate-pulse items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold text-white"
@@ -307,7 +317,9 @@ function EnrollmentDetailModal({
         className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-center justify-between gap-3 border-b px-6 py-4">
           <div className="flex min-w-0 items-center gap-2">
-            <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[row.status])}>{STATUS_LABEL[row.status]}</span>
+            <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", isRefunded(row) ? REFUND_BADGE : STATUS_BADGE[row.status])}>
+              {isRefunded(row) ? "Refunded" : STATUS_LABEL[row.status]}
+            </span>
             <h2 className="text-ink truncate text-lg font-bold">{studentLabel}</h2>
           </div>
           <button

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { getCourse } from "@/data/courses";
 import TeacherEnrollments, { type TeacherEnrollment } from "@/components/teacher/TeacherEnrollments";
 
@@ -17,6 +18,20 @@ export default async function TeacherRequestsPage() {
     .select("id, student_name, student_english_name, course, course_title, start_date, slots, status, teacher_note, created_at")
     .eq("teacher_id", user.id)
     .order("created_at", { ascending: false });
+
+  // 환불된 수강 판별 — 강사 세션은 payments RLS 미허용이라 service_role로 본인 enrollment id 스코프 조회.
+  const enrollIds = (enrollRows ?? []).map((r) => r.id);
+  const refundedIds = new Set<string>();
+  if (enrollIds.length > 0) {
+    const admin = createAdminClient();
+    const { data: refundRows } = await admin
+      .from("payments")
+      .select("enrollment_id, status")
+      .in("enrollment_id", enrollIds)
+      .in("status", ["cancelled", "partial_cancelled"]);
+    for (const p of (refundRows ?? []) as { enrollment_id: string | null }[]) if (p.enrollment_id) refundedIds.add(p.enrollment_id);
+  }
+
   const enrollments: TeacherEnrollment[] = (enrollRows ?? [])
     .map((r) => ({
       id: r.id,
@@ -29,6 +44,7 @@ export default async function TeacherRequestsPage() {
       status: r.status,
       teacherNote: r.teacher_note,
       createdAt: r.created_at,
+      refunded: refundedIds.has(r.id),
     }))
     // 신청(대기) 먼저, 그다음 최신순.
     .sort((a, b) => (a.status === "신청" ? 0 : 1) - (b.status === "신청" ? 0 : 1));

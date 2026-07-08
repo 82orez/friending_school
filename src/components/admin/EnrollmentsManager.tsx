@@ -45,6 +45,13 @@ const STATUS_BADGE: Record<StatusKey, string> = {
   취소: "bg-rule text-muted-fg",
 };
 
+const REFUND_BADGE = "bg-[#FFF4E5] text-[#B45309]";
+
+// 환불 건 = 상태 '취소' + 연결된 결제가 환불(cancelled/partial_cancelled). 일반 취소와 구분 표시.
+function isRefunded(r: AdminEnrollment): boolean {
+  return r.status === "취소" && (r.payment?.status === "cancelled" || r.payment?.status === "partial_cancelled");
+}
+
 const FILTERS: { key: "전체" | StatusKey; label: string }[] = [
   { key: "전체", label: "전체" },
   { key: "신청", label: "승인 대기" },
@@ -193,7 +200,9 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
                   >
                     <td className="px-4 py-3.5 align-middle md:px-6">
                       <div className="flex flex-col items-start gap-1.5">
-                        <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[r.status])}>{r.status}</span>
+                        <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", isRefunded(r) ? REFUND_BADGE : STATUS_BADGE[r.status])}>
+                          {isRefunded(r) ? "환불" : r.status}
+                        </span>
                         {r.is_test && <span className="bg-accent-blue-soft text-accent-blue-ink shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">테스트</span>}
                         {conflict && (
                           <span
@@ -378,7 +387,9 @@ function EnrollmentDetailModal({
       >
         <div className="border-rule flex items-center justify-between gap-3 border-b px-6 py-4">
           <div className="flex min-w-0 items-center gap-2">
-            <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[row.status])}>{row.status}</span>
+            <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", isRefunded(row) ? REFUND_BADGE : STATUS_BADGE[row.status])}>
+              {isRefunded(row) ? "환불" : row.status}
+            </span>
             <h2 className="text-ink truncate text-lg font-bold">
               {studentLabel}
               <span className="text-muted-fg-faint font-normal"> → {row.teacher_name ?? "강사"}</span>
