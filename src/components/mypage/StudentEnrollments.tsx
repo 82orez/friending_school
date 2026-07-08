@@ -5,9 +5,10 @@ import { useState, useTransition } from "react";
 import { ChevronDown, CreditCard, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { cancelEnrollment, testCardPay } from "@/app/mypage/actions";
+import { cancelEnrollment, confirmPortonePayment } from "@/app/mypage/actions";
 import { summarizeSlots, type Slot } from "@/lib/availability";
 import { PAYMENT_BANK } from "@/data/payment";
+import { COURSE_PRICE_KRW } from "@/data/pricing";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -91,7 +92,6 @@ export default function StudentEnrollments({ enrollments }: { enrollments: Stude
 
 function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: (updated: StudentEnrollment) => void }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [payOpen, setPayOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
 
@@ -108,15 +108,39 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
     });
   };
 
+  // PortOne V2 카드 결제 — 결제창(자체 확인 단계) → 성공 시 서버 재검증(confirmPortonePayment) → 결제완료.
   const payWithCard = () => {
-    setPayOpen(false);
+    const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
+    const channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;
+    if (!storeId || !channelKey) {
+      toast.error("결제 설정이 필요합니다. 관리자에게 문의해 주세요.");
+      return;
+    }
     startTransition(async () => {
-      const res = await testCardPay(row.id);
-      if (res.ok) {
+      const PortOne = (await import("@portone/browser-sdk/v2")).default;
+      const paymentId = `enroll-${row.id}-${Date.now()}`;
+      const resp = await PortOne.requestPayment({
+        storeId,
+        channelKey,
+        paymentId,
+        orderName: row.courseTitle,
+        totalAmount: COURSE_PRICE_KRW,
+        currency: "CURRENCY_KRW",
+        payMethod: "CARD",
+        customData: { enrollmentId: row.id },
+        redirectUrl: `${window.location.origin}/mypage/enrollments`, // 모바일 리다이렉트 대비(데스크톱은 promise 반환)
+      });
+      // 사용자 취소·실패 모두 code가 존재. 정상 성공은 code 없음 + paymentId 반환.
+      if (!resp || resp.code != null) {
+        if (resp?.code) toast.error(resp.message ?? "결제가 취소되었어요.");
+        return;
+      }
+      const r = await confirmPortonePayment(row.id, resp.paymentId);
+      if (r.ok) {
         onUpdated({ ...row, status: "결제완료" });
-        toast.success("테스트 결제가 완료되어 수업이 확정되었어요.");
+        toast.success("결제가 완료되어 수업이 확정되었어요.");
       } else {
-        toast.error(res.error ?? "결제 중 문제가 발생했어요.");
+        toast.error(r.error ?? "결제 확인 중 문제가 발생했어요.");
       }
     });
   };
@@ -191,7 +215,7 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
             <div className="border-rule-faint mt-3 rounded-lg border border-dashed px-4 py-3">
               <button
                 type="button"
-                onClick={() => setPayOpen(true)}
+                onClick={payWithCard}
                 disabled={pending}
                 className="bg-cta inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
@@ -224,23 +248,6 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={payOpen} onOpenChange={setPayOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>테스트 카드 결제를 진행할까요?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="text-ink font-semibold">{row.courseTitle}</span> 수업이 바로 확정됩니다(결제 금액{" "}
-              <span className="text-ink font-semibold">{row.priceLabel || "-"}</span>). 개발용 테스트 결제라 실제 청구는 발생하지 않아요.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>돌아가기</AlertDialogCancel>
-            <AlertDialogAction onClick={payWithCard} className="bg-cta hover:bg-cta/90 border-transparent text-white">
-              테스트 결제
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </li>
   );
 }

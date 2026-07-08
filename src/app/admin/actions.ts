@@ -322,7 +322,7 @@ function toDateStr(d: Date): string {
 
 // 입금 확인(무통장 1단계) — 상태 '결제대기'일 때만 '결제완료'로 전환. 성공 시 클래스 생성 + 학생에게 SMS 통보(best-effort).
 // 회사 계좌 입금이라 확인 주체는 admin. 결제 확정 코어는 `finalizeEnrollmentPayment`(src/lib/payment.ts)로 공유
-// (학생 테스트 카드 결제 testCardPay와 동일 로직 재사용). 2단계 PortOne 도입 시 PG 웹훅이 이 코어를 호출.
+// (학생 PortOne 카드 결제 confirmPortonePayment와 동일 로직 재사용). 향후 PG 웹훅도 이 코어를 호출.
 export async function confirmPayment(id: string): Promise<ActionResult> {
   const adminId = await requireAdmin();
   if (!adminId) return { ok: false, error: "권한이 없습니다." };

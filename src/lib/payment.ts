@@ -61,7 +61,7 @@ export async function generateClassesForEnrollment(admin: ReturnType<typeof crea
 }
 
 // 결제 확정 코어 — '결제대기' → '결제완료' 전환 + 클래스 생성 + 알림 + 감사 로그 + revalidate.
-// admin 입금 확인(confirmPayment)과 학생 테스트 카드 결제(testCardPay)가 공유. 호출부는 각자 권한 가드를 통과한 뒤 호출하고,
+// admin 입금 확인(confirmPayment)과 학생 PortOne 카드 결제(confirmPortonePayment)가 공유. 호출부는 각자 권한 가드를 통과한 뒤 호출하고,
 // student는 소유권까지 이 헬퍼가 authoritative하게 재검증한다. ⚠️ "use server" 아닌 server-only 모듈이라 클라가 직접 호출 불가.
 export async function finalizeEnrollmentPayment(enrollmentId: string, actor: { id: string; role: "admin" | "student" }): Promise<PaymentResult> {
   const admin = createAdminClient();

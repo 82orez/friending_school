@@ -13,6 +13,7 @@ import { getOrigin } from "@/lib/origin";
 import { sendEnrollmentCancellationToTeacher } from "@/lib/mailer";
 import { logEnrollmentEvent } from "@/lib/events";
 import { finalizeEnrollmentPayment } from "@/lib/payment";
+import { COURSE_PRICE_KRW } from "@/data/pricing";
 
 export type StudentActionState = { ok?: boolean; error?: string };
 
@@ -136,17 +137,56 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
   return { ok: true };
 }
 
-// [테스트/개발용] 학생 테스트 카드 결제 — PortOne 도입 전 임시 스텁. 실제 PG 없이 결제 성공을 시뮬레이션해
-// admin 입금 확인(confirmPayment)과 동일한 '결제완료' 전환·클래스 생성·알림을 수행(공유 코어 finalizeEnrollmentPayment).
-// 소유권·상태('결제대기') 게이트는 헬퍼가 서버 authoritative하게 재검증. PortOne 연동 시 이 액션을 PG 위젯/웹훅으로 교체.
-export async function testCardPay(enrollmentId: string): Promise<StudentActionState> {
+// 학생 카드 결제(PortOne V2) 확정 — 클라 결제창 성공 후 호출. 서버가 PortOne REST로 결제를 authoritative하게 재검증
+// (status=PAID·금액·통화·enrollmentId 일치)한 뒤에만 공유 코어 finalizeEnrollmentPayment로 '결제완료' 확정.
+// 금액은 절대 클라 신뢰 금지 — COURSE_PRICE_KRW와 대조. 소유권·상태('결제대기')는 헬퍼가 재검증(중복/재요청 안전).
+export async function confirmPortonePayment(enrollmentId: string, paymentId: string): Promise<StudentActionState> {
   const supabase = createClient(await cookies());
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "로그인이 필요합니다." };
   const id = String(enrollmentId ?? "").trim();
-  if (!id) return { error: "신청을 찾을 수 없어요. 목록을 새로고침해 주세요." };
+  const pid = String(paymentId ?? "").trim();
+  if (!id || !pid) return { error: "결제 정보를 확인할 수 없어요." };
+
+  const secret = process.env.PORTONE_V2_API_SECRET;
+  if (!secret) return { error: "결제 설정이 필요합니다. 관리자에게 문의해 주세요." };
+
+  // PortOne 결제 단건 조회(서버 authoritative). 실패 시 확정하지 않음.
+  let pay: {
+    status?: string;
+    currency?: string;
+    amount?: { total?: number };
+    customData?: unknown;
+  };
+  try {
+    const res = await fetch(`https://api.portone.io/payments/${encodeURIComponent(pid)}`, {
+      headers: { Authorization: `PortOne ${secret}` },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      console.error("[confirmPortonePayment] PortOne 조회 실패:", res.status, await res.text().catch(() => ""));
+      return { error: "결제 확인에 실패했어요. 잠시 후 다시 시도해 주세요." };
+    }
+    pay = await res.json();
+  } catch (err) {
+    console.error("[confirmPortonePayment] PortOne 조회 예외:", err);
+    return { error: "결제 확인에 실패했어요. 잠시 후 다시 시도해 주세요." };
+  }
+
+  // customData는 V2에서 문자열로 반환될 수 있음 → 파싱.
+  let custom: { enrollmentId?: string } = {};
+  try {
+    custom = typeof pay.customData === "string" ? JSON.parse(pay.customData) : ((pay.customData as { enrollmentId?: string }) ?? {});
+  } catch {
+    custom = {};
+  }
+
+  if (pay.status !== "PAID") return { error: "결제가 완료되지 않았어요." };
+  if (custom.enrollmentId !== id) return { error: "결제 정보가 일치하지 않아요." };
+  if (pay.currency !== "KRW" || Number(pay.amount?.total) !== COURSE_PRICE_KRW) return { error: "결제 금액이 일치하지 않아요." };
+
   return finalizeEnrollmentPayment(id, { id: user.id, role: "student" });
 }
 
