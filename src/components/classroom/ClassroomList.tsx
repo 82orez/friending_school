@@ -43,6 +43,7 @@ export type ClassItem = {
   reassignedAt: string | null; // 강사 대체 시각 — 학생 예정 수업에 "강사 변경" 표시용
   enrollmentSlots?: Slot[]; // 현재 주간 템플릿(enrollments.slots) — 주간 요일 요약용(일정 변경 반영)
   reassignedAway?: boolean; // 강사 뷰 전용 — 1회성 대체로 대타에게 넘어간 회차(원 강사 read-only 표시)
+  coveringForOther?: boolean; // 강사 뷰 전용 — 본인이 다른 강사를 대신해 맡은(대체) 회차
   coveredByName?: string | null; // reassignedAway일 때 현재 담당(대타) 강사명
 };
 
@@ -1119,9 +1120,11 @@ function ClassInfoModal({
       ? { text: ko ? "보강" : "Makeup", cls: "bg-accent-blue-soft text-accent-blue-ink" }
       : reassignedAway
         ? { text: "Reassigned", cls: "bg-cta/10 text-cta" }
-        : !isTeacher && item.reassignedAt && !ended
-          ? { text: "강사 변경", cls: "bg-cta/10 text-cta" }
-          : null;
+        : item.coveringForOther
+          ? { text: "Covering", cls: "bg-cta/10 text-cta" }
+          : !isTeacher && item.reassignedAt && !ended
+            ? { text: "강사 변경", cls: "bg-cta/10 text-cta" }
+            : null;
   const note = cancelled
     ? item.cancelReason === "cancel"
       ? ko
@@ -1136,7 +1139,9 @@ function ClassInfoModal({
         : "This is a makeup class for a postponed session."
       : reassignedAway
         ? `This session is covered by ${item.coveredByName ?? "another teacher"} (read-only).`
-        : null;
+        : item.coveringForOther
+          ? "You're covering this class for another teacher."
+          : null;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {

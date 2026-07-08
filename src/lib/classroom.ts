@@ -39,10 +39,13 @@ export function mapClassRows(rows: ClassRow[], isTeacher: boolean, slotsByEnroll
   return rows.map((c) => {
     // 원 강사(original_teacher_id=본인)인데 현재 담당(teacher_id)이 대타면 read-only 표시.
     const reassignedAway = isTeacher && !!userId && c.original_teacher_id === userId && c.teacher_id !== userId;
+    // 대타(teacher_id=본인)인데 원 강사가 따로 있으면 "대체 담당" 정보 표시(액션은 정상).
+    const coveringForOther = isTeacher && !!userId && c.teacher_id === userId && !!c.original_teacher_id && c.original_teacher_id !== userId;
     return {
     id: c.id,
     enrollmentId: c.enrollment_id,
     reassignedAway,
+    coveringForOther,
     coveredByName: reassignedAway ? c.teacher_name : null, // teacher_name = 현재=대타 강사명
     enrollmentSlots: slotsByEnrollment?.get(c.enrollment_id),
     courseTitle: isTeacher ? (getCourse(c.course)?.englishTitle ?? c.course_title) : c.course_title,

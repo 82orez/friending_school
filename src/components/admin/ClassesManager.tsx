@@ -44,6 +44,7 @@ export type AdminClass = {
   teacher_entered_at: string | null;
   conducted_at: string | null;
   conducted_override: boolean | null;
+  teacher_reassigned_at: string | null;
 };
 
 type DisplayStatus = "예정" | "진행중" | "완료" | "취소";
@@ -313,7 +314,12 @@ export default function ClassesManager({
                   </td>
                   <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{formatDateKo(r.session_date)}</td>
                   <td className="text-muted-fg px-4 py-3.5 align-middle whitespace-nowrap">{timeRange(r.start_min, r.end_min)}</td>
-                  <td className="text-muted-fg max-w-[10rem] truncate px-4 py-3.5 align-middle">{r.teacher_name ?? "강사"}</td>
+                  <td className="text-muted-fg px-4 py-3.5 align-middle">
+                    <div className="flex items-center gap-1.5">
+                      <span className="max-w-[10rem] truncate">{r.teacher_name ?? "강사"}</span>
+                      {r.teacher_reassigned_at && <span className="bg-cta/10 text-cta shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">대체</span>}
+                    </div>
+                  </td>
                   <td className="text-muted-fg-faint px-4 py-3.5 align-middle whitespace-nowrap">#{r.session_no}</td>
                   <td className="px-4 py-3.5 align-middle">
                     {(() => {
@@ -908,7 +914,7 @@ function ClassDetailModal({
     startTransition(async () => {
       const res = await adminReassignClass(row.id, target.id);
       if (res.ok) {
-        onUpdated({ ...row, teacher_id: target.id, teacher_name: target.name });
+        onUpdated({ ...row, teacher_id: target.id, teacher_name: target.name, teacher_reassigned_at: new Date().toISOString() });
         toast.success(`담당 강사를 ${target.name} 강사로 변경했어요.`);
         onClose();
       } else {
