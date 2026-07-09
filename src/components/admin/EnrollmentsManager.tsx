@@ -52,7 +52,10 @@ function isRefunded(r: AdminEnrollment): boolean {
   return r.status === "취소" && (r.payment?.status === "cancelled" || r.payment?.status === "partial_cancelled");
 }
 
-const FILTERS: { key: "전체" | StatusKey; label: string }[] = [
+// 환불은 별도 상태값이 아니라 '취소' + 환불 결제의 파생 필터(FilterKey로만 존재).
+type FilterKey = "전체" | StatusKey | "환불";
+
+const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "전체", label: "전체" },
   { key: "신청", label: "승인 대기" },
   { key: "결제대기", label: "결제 대기" },
@@ -60,6 +63,7 @@ const FILTERS: { key: "전체" | StatusKey; label: string }[] = [
   { key: "승인", label: "승인" },
   { key: "거절", label: "거절" },
   { key: "취소", label: "취소" },
+  { key: "환불", label: "환불" },
 ];
 
 type SortKey = "student" | "teacher" | "start" | "applied";
@@ -83,15 +87,19 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
   // router.refresh() 후 새 prop(테스트 신청 생성 등)을 로컬 rows에 동기화 — 전체 새로고침 없이 목록 반영.
   useEffect(() => setRows(enrollments), [enrollments]);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"전체" | StatusKey>("전체");
+  const [filter, setFilter] = useState<FilterKey>("전체");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { 전체: rows.length, 신청: 0, 결제대기: 0, 결제완료: 0, 승인: 0, 거절: 0, 취소: 0 };
-    for (const r of rows) c[r.status] = (c[r.status] ?? 0) + 1;
+    const c: Record<string, number> = { 전체: rows.length, 신청: 0, 결제대기: 0, 결제완료: 0, 승인: 0, 거절: 0, 취소: 0, 환불: 0 };
+    // 환불(취소+환불결제)은 '취소' 카운트에서 분리해 별도 집계.
+    for (const r of rows) {
+      if (isRefunded(r)) c["환불"] += 1;
+      else c[r.status] = (c[r.status] ?? 0) + 1;
+    }
     return c;
   }, [rows]);
 
@@ -105,7 +113,14 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = rows.filter((r) => {
-      if (filter !== "전체" && r.status !== filter) return false;
+      // 환불 탭=환불 건만, 취소 탭=환불 아닌 순수 취소만, 그 외 상태 탭=상태 일치(환불 제외).
+      if (filter === "환불") {
+        if (!isRefunded(r)) return false;
+      } else if (filter === "취소") {
+        if (r.status !== "취소" || isRefunded(r)) return false;
+      } else if (filter !== "전체" && r.status !== filter) {
+        return false;
+      }
       if (!q) return true;
       return `${r.student_name ?? ""} ${r.teacher_name ?? ""} ${r.course_title}`.toLowerCase().includes(q);
     });
