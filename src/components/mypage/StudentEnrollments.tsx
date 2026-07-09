@@ -100,6 +100,7 @@ export default function StudentEnrollments({ enrollments }: { enrollments: Stude
 
 function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: (updated: StudentEnrollment) => void }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [payMethod, setPayMethod] = useState<null | "bank" | "card">(null);
   const [pending, startTransition] = useTransition();
   const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
 
@@ -185,24 +186,78 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
           </dl>
 
           {row.status === "결제대기" && (
-            <div className="mt-3 rounded-xl border border-[#6B4AD4]/30 bg-[#F3EEFD] px-4 py-3.5">
-              <p className="text-[15px] font-bold text-[#6B4AD4]">💳 입금 안내</p>
-              <dl className="mt-2 space-y-1.5 text-sm">
-                {[
-                  ["결제 금액", row.priceLabel || "-"],
-                  ["입금 은행", PAYMENT_BANK.bank],
-                  ["계좌번호", PAYMENT_BANK.account],
-                  ["예금주", PAYMENT_BANK.holder],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex justify-between gap-4">
-                    <dt className="text-muted-fg shrink-0">{label}</dt>
-                    <dd className={cn("text-ink text-right break-words", label === "결제 금액" ? "font-bold" : "font-medium")}>{value}</dd>
+            <div className="mt-3">
+              <p className="text-muted-fg mb-2 text-sm font-semibold">결제 수단을 선택해 주세요</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    { key: "bank", label: "무통장 입금", icon: "🏦" },
+                    { key: "card", label: "카드 결제", icon: "💳" },
+                  ] as const
+                ).map((m) => {
+                  const active = payMethod === m.key;
+                  return (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => setPayMethod(m.key)}
+                      aria-pressed={active}
+                      className={cn(
+                        "flex h-11 items-center justify-center gap-1.5 rounded-lg border text-sm font-bold transition-colors",
+                        active
+                          ? "border-accent-blue bg-accent-blue-soft text-accent-blue-ink"
+                          : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
+                      )}
+                    >
+                      <span aria-hidden>{m.icon}</span>
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {payMethod === "bank" && (
+                <div className="mt-3 rounded-xl border border-[#6B4AD4]/30 bg-[#F3EEFD] px-4 py-3.5">
+                  <p className="text-[15px] font-bold text-[#6B4AD4]">🏦 입금 안내</p>
+                  <dl className="mt-2 space-y-1.5 text-sm">
+                    {[
+                      ["결제 금액", row.priceLabel || "-"],
+                      ["입금 은행", PAYMENT_BANK.bank],
+                      ["계좌번호", PAYMENT_BANK.account],
+                      ["예금주", PAYMENT_BANK.holder],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex justify-between gap-4">
+                        <dt className="text-muted-fg shrink-0">{label}</dt>
+                        <dd className={cn("text-ink text-right break-words", label === "결제 금액" ? "font-bold" : "font-medium")}>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p className="text-muted-fg-faint mt-2.5 text-xs leading-relaxed">
+                    위 계좌로 입금해 주세요. 입금이 확인되면(영업일 기준 1~2일) 수업이 확정되며 문자로 안내드려요.
+                  </p>
+                </div>
+              )}
+
+              {payMethod === "card" && (
+                <div className="border-rule mt-3 rounded-xl border bg-white px-4 py-3.5">
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <span className="text-muted-fg">결제 금액</span>
+                    <span className="text-ink font-bold">{row.priceLabel || "-"}</span>
                   </div>
-                ))}
-              </dl>
-              <p className="text-muted-fg-faint mt-2.5 text-xs leading-relaxed">
-                위 계좌로 입금해 주세요. 입금이 확인되면(영업일 기준 1~2일) 수업이 확정되며 문자로 안내드려요.
-              </p>
+                  <button
+                    type="button"
+                    onClick={payWithCard}
+                    disabled={pending}
+                    className="bg-cta mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                  >
+                    {pending ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" aria-hidden />}
+                    카드로 결제하기
+                  </button>
+                  <p className="text-muted-fg-faint mt-1.5 text-center text-[11px] leading-relaxed">
+                    개발용 테스트 결제입니다. 실제 청구는 발생하지 않으며, 결제 시스템(PortOne) 연동 전까지만 제공됩니다.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -217,24 +272,6 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
                 {pending && <Loader2 className="size-3.5 animate-spin" />}
                 신청 취소
               </button>
-            </div>
-          )}
-
-          {/* 테스트 카드 결제(개발용) — 입금 안내·신청 취소 아래에 별도 배치. PortOne 연동 전 임시 스텁. */}
-          {row.status === "결제대기" && (
-            <div className="border-rule-faint mt-3 rounded-lg border border-dashed px-4 py-3">
-              <button
-                type="button"
-                onClick={payWithCard}
-                disabled={pending}
-                className="bg-cta inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {pending ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" aria-hidden />}
-                테스트 카드 결제
-              </button>
-              <p className="text-muted-fg-faint mt-1.5 text-center text-[11px] leading-relaxed">
-                개발용 테스트 결제입니다. 실제 청구는 발생하지 않으며, 결제 시스템(PortOne) 연동 전까지만 제공됩니다.
-              </p>
             </div>
           )}
         </div>
