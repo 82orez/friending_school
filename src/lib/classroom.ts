@@ -85,15 +85,20 @@ export async function loadClasses(
 
   // 현재 주간 템플릿(enrollments.slots) 조회 — 주간 요일 요약을 일정 변경 반영값으로 표시.
   // RLS(_select_own_student/_select_own_teacher)로 본인 enrollment만. 없으면 클래스 파생 폴백.
+  // 동시에 환불/거절(status '취소'/'거절') enrollment는 강의실에서 제외 — 과정 전체 종료라 표시하지 않음.
+  // (개별 수업 연기는 enrollment가 '결제완료' 유지 → 여기서 걸리지 않고 취소선으로 계속 노출.)
   const slotsByEnrollment = new Map<string, Slot[]>();
+  const cancelledEnrollmentIds = new Set<string>();
   const enrollmentIds = Array.from(new Set(rows.map((r) => r.enrollment_id)));
   if (enrollmentIds.length > 0) {
-    const { data: enrRows } = await supabase.from("enrollments").select("id, slots").in("id", enrollmentIds);
-    for (const e of (enrRows ?? []) as { id: string; slots: unknown }[]) {
+    const { data: enrRows } = await supabase.from("enrollments").select("id, slots, status").in("id", enrollmentIds);
+    for (const e of (enrRows ?? []) as { id: string; slots: unknown; status: string }[]) {
       const s = (Array.isArray(e.slots) ? e.slots : []).filter(isValidSlot).map((x) => ({ day: Number(x.day), min: Number(x.min) }));
       slotsByEnrollment.set(e.id, s);
+      if (e.status === "취소" || e.status === "거절") cancelledEnrollmentIds.add(e.id);
     }
   }
 
-  return mapClassRows(rows, isTeacher, slotsByEnrollment, userId);
+  const visibleRows = cancelledEnrollmentIds.size > 0 ? rows.filter((r) => !cancelledEnrollmentIds.has(r.enrollment_id)) : rows;
+  return mapClassRows(visibleRows, isTeacher, slotsByEnrollment, userId);
 }
