@@ -24,3 +24,5 @@
 - enrollments 삭제 시 enrollment_events는 보존되고 enrollment_id만 null이 됩니다 (audit trail 목적).
 - 스냅샷 컬럼 덕에 원본이 사라져도 로그 내용은 온전합니다.
 - 나중에 cascade 삭제로 바꾸고 싶어지면 말씀만 주세요.
+- 미결제 결제대기 방치 (자동 만료 없음, 슬롯 재판매 위험)
+- 시작일 지난 뒤 결제 시 과거 날짜 수업 생성 (finalizeEnrollmentPayment에 start_date 가드 없음)

@@ -99,13 +99,17 @@ export default async function AdminClassesPage() {
   const enrollmentIds = Array.from(map.keys());
   const slotsByEnrollment = new Map<string, Slot[]>();
   if (enrollmentIds.length > 0) {
-    const { data: enrRows } = await admin.from("enrollments").select("id, slots, status").in("id", enrollmentIds);
-    for (const e of (enrRows ?? []) as { id: string; slots: unknown; status: string }[]) {
+    const { data: enrRows } = await admin.from("enrollments").select("id, slots, status, teacher_name").in("id", enrollmentIds);
+    for (const e of (enrRows ?? []) as { id: string; slots: unknown; status: string; teacher_name: string | null }[]) {
       const s = (Array.isArray(e.slots) ? e.slots : []).filter(isValidSlot).map((x) => ({ day: Number(x.day), min: Number(x.min) }));
       slotsByEnrollment.set(e.id, s);
-      // 환불/거절(status '취소'/'거절') = 과정 종료 → 목록 상태를 '완료' 아닌 '환불'로 표시.
       const g = map.get(e.id);
-      if (g) g.refunded = e.status === "취소" || e.status === "거절";
+      if (g) {
+        // 환불/거절(status '취소'/'거절') = 과정 종료 → 목록 상태를 '완료' 아닌 '환불'로 표시.
+        g.refunded = e.status === "취소" || e.status === "거절";
+        // 대표 강사 = 현재 담당(enrollments.teacher_name, 강사 대체 반영) — 과거 회차 스냅샷보다 우선.
+        if (e.teacher_name) g.teacherName = e.teacher_name;
+      }
     }
   }
 

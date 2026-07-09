@@ -35,7 +35,13 @@ type ClassRow = {
 // classes 행 → ClassItem(클라 표시용). 강사 화면은 영문 과정명·학생 영문명, 학생 화면은 한글 스냅샷.
 // slotsByEnrollment: enrollment_id → 현재 주간 템플릿(enrollments.slots). 주간 요일 요약(weekdaySummary)용.
 // userId: 강사 뷰에서 1회성 대체로 남에게 넘어간 회차(reassigned-away) 판정용(원 강사만 read-only 노출).
-export function mapClassRows(rows: ClassRow[], isTeacher: boolean, slotsByEnrollment?: Map<string, Slot[]>, userId?: string): ClassItem[] {
+export function mapClassRows(
+  rows: ClassRow[],
+  isTeacher: boolean,
+  slotsByEnrollment?: Map<string, Slot[]>,
+  userId?: string,
+  teacherByEnrollment?: Map<string, string | null>,
+): ClassItem[] {
   return rows.map((c) => {
     // 원 강사(original_teacher_id=본인)인데 현재 담당(teacher_id)이 대타면 read-only 표시.
     const reassignedAway = isTeacher && !!userId && c.original_teacher_id === userId && c.teacher_id !== userId;
@@ -48,6 +54,7 @@ export function mapClassRows(rows: ClassRow[], isTeacher: boolean, slotsByEnroll
     coveringForOther,
     coveredByName: reassignedAway ? c.teacher_name : null, // teacher_name = 현재=대타 강사명
     enrollmentSlots: slotsByEnrollment?.get(c.enrollment_id),
+    enrollmentTeacherName: teacherByEnrollment?.get(c.enrollment_id) ?? null,
     courseTitle: isTeacher ? (getCourse(c.course)?.englishTitle ?? c.course_title) : c.course_title,
     counterpart: isTeacher ? c.student_english_name || c.student_name || "학생" : c.teacher_name || "강사",
     sessionNo: c.session_no,
@@ -88,17 +95,19 @@ export async function loadClasses(
   // 동시에 환불/거절(status '취소'/'거절') enrollment는 강의실에서 제외 — 과정 전체 종료라 표시하지 않음.
   // (개별 수업 연기는 enrollment가 '결제완료' 유지 → 여기서 걸리지 않고 취소선으로 계속 노출.)
   const slotsByEnrollment = new Map<string, Slot[]>();
+  const teacherByEnrollment = new Map<string, string | null>();
   const cancelledEnrollmentIds = new Set<string>();
   const enrollmentIds = Array.from(new Set(rows.map((r) => r.enrollment_id)));
   if (enrollmentIds.length > 0) {
-    const { data: enrRows } = await supabase.from("enrollments").select("id, slots, status").in("id", enrollmentIds);
-    for (const e of (enrRows ?? []) as { id: string; slots: unknown; status: string }[]) {
+    const { data: enrRows } = await supabase.from("enrollments").select("id, slots, status, teacher_name").in("id", enrollmentIds);
+    for (const e of (enrRows ?? []) as { id: string; slots: unknown; status: string; teacher_name: string | null }[]) {
       const s = (Array.isArray(e.slots) ? e.slots : []).filter(isValidSlot).map((x) => ({ day: Number(x.day), min: Number(x.min) }));
       slotsByEnrollment.set(e.id, s);
+      teacherByEnrollment.set(e.id, e.teacher_name ?? null); // 현재 담당 강사(강사 대체 반영) — 과정 카드 대표 강사용
       if (e.status === "취소" || e.status === "거절") cancelledEnrollmentIds.add(e.id);
     }
   }
 
   const visibleRows = cancelledEnrollmentIds.size > 0 ? rows.filter((r) => !cancelledEnrollmentIds.has(r.enrollment_id)) : rows;
-  return mapClassRows(visibleRows, isTeacher, slotsByEnrollment, userId);
+  return mapClassRows(visibleRows, isTeacher, slotsByEnrollment, userId, teacherByEnrollment);
 }

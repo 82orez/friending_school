@@ -42,6 +42,7 @@ export type ClassItem = {
   conductedOverride: boolean | null; // admin 수동 보정 — null=자동, true=강제 진행됨, false=강제 미진행
   reassignedAt: string | null; // 강사 대체 시각 — 학생 예정 수업에 "강사 변경" 표시용
   enrollmentSlots?: Slot[]; // 현재 주간 템플릿(enrollments.slots) — 주간 요일 요약용(일정 변경 반영)
+  enrollmentTeacherName?: string | null; // 현재 담당 강사(enrollments.teacher_name, 강사 대체 반영) — 과정 카드 대표 강사용
   reassignedAway?: boolean; // 강사 뷰 전용 — 1회성 대체로 대타에게 넘어간 회차(원 강사 read-only 표시)
   coveringForOther?: boolean; // 강사 뷰 전용 — 본인이 다른 강사를 대신해 맡은(대체) 회차
   coveredByName?: string | null; // reassignedAway일 때 현재 담당(대타) 강사명
@@ -151,7 +152,16 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
     for (const c of classes) {
       const g = map.get(c.enrollmentId);
       if (g) g.items.push(c);
-      else map.set(c.enrollmentId, { enrollmentId: c.enrollmentId, courseTitle: c.courseTitle, counterpart: c.counterpart, items: [c], cancelledCount: 0, total: 0 });
+      // 학생 뷰 카드 대표 강사 = 현재 담당(enrollmentTeacherName, 강사 대체 반영) 우선 — 첫(과거) 회차 스냅샷 대신.
+      else
+        map.set(c.enrollmentId, {
+          enrollmentId: c.enrollmentId,
+          courseTitle: c.courseTitle,
+          counterpart: !isTeacher && c.enrollmentTeacherName ? c.enrollmentTeacherName : c.counterpart,
+          items: [c],
+          cancelledCount: 0,
+          total: 0,
+        });
     }
     const out = Array.from(map.values());
     for (const g of out) {
