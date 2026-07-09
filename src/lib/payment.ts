@@ -220,7 +220,7 @@ export async function settlePortonePayment(paymentId: string, actor: { id: strin
 
   const admin = createAdminClient();
   const enrollmentId = v.enrollmentId!;
-  const { data: enrRow } = await admin.from("enrollments").select("student_id, status").eq("id", enrollmentId).maybeSingle();
+  const { data: enrRow } = await admin.from("enrollments").select("student_id").eq("id", enrollmentId).maybeSingle();
 
   await recordPayment(admin, {
     paymentId,
@@ -237,9 +237,12 @@ export async function settlePortonePayment(paymentId: string, actor: { id: strin
   const fin = await finalizeEnrollmentPayment(enrollmentId, actor);
   if (fin.ok) return { ok: true, enrollmentId };
 
-  // 확정 실패가 "이미 처리"이고 enrollment가 이미 결제완료 + 이 결제와 다른 'paid' 결제가 있으면 = 과오납 → 자동 전액 환불.
-  const alreadyPaid = enrRow?.status === "결제완료" || fin.error === "이미 처리된 신청입니다.";
-  if (alreadyPaid) {
+  // 확정 실패 — 현재 상태를 재조회(authoritative)해 정상 레이스/과오납 판정.
+  // ⚠️ stale `enrRow.status`(line 223 시점)·에러 문자열 매칭에 의존하면, 클라·웹훅 동시 확정 레이스에서
+  //    상태가 아직 결제대기로 읽히고 에러도 "결제 대기 상태에서만..."이라 정상 레이스를 오류로 오판한다.
+  const { data: cur } = await admin.from("enrollments").select("status").eq("id", enrollmentId).maybeSingle();
+  if (cur?.status === "결제완료") {
+    // 이 결제 외 다른 'paid' 결제 존재 여부로 과오납 vs 멱등 레이스 구분.
     const { data: others } = await admin
       .from("payments")
       .select("payment_id")
@@ -247,6 +250,7 @@ export async function settlePortonePayment(paymentId: string, actor: { id: strin
       .eq("status", "paid")
       .neq("payment_id", paymentId);
     if (others && others.length > 0) {
+      // 진짜 중복결제 → 이번 결제 자동 전액 환불.
       const cancel = await cancelPortonePayment(paymentId, { reason: "중복 결제 자동 환불" });
       if (cancel.ok) {
         await admin.from("payments").update({ status: "cancelled", cancelled_amount: v.amount ?? 0 }).eq("payment_id", paymentId);
@@ -262,6 +266,8 @@ export async function settlePortonePayment(paymentId: string, actor: { id: strin
       }
       return { ok: false, overpaid: true, error: "이미 결제된 신청이라 이번 결제는 자동 환불됩니다." };
     }
+    // 다른 paid 결제 없음 = 이 결제가 확정을 완료(웹훅/이중 콜백 레이스) → 멱등 성공.
+    return { ok: true, enrollmentId };
   }
   return { ok: false, error: fin.error };
 }
