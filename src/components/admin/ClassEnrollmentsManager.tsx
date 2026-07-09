@@ -25,11 +25,13 @@ export type ClassEnrollmentSummary = {
   schedule: string; // 주간 요일·시작시각 요약(예: "월 14:00 · 수 14:00")
   liveStartMs: number | null; // 가장 이른 미종료 회차의 입장 가능 시작(시작 15분 전) — 없으면 null
   liveEndMs: number | null; // 그 회차의 레슨 종료 시각
+  refunded: boolean; // enrollment가 환불/취소됨 — '완료' 아닌 '환불'로 표시
 };
 
-type FilterKey = "전체" | "진행중" | "완료";
-const FILTERS: FilterKey[] = ["전체", "진행중", "완료"];
-const isOngoing = (r: ClassEnrollmentSummary) => r.upcoming > 0;
+type FilterKey = "전체" | "진행중" | "완료" | "환불";
+const FILTERS: FilterKey[] = ["전체", "진행중", "완료", "환불"];
+const REFUND_BADGE = "bg-[#FFF4E5] text-[#B45309]";
+const isOngoing = (r: ClassEnrollmentSummary) => !r.refunded && r.upcoming > 0;
 // 지금 라이브(입장 15분 전~레슨 종료) 회차가 있는 과정 — 상세 뷰 "진행중" 기준과 동일.
 const isLive = (r: ClassEnrollmentSummary, now: number) => r.liveStartMs !== null && now >= r.liveStartMs && now < (r.liveEndMs ?? 0);
 
@@ -58,16 +60,21 @@ export default function ClassEnrollmentsManager({ rows, sessions }: { rows: Clas
   const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const counts = useMemo(() => {
-    const c = { 전체: rows.length, 진행중: 0, 완료: 0 };
-    for (const r of rows) (isOngoing(r) ? (c.진행중 += 1) : (c.완료 += 1));
+    const c = { 전체: rows.length, 진행중: 0, 완료: 0, 환불: 0 };
+    for (const r of rows) {
+      if (r.refunded) c.환불 += 1;
+      else if (isOngoing(r)) c.진행중 += 1;
+      else c.완료 += 1;
+    }
     return c;
   }, [rows]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const base = rows.filter((r) => {
-      if (filter === "진행중" && !isOngoing(r)) return false;
-      if (filter === "완료" && isOngoing(r)) return false;
+      if (filter === "환불" && !r.refunded) return false;
+      if (filter === "진행중" && (r.refunded || !isOngoing(r))) return false;
+      if (filter === "완료" && (r.refunded || isOngoing(r))) return false;
       if (!q) return true;
       return `${r.studentName ?? ""} ${r.studentEnglishName ?? ""} ${r.teacherName ?? ""} ${r.courseTitle}`.toLowerCase().includes(q);
     });
@@ -196,10 +203,10 @@ export default function ClassEnrollmentsManager({ rows, sessions }: { rows: Clas
                         <span
                           className={cn(
                             "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold",
-                            ongoing ? "bg-accent-blue-soft text-accent-blue-ink" : "bg-rule text-muted-fg",
+                            r.refunded ? REFUND_BADGE : ongoing ? "bg-accent-blue-soft text-accent-blue-ink" : "bg-rule text-muted-fg",
                           )}
                         >
-                          {ongoing ? "진행중" : "완료"}
+                          {r.refunded ? "환불" : ongoing ? "진행중" : "완료"}
                         </span>
                         {r.makeup > 0 && <span className="bg-progress/10 text-progress shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">보강 {r.makeup}</span>}
                       </div>

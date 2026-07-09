@@ -63,6 +63,7 @@ export default async function AdminClassesPage() {
         schedule: "",
         liveStartMs: null,
         liveEndMs: null,
+        refunded: false,
       };
       map.set(r.enrollment_id, g);
       slotSets.set(r.enrollment_id, new Map());
@@ -98,10 +99,13 @@ export default async function AdminClassesPage() {
   const enrollmentIds = Array.from(map.keys());
   const slotsByEnrollment = new Map<string, Slot[]>();
   if (enrollmentIds.length > 0) {
-    const { data: enrRows } = await admin.from("enrollments").select("id, slots").in("id", enrollmentIds);
-    for (const e of (enrRows ?? []) as { id: string; slots: unknown }[]) {
+    const { data: enrRows } = await admin.from("enrollments").select("id, slots, status").in("id", enrollmentIds);
+    for (const e of (enrRows ?? []) as { id: string; slots: unknown; status: string }[]) {
       const s = (Array.isArray(e.slots) ? e.slots : []).filter(isValidSlot).map((x) => ({ day: Number(x.day), min: Number(x.min) }));
       slotsByEnrollment.set(e.id, s);
+      // 환불/거절(status '취소'/'거절') = 과정 종료 → 목록 상태를 '완료' 아닌 '환불'로 표시.
+      const g = map.get(e.id);
+      if (g) g.refunded = e.status === "취소" || e.status === "거절";
     }
   }
 
