@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, Search, TriangleAlert, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Loader2, Search, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { adminCancelEnrollment, confirmPayment, deleteTestEnrollment, refundPayment } from "@/app/admin/actions";
@@ -31,7 +31,7 @@ export type AdminEnrollment = {
   created_at: string;
   is_test?: boolean;
   priceLabel: string; // 수강료 표시(과정 고정가, 예 "₩240,000")
-  payment?: { paymentId: string; status: string; amount: number; cancelledAmount: number; method?: string | null } | null; // 결제 기록(카드/무통장, 환불용)
+  payment?: { paymentId: string; status: string; amount: number; cancelledAmount: number; method?: string | null; receiptUrl?: string | null; createdAt?: string } | null; // 결제 기록(카드/무통장, 환불용)
 };
 
 type StatusKey = AdminEnrollment["status"];
@@ -80,6 +80,21 @@ function formatDate(iso: string): string {
   if (Number.isNaN(d.getTime())) return "-";
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
+}
+
+// 결제 일시(날짜 + 시:분).
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// 결제 수단 라벨.
+function payMethodLabel(method: string | null | undefined): string {
+  if (method === "bank_transfer") return "무통장 입금";
+  if (method === "card") return "카드";
+  return method ?? "카드";
 }
 
 export default function EnrollmentsManager({ enrollments }: { enrollments: AdminEnrollment[] }) {
@@ -436,6 +451,8 @@ function EnrollmentDetailModal({
               ["수강료", row.priceLabel || "-"],
               ["수업 일정", summarizeSlots(row.slots)],
               ["시작일", row.start_date],
+              ...(pay ? ([["결제 수단", payMethodLabel(pay.method)]] as [string, string][]) : []),
+              ...(pay?.createdAt ? ([["결제 일시", formatDateTime(pay.createdAt)]] as [string, string][]) : []),
               ...(row.teacher_note ? ([["메모/사유", row.teacher_note]] as [string, string][]) : []),
             ].map(([label, value]) => (
               <div key={label} className="flex gap-2">
@@ -443,6 +460,22 @@ function EnrollmentDetailModal({
                 <dd className="text-ink break-words whitespace-pre-wrap">{value}</dd>
               </div>
             ))}
+            {pay?.receiptUrl && (
+              <div className="flex gap-2">
+                <dt className="text-muted-fg-faint w-24 shrink-0">영수증</dt>
+                <dd>
+                  <a
+                    href={pay.receiptUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-accent-blue-ink hover:text-accent-blue inline-flex items-center gap-1 font-semibold"
+                  >
+                    <ExternalLink className="size-3.5" aria-hidden />
+                    영수증 보기
+                  </a>
+                </dd>
+              </div>
+            )}
           </dl>
 
           {cancellable ? (

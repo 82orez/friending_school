@@ -14,7 +14,7 @@ import { sendEnrollmentCancellationToTeacher } from "@/lib/mailer";
 import { logEnrollmentEvent } from "@/lib/events";
 import { settlePortonePayment } from "@/lib/payment";
 
-export type StudentActionState = { ok?: boolean; error?: string };
+export type StudentActionState = { ok?: boolean; error?: string; transient?: boolean };
 
 // 빈 문자열은 null로 저장, 길이 제한 적용.
 function clean(value: FormDataEntryValue | null, max: number): string | null {
@@ -155,7 +155,7 @@ export async function confirmPortonePayment(enrollmentId: string, paymentId: str
     if (res.enrollmentId && res.enrollmentId !== id) console.warn("[confirmPortonePayment] enrollmentId mismatch", id, res.enrollmentId);
     return { ok: true };
   }
-  return { error: res.error };
+  return { error: res.error, transient: res.transient };
 }
 
 /* ===== 전화번호 SMS 인증 (Solapi) ===== */

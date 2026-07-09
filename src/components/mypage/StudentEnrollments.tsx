@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ChevronDown, CreditCard, Loader2 } from "lucide-react";
+import { ChevronDown, CreditCard, ExternalLink, Loader2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { cancelEnrollment, confirmPortonePayment } from "@/app/mypage/actions";
 import { summarizeSlots, type Slot } from "@/lib/availability";
 import { PAYMENT_BANK } from "@/data/payment";
 import { COURSE_PRICE_KRW } from "@/data/pricing";
+import { formatPrice } from "@/data/currencies";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +33,16 @@ export type StudentEnrollment = {
   teacherNote: string | null;
   createdAt: string;
   refunded?: boolean; // 상태 '취소' 중 환불로 취소된 건(payment cancelled/partial) — '환불됨'으로 구분 표시
+  // 결제 기록(있으면 결제완료/환불 건) — 결제 상세·영수증 표시용.
+  payment?: {
+    status: string;
+    amount: number;
+    currency: string;
+    method: string | null;
+    receiptUrl: string | null;
+    cancelledAmount: number;
+    createdAt: string;
+  } | null;
 };
 
 // 학생 화면 상태 라벨(강사 승인 흐름 — 승인 시 결제대기, 입금 확인 시 결제완료).
@@ -66,6 +78,21 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
 }
 
+// 결제 일시(날짜 + 시:분).
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+// 결제 수단 라벨(무통장=receiptUrl 없음).
+function payMethodLabel(method: string | null): string {
+  if (method === "bank_transfer") return "무통장 입금";
+  if (method === "card") return "카드";
+  return method ?? "카드";
+}
+
 export default function StudentEnrollments({ enrollments }: { enrollments: StudentEnrollment[] }) {
   const [rows, setRows] = useState(enrollments);
 
@@ -99,8 +126,10 @@ export default function StudentEnrollments({ enrollments }: { enrollments: Stude
 }
 
 function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: (updated: StudentEnrollment) => void }) {
+  const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [payMethod, setPayMethod] = useState<null | "bank" | "card">(null);
+  const [payError, setPayError] = useState<{ message: string; transient: boolean } | null>(null);
   const [pending, startTransition] = useTransition();
   const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
 
@@ -125,6 +154,7 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
       toast.error("결제 설정이 필요합니다. 관리자에게 문의해 주세요.");
       return;
     }
+    setPayError(null);
     startTransition(async () => {
       const PortOne = (await import("@portone/browser-sdk/v2")).default;
       const paymentId = `enroll-${row.id}-${Date.now()}`;
@@ -142,14 +172,19 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
       // 사용자 취소·실패 모두 code가 존재. 정상 성공은 code 없음 + paymentId 반환.
       if (!resp || resp.code != null) {
         if (resp?.code) toast.error(resp.message ?? "결제가 취소되었어요.");
-        return;
+        return; // 결제창 취소는 조용히 종료(에러 아님)
       }
       const r = await confirmPortonePayment(row.id, resp.paymentId);
       if (r.ok) {
+        setPayError(null);
         onUpdated({ ...row, status: "결제완료" });
         toast.success("결제가 완료되어 수업이 확정되었어요.");
+        router.refresh(); // 결제 상세·영수증을 DB에서 채우기 위해 새로고침
       } else {
-        toast.error(r.error ?? "결제 확인 중 문제가 발생했어요.");
+        // 상태는 '결제대기'로 유지 → 패널에 지속되는 실패 노티스로 재시도 유도.
+        const message = r.error ?? "결제 확인 중 문제가 발생했어요.";
+        setPayError({ message, transient: !!r.transient });
+        toast.error(message);
       }
     });
   };
@@ -184,6 +219,45 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
               </div>
             ))}
           </dl>
+
+          {row.payment && (row.status === "결제완료" || isRefunded(row)) && (
+            <div className="mt-3 rounded-xl border border-[#1E7E34]/25 bg-[#E6F4EA]/40 px-4 py-3">
+              <p className="text-[13px] font-bold text-[#1E7E34]">💳 결제 정보</p>
+              <dl className="mt-2 space-y-1.5 text-sm">
+                {(
+                  [
+                    ["결제 금액", formatPrice(row.payment.amount, row.payment.currency)],
+                    ["결제 수단", payMethodLabel(row.payment.method)],
+                    ["결제 일시", formatDateTime(row.payment.createdAt)],
+                    ...(isRefunded(row)
+                      ? ([
+                          [
+                            "환불 금액",
+                            `${formatPrice(row.payment.cancelledAmount, row.payment.currency)}${row.payment.status === "partial_cancelled" ? " (부분)" : ""}`,
+                          ],
+                        ] as [string, string][])
+                      : []),
+                  ] as [string, string][]
+                ).map(([label, value]) => (
+                  <div key={label} className="flex justify-between gap-4">
+                    <dt className="text-muted-fg shrink-0">{label}</dt>
+                    <dd className={cn("text-ink text-right break-words", label === "환불 금액" ? "text-[#B45309] font-bold" : "font-medium")}>{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {row.payment.receiptUrl && (
+                <a
+                  href={row.payment.receiptUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-accent-blue-ink hover:text-accent-blue mt-2.5 inline-flex items-center gap-1.5 text-sm font-semibold"
+                >
+                  <ExternalLink className="size-3.5" aria-hidden />
+                  영수증 보기
+                </a>
+              )}
+            </div>
+          )}
 
           {row.status === "결제대기" && (
             <div className="mt-3">
@@ -244,6 +318,15 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
                     <span className="text-muted-fg">결제 금액</span>
                     <span className="text-ink font-bold">{row.priceLabel || "-"}</span>
                   </div>
+                  {payError && (
+                    <div className="mt-3 flex items-start gap-2 rounded-md bg-[#FFF7E6] px-3 py-2.5 text-xs text-[#B97400]">
+                      <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                      <span className="leading-relaxed">
+                        {payError.message}
+                        {payError.transient && " 일시적인 오류일 수 있어요."} 다시 시도해 주세요.
+                      </span>
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={payWithCard}
@@ -251,7 +334,7 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
                     className="bg-cta mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                   >
                     {pending ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" aria-hidden />}
-                    카드로 결제하기
+                    {payError ? "다시 결제하기" : "카드로 결제하기"}
                   </button>
                   <p className="text-muted-fg-faint mt-1.5 text-center text-[11px] leading-relaxed">
                     개발용 테스트 결제입니다. 실제 청구는 발생하지 않으며, 결제 시스템(PortOne) 연동 전까지만 제공됩니다.

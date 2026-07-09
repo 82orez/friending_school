@@ -22,9 +22,12 @@ export default async function AdminEnrollmentsPage() {
   // 결제 기록(payments) 병합 — enrollment_id별 최신 1건(카드 결제/환불 상태·금액). 환불 버튼·배지용.
   const { data: payRows } = await admin
     .from("payments")
-    .select("enrollment_id, payment_id, status, amount, cancelled_amount, method, created_at")
+    .select("enrollment_id, payment_id, status, amount, cancelled_amount, method, receipt_url, created_at")
     .order("created_at", { ascending: false });
-  const paymentByEnrollment = new Map<string, { paymentId: string; status: string; amount: number; cancelledAmount: number; method: string | null }>();
+  const paymentByEnrollment = new Map<
+    string,
+    { paymentId: string; status: string; amount: number; cancelledAmount: number; method: string | null; receiptUrl: string | null; createdAt: string }
+  >();
   for (const p of (payRows ?? []) as {
     enrollment_id: string | null;
     payment_id: string;
@@ -32,9 +35,19 @@ export default async function AdminEnrollmentsPage() {
     amount: number;
     cancelled_amount: number;
     method: string | null;
+    receipt_url: string | null;
+    created_at: string;
   }[]) {
     if (p.enrollment_id && !paymentByEnrollment.has(p.enrollment_id)) {
-      paymentByEnrollment.set(p.enrollment_id, { paymentId: p.payment_id, status: p.status, amount: p.amount, cancelledAmount: p.cancelled_amount, method: p.method });
+      paymentByEnrollment.set(p.enrollment_id, {
+        paymentId: p.payment_id,
+        status: p.status,
+        amount: p.amount,
+        cancelledAmount: p.cancelled_amount,
+        method: p.method,
+        receiptUrl: p.receipt_url,
+        createdAt: p.created_at,
+      });
     }
   }
 

@@ -46,17 +46,17 @@ export async function getVerifiedPortonePayment(paymentId: string): Promise<Veri
     });
     if (!res.ok) {
       const body = await res.text().catch(() => "");
+      // 상태코드·PG 오류 타입 등 상세는 서버 로그에만 남기고, 학생에겐 일반 문구만 노출.
       console.error("[getVerifiedPortonePayment] PortOne 조회 실패:", res.status, body);
-      // 테스트 단계: 원인 파악이 쉽도록 상태코드·PortOne 오류 타입을 노출. ⚠️ 운영 전환 시 일반 문구로 되돌릴 것.
-      let detail = "";
-      try {
-        const j = JSON.parse(body);
-        detail = j?.type ?? j?.message ?? "";
-      } catch {
-        detail = "";
-      }
       // 5xx는 일시 오류로 간주(재시도 가치), 그 외(401 등)는 설정 오류.
-      return { ok: false, error: `결제 확인 실패(PortOne ${res.status}${detail ? ` · ${detail}` : ""}). 결제 설정(API Secret·상점)을 확인해 주세요.`, transient: res.status >= 500 };
+      const transient = res.status >= 500;
+      return {
+        ok: false,
+        error: transient
+          ? "결제 확인 중 일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요."
+          : "결제 확인에 실패했어요. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.",
+        transient,
+      };
     }
     pay = await res.json();
   } catch (err) {

@@ -30,13 +30,36 @@ export default async function MyPageEnrollments() {
     .eq("student_id", user.id)
     .order("created_at", { ascending: false });
 
-  // 환불된 수강 판별 — 본인 결제 중 취소/부분취소된 enrollment id 집합(RLS payments_select_own).
-  const { data: refundRows } = await supabase
+  // 본인 결제 기록(payments) 조회 — enrollment_id별 최신 1건(결제 상세·영수증·환불 판별 공용, RLS payments_select_own).
+  const { data: payRows } = await supabase
     .from("payments")
-    .select("enrollment_id, status")
+    .select("enrollment_id, status, amount, currency, method, receipt_url, cancelled_amount, created_at")
     .eq("student_id", user.id)
-    .in("status", ["cancelled", "partial_cancelled"]);
-  const refundedIds = new Set<string>((refundRows ?? []).map((p: { enrollment_id: string | null }) => p.enrollment_id).filter(Boolean) as string[]);
+    .order("created_at", { ascending: false });
+  type PayRow = {
+    enrollment_id: string | null;
+    status: string;
+    amount: number;
+    currency: string;
+    method: string | null;
+    receipt_url: string | null;
+    cancelled_amount: number;
+    created_at: string;
+  };
+  const paymentByEnrollment = new Map<string, StudentEnrollment["payment"]>();
+  for (const p of (payRows ?? []) as PayRow[]) {
+    if (p.enrollment_id && !paymentByEnrollment.has(p.enrollment_id)) {
+      paymentByEnrollment.set(p.enrollment_id, {
+        status: p.status,
+        amount: p.amount,
+        currency: p.currency,
+        method: p.method,
+        receiptUrl: p.receipt_url,
+        cancelledAmount: p.cancelled_amount,
+        createdAt: p.created_at,
+      });
+    }
+  }
 
   const enrollments: StudentEnrollment[] = ((data ?? []) as EnrollmentRow[]).map((e) => ({
     id: e.id,
@@ -49,7 +72,11 @@ export default async function MyPageEnrollments() {
     status: e.status,
     teacherNote: e.teacher_note,
     createdAt: e.created_at,
-    refunded: refundedIds.has(e.id),
+    payment: paymentByEnrollment.get(e.id) ?? null,
+    refunded: (() => {
+      const s = paymentByEnrollment.get(e.id)?.status;
+      return s === "cancelled" || s === "partial_cancelled";
+    })(),
   }));
 
   return <StudentEnrollments enrollments={enrollments} />;

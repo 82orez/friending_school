@@ -26,3 +26,8 @@
 - 나중에 cascade 삭제로 바꾸고 싶어지면 말씀만 주세요.
 - 미결제 결제대기 방치 (자동 만료 없음, 슬롯 재판매 위험)
 - 시작일 지난 뒤 결제 시 과거 날짜 수업 생성 (finalizeEnrollmentPayment에 start_date 가드 없음)
+
+# 운영 전환 준비 (테스트값 복원)
+- COURSE_PRICE_KRW = 100 → 240000 복원 (현재 UI에 "₩100"으로 노출됨)
+- portone.ts의 PG 오류 상세 노출 → 일반 문구로 복원
+- StudentEnrollments.tsx의 "개발용 테스트 결제" 안내문 제거
