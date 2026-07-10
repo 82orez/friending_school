@@ -484,17 +484,20 @@ function KpiCard({ label, value, hint, tone }: { label: string; value: string; h
 }
 
 // 순매출 세로 막대(단일 시계열 — legend 없이 제목이 계열을 지칭). baseline 앵커·per-bar hover.
+// 막대가 적으면(년간=몇 개) 고정폭·가운데 정렬로 전체폭 stretch 방지, 많으면(주간·월간) flex로 채움.
 function RevenueTrendChart({ data, title }: { data: TrendBucket[]; title: string }) {
   const max = Math.max(1, ...data.map((d) => d.net));
   const showLabelEvery = data.length > 15 ? 5 : data.length > 7 ? 2 : 1; // x축 라벨 밀도
+  const fill = data.length >= 5; // 5개 이상=폭 채움, 그 미만=고정폭 가운데
+  const colClass = fill ? "flex-1 min-w-[4px]" : "w-16";
   return (
     <div className="border-rule mt-4 rounded-xl border bg-white p-5">
       <p className="text-ink text-sm font-bold">{title}</p>
-      <div className="mt-4 flex items-end gap-[2px]" style={{ height: 160 }}>
+      <div className="mt-4 flex items-end justify-center gap-[2px]" style={{ height: 160 }}>
         {data.map((d) => {
           const h = Math.round((d.net / max) * 140);
           return (
-            <div key={d.key} className="group relative flex flex-1 flex-col items-center justify-end" style={{ minWidth: 4 }}>
+            <div key={d.key} className={cn("group relative flex flex-col items-center justify-end", colClass)}>
               <div
                 className={cn(
                   "w-full rounded-t-[4px] transition-colors",
@@ -511,9 +514,9 @@ function RevenueTrendChart({ data, title }: { data: TrendBucket[]; title: string
         })}
       </div>
       {/* x축 라벨 */}
-      <div className="mt-1.5 flex gap-[2px]">
+      <div className="mt-1.5 flex justify-center gap-[2px]">
         {data.map((d, i) => (
-          <div key={d.key} className="text-muted-fg-faint flex-1 text-center text-[10px]" style={{ minWidth: 4 }}>
+          <div key={d.key} className={cn("text-muted-fg-faint text-center text-[10px]", colClass)}>
             {i % showLabelEvery === 0 ? d.xLabel : ""}
           </div>
         ))}
