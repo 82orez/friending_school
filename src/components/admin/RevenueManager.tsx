@@ -30,6 +30,8 @@ export type RevenueRow = {
   studentName: string | null;
   studentEnglishName: string | null;
   teacherName: string | null;
+  centerId: string | null;
+  centerName: string | null;
   receiptUrl: string | null;
   note: string | null;
   enrollmentId: string | null;
@@ -62,8 +64,8 @@ const DOW_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
 type Period = "주간" | "월간" | "년간";
 const PERIODS: Period[] = ["주간", "월간", "년간"];
-type Grouping = "과정별" | "결제수단별" | "학생별";
-const GROUPINGS: Grouping[] = ["과정별", "결제수단별", "학생별"];
+type Grouping = "과정별" | "센터별" | "결제수단별" | "학생별";
+const GROUPINGS: Grouping[] = ["과정별", "센터별", "결제수단별", "학생별"];
 type SortKey = "name" | "count" | "amount";
 type StatusFilter = "전체" | "결제완료" | "부분환불" | "환불";
 const STATUS_FILTERS: StatusFilter[] = ["전체", "결제완료", "부분환불", "환불"];
@@ -142,7 +144,8 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
   const [csvConfirmOpen, setCsvConfirmOpen] = useState(false);
 
   const hasTest = useMemo(() => rows.some((r) => r.isTest), [rows]);
-  const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const { start, end } = useMemo(() => interval(anchor, period), [anchor, period]);
   // 테스트 결제(is_test)는 기본 제외(운영 정확도), 토글 시 포함.
@@ -218,6 +221,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
   const groups = useMemo(() => {
     const keyOf = (r: RevenueRow): { key: string; label: string } => {
       if (grouping === "과정별") return { key: r.course ?? "__none__", label: r.courseTitle ?? "미지정 과정" };
+      if (grouping === "센터별") return { key: r.centerId ?? "__none__", label: r.centerName ?? "미지정 센터" };
       if (grouping === "결제수단별") return { key: r.method ?? "__none__", label: payMethodLabel(r.method) };
       const label = r.studentEnglishName ? `${r.studentName ?? "-"} (${r.studentEnglishName})` : (r.studentName ?? "-");
       return { key: `${r.studentName ?? "-"}|${r.studentEnglishName ?? ""}`, label };
@@ -278,9 +282,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
   return (
     <div>
       <h1 className="text-ink text-2xl font-extrabold">매출 현황</h1>
-      <p className="text-muted-fg mt-1 text-sm">
-        카드·무통장 결제 기준 매출입니다. 순매출 = 결제금액 − 환불금액이며, 실패·테스트 결제는 제외됩니다.
-      </p>
+      <p className="text-muted-fg mt-1 text-sm">카드·무통장 결제 기준 매출입니다. 순매출 = 결제금액 − 환불금액이며, 실패·테스트 결제는 제외됩니다.</p>
 
       {/* 기간 토글 */}
       <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -371,7 +373,13 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
                 <tr key={g.key} className="border-rule border-b last:border-b-0">
                   <td className="text-ink px-4 py-3 font-medium break-words md:px-6">{g.label}</td>
                   <td className="text-muted-fg px-4 py-3 whitespace-nowrap">{g.count}건</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{g.refundKrw > 0 ? <span className="text-[#B45309]">{formatPrice(g.refundKrw, "KRW")}</span> : <span className="text-muted-fg-faint">—</span>}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {g.refundKrw > 0 ? (
+                      <span className="text-[#B45309]">{formatPrice(g.refundKrw, "KRW")}</span>
+                    ) : (
+                      <span className="text-muted-fg-faint">—</span>
+                    )}
+                  </td>
                   <td className="text-ink px-4 py-3 font-bold whitespace-nowrap md:px-6">{formatPrice(g.netKrw, "KRW")}</td>
                 </tr>
               ))
@@ -458,14 +466,25 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
                     <td className="text-muted-fg px-4 py-3 whitespace-nowrap">{payMethodLabel(r.method)}</td>
                     <td className="text-ink px-4 py-3 text-right whitespace-nowrap">{formatPrice(r.amount, r.currency)}</td>
                     <td className="px-4 py-3 text-right font-medium whitespace-nowrap">
-                      {r.cancelledAmount > 0 ? <span className="text-[#B45309]">{formatPrice(net, r.currency)}</span> : <span className="text-ink">{formatPrice(net, r.currency)}</span>}
+                      {r.cancelledAmount > 0 ? (
+                        <span className="text-[#B45309]">{formatPrice(net, r.currency)}</span>
+                      ) : (
+                        <span className="text-ink">{formatPrice(net, r.currency)}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[r.status] ?? "bg-rule text-muted-fg")}>{statusLabel(r.status)}</span>
+                      <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[r.status] ?? "bg-rule text-muted-fg")}>
+                        {statusLabel(r.status)}
+                      </span>
                     </td>
                     <td className="px-4 py-3 md:px-6">
                       {r.receiptUrl ? (
-                        <a href={r.receiptUrl} target="_blank" rel="noreferrer" className="text-accent-blue-ink hover:text-accent-blue inline-flex items-center gap-1 font-semibold">
+                        <a
+                          href={r.receiptUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-accent-blue-ink hover:text-accent-blue inline-flex items-center gap-1 font-semibold"
+                        >
                           <ExternalLink className="size-3.5" aria-hidden />
                           보기
                         </a>
@@ -523,7 +542,9 @@ function KpiCard({ label, value, hint, tone }: { label: string; value: string; h
   return (
     <div className="border-rule rounded-xl border bg-white p-5">
       <p className="text-muted-fg-faint text-xs font-semibold">{label}</p>
-      <p className={cn("mt-1 text-2xl font-extrabold", tone === "refund" ? "text-[#B45309]" : tone === "net" ? "text-accent-blue-ink" : "text-ink")}>{value}</p>
+      <p className={cn("mt-1 text-2xl font-extrabold", tone === "refund" ? "text-[#B45309]" : tone === "net" ? "text-accent-blue-ink" : "text-ink")}>
+        {value}
+      </p>
       <p className="text-muted-fg-faint mt-0.5 text-xs">{hint}</p>
     </div>
   );
@@ -547,12 +568,18 @@ function RevenueTrendChart({ data, title }: { data: TrendBucket[]; title: string
               <div
                 className={cn(
                   "w-full rounded-t-[4px] transition-colors",
-                  d.net > 0 ? (d.highlight ? "bg-accent-blue-ink" : "bg-accent-blue group-hover:bg-accent-blue-ink") : d.highlight ? "bg-accent-blue/40" : "bg-rule",
+                  d.net > 0
+                    ? d.highlight
+                      ? "bg-accent-blue-ink"
+                      : "bg-accent-blue group-hover:bg-accent-blue-ink"
+                    : d.highlight
+                      ? "bg-accent-blue/40"
+                      : "bg-rule",
                 )}
                 style={{ height: Math.max(d.net > 0 ? 3 : 1, h) }}
               />
               {/* 툴팁 */}
-              <div className="pointer-events-none absolute bottom-full z-10 mb-1 hidden rounded-md bg-ink px-2 py-1 text-[11px] whitespace-nowrap text-white group-hover:block">
+              <div className="bg-ink pointer-events-none absolute bottom-full z-10 mb-1 hidden rounded-md px-2 py-1 text-[11px] whitespace-nowrap text-white group-hover:block">
                 {d.tooltip}
               </div>
             </div>
@@ -564,7 +591,11 @@ function RevenueTrendChart({ data, title }: { data: TrendBucket[]; title: string
         {data.map((d, i) => (
           <div
             key={d.key}
-            className={cn("text-center text-[10px]", colClass, d.dow === 0 ? "text-brand" : d.dow === 6 ? "text-accent-blue-ink" : "text-muted-fg-faint")}
+            className={cn(
+              "text-center text-[10px]",
+              colClass,
+              d.dow === 0 ? "text-brand" : d.dow === 6 ? "text-accent-blue-ink" : "text-muted-fg-faint",
+            )}
           >
             {i % showLabelEvery === 0 ? d.xLabel : ""}
           </div>

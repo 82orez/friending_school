@@ -31,17 +31,26 @@ export default async function AdminRevenuePage() {
   const enrollmentIds = Array.from(new Set(payments.map((p) => p.enrollment_id).filter(Boolean) as string[]));
   const enrById = new Map<
     string,
-    { course: string | null; course_title: string | null; teacher_name: string | null; student_name: string | null; student_english_name: string | null; is_test: boolean }
+    {
+      course: string | null;
+      course_title: string | null;
+      teacher_id: string | null;
+      teacher_name: string | null;
+      student_name: string | null;
+      student_english_name: string | null;
+      is_test: boolean;
+    }
   >();
   if (enrollmentIds.length > 0) {
     const { data: enrData } = await admin
       .from("enrollments")
-      .select("id, course, course_title, teacher_name, student_name, student_english_name, is_test")
+      .select("id, course, course_title, teacher_id, teacher_name, student_name, student_english_name, is_test")
       .in("id", enrollmentIds);
     for (const e of (enrData ?? []) as {
       id: string;
       course: string | null;
       course_title: string | null;
+      teacher_id: string | null;
       teacher_name: string | null;
       student_name: string | null;
       student_english_name: string | null;
@@ -50,6 +59,7 @@ export default async function AdminRevenuePage() {
       enrById.set(e.id, {
         course: e.course,
         course_title: e.course_title,
+        teacher_id: e.teacher_id,
         teacher_name: e.teacher_name,
         student_name: e.student_name,
         student_english_name: e.student_english_name,
@@ -57,6 +67,24 @@ export default async function AdminRevenuePage() {
       });
     }
   }
+
+  // 강사 현재 소속 센터 역산(teacher_id → profiles.center_id → centers.name) — 정산 리포트와 동일 원칙.
+  const teacherIds = Array.from(
+    new Set(
+      Array.from(enrById.values())
+        .map((e) => e.teacher_id)
+        .filter(Boolean) as string[],
+    ),
+  );
+  const centerIdByTeacher = new Map<string, string | null>();
+  if (teacherIds.length > 0) {
+    const { data: profData } = await admin.from("profiles").select("id, center_id").in("id", teacherIds);
+    for (const p of (profData ?? []) as { id: string; center_id: string | null }[]) {
+      centerIdByTeacher.set(p.id, p.center_id);
+    }
+  }
+  const { data: centerData } = await admin.from("centers").select("id, name");
+  const centerNameById = new Map(((centerData ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]));
 
   const { data: rateRows } = await admin
     .from("settings")
@@ -70,6 +98,7 @@ export default async function AdminRevenuePage() {
   const rows: RevenueRow[] = payments
     .map((p) => {
       const enr = p.enrollment_id ? enrById.get(p.enrollment_id) : undefined;
+      const centerId = enr?.teacher_id ? (centerIdByTeacher.get(enr.teacher_id) ?? null) : null;
       return {
         paymentId: p.payment_id,
         createdAt: p.created_at,
@@ -85,6 +114,8 @@ export default async function AdminRevenuePage() {
         studentName: enr?.student_name ?? null,
         studentEnglishName: enr?.student_english_name ?? null,
         teacherName: enr?.teacher_name ?? null,
+        centerId,
+        centerName: centerId ? (centerNameById.get(centerId) ?? null) : null,
         receiptUrl: p.receipt_url,
         note: p.note,
         enrollmentId: p.enrollment_id,
