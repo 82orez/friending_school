@@ -5,9 +5,10 @@ import Image from "next/image";
 import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import AvailabilityGrid from "@/components/teacher/AvailabilityGrid";
-import { updateTeacherCenter } from "@/app/admin/actions";
+import { updateTeacherCenter, updateTeacherRate } from "@/app/admin/actions";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
+import { CURRENCIES } from "@/data/currencies";
 import { cn } from "@/lib/utils";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 
@@ -24,21 +25,32 @@ export default function TeacherInfoModal({
   teacher,
   centers,
   onCenterUpdated,
+  onCustomRateUpdated,
   onClose,
 }: {
   teacher: CurrentTeacher | null;
   centers: { id: string; name: string }[];
   onCenterUpdated: (teacherId: string, centerId: string | null, centerName: string | null) => void;
+  onCustomRateUpdated: (teacherId: string, customPrice: number | null, customCurrency: string | null) => void;
   onClose: () => void;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   // 센터 셀렉트 로컬 상태("none"=소속 없음). 다른 강사 모달 열릴 때 재동기화.
   const [centerSel, setCenterSel] = useState<string>(teacher?.centerId ?? "none");
   const [saving, startSave] = useTransition();
+  // 개별 단가 로컬 상태(빈 금액=센터 단가 사용). 다른 강사 모달 열릴 때 재동기화.
+  const [priceInput, setPriceInput] = useState<string>(teacher?.customPrice != null ? String(teacher.customPrice) : "");
+  const [currencySel, setCurrencySel] = useState<string>(teacher?.customCurrency ?? "KRW");
+  const [savingRate, startSaveRate] = useTransition();
 
   useEffect(() => {
     setCenterSel(teacher?.centerId ?? "none");
   }, [teacher?.id, teacher?.centerId]);
+
+  useEffect(() => {
+    setPriceInput(teacher?.customPrice != null ? String(teacher.customPrice) : "");
+    setCurrencySel(teacher?.customCurrency ?? "KRW");
+  }, [teacher?.id, teacher?.customPrice, teacher?.customCurrency]);
 
   // 열림 시: Esc 닫기 + body scroll lock + 닫기 버튼 포커스.
   useEffect(() => {
@@ -70,6 +82,23 @@ export default function TeacherInfoModal({
         const centerName = centerId ? (centers.find((c) => c.id === centerId)?.name ?? null) : null;
         onCenterUpdated(t.id, centerId, centerName);
         toast.success("센터를 변경했습니다.");
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
+    });
+  };
+
+  const initPrice = teacher.customPrice != null ? String(teacher.customPrice) : "";
+  const initCurrency = teacher.customCurrency ?? "KRW";
+  const rateDirty = priceInput.trim() !== initPrice || (priceInput.trim() !== "" && currencySel !== initCurrency);
+
+  const saveRate = () => {
+    const t = teacher;
+    startSaveRate(async () => {
+      const res = await updateTeacherRate(t.id, priceInput, currencySel);
+      if (res.ok) {
+        onCustomRateUpdated(t.id, res.price ?? null, res.currency ?? null);
+        toast.success(res.price == null ? "개별 단가를 해제했습니다." : "개별 단가를 설정했습니다.");
       } else {
         toast.error(res.error ?? "오류가 발생했습니다.");
       }
@@ -172,6 +201,51 @@ export default function TeacherInfoModal({
                     {saving ? "저장 중" : "저장"}
                   </button>
                 )}
+              </dd>
+            </div>
+
+            {/* 개별 단가 — 편집 가능(비우면 센터 단가 적용) */}
+            <div className="flex items-start gap-2">
+              <dt className="text-muted-fg-faint w-28 shrink-0 pt-2">개별 단가</dt>
+              <dd className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={currencySel}
+                    onChange={(e) => setCurrencySel(e.target.value)}
+                    disabled={savingRate}
+                    aria-label="개별 단가 통화"
+                    className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 shrink-0 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
+                  >
+                    {CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.symbol} {c.code}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min="0"
+                    inputMode="decimal"
+                    value={priceInput}
+                    onChange={(e) => setPriceInput(e.target.value)}
+                    disabled={savingRate}
+                    placeholder="센터 단가 사용"
+                    aria-label="개별 단가 금액"
+                    className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
+                  />
+                  {rateDirty && (
+                    <button
+                      type="button"
+                      onClick={saveRate}
+                      disabled={savingRate}
+                      className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60"
+                    >
+                      {savingRate && <Loader2 className="size-4 animate-spin" />}
+                      {savingRate ? "저장 중" : "저장"}
+                    </button>
+                  )}
+                </div>
+                <p className="text-muted-fg-faint mt-1 text-xs">비우면 소속 센터 단가가 적용됩니다.</p>
               </dd>
             </div>
 

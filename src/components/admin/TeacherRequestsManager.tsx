@@ -68,6 +68,8 @@ export type CurrentTeacher = {
   gender: string | null;
   centerId: string | null;
   centerName: string | null;
+  customPrice: number | null; // 개별 정산 단가(센터 단가 오버라이드), null=센터 단가 사용
+  customCurrency: string | null;
   bio: string | null;
   experience: string | null;
   zoomUrl: string | null;
@@ -123,6 +125,11 @@ export default function TeacherRequestsManager({
   const onCenterUpdated = useCallback((teacherId: string, centerId: string | null, centerName: string | null) => {
     setTeachers((prev) => prev.map((t) => (t.id === teacherId ? { ...t, centerId, centerName } : t)));
     setInfoTarget((prev) => (prev && prev.id === teacherId ? { ...prev, centerId, centerName } : prev));
+  }, []);
+  // 강사 개별 단가 변경 낙관적 반영(테이블 + 열린 모달 동기화).
+  const onCustomRateUpdated = useCallback((teacherId: string, customPrice: number | null, customCurrency: string | null) => {
+    setTeachers((prev) => prev.map((t) => (t.id === teacherId ? { ...t, customPrice, customCurrency } : t)));
+    setInfoTarget((prev) => (prev && prev.id === teacherId ? { ...prev, customPrice, customCurrency } : prev));
   }, []);
   const [classesTarget, setClassesTarget] = useState<CurrentTeacher | null>(null);
   const closeClasses = useCallback(() => setClassesTarget(null), []);
@@ -241,7 +248,13 @@ export default function TeacherRequestsManager({
       )}
 
       {/* 강사 정보 보기 */}
-      <TeacherInfoModal teacher={infoTarget} centers={centers} onCenterUpdated={onCenterUpdated} onClose={closeInfo} />
+      <TeacherInfoModal
+        teacher={infoTarget}
+        centers={centers}
+        onCenterUpdated={onCenterUpdated}
+        onCustomRateUpdated={onCustomRateUpdated}
+        onClose={closeInfo}
+      />
 
       {/* 진행 중인 수업 목록 */}
       <TeacherClassesModal teacher={classesTarget} onClose={closeClasses} />
@@ -308,6 +321,8 @@ function ApplicationRow({
           gender: row.gender,
           centerId: row.center_id,
           centerName: row.center_name,
+          customPrice: null,
+          customCurrency: null,
           bio: row.bio,
           experience: row.experience,
           zoomUrl: row.zoom_url,

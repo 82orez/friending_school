@@ -32,13 +32,33 @@ export default async function AdminSettlementsPage() {
     is_makeup: boolean;
   }[];
 
-  // 강사 프로필(현재 소속 센터·이름).
+  // 강사 프로필(현재 소속 센터·이름·개별 단가 오버라이드).
   const teacherIds = Array.from(new Set(classes.map((c) => c.teacher_id)));
-  const profileById = new Map<string, { first_name: string | null; last_name: string | null; center_id: string | null }>();
+  const profileById = new Map<
+    string,
+    { first_name: string | null; last_name: string | null; center_id: string | null; custom_price: number | null; custom_currency: string | null }
+  >();
   if (teacherIds.length > 0) {
-    const { data: profData } = await admin.from("profiles").select("id, first_name, last_name, center_id").in("id", teacherIds);
-    for (const p of (profData ?? []) as { id: string; first_name: string | null; last_name: string | null; center_id: string | null }[]) {
-      profileById.set(p.id, { first_name: p.first_name, last_name: p.last_name, center_id: p.center_id });
+    const { data: profData } = await admin
+      .from("profiles")
+      .select("id, first_name, last_name, center_id, custom_price_per_session, custom_price_currency")
+      .in("id", teacherIds);
+    for (const p of (profData ?? []) as {
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+      center_id: string | null;
+      custom_price_per_session: number | string | null;
+      custom_price_currency: string | null;
+    }[]) {
+      // numeric 컬럼은 문자열로 올 수 있어 숫자로 강제(null 보존).
+      profileById.set(p.id, {
+        first_name: p.first_name,
+        last_name: p.last_name,
+        center_id: p.center_id,
+        custom_price: p.custom_price_per_session == null ? null : Number(p.custom_price_per_session),
+        custom_currency: p.custom_price_currency,
+      });
     }
   }
 
@@ -53,7 +73,12 @@ export default async function AdminSettlementsPage() {
     manager_name: string | null;
   }[]) {
     // numeric 컬럼은 문자열로 올 수 있어 price를 숫자로 강제(null 보존).
-    centerById.set(c.id, { name: c.name, price: c.price_per_session == null ? null : Number(c.price_per_session), currency: c.price_currency, manager: c.manager_name });
+    centerById.set(c.id, {
+      name: c.name,
+      price: c.price_per_session == null ? null : Number(c.price_per_session),
+      currency: c.price_currency,
+      manager: c.manager_name,
+    });
   }
   const { data: rateRows } = await admin
     .from("settings")
@@ -69,7 +94,10 @@ export default async function AdminSettlementsPage() {
     const fullName = [prof?.first_name, prof?.last_name].filter(Boolean).join(" ").trim();
     const teacherName = fullName || c.teacher_name || "강사";
     const center = prof?.center_id ? centerById.get(prof.center_id) : undefined;
-    const priced = center && center.price != null;
+    // 단가 우선순위: 강사 개별 단가 > 소속 센터 단가. 개별 단가가 있으면 센터 미지정이어도 priced.
+    const hasCustom = prof?.custom_price != null;
+    const price = hasCustom ? prof!.custom_price! : center && center.price != null ? center.price : null;
+    const currency = price == null ? null : normalizeCurrency(hasCustom ? prof!.custom_currency : center?.currency);
     return {
       id: c.id,
       teacherId: c.teacher_id,
@@ -84,8 +112,9 @@ export default async function AdminSettlementsPage() {
       studentName: c.student_name,
       studentEnglishName: c.student_english_name,
       isMakeup: c.is_makeup,
-      pricePerSession: priced ? center!.price! : null,
-      currency: priced ? normalizeCurrency(center!.currency) : null,
+      pricePerSession: price,
+      currency,
+      isCustomRate: hasCustom,
     };
   });
 

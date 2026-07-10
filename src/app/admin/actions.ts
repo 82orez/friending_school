@@ -253,6 +253,32 @@ export async function updateTeacherCenter(userId: string, centerRaw: string): Pr
   return { ok: true, centerId };
 }
 
+// 강사 상세 모달에서 개별 정산 단가(센터 단가 오버라이드) 설정/해제. priceRaw 빈값/음수 → null = 해제(센터 단가 사용).
+// 통화는 센터와 동일 KRW/PHP/USD. price null이면 통화도 함께 null로 비움. 정산 단가라 정산 화면 revalidate.
+export async function updateTeacherRate(
+  userId: string,
+  priceRaw: string,
+  currencyRaw: string,
+): Promise<ActionResult & { price?: number | null; currency?: string | null }> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!userId) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: prof } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+  if (!prof || (prof as { role?: string }).role !== "teacher") return { ok: false, error: "강사를 찾을 수 없습니다." };
+
+  const currency = normalizeCurrency(currencyRaw);
+  const price = normalizePrice(priceRaw, currency); // 빈값/음수 → null = 오버라이드 해제
+  const nextCurrency = price == null ? null : currency;
+
+  const { error } = await admin.from("profiles").update({ custom_price_per_session: price, custom_price_currency: nextCurrency }).eq("id", userId);
+  if (error) return { ok: false, error: "단가 변경 중 오류가 발생했습니다." };
+
+  revalidatePath("/admin/teacher-requests");
+  revalidatePath("/admin/settlements");
+  return { ok: true, price, currency: nextCurrency };
+}
+
 /* ===== 강사 삭제 ===== */
 
 // 강사 계정 전체 삭제 (teacher-requests "현재 강사" 목록에서 호출). 되돌리기(→student)는 데이터가 지저분해져 폐지.

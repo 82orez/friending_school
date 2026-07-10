@@ -39,7 +39,9 @@ export default async function AdminTeacherRequestsPage() {
 
   const { data: teacherProfiles } = await admin
     .from("profiles")
-    .select("id, first_name, last_name, avatar_url, zoom_url, bio, experience, phone, nationality, gender, center_id")
+    .select(
+      "id, first_name, last_name, avatar_url, zoom_url, bio, experience, phone, nationality, gender, center_id, custom_price_per_session, custom_price_currency",
+    )
     .eq("role", "teacher");
 
   // 현재 강사 가용 시간 일괄 조회 후 teacher_id별 그룹핑.
@@ -138,6 +140,8 @@ export default async function AdminTeacherRequestsPage() {
       nationality: string | null;
       gender: string | null;
       center_id: string | null;
+      custom_price_per_session: number | string | null;
+      custom_price_currency: string | null;
     }[]
   ).map((p) => ({
     id: p.id,
@@ -148,6 +152,8 @@ export default async function AdminTeacherRequestsPage() {
     gender: p.gender,
     centerId: p.center_id,
     centerName: p.center_id ? (centerNameById.get(p.center_id) ?? null) : null,
+    customPrice: p.custom_price_per_session == null ? null : Number(p.custom_price_per_session),
+    customCurrency: p.custom_price_currency,
     bio: p.bio,
     experience: p.experience,
     zoomUrl: p.zoom_url,
