@@ -10,6 +10,7 @@ export type EnrollmentEventType =
   | "payment_confirmed" // admin 입금 확인 → 결제완료 + 클래스 생성
   | "payment_adjusted" // 무통장 결제 실입금액·메모 사후 재조정(매출 반영)
   | "payment_refunded" // 결제 환불(admin/자동/PortOne 취소 웹훅) → 수강 취소
+  | "payment_refund_failed" // 자동 환불 시도 실패(수동 환불 필요 — admin 표식)
   | "enrollment_cancelled" // 수강신청 취소(학생/admin, actor_role로 구분)
   | "class_postponed" // 개별 수업 연기(보강 생성 O)
   | "class_cancelled" // 개별 수업 취소(보강 없음, admin)

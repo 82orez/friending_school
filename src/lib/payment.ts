@@ -247,7 +247,33 @@ export async function recordPayment(admin: ReturnType<typeof createAdminClient>,
 
 export type SettleResult = { ok: boolean; enrollmentId?: string; error?: string; transient?: boolean; overpaid?: boolean };
 
-// PortOne 결제 정산 파이프라인(학생 confirm·웹훅 Paid 공용): 검증 → 기록 → 확정 → 과오납(중복결제) 자동 환불.
+// PG에서 캡처됐으나 서비스 불가한 결제(중복결제·취소/종료된 신청)를 자동 환불.
+// 성공: payments cancelled + payment_refunded 이벤트. 실패: 조용히 넘기지 않고 **admin 가시 표식(note)+payment_refund_failed 이벤트**로
+// 수동 환불을 유도(돈이 묶인 채 방치 방지). 반환=환불 성공 여부.
+async function attemptAutoRefund(
+  admin: ReturnType<typeof createAdminClient>,
+  input: { paymentId: string; amount: number; enrollmentId: string | null; actorRole: "student" | "system"; reason: string },
+): Promise<boolean> {
+  const { paymentId, amount, enrollmentId, actorRole, reason } = input;
+  const cancel = await cancelPortonePayment(paymentId, { reason });
+  if (cancel.ok) {
+    await admin.from("payments").update({ status: "cancelled", cancelled_amount: amount ?? 0 }).eq("payment_id", paymentId);
+    await logEnrollmentEvent(admin, { enrollmentId, eventType: "payment_refunded", actorId: null, actorRole, detail: { auto: true, reason, refundAmount: amount } });
+    return true;
+  }
+  console.error("[settlePortonePayment] 자동환불 실패:", paymentId, cancel.error);
+  await admin.from("payments").update({ note: `[자동환불실패] ${reason} — ${cancel.error ?? "PG 취소 실패"}`.slice(0, 500) }).eq("payment_id", paymentId);
+  await logEnrollmentEvent(admin, {
+    enrollmentId,
+    eventType: "payment_refund_failed",
+    actorId: null,
+    actorRole,
+    detail: { reason, refundAmount: amount, error: cancel.error ?? null },
+  });
+  return false;
+}
+
+// PortOne 결제 정산 파이프라인(학생 confirm·웹훅 Paid 공용): 검증 → 기록 → 확정 → 확정 불가 시 자동 환불(중복결제·취소된 신청).
 export async function settlePortonePayment(paymentId: string, actor: { id: string; role: "student" | "system" }): Promise<SettleResult> {
   const v = await getVerifiedPortonePayment(paymentId);
   if (!v.ok) return { ok: false, error: v.error, transient: v.transient };
@@ -271,10 +297,11 @@ export async function settlePortonePayment(paymentId: string, actor: { id: strin
   const fin = await finalizeEnrollmentPayment(enrollmentId, actor);
   if (fin.ok) return { ok: true, enrollmentId };
 
-  // 확정 실패 — 현재 상태를 재조회(authoritative)해 정상 레이스/과오납 판정.
-  // ⚠️ stale `enrRow.status`(line 223 시점)·에러 문자열 매칭에 의존하면, 클라·웹훅 동시 확정 레이스에서
+  // 확정 실패 — 현재 상태를 재조회(authoritative)해 분기.
+  // ⚠️ stale `enrRow.status`(위 조회 시점)·에러 문자열 매칭에 의존하면, 클라·웹훅 동시 확정 레이스에서
   //    상태가 아직 결제대기로 읽히고 에러도 "결제 대기 상태에서만..."이라 정상 레이스를 오류로 오판한다.
   const { data: cur } = await admin.from("enrollments").select("status").eq("id", enrollmentId).maybeSingle();
+
   if (cur?.status === "결제완료") {
     // 이 결제 외 다른 'paid' 결제 존재 여부로 과오납 vs 멱등 레이스 구분.
     const { data: others } = await admin
@@ -284,25 +311,21 @@ export async function settlePortonePayment(paymentId: string, actor: { id: strin
       .eq("status", "paid")
       .neq("payment_id", paymentId);
     if (others && others.length > 0) {
-      // 진짜 중복결제 → 이번 결제 자동 전액 환불.
-      const cancel = await cancelPortonePayment(paymentId, { reason: "중복 결제 자동 환불" });
-      if (cancel.ok) {
-        await admin.from("payments").update({ status: "cancelled", cancelled_amount: v.amount ?? 0 }).eq("payment_id", paymentId);
-        await logEnrollmentEvent(admin, {
-          enrollmentId,
-          eventType: "payment_refunded",
-          actorId: null,
-          actorRole: actor.role,
-          detail: { auto: true, reason: "중복 결제", refundAmount: v.amount },
-        });
-      } else {
-        console.error("[settlePortonePayment] 과오납 자동환불 실패:", paymentId, cancel.error);
-      }
+      // 진짜 중복결제 → 이번 결제 자동 전액 환불(실패 시 헬퍼가 admin 표식 남김).
+      await attemptAutoRefund(admin, { paymentId, amount: v.amount, enrollmentId, actorRole: actor.role, reason: "중복 결제 자동 환불" });
       return { ok: false, overpaid: true, error: "이미 결제된 신청이라 이번 결제는 자동 환불됩니다." };
     }
     // 다른 paid 결제 없음 = 이 결제가 확정을 완료(웹훅/이중 콜백 레이스) → 멱등 성공.
     return { ok: true, enrollmentId };
   }
+
+  // 취소·거절된(또는 삭제된) 신청에 결제가 캡처됨 → 서비스 불가라 자동 환불(금전 손실 방지).
+  if (!cur || cur.status === "취소" || cur.status === "거절") {
+    await attemptAutoRefund(admin, { paymentId, amount: v.amount, enrollmentId, actorRole: actor.role, reason: "취소/종료된 신청에 대한 결제 자동 환불" });
+    return { ok: false, error: "신청이 취소되어 결제가 자동 환불됩니다. 자세한 내용은 관리자에게 문의해 주세요." };
+  }
+
+  // 그 외(결제대기/신청/승인 등) — 일시적/재시도 가능 상태로 보고 확정 실패만 반환(웹훅 재시도·수동 처리).
   return { ok: false, error: fin.error };
 }
 

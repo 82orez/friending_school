@@ -23,6 +23,7 @@ const EVENT_META: Record<string, { label: string; cls: string }> = {
   payment_confirmed: { label: "결제 확인", cls: "bg-cta/10 text-cta" },
   payment_adjusted: { label: "결제 금액 조정", cls: "bg-cta/10 text-cta" },
   payment_refunded: { label: "환불", cls: "bg-brand/10 text-brand" },
+  payment_refund_failed: { label: "자동환불 실패", cls: "bg-brand/10 text-brand" },
   enrollment_cancelled: { label: "수강신청 취소", cls: "bg-brand/10 text-brand" },
   class_postponed: { label: "수업 연기", cls: "bg-amber-100 text-amber-700" },
   class_cancelled: { label: "수업 취소", cls: "bg-brand/10 text-brand" },
@@ -86,6 +87,14 @@ function summarize(e: AdminEvent): string {
       if (d.auto) parts.push("자동(중복결제)");
       if (str(d.reason)) parts.push(`사유: ${str(d.reason)}`);
       return parts.join(" · ");
+    }
+    case "payment_refund_failed": {
+      const amt = num(d.refundAmount);
+      const parts: string[] = [];
+      if (amt !== null) parts.push(`₩${amt.toLocaleString()}`);
+      if (str(d.reason)) parts.push(str(d.reason)!);
+      if (str(d.error)) parts.push(`오류: ${str(d.error)}`);
+      return `${parts.join(" · ")} (수동 환불 필요)`;
     }
     case "enrollment_cancelled":
       return str(d.reason) ? `사유: ${str(d.reason)}` : str(d.fromStatus) ? `이전 상태: ${str(d.fromStatus)}` : "";
