@@ -49,8 +49,8 @@ const shiftMonth = (d: string, delta: number): string => {
 };
 const DOW_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
-type Period = "일간" | "주간" | "월간" | "년간";
-const PERIODS: Period[] = ["일간", "주간", "월간", "년간"];
+type Period = "주간" | "월간" | "년간";
+const PERIODS: Period[] = ["주간", "월간", "년간"];
 type Grouping = "과정별" | "결제수단별" | "학생별";
 const GROUPINGS: Grouping[] = ["과정별", "결제수단별", "학생별"];
 type SortKey = "name" | "count" | "amount";
@@ -58,7 +58,6 @@ type StatusFilter = "전체" | "결제완료" | "부분환불" | "환불";
 const STATUS_FILTERS: StatusFilter[] = ["전체", "결제완료", "부분환불", "환불"];
 
 function interval(anchor: string, period: Period): { start: string; end: string } {
-  if (period === "일간") return { start: anchor, end: anchor };
   if (period === "주간") {
     const s = mondayOf(anchor);
     return { start: s, end: addDaysStr(s, 6) };
@@ -67,7 +66,6 @@ function interval(anchor: string, period: Period): { start: string; end: string 
   return { start: monthStart(anchor), end: monthEnd(anchor) };
 }
 function periodLabel(anchor: string, period: Period): string {
-  if (period === "일간") return `${anchor} (${DOW_KO[weekdayOf(anchor)]})`;
   if (period === "주간") {
     const { start, end } = interval(anchor, "주간");
     return `${start} ~ ${end}`;
@@ -77,7 +75,6 @@ function periodLabel(anchor: string, period: Period): string {
   return `${y}년 ${Number(m)}월`;
 }
 function shiftAnchor(anchor: string, period: Period, delta: number): string {
-  if (period === "일간") return addDaysStr(anchor, delta);
   if (period === "주간") return addDaysStr(anchor, delta * 7);
   if (period === "년간") return shiftMonth(anchor, delta * 12);
   return shiftMonth(anchor, delta);
