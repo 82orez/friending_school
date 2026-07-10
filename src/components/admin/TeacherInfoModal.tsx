@@ -231,85 +231,96 @@ export default function TeacherInfoModal({
             {/* 적용 단가 — 센터 단가(기본) / 개별 단가 토글 */}
             <div className="flex items-start gap-2">
               <dt className="text-muted-fg-faint w-28 shrink-0 pt-1.5">적용 단가</dt>
-              <dd className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  {(
-                    [
-                      ["center", "센터 단가"],
-                      ["custom", "개별 단가"],
-                    ] as const
-                  ).map(([m, label]) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => (m === "center" ? selectCenter() : setRateMode("custom"))}
-                      disabled={savingRate}
-                      aria-pressed={rateMode === m}
-                      className={cn(
-                        "h-9 rounded-md border px-3 text-sm font-semibold transition-colors disabled:opacity-60",
-                        rateMode === m
-                          ? "bg-cta border-cta text-white"
-                          : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                  <span className="text-muted-fg-faint ml-1 text-xs whitespace-nowrap">
-                    센터 단가 <span className="text-ink font-semibold">{centerRateLabel}</span>
+              <dd className="min-w-0 flex-1 space-y-2">
+                {/* 센터 단가 행 */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={selectCenter}
+                    disabled={savingRate}
+                    aria-pressed={rateMode === "center"}
+                    className={cn(
+                      "h-9 w-24 shrink-0 rounded-md border text-sm font-semibold transition-colors disabled:opacity-60",
+                      rateMode === "center"
+                        ? "bg-cta border-cta text-white"
+                        : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
+                    )}
+                  >
+                    센터 단가
+                  </button>
+                  <span className="text-muted-fg-faint text-xs whitespace-nowrap">
+                    현재 적용: <span className="text-ink font-semibold">{centerRateLabel}</span>
                   </span>
-                  {savingRate && <Loader2 className="text-muted-fg-faint size-4 animate-spin" />}
                 </div>
 
-                {rateMode === "custom" && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <select
-                      value={currencySel}
-                      onChange={(e) => setCurrencySel(e.target.value)}
-                      disabled={savingRate}
-                      aria-label="개별 단가 통화"
-                      className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 shrink-0 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
-                    >
-                      {CURRENCIES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.symbol} {c.code}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      min="0"
-                      inputMode="decimal"
-                      value={priceInput}
-                      onChange={(e) => setPriceInput(e.target.value)}
-                      disabled={savingRate}
-                      placeholder="회당 단가"
-                      aria-label="개별 단가 금액"
-                      className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
-                    />
-                    {rateDirty && (
+                {/* 개별 단가 행 — 버튼 오른쪽에 설정 입력 */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRateMode("custom")}
+                    disabled={savingRate}
+                    aria-pressed={rateMode === "custom"}
+                    className={cn(
+                      "h-9 w-24 shrink-0 rounded-md border text-sm font-semibold transition-colors disabled:opacity-60",
+                      rateMode === "custom"
+                        ? "bg-cta border-cta text-white"
+                        : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
+                    )}
+                  >
+                    개별 단가
+                  </button>
+
+                  {rateMode === "custom" && (
+                    <>
+                      <select
+                        value={currencySel}
+                        onChange={(e) => setCurrencySel(e.target.value)}
+                        disabled={savingRate}
+                        aria-label="개별 단가 통화"
+                        className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 shrink-0 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
+                      >
+                        {CURRENCIES.map((c) => (
+                          <option key={c.code} value={c.code}>
+                            {c.symbol} {c.code}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        min="0"
+                        inputMode="decimal"
+                        value={priceInput}
+                        onChange={(e) => setPriceInput(e.target.value)}
+                        disabled={savingRate}
+                        placeholder="회당 단가"
+                        aria-label="개별 단가 금액"
+                        className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
+                      />
+                      {rateDirty && (
+                        <button
+                          type="button"
+                          onClick={saveRate}
+                          disabled={savingRate}
+                          className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60"
+                        >
+                          {savingRate && <Loader2 className="size-4 animate-spin" />}
+                          {savingRate ? "저장 중" : "저장"}
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={saveRate}
+                        onClick={selectCenter}
                         disabled={savingRate}
-                        className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60"
+                        className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue h-9 shrink-0 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60"
                       >
-                        {savingRate && <Loader2 className="size-4 animate-spin" />}
-                        {savingRate ? "저장 중" : "저장"}
+                        초기화
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={selectCenter}
-                      disabled={savingRate}
-                      className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue h-9 shrink-0 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60"
-                    >
-                      초기화
-                    </button>
-                  </div>
-                )}
+                    </>
+                  )}
+                  {savingRate && <Loader2 className="text-muted-fg-faint size-4 shrink-0 animate-spin" />}
+                </div>
 
-                <p className="text-muted-fg-faint mt-1 text-xs">
+                <p className="text-muted-fg-faint text-xs">
                   {rateMode === "center"
                     ? "소속 센터의 회당 단가가 적용됩니다."
                     : "이 강사에게만 적용할 회당 단가를 입력하세요. 초기화하면 센터 단가로 돌아갑니다."}
