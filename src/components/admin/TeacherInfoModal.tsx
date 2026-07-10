@@ -10,6 +10,16 @@ import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 import { CURRENCIES, formatPrice } from "@/data/currencies";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 
 // 아바타 미설정 시 폴백 이니셜(이름 우선, 없으면 이메일 앞글자).
@@ -43,6 +53,8 @@ export default function TeacherInfoModal({
   const [priceInput, setPriceInput] = useState<string>(teacher?.customPrice != null ? String(teacher.customPrice) : "");
   const [currencySel, setCurrencySel] = useState<string>(teacher?.customCurrency ?? "KRW");
   const [savingRate, startSaveRate] = useTransition();
+  const [confirmRate, setConfirmRate] = useState(false); // 개별 단가 저장 확인 다이얼로그
+  const [confirmCenter, setConfirmCenter] = useState(false); // 센터 단가 초기화 확인 다이얼로그
 
   useEffect(() => {
     setCenterSel(teacher?.centerId ?? "none");
@@ -55,10 +67,11 @@ export default function TeacherInfoModal({
   }, [teacher?.id, teacher?.customPrice, teacher?.customCurrency]);
 
   // 열림 시: Esc 닫기 + body scroll lock + 닫기 버튼 포커스.
+  // 확인 다이얼로그가 열려 있으면 Esc는 그 다이얼로그만 닫도록 모달 닫기를 건너뜀.
   useEffect(() => {
     if (!teacher) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !confirmRate && !confirmCenter) onClose();
     };
     document.addEventListener("keydown", onKeyDown);
     const prevOverflow = document.body.style.overflow;
@@ -68,7 +81,7 @@ export default function TeacherInfoModal({
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = prevOverflow;
     };
-  }, [teacher, onClose]);
+  }, [teacher, onClose, confirmRate, confirmCenter]);
 
   if (!teacher) return null;
 
@@ -98,10 +111,19 @@ export default function TeacherInfoModal({
   const selectedCenter = centers.find((c) => c.id === centerSel);
   const centerRateLabel = selectedCenter && selectedCenter.price != null ? formatPrice(selectedCenter.price, selectedCenter.currency) : "미설정";
 
-  // 센터 단가 적용(= "센터 단가" 토글 · "초기화" 공용): 저장된 개별 단가가 있으면 즉시 해제, 없으면 모드만 전환.
-  const selectCenter = () => {
+  // 센터 단가 적용 요청(= "센터 단가" 토글 · "초기화" 공용): 저장된 개별 단가가 있으면 확인 다이얼로그,
+  // 없으면(이미 센터 단가) 서버 호출 없이 모드만 전환.
+  const requestSelectCenter = () => {
+    if (teacher.customPrice == null) {
+      setRateMode("center");
+      return;
+    }
+    setConfirmCenter(true);
+  };
+
+  // 확인 후 실제 개별 단가 해제 → 센터 단가로 복귀.
+  const doSelectCenter = () => {
     setRateMode("center");
-    if (teacher.customPrice == null) return; // 이미 센터 단가 → 서버 호출 불필요
     const t = teacher;
     startSaveRate(async () => {
       const res = await updateTeacherRate(t.id, "", currencySel);
@@ -236,7 +258,7 @@ export default function TeacherInfoModal({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={selectCenter}
+                    onClick={requestSelectCenter}
                     disabled={savingRate}
                     aria-pressed={rateMode === "center"}
                     className={cn(
@@ -299,7 +321,7 @@ export default function TeacherInfoModal({
                       {rateDirty && (
                         <button
                           type="button"
-                          onClick={saveRate}
+                          onClick={() => setConfirmRate(true)}
                           disabled={savingRate}
                           className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60"
                         >
@@ -309,7 +331,7 @@ export default function TeacherInfoModal({
                       )}
                       <button
                         type="button"
-                        onClick={selectCenter}
+                        onClick={requestSelectCenter}
                         disabled={savingRate}
                         className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue h-9 shrink-0 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60"
                       >
@@ -358,6 +380,55 @@ export default function TeacherInfoModal({
           </button>
         </div>
       </div>
+
+      {/* 개별 단가 저장 확인 (모달 위에 표시되도록 z-[130]) */}
+      <AlertDialog open={confirmRate} onOpenChange={setConfirmRate}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>개별 단가를 저장하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="text-ink font-semibold">{teacher.name || teacher.email}</span> 강사에게 회당{" "}
+              <span className="text-ink font-semibold">{formatPrice(Number(priceInput) || 0, currencySel)}</span> 단가가 적용됩니다. 이 강사의 정산은
+              소속 센터 단가 대신 이 개별 단가로 계산됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmRate(false);
+                saveRate();
+              }}
+            >
+              저장
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 센터 단가 초기화 확인 (모달 위에 표시되도록 z-[130]) */}
+      <AlertDialog open={confirmCenter} onOpenChange={setConfirmCenter}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>센터 단가로 초기화하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="text-ink font-semibold">{teacher.name || teacher.email}</span> 강사의 개별 단가가 해제되고, 소속 센터의 회당{" "}
+              <span className="text-ink font-semibold">{centerRateLabel}</span> 단가로 정산됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmCenter(false);
+                doSelectCenter();
+              }}
+            >
+              초기화
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
