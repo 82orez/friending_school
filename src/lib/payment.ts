@@ -2,10 +2,10 @@ import "server-only";
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { createAdminClient } from "@/utils/supabase/admin";
+import { createAdminClient, getAdminEmails } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
 import { sendSms } from "@/lib/sms";
-import { sendEnrollmentPaymentConfirmedToTeacher, sendEnrollmentRefundToTeacher } from "@/lib/mailer";
+import { sendEnrollmentPaidToAdmin, sendEnrollmentPaymentConfirmedToTeacher, sendEnrollmentRefundToTeacher } from "@/lib/mailer";
 import { getCourse } from "@/data/courses";
 import { COURSE_PRICE_KRW } from "@/data/pricing";
 import { logEnrollmentEvent } from "@/lib/events";
@@ -123,35 +123,62 @@ export async function finalizeEnrollmentPayment(
     }
   }
 
+  // 알림 메일 공용 데이터(강사·관리자 블록 공유) — 중복 계산 방지.
+  const origin = getOrigin(await headers());
+  const sessions = enr.total_sessions ?? TOTAL_SESSIONS;
+  const schedule = summarizeSlots((enr.slots as Slot[]) ?? [], false);
+  const courseEnglishTitle = getCourse(enr.course)?.englishTitle ?? "";
+  const endDate = (() => {
+    const [sy, sm, sd] = String(enr.start_date ?? "").split("-").map(Number);
+    if (!sy || !sm || !sd) return "";
+    const endObj = lessonEndDate(new Date(sy, sm - 1, sd), (enr.slots as Slot[]) ?? [], sessions);
+    return endObj
+      ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}`
+      : "";
+  })();
+
   // 강사 결제 확정 알림 메일(best-effort) — 수업이 생성되어 My Classroom에 잡히므로 강사에게 통보.
   try {
-    const origin = getOrigin(await headers());
-    const sessions = enr.total_sessions ?? TOTAL_SESSIONS;
-    const endDate = (() => {
-      const [sy, sm, sd] = String(enr.start_date ?? "").split("-").map(Number);
-      if (!sy || !sm || !sd) return "";
-      const endObj = lessonEndDate(new Date(sy, sm - 1, sd), (enr.slots as Slot[]) ?? [], sessions);
-      return endObj
-        ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}`
-        : "";
-    })();
     const { data: teacherUser } = await admin.auth.admin.getUserById(enr.teacher_id);
     const teacherEmail = teacherUser?.user?.email;
     if (teacherEmail) {
       await sendEnrollmentPaymentConfirmedToTeacher([teacherEmail], {
         studentName: enr.student_name,
         courseTitle: enr.course_title,
-        schedule: summarizeSlots((enr.slots as Slot[]) ?? [], false),
+        schedule,
         startDate: enr.start_date,
         teacherUrl: `${origin}/teacher`,
         studentEnglishName: enr.student_english_name ?? "",
-        courseEnglishTitle: getCourse(enr.course)?.englishTitle,
+        courseEnglishTitle,
         endDate,
         totalSessions: sessions,
       });
     }
   } catch (err) {
     console.error("[finalizeEnrollmentPayment] 강사 알림 발송 실패:", err);
+  }
+
+  // 관리자 결제 완료 알림 메일(best-effort) — 카드 결제(student/system)만; 무통장(admin 확인)은 본인이 처리하므로 제외.
+  if (actor.role !== "admin") {
+    try {
+      const adminEmails = await getAdminEmails();
+      if (adminEmails.length > 0) {
+        await sendEnrollmentPaidToAdmin(adminEmails, {
+          studentName: enr.student_name,
+          studentEnglishName: enr.student_english_name ?? "",
+          courseTitle: enr.course_title,
+          courseEnglishTitle,
+          teacherName: enr.teacher_name,
+          schedule,
+          startDate: enr.start_date,
+          endDate,
+          totalSessions: sessions,
+          adminUrl: `${origin}/admin/enrollments`,
+        });
+      }
+    } catch (err) {
+      console.error("[finalizeEnrollmentPayment] 관리자 결제완료 알림 발송 실패:", err);
+    }
   }
 
   await logEnrollmentEvent(admin, {
