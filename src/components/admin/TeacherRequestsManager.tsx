@@ -112,7 +112,7 @@ export default function TeacherRequestsManager({
 }: {
   applications: TeacherApplication[];
   currentTeachers: CurrentTeacher[];
-  centers: { id: string; name: string }[];
+  centers: { id: string; name: string; price: number | null; currency: string | null }[];
 }) {
   const [rows, setRows] = useState(applications);
   const [teachers, setTeachers] = useState(currentTeachers);

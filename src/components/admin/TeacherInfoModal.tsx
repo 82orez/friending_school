@@ -8,7 +8,7 @@ import AvailabilityGrid from "@/components/teacher/AvailabilityGrid";
 import { updateTeacherCenter, updateTeacherRate } from "@/app/admin/actions";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
-import { CURRENCIES } from "@/data/currencies";
+import { CURRENCIES, formatPrice } from "@/data/currencies";
 import { cn } from "@/lib/utils";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 
@@ -29,7 +29,7 @@ export default function TeacherInfoModal({
   onClose,
 }: {
   teacher: CurrentTeacher | null;
-  centers: { id: string; name: string }[];
+  centers: { id: string; name: string; price: number | null; currency: string | null }[];
   onCenterUpdated: (teacherId: string, centerId: string | null, centerName: string | null) => void;
   onCustomRateUpdated: (teacherId: string, customPrice: number | null, customCurrency: string | null) => void;
   onClose: () => void;
@@ -93,6 +93,10 @@ export default function TeacherInfoModal({
   const initPrice = teacher.customPrice != null ? String(teacher.customPrice) : "";
   const initCurrency = teacher.customCurrency ?? "KRW";
   const rateDirty = priceInput.trim() !== initPrice || (priceInput.trim() !== "" && currencySel !== initCurrency);
+
+  // 선택된 센터의 회당 단가(적용 단가 참조용). 센터 미지정/단가 미설정이면 "미설정".
+  const selectedCenter = centers.find((c) => c.id === centerSel);
+  const centerRateLabel = selectedCenter && selectedCenter.price != null ? formatPrice(selectedCenter.price, selectedCenter.currency) : "미설정";
 
   // 센터 단가 적용(= "센터 단가" 토글 · "초기화" 공용): 저장된 개별 단가가 있으면 즉시 해제, 없으면 모드만 전환.
   const selectCenter = () => {
@@ -251,6 +255,9 @@ export default function TeacherInfoModal({
                       {label}
                     </button>
                   ))}
+                  <span className="text-muted-fg-faint ml-1 text-xs whitespace-nowrap">
+                    센터 단가 <span className="text-ink font-semibold">{centerRateLabel}</span>
+                  </span>
                   {savingRate && <Loader2 className="text-muted-fg-faint size-4 animate-spin" />}
                 </div>
 

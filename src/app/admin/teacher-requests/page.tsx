@@ -16,9 +16,15 @@ export default async function AdminTeacherRequestsPage() {
   const { data: usersData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   const emailById = new Map((usersData?.users ?? []).map((u) => [u.id, u.email ?? "(이메일 없음)"]));
 
-  // 센터 id→이름 매핑(신청서·프로필의 center_id 표시용) + 강사 센터 변경 셀렉트용 목록.
-  const { data: centersData } = await admin.from("centers").select("id, name").order("sort_order", { ascending: true });
-  const centers = (centersData ?? []) as { id: string; name: string }[];
+  // 센터 id→이름 매핑(신청서·프로필의 center_id 표시용) + 강사 센터 변경 셀렉트/단가 표시용 목록.
+  const { data: centersData } = await admin
+    .from("centers")
+    .select("id, name, price_per_session, price_currency")
+    .order("sort_order", { ascending: true });
+  // numeric 단가는 문자열로 올 수 있어 숫자로 강제(null 보존).
+  const centers = (
+    (centersData ?? []) as { id: string; name: string; price_per_session: number | string | null; price_currency: string | null }[]
+  ).map((c) => ({ id: c.id, name: c.name, price: c.price_per_session == null ? null : Number(c.price_per_session), currency: c.price_currency }));
   const centerNameById = new Map(centers.map((c) => [c.id, c.name]));
 
   const { data: appsData } = await admin
