@@ -17,6 +17,7 @@ import {
 } from "@/lib/mailer";
 import { FOREIGN_CURRENCIES, normalizeCurrency } from "@/data/currencies";
 import { getCourse } from "@/data/courses";
+import { COURSE_PRICE_KRW } from "@/data/pricing";
 import { sendSms } from "@/lib/sms";
 import {
   enumerateLessonSessions,
@@ -324,12 +325,21 @@ function toDateStr(d: Date): string {
 // 입금 확인(무통장 1단계) — 상태 '결제대기'일 때만 '결제완료'로 전환. 성공 시 클래스 생성 + 학생에게 SMS 통보(best-effort).
 // 회사 계좌 입금이라 확인 주체는 admin. 결제 확정 코어는 `finalizeEnrollmentPayment`(src/lib/payment.ts)로 공유
 // (학생 PortOne 카드 결제 confirmPortonePayment와 동일 로직 재사용). 향후 PG 웹훅도 이 코어를 호출.
-export async function confirmPayment(id: string): Promise<ActionResult> {
+export async function confirmPayment(id: string, opts?: { amount?: number; note?: string }): Promise<ActionResult> {
   const adminId = await requireAdmin();
   if (!adminId) return { ok: false, error: "권한이 없습니다." };
   const enrollmentId = String(id ?? "").trim();
   if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
-  return finalizeEnrollmentPayment(enrollmentId, { id: adminId, role: "admin" });
+
+  // 실입금액(무통장) — 미지정=정가, 지정 시 1~정가 범위(정가 초과 방지, 할인만 허용).
+  let amount: number | undefined;
+  if (opts?.amount != null) {
+    amount = Math.floor(Number(opts.amount));
+    if (!Number.isFinite(amount) || amount < 1 || amount > COURSE_PRICE_KRW) return { ok: false, error: "입금액이 올바르지 않습니다." };
+  }
+  const note = (opts?.note ?? "").trim().slice(0, 500) || undefined;
+
+  return finalizeEnrollmentPayment(enrollmentId, { id: adminId, role: "admin" }, { amount, note });
 }
 
 // 환불(전액/부분) — 결제완료 enrollment의 카드 결제를 PortOne 취소 후 DB 동기화(수강 취소 + 미래 수업 취소).

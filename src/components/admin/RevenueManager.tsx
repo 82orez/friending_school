@@ -31,6 +31,7 @@ export type RevenueRow = {
   studentEnglishName: string | null;
   teacherName: string | null;
   receiptUrl: string | null;
+  note: string | null;
   enrollmentId: string | null;
   isTest: boolean;
 };
@@ -248,7 +249,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
   }, [inRangeRows, txQuery, txStatus]);
 
   const exportCsv = () => {
-    const header = ["결제일", "학생", "영문명", "과정", "결제수단", "통화", "결제금액", "환불금액", "순액", "상태", "결제ID"];
+    const header = ["결제일", "학생", "영문명", "과정", "결제수단", "통화", "결제금액", "환불금액", "순액", "상태", "메모", "결제ID"];
     const body = txRows.map((r) => [
       r.kstDate,
       r.studentName ?? "",
@@ -260,6 +261,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
       String(r.cancelledAmount),
       String(r.amount - r.cancelledAmount),
       statusLabel(r.status),
+      r.note ?? "",
       r.paymentId,
     ]);
     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
@@ -449,7 +451,10 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
                       {r.studentName ?? "-"}
                       {r.studentEnglishName && <span className="text-muted-fg-faint ml-1 text-xs">({r.studentEnglishName})</span>}
                     </td>
-                    <td className="text-muted-fg px-4 py-3 break-words">{r.courseTitle ?? "-"}</td>
+                    <td className="text-muted-fg px-4 py-3 break-words">
+                      {r.courseTitle ?? "-"}
+                      {r.note && <span className="text-muted-fg-faint mt-0.5 block text-xs">📝 {r.note}</span>}
+                    </td>
                     <td className="text-muted-fg px-4 py-3 whitespace-nowrap">{payMethodLabel(r.method)}</td>
                     <td className="text-ink px-4 py-3 text-right whitespace-nowrap">{formatPrice(r.amount, r.currency)}</td>
                     <td className="px-4 py-3 text-right font-medium whitespace-nowrap">

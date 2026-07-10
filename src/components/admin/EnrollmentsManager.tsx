@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Loader2, Search, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { adminCancelEnrollment, confirmPayment, deleteTestEnrollment, refundPayment } from "@/app/admin/actions";
 import { overlappingIds, summarizeSlots, type Slot } from "@/lib/availability";
+import { COURSE_PRICE_KRW } from "@/data/pricing";
+import { formatPrice } from "@/data/currencies";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +34,7 @@ export type AdminEnrollment = {
   created_at: string;
   is_test?: boolean;
   priceLabel: string; // 수강료 표시(과정 고정가, 예 "₩240,000")
-  payment?: { paymentId: string; status: string; amount: number; cancelledAmount: number; method?: string | null; receiptUrl?: string | null; createdAt?: string } | null; // 결제 기록(카드/무통장, 환불용)
+  payment?: { paymentId: string; status: string; amount: number; cancelledAmount: number; method?: string | null; receiptUrl?: string | null; createdAt?: string; note?: string | null } | null; // 결제 기록(카드/무통장, 환불용)
 };
 
 type StatusKey = AdminEnrollment["status"];
@@ -286,6 +289,7 @@ function EnrollmentDetailModal({
   onUpdated: (updated: AdminEnrollment) => void;
   onDeleted: (id: string) => void;
 }) {
+  const router = useRouter();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [payConfirmOpen, setPayConfirmOpen] = useState(false);
@@ -294,6 +298,8 @@ function EnrollmentDetailModal({
   const [reason, setReason] = useState("");
   const [refundReason, setRefundReason] = useState("");
   const [refundAmountStr, setRefundAmountStr] = useState("");
+  const [payAmountStr, setPayAmountStr] = useState(String(COURSE_PRICE_KRW)); // 무통장 실입금액(기본=정가)
+  const [payNote, setPayNote] = useState(""); // 무통장 결제 메모(할인 사유 등)
   const [pending, startTransition] = useTransition();
   const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
   const payable = row.status === "결제대기"; // 입금 확인 → 결제완료
@@ -342,12 +348,19 @@ function EnrollmentDetailModal({
   };
 
   const confirmPay = () => {
+    const amount = Math.floor(Number(payAmountStr));
+    if (!Number.isFinite(amount) || amount < 1 || amount > COURSE_PRICE_KRW) {
+      toast.error(`입금액은 1 ~ ${COURSE_PRICE_KRW.toLocaleString()}원 사이여야 합니다.`);
+      return;
+    }
     setPayConfirmOpen(false);
+    const note = payNote.trim();
     startTransition(async () => {
-      const res = await confirmPayment(row.id);
+      const res = await confirmPayment(row.id, { amount, note });
       if (res.ok) {
         onUpdated({ ...row, status: "결제완료" });
         toast.success("결제를 확인했어요. 학생에게 확정 문자가 발송됩니다.");
+        router.refresh(); // 실입금액·메모 등 payment 상세 반영
         onClose();
       } else {
         toast.error(res.error ?? "결제 확인 중 문제가 발생했어요.");
@@ -452,6 +465,9 @@ function EnrollmentDetailModal({
               ["수업 일정", summarizeSlots(row.slots)],
               ["시작일", row.start_date],
               ...(pay ? ([["결제 수단", payMethodLabel(pay.method)]] as [string, string][]) : []),
+              // 실입금액 — 환불 반영 순액(amount − cancelled). 정가와 다르면(할인 등) 별도 노출.
+              ...(pay ? ([["실입금액", formatPrice((pay.amount ?? 0) - (pay.cancelledAmount ?? 0), "KRW")]] as [string, string][]) : []),
+              ...(pay?.note ? ([["결제 메모", pay.note]] as [string, string][]) : []),
               ...(pay?.createdAt ? ([["결제 일시", formatDateTime(pay.createdAt)]] as [string, string][]) : []),
               ...(row.teacher_note ? ([["메모/사유", row.teacher_note]] as [string, string][]) : []),
             ].map(([label, value]) => (
@@ -664,11 +680,41 @@ function EnrollmentDetailModal({
             <AlertDialogTitle>입금을 확인하고 결제완료로 처리할까요?</AlertDialogTitle>
             <AlertDialogDescription>
               <span className="text-ink font-semibold">{studentLabel}</span>님의 {row.course_title} 수업이 확정되며, 학생에게 확정 문자가 전송됩니다.
-              {row.priceLabel && (
-                <span className="text-ink mt-2 block font-semibold">입금 확인 금액: {row.priceLabel}</span>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-3">
+            {row.priceLabel && <p className="text-muted-fg text-sm">정상 수강료: <span className="text-ink font-semibold">{row.priceLabel}</span></p>}
+            <div>
+              <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">실입금액 (할인 시 정가보다 낮게 입력)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={payAmountStr}
+                  onChange={(e) => setPayAmountStr(e.target.value)}
+                  min={1}
+                  max={COURSE_PRICE_KRW}
+                  className="border-rule-faint focus:border-accent-blue w-40 rounded-md border bg-white px-3 py-2 text-sm outline-none"
+                />
+                <span className="text-muted-fg-faint text-sm">원</span>
+              </div>
+              {Number(payAmountStr) > 0 && Number(payAmountStr) < COURSE_PRICE_KRW && (
+                <p className="text-[#B45309] mt-1 text-xs font-semibold">
+                  할인 적용: 정가보다 {(COURSE_PRICE_KRW - Math.floor(Number(payAmountStr))).toLocaleString()}원 낮게 매출에 기록됩니다.
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">결제 메모 (선택 — 할인 사유 등)</label>
+              <textarea
+                value={payNote}
+                onChange={(e) => setPayNote(e.target.value)}
+                rows={2}
+                maxLength={500}
+                placeholder="예: 얼리버드 할인 5만원"
+                className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              />
+            </div>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction onClick={confirmPay} className="border-transparent bg-[#1E7E34] text-white hover:bg-[#1A6E2E]">

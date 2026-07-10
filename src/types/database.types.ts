@@ -271,6 +271,7 @@ export type Database = {
           enrollment_id: string | null
           id: string
           method: string | null
+          note: string | null
           payment_id: string
           pg_tx_id: string | null
           raw: Json | null
@@ -287,6 +288,7 @@ export type Database = {
           enrollment_id?: string | null
           id?: string
           method?: string | null
+          note?: string | null
           payment_id: string
           pg_tx_id?: string | null
           raw?: Json | null
@@ -303,6 +305,7 @@ export type Database = {
           enrollment_id?: string | null
           id?: string
           method?: string | null
+          note?: string | null
           payment_id?: string
           pg_tx_id?: string | null
           raw?: Json | null

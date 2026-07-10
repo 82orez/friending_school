@@ -11,7 +11,7 @@ export default async function AdminRevenuePage() {
 
   const { data: payData } = await admin
     .from("payments")
-    .select("payment_id, enrollment_id, student_id, amount, cancelled_amount, status, method, currency, receipt_url, created_at")
+    .select("payment_id, enrollment_id, student_id, amount, cancelled_amount, status, method, currency, receipt_url, note, created_at")
     .order("created_at", { ascending: false });
   const payments = (payData ?? []) as {
     payment_id: string;
@@ -23,6 +23,7 @@ export default async function AdminRevenuePage() {
     method: string | null;
     currency: string | null;
     receipt_url: string | null;
+    note: string | null;
     created_at: string;
   }[];
 
@@ -85,6 +86,7 @@ export default async function AdminRevenuePage() {
         studentEnglishName: enr?.student_english_name ?? null,
         teacherName: enr?.teacher_name ?? null,
         receiptUrl: p.receipt_url,
+        note: p.note,
         enrollmentId: p.enrollment_id,
         isTest: enr?.is_test ?? false,
       };

@@ -70,6 +70,7 @@ export async function generateClassesForEnrollment(admin: ReturnType<typeof crea
 export async function finalizeEnrollmentPayment(
   enrollmentId: string,
   actor: { id: string; role: "admin" | "student" | "system" },
+  opts?: { amount?: number; note?: string }, // 무통장(admin) 확정 시 실입금액·메모(정가 이하 할인 등). 카드/웹훅은 미전달.
 ): Promise<PaymentResult> {
   const admin = createAdminClient();
   const { data: enr } = await admin
@@ -93,14 +94,16 @@ export async function finalizeEnrollmentPayment(
 
   // 무통장 입금(admin 확인) 결제 기록 — 매출·환불 관리 단일 소스화. 합성 payment_id로 멱등.
   // 카드/웹훅(student/system)은 상류 settlePortonePayment가 이미 기록하므로 admin 경로만.
+  const bankAmount = opts?.amount ?? COURSE_PRICE_KRW; // 실입금액(미지정=정가)
   if (actor.role === "admin") {
     await recordPayment(admin, {
       paymentId: `bank-${enrollmentId}`,
       enrollmentId,
       studentId: enr.student_id,
-      amount: COURSE_PRICE_KRW,
+      amount: bankAmount,
       currency: "KRW",
       method: "bank_transfer",
+      note: opts?.note,
     });
   }
 
@@ -194,6 +197,8 @@ export async function finalizeEnrollmentPayment(
       sessionsGenerated: enr.total_sessions ?? TOTAL_SESSIONS,
       startDate: enr.start_date,
       ...(actor.role === "student" ? { via: "portone_card" } : actor.role === "system" ? { via: "portone_webhook" } : {}),
+      // 무통장(admin) 확정 시 실입금액·할인·메모 기록(감사).
+      ...(actor.role === "admin" ? { bankAmount, discounted: bankAmount < COURSE_PRICE_KRW, ...(opts?.note ? { note: opts.note } : {}) } : {}),
     },
   });
 
@@ -215,6 +220,7 @@ type RecordPaymentInput = {
   pgTxId?: string;
   method?: string;
   receiptUrl?: string;
+  note?: string;
   raw?: unknown;
 };
 
@@ -231,6 +237,7 @@ export async function recordPayment(admin: ReturnType<typeof createAdminClient>,
       pg_tx_id: input.pgTxId ?? null,
       method: input.method ?? null,
       receipt_url: input.receiptUrl ?? null,
+      note: input.note ?? null,
       raw: input.raw ?? null,
     },
     { onConflict: "payment_id", ignoreDuplicates: true },
