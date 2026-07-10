@@ -164,7 +164,25 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
       }
       return days;
     }
-    // 월간·년간: 앵커 연도 전체의 월별 순매출(월간은 KPI 기간과 별개로 연간 월별 추이를 보여주고 선택 월 강조).
+    if (period === "년간") {
+      // 데이터가 있는 연도 범위(앵커 연도 포함) 전체의 연도별 순매출, 선택 연도 강조.
+      const byYear = new Map<number, number>();
+      for (const r of baseRows) byYear.set(Number(r.kstDate.slice(0, 4)), (byYear.get(Number(r.kstDate.slice(0, 4))) ?? 0) + netOf(r));
+      const anchorY = Number(anchor.slice(0, 4));
+      let minY = anchorY;
+      let maxY = anchorY;
+      for (const yr of Array.from(byYear.keys())) {
+        if (yr < minY) minY = yr;
+        if (yr > maxY) maxY = yr;
+      }
+      const out: TrendBucket[] = [];
+      for (let yr = minY; yr <= maxY; yr++) {
+        const net = byYear.get(yr) ?? 0;
+        out.push({ key: String(yr), net, tooltip: `${yr}년 · ${formatPrice(net, "KRW")}`, xLabel: `${yr}`, highlight: yr === anchorY });
+      }
+      return out;
+    }
+    // 월간: 앵커 연도 전체의 월별 순매출(KPI 기간과 별개로 연간 월별 추이를 보여주고 선택 월 강조).
     const y = anchor.slice(0, 4);
     const yearRows = baseRows.filter((r) => r.kstDate.slice(0, 4) === y);
     const byMonth = new Map<number, number>();
@@ -300,7 +318,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
       </div>
 
       {/* 추이 차트 */}
-      <RevenueTrendChart data={trend} title={period === "주간" ? "일자별 순매출" : "월별 순매출"} />
+      <RevenueTrendChart data={trend} title={period === "주간" ? "일자별 순매출" : period === "년간" ? "년도별 순매출" : "월별 순매출"} />
 
       {/* 분류별 집계 */}
       <div className="mt-6 flex items-center gap-2">
