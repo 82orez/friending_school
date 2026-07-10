@@ -33,6 +33,7 @@ import {
 import { kstDateMinToMs } from "@/lib/classtime";
 import { todayKst } from "@/lib/booking";
 import { createMakeupClass, weekdayOf, addDaysStr, type ClassForMakeup } from "@/lib/makeup";
+import { resolveCenterId } from "@/lib/center";
 import { logEnrollmentEvent } from "@/lib/events";
 import { finalizeEnrollmentPayment, refundEnrollmentPayment } from "@/lib/payment";
 import { cancelPortonePayment } from "@/lib/portone";
@@ -204,7 +205,12 @@ export async function updateCenter(
   const admin = createAdminClient();
   const { error } = await admin
     .from("centers")
-    .update({ name: clean, price_per_session: normalizePrice(price, currency), price_currency: normalizeCurrency(currency), manager_name: normalizeText(managerName) })
+    .update({
+      name: clean,
+      price_per_session: normalizePrice(price, currency),
+      price_currency: normalizeCurrency(currency),
+      manager_name: normalizeText(managerName),
+    })
     .eq("id", id);
   if (error) return { ok: false, error: "수정 중 오류가 발생했습니다." };
 
@@ -223,6 +229,28 @@ export async function deleteCenter(id: string): Promise<ActionResult> {
 
   revalidateCenterConsumers();
   return { ok: true };
+}
+
+// 강사 상세 모달에서 소속 센터 변경. centerRaw="none"=소속 없음, 그 외는 uuid 존재 검증(resolveCenterId).
+// 센터는 정산 단가 기준이라 정산 화면도 함께 갱신. 반환 centerId로 클라가 표시명 낙관적 갱신.
+export async function updateTeacherCenter(userId: string, centerRaw: string): Promise<ActionResult & { centerId?: string | null }> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!userId) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: prof } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+  if (!prof || (prof as { role?: string }).role !== "teacher") return { ok: false, error: "강사를 찾을 수 없습니다." };
+
+  const centerId = centerRaw === "none" ? null : await resolveCenterId(admin, centerRaw);
+  if (centerRaw !== "none" && !centerId) return { ok: false, error: "유효하지 않은 센터입니다." };
+
+  const { error } = await admin.from("profiles").update({ center_id: centerId }).eq("id", userId);
+  if (error) return { ok: false, error: "센터 변경 중 오류가 발생했습니다." };
+
+  revalidatePath("/admin/teacher-requests");
+  revalidatePath("/teacher", "layout");
+  revalidatePath("/admin/settlements");
+  return { ok: true, centerId };
 }
 
 /* ===== 강사 삭제 ===== */
@@ -351,10 +379,15 @@ export async function adjustBankPayment(paymentId: string, opts: { amount: numbe
   if (!pid) return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { data: pay } = await admin.from("payments").select("payment_id, enrollment_id, method, status, amount, note").eq("payment_id", pid).maybeSingle();
+  const { data: pay } = await admin
+    .from("payments")
+    .select("payment_id, enrollment_id, method, status, amount, note")
+    .eq("payment_id", pid)
+    .maybeSingle();
   if (!pay) return { ok: false, error: "결제 기록을 찾을 수 없습니다." };
   // 무통장만 수정 가능(카드는 PG 금액 authoritative).
-  if (pay.method !== "bank_transfer" && !String(pay.payment_id).startsWith("bank-")) return { ok: false, error: "카드 결제는 금액을 수정할 수 없습니다." };
+  if (pay.method !== "bank_transfer" && !String(pay.payment_id).startsWith("bank-"))
+    return { ok: false, error: "카드 결제는 금액을 수정할 수 없습니다." };
   // 환불/부분환불 건은 정산 정합성 위해 차단.
   if (pay.status !== "paid") return { ok: false, error: "환불된 결제는 수정할 수 없습니다." };
 
@@ -873,7 +906,12 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
   const [ey, em, ed] = effective.split("-").map(Number);
   const sessions = enumerateLessonSessions(new Date(ey, em - 1, ed), weekly, remaining.length);
   if (sessions.length !== remaining.length) return { ok: false, error: "새 일정을 계산할 수 없습니다. 다른 시작일을 선택해 주세요." };
-  const targets = remaining.map((c, i) => ({ id: c.id, date: toDateStr(sessions[i].date), startMin: sessions[i].startMin, endMin: sessions[i].endMin }));
+  const targets = remaining.map((c, i) => ({
+    id: c.id,
+    date: toDateStr(sessions[i].date),
+    startMin: sessions[i].startMin,
+    endMin: sessions[i].endMin,
+  }));
 
   // 충돌 검증 — 새 강사 또는 학생의 '다른' enrollment '예정' 클래스와 타깃 날짜·시간이 겹치면 차단(날짜 이동 시 학생 충돌도 재검증).
   const { data: otherRows } = await admin
@@ -887,7 +925,10 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
   for (const t of targets) {
     const clash = others.find((o) => o.session_date === t.date && t.startMin < o.end_min && o.start_min < t.endMin);
     if (clash) {
-      return { ok: false, error: `${t.date} ${fmtTime(t.startMin)}에 선택한 강사 또는 학생의 다른 예정 수업이 있습니다. 다른 강사·시작일을 선택해 주세요.` };
+      return {
+        ok: false,
+        error: `${t.date} ${fmtTime(t.startMin)}에 선택한 강사 또는 학생의 다른 예정 수업이 있습니다. 다른 강사·시작일을 선택해 주세요.`,
+      };
     }
   }
 
@@ -898,7 +939,14 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
     targets.map((t) =>
       admin
         .from("classes")
-        .update({ teacher_id: teacherId, teacher_name: newName, session_date: t.date, start_min: t.startMin, end_min: t.endMin, teacher_reassigned_at: reassignedAt })
+        .update({
+          teacher_id: teacherId,
+          teacher_name: newName,
+          session_date: t.date,
+          start_min: t.startMin,
+          end_min: t.endMin,
+          teacher_reassigned_at: reassignedAt,
+        })
         .eq("id", t.id)
         .eq("status", "예정")
         .select("id"),

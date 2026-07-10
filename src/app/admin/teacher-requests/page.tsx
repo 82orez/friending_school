@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/utils/supabase/admin";
-import TeacherRequestsManager, { type TeacherApplication, type CurrentTeacher, type TeacherClassItem } from "@/components/admin/TeacherRequestsManager";
+import TeacherRequestsManager, {
+  type TeacherApplication,
+  type CurrentTeacher,
+  type TeacherClassItem,
+} from "@/components/admin/TeacherRequestsManager";
 import { deriveBookedSlots, lessonEndMin, type BookedSlot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
@@ -12,9 +16,10 @@ export default async function AdminTeacherRequestsPage() {
   const { data: usersData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   const emailById = new Map((usersData?.users ?? []).map((u) => [u.id, u.email ?? "(이메일 없음)"]));
 
-  // 센터 id→이름 매핑(신청서·프로필의 center_id 표시용).
-  const { data: centersData } = await admin.from("centers").select("id, name");
-  const centerNameById = new Map(((centersData ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]));
+  // 센터 id→이름 매핑(신청서·프로필의 center_id 표시용) + 강사 센터 변경 셀렉트용 목록.
+  const { data: centersData } = await admin.from("centers").select("id, name").order("sort_order", { ascending: true });
+  const centers = (centersData ?? []) as { id: string; name: string }[];
+  const centerNameById = new Map(centers.map((c) => [c.id, c.name]));
 
   const { data: appsData } = await admin
     .from("teacher_applications")
@@ -141,6 +146,7 @@ export default async function AdminTeacherRequestsPage() {
     phone: p.phone,
     nationality: p.nationality,
     gender: p.gender,
+    centerId: p.center_id,
     centerName: p.center_id ? (centerNameById.get(p.center_id) ?? null) : null,
     bio: p.bio,
     experience: p.experience,
@@ -151,5 +157,5 @@ export default async function AdminTeacherRequestsPage() {
     classes: classesByTeacher.get(p.id) ?? [],
   }));
 
-  return <TeacherRequestsManager applications={applications} currentTeachers={currentTeachers} />;
+  return <TeacherRequestsManager applications={applications} currentTeachers={currentTeachers} centers={centers} />;
 }

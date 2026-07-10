@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
-import { X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import { toast } from "sonner";
 import AvailabilityGrid from "@/components/teacher/AvailabilityGrid";
+import { updateTeacherCenter } from "@/app/admin/actions";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
+import { cn } from "@/lib/utils";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 
 // 아바타 미설정 시 폴백 이니셜(이름 우선, 없으면 이메일 앞글자).
@@ -17,8 +20,25 @@ function initials(name: string, email: string): string {
   return source.slice(0, 2).toUpperCase();
 }
 
-export default function TeacherInfoModal({ teacher, onClose }: { teacher: CurrentTeacher | null; onClose: () => void }) {
+export default function TeacherInfoModal({
+  teacher,
+  centers,
+  onCenterUpdated,
+  onClose,
+}: {
+  teacher: CurrentTeacher | null;
+  centers: { id: string; name: string }[];
+  onCenterUpdated: (teacherId: string, centerId: string | null, centerName: string | null) => void;
+  onClose: () => void;
+}) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  // 센터 셀렉트 로컬 상태("none"=소속 없음). 다른 강사 모달 열릴 때 재동기화.
+  const [centerSel, setCenterSel] = useState<string>(teacher?.centerId ?? "none");
+  const [saving, startSave] = useTransition();
+
+  useEffect(() => {
+    setCenterSel(teacher?.centerId ?? "none");
+  }, [teacher?.id, teacher?.centerId]);
 
   // 열림 시: Esc 닫기 + body scroll lock + 닫기 버튼 포커스.
   useEffect(() => {
@@ -37,6 +57,24 @@ export default function TeacherInfoModal({ teacher, onClose }: { teacher: Curren
   }, [teacher, onClose]);
 
   if (!teacher) return null;
+
+  const currentSel = teacher.centerId ?? "none";
+  const centerDirty = centerSel !== currentSel;
+
+  const saveCenter = () => {
+    const t = teacher;
+    startSave(async () => {
+      const res = await updateTeacherCenter(t.id, centerSel);
+      if (res.ok) {
+        const centerId = res.centerId ?? null;
+        const centerName = centerId ? (centers.find((c) => c.id === centerId)?.name ?? null) : null;
+        onCenterUpdated(t.id, centerId, centerName);
+        toast.success("센터를 변경했습니다.");
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
+    });
+  };
 
   const title = teacher.name || teacher.email;
 
@@ -96,7 +134,49 @@ export default function TeacherInfoModal({ teacher, onClose }: { teacher: Curren
                 ["전화", teacher.phone ?? "-"],
                 ["국적", nationalityLabel(teacher.nationality)],
                 ["성별", genderLabelKo(teacher.gender)],
-                ["센터", teacher.centerName ?? "None"],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label} className="flex gap-2">
+                <dt className="text-muted-fg-faint w-28 shrink-0">{label}</dt>
+                <dd className="text-ink break-words whitespace-pre-wrap">{value}</dd>
+              </div>
+            ))}
+
+            {/* 센터 — 편집 가능 */}
+            <div className="flex items-center gap-2">
+              <dt className="text-muted-fg-faint w-28 shrink-0">센터</dt>
+              <dd className="flex flex-1 items-center gap-2">
+                <select
+                  value={centerSel}
+                  onChange={(e) => setCenterSel(e.target.value)}
+                  disabled={saving}
+                  className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
+                >
+                  <option value="none">None</option>
+                  {centers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {centerDirty && (
+                  <button
+                    type="button"
+                    onClick={saveCenter}
+                    disabled={saving}
+                    className={cn(
+                      "bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60",
+                    )}
+                  >
+                    {saving && <Loader2 className="size-4 animate-spin" />}
+                    {saving ? "저장 중" : "저장"}
+                  </button>
+                )}
+              </dd>
+            </div>
+
+            {(
+              [
                 ["자기소개(Bio)", teacher.bio ?? "-"],
                 ["경력", teacher.experience ?? "-"],
                 ["Zoom URL", teacher.zoomUrl ?? "-"],

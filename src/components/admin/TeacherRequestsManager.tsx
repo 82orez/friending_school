@@ -31,6 +31,7 @@ export type TeacherApplication = {
   phone: string | null;
   nationality: string | null;
   gender: string | null;
+  center_id: string | null;
   center_name: string | null;
   email: string;
   bio: string;
@@ -65,6 +66,7 @@ export type CurrentTeacher = {
   phone: string | null;
   nationality: string | null;
   gender: string | null;
+  centerId: string | null;
   centerName: string | null;
   bio: string | null;
   experience: string | null;
@@ -104,9 +106,11 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string 
 export default function TeacherRequestsManager({
   applications,
   currentTeachers,
+  centers,
 }: {
   applications: TeacherApplication[];
   currentTeachers: CurrentTeacher[];
+  centers: { id: string; name: string }[];
 }) {
   const [rows, setRows] = useState(applications);
   const [teachers, setTeachers] = useState(currentTeachers);
@@ -115,6 +119,11 @@ export default function TeacherRequestsManager({
   const [openId, setOpenId] = useState<string | null>(null);
   const [infoTarget, setInfoTarget] = useState<CurrentTeacher | null>(null);
   const closeInfo = useCallback(() => setInfoTarget(null), []);
+  // 강사 센터 변경 낙관적 반영(테이블 + 열린 모달 동기화).
+  const onCenterUpdated = useCallback((teacherId: string, centerId: string | null, centerName: string | null) => {
+    setTeachers((prev) => prev.map((t) => (t.id === teacherId ? { ...t, centerId, centerName } : t)));
+    setInfoTarget((prev) => (prev && prev.id === teacherId ? { ...prev, centerId, centerName } : prev));
+  }, []);
   const [classesTarget, setClassesTarget] = useState<CurrentTeacher | null>(null);
   const closeClasses = useCallback(() => setClassesTarget(null), []);
   const [deleteTarget, setDeleteTarget] = useState<CurrentTeacher | null>(null);
@@ -232,7 +241,7 @@ export default function TeacherRequestsManager({
       )}
 
       {/* 강사 정보 보기 */}
-      <TeacherInfoModal teacher={infoTarget} onClose={closeInfo} />
+      <TeacherInfoModal teacher={infoTarget} centers={centers} onCenterUpdated={onCenterUpdated} onClose={closeInfo} />
 
       {/* 진행 중인 수업 목록 */}
       <TeacherClassesModal teacher={classesTarget} onClose={closeClasses} />
@@ -297,6 +306,7 @@ function ApplicationRow({
           phone: row.phone,
           nationality: row.nationality,
           gender: row.gender,
+          centerId: row.center_id,
           centerName: row.center_name,
           bio: row.bio,
           experience: row.experience,
