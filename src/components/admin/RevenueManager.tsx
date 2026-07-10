@@ -99,7 +99,7 @@ function toKrw(amount: number, currency: string, rates: Rates): number {
 }
 
 type Group = { key: string; label: string; count: number; grossKrw: number; refundKrw: number; netKrw: number };
-type TrendBucket = { key: string; net: number; tooltip: string; xLabel: string; highlight?: boolean };
+type TrendBucket = { key: string; net: number; tooltip: string; xLabel: string; highlight?: boolean; dow?: number };
 
 function aggregate(rows: RevenueRow[], keyOf: (r: RevenueRow) => { key: string; label: string }, rates: Rates): Group[] {
   const map = new Map<string, Group>();
@@ -160,7 +160,14 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
       const days: TrendBucket[] = [];
       for (let d = start; d <= end; d = addDaysStr(d, 1)) {
         const net = byDate.get(d) ?? 0;
-        days.push({ key: d, net, tooltip: `${d} (${DOW_KO[weekdayOf(d)]}) · ${formatPrice(net, "KRW")}`, xLabel: `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` });
+        const dow = weekdayOf(d);
+        days.push({
+          key: d,
+          net,
+          tooltip: `${d} (${DOW_KO[dow]}) · ${formatPrice(net, "KRW")}`,
+          xLabel: `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}일(${DOW_KO[dow]})`,
+          dow,
+        });
       }
       return days;
     }
@@ -516,7 +523,10 @@ function RevenueTrendChart({ data, title }: { data: TrendBucket[]; title: string
       {/* x축 라벨 */}
       <div className="mt-1.5 flex justify-center gap-[2px]">
         {data.map((d, i) => (
-          <div key={d.key} className={cn("text-muted-fg-faint text-center text-[10px]", colClass)}>
+          <div
+            key={d.key}
+            className={cn("text-center text-[10px]", colClass, d.dow === 0 ? "text-brand" : d.dow === 6 ? "text-accent-blue-ink" : "text-muted-fg-faint")}
+          >
             {i % showLabelEvery === 0 ? d.xLabel : ""}
           </div>
         ))}
