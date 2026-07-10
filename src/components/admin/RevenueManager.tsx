@@ -4,6 +4,16 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, ExternalLink, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // 서버 page가 payments+enrollment 스냅샷을 결제 1건씩 전달(failed·테스트 결제는 이미 제외).
 export type RevenueRow = {
@@ -128,6 +138,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
   const [txQuery, setTxQuery] = useState("");
   const [txStatus, setTxStatus] = useState<StatusFilter>("전체");
   const [includeTest, setIncludeTest] = useState(false);
+  const [csvConfirmOpen, setCsvConfirmOpen] = useState(false);
 
   const hasTest = useMemo(() => rows.some((r) => r.isTest), [rows]);
   const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
@@ -382,7 +393,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
         <h2 className="text-ink text-lg font-bold">결제 내역</h2>
         <button
           type="button"
-          onClick={exportCsv}
+          onClick={() => setCsvConfirmOpen(true)}
           disabled={txRows.length === 0}
           className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex items-center gap-1.5 rounded-md border bg-white px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50"
         >
@@ -464,6 +475,29 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
           </tbody>
         </table>
       </div>
+
+      <AlertDialog open={csvConfirmOpen} onOpenChange={setCsvConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>결제 내역을 CSV로 내보낼까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              현재 기간·필터 기준 <span className="text-ink font-semibold">{txRows.length}건</span>의 결제 내역이 CSV 파일로 다운로드됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                exportCsv();
+                setCsvConfirmOpen(false);
+              }}
+              className="bg-cta hover:bg-cta/90 border-transparent text-white"
+            >
+              내보내기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
