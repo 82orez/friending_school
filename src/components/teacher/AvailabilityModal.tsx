@@ -114,6 +114,7 @@ export default function AvailabilityModal({ initialSlots, bookedSlots }: { initi
         </div>
         <div className="overflow-auto px-6 py-5">
           <p className="text-muted-fg text-sm">Mark the 30-minute time slots when you&apos;re available to teach.</p>
+          <p className="text-muted-fg-faint mt-1 text-xs">⏰ All times are shown in Korea Standard Time (KST · GMT+9).</p>
           <div className="mt-4">{open && <AvailabilityGrid initialSlots={initialSlots} bookedSlots={bookedSlots} onDirtyChange={setDirty} />}</div>
         </div>
       </div>
