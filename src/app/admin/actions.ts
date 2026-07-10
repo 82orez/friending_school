@@ -342,6 +342,50 @@ export async function confirmPayment(id: string, opts?: { amount?: number; note?
   return finalizeEnrollmentPayment(enrollmentId, { id: adminId, role: "admin" }, { amount, note });
 }
 
+// 무통장 결제 실입금액·메모 사후 재조정(확정 후 정정) — 매출(payments.amount/note)에 직접 반영.
+// 카드(PG authoritative)·환불된 결제는 거부. 재조정 이력은 감사 로그(payment_adjusted)로 남긴다.
+export async function adjustBankPayment(paymentId: string, opts: { amount: number; note?: string }): Promise<ActionResult> {
+  const adminId = await requireAdmin();
+  if (!adminId) return { ok: false, error: "권한이 없습니다." };
+  const pid = String(paymentId ?? "").trim();
+  if (!pid) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: pay } = await admin.from("payments").select("payment_id, enrollment_id, method, status, amount, note").eq("payment_id", pid).maybeSingle();
+  if (!pay) return { ok: false, error: "결제 기록을 찾을 수 없습니다." };
+  // 무통장만 수정 가능(카드는 PG 금액 authoritative).
+  if (pay.method !== "bank_transfer" && !String(pay.payment_id).startsWith("bank-")) return { ok: false, error: "카드 결제는 금액을 수정할 수 없습니다." };
+  // 환불/부분환불 건은 정산 정합성 위해 차단.
+  if (pay.status !== "paid") return { ok: false, error: "환불된 결제는 수정할 수 없습니다." };
+
+  const amount = Math.floor(Number(opts.amount));
+  if (!Number.isFinite(amount) || amount < 1 || amount > COURSE_PRICE_KRW) return { ok: false, error: "입금액이 올바르지 않습니다." };
+  const note = (opts.note ?? "").trim().slice(0, 500) || null;
+
+  const { error } = await admin.from("payments").update({ amount, note }).eq("payment_id", pid);
+  if (error) return { ok: false, error: "결제 수정 중 오류가 발생했습니다." };
+
+  // 감사 로그(before/after). enrollment 스냅샷 조회는 best-effort.
+  const { data: enr } = pay.enrollment_id
+    ? await admin.from("enrollments").select("course, course_title, student_name, teacher_name").eq("id", pay.enrollment_id).maybeSingle()
+    : { data: null };
+  await logEnrollmentEvent(admin, {
+    enrollmentId: pay.enrollment_id,
+    eventType: "payment_adjusted",
+    actorId: adminId,
+    actorRole: "admin",
+    course: enr?.course,
+    courseTitle: enr?.course_title,
+    studentName: enr?.student_name,
+    teacherName: enr?.teacher_name,
+    detail: { oldAmount: pay.amount, newAmount: amount, oldNote: pay.note ?? null, newNote: note },
+  });
+
+  revalidatePath("/admin/enrollments");
+  revalidatePath("/admin/revenue");
+  return { ok: true }; // 클라는 전송한 amount/note로 낙관 갱신
+}
+
 // 환불(전액/부분) — 결제완료 enrollment의 카드 결제를 PortOne 취소 후 DB 동기화(수강 취소 + 미래 수업 취소).
 export async function refundPayment(enrollmentId: string, opts: { reason: string; amount?: number }): Promise<ActionResult> {
   const adminId = await requireAdmin();

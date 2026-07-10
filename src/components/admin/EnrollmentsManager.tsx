@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Loader2, Search, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { adminCancelEnrollment, confirmPayment, deleteTestEnrollment, refundPayment } from "@/app/admin/actions";
+import { adjustBankPayment, adminCancelEnrollment, confirmPayment, deleteTestEnrollment, refundPayment } from "@/app/admin/actions";
 import { overlappingIds, summarizeSlots, type Slot } from "@/lib/availability";
 import { COURSE_PRICE_KRW } from "@/data/pricing";
 import { formatPrice } from "@/data/currencies";
@@ -300,6 +300,9 @@ function EnrollmentDetailModal({
   const [refundAmountStr, setRefundAmountStr] = useState("");
   const [payAmountStr, setPayAmountStr] = useState(String(COURSE_PRICE_KRW)); // 무통장 실입금액(기본=정가)
   const [payNote, setPayNote] = useState(""); // 무통장 결제 메모(할인 사유 등)
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [adjustAmountStr, setAdjustAmountStr] = useState("");
+  const [adjustNote, setAdjustNote] = useState("");
   const [pending, startTransition] = useTransition();
   const cancellable = row.status === "신청" || row.status === "승인" || row.status === "결제대기";
   const payable = row.status === "결제대기"; // 입금 확인 → 결제완료
@@ -307,10 +310,11 @@ function EnrollmentDetailModal({
   const refundable = row.status === "결제완료" && pay?.status === "paid"; // 결제 환불 가능(카드/무통장)
   const paidRemaining = pay ? (pay.amount ?? 0) - (pay.cancelledAmount ?? 0) : 0;
   const isBankPay = pay?.method === "bank_transfer" || pay?.paymentId?.startsWith("bank-"); // 무통장=PG 취소 불가, 계좌 수동 송금
+  const adjustable = !!isBankPay && pay?.status === "paid"; // 무통장·미환불 결제만 실입금액·메모 재조정 가능
 
   // Esc 닫기(확인창 열림 시 무시) + body scroll lock + 닫기 버튼 포커스.
   const confirmingRef = useRef(false);
-  confirmingRef.current = confirmOpen || payConfirmOpen || deleteOpen || refundOpen;
+  confirmingRef.current = confirmOpen || payConfirmOpen || deleteOpen || refundOpen || adjustOpen;
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !confirmingRef.current) onClose();
@@ -364,6 +368,34 @@ function EnrollmentDetailModal({
         onClose();
       } else {
         toast.error(res.error ?? "결제 확인 중 문제가 발생했어요.");
+      }
+    });
+  };
+
+  const openAdjust = () => {
+    if (!pay) return;
+    setAdjustAmountStr(String(pay.amount ?? ""));
+    setAdjustNote(pay.note ?? "");
+    setAdjustOpen(true);
+  };
+
+  const saveAdjust = () => {
+    if (!pay) return;
+    const amount = Math.floor(Number(adjustAmountStr));
+    if (!Number.isFinite(amount) || amount < 1 || amount > COURSE_PRICE_KRW) {
+      toast.error(`입금액은 1 ~ ${COURSE_PRICE_KRW.toLocaleString()}원 사이여야 합니다.`);
+      return;
+    }
+    setAdjustOpen(false);
+    const note = adjustNote.trim();
+    startTransition(async () => {
+      const res = await adjustBankPayment(pay.paymentId, { amount, note });
+      if (res.ok) {
+        onUpdated({ ...row, payment: { ...pay, amount, note: note || null } });
+        toast.success("결제 정보를 수정했어요.");
+        router.refresh(); // 매출 대시보드 반영
+      } else {
+        toast.error(res.error ?? "결제 수정 중 문제가 발생했어요.");
       }
     });
   };
@@ -493,6 +525,18 @@ function EnrollmentDetailModal({
               </div>
             )}
           </dl>
+
+          {adjustable && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={openAdjust}
+                className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex items-center gap-1.5 rounded-md border bg-white px-3 py-1.5 text-xs font-medium transition-colors"
+              >
+                실입금액·메모 수정
+              </button>
+            </div>
+          )}
 
           {cancellable ? (
             <div className="mt-5">
@@ -719,6 +763,56 @@ function EnrollmentDetailModal({
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction onClick={confirmPay} className="border-transparent bg-[#1E7E34] text-white hover:bg-[#1A6E2E]">
               결제 확인
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={adjustOpen} onOpenChange={setAdjustOpen}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>실입금액·메모를 수정할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              무통장 입금 결제의 실입금액과 메모를 정정합니다. 변경 즉시 매출에 반영됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3">
+            {row.priceLabel && <p className="text-muted-fg text-sm">정상 수강료: <span className="text-ink font-semibold">{row.priceLabel}</span></p>}
+            <div>
+              <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">실입금액</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  value={adjustAmountStr}
+                  onChange={(e) => setAdjustAmountStr(e.target.value)}
+                  min={1}
+                  max={COURSE_PRICE_KRW}
+                  className="border-rule-faint focus:border-accent-blue w-40 rounded-md border bg-white px-3 py-2 text-sm outline-none"
+                />
+                <span className="text-muted-fg-faint text-sm">원</span>
+              </div>
+              {Number(adjustAmountStr) > 0 && Number(adjustAmountStr) < COURSE_PRICE_KRW && (
+                <p className="text-[#B45309] mt-1 text-xs font-semibold">
+                  할인 적용: 정가보다 {(COURSE_PRICE_KRW - Math.floor(Number(adjustAmountStr))).toLocaleString()}원 낮게 매출에 기록됩니다.
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">결제 메모 (선택)</label>
+              <textarea
+                value={adjustNote}
+                onChange={(e) => setAdjustNote(e.target.value)}
+                rows={2}
+                maxLength={500}
+                placeholder="예: 얼리버드 할인 5만원"
+                className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction onClick={saveAdjust} className="bg-cta hover:bg-cta/90 border-transparent text-white">
+              저장
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

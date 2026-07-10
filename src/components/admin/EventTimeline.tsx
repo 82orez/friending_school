@@ -21,6 +21,7 @@ const EVENT_META: Record<string, { label: string; cls: string }> = {
   enrollment_approved: { label: "강사 승인", cls: "bg-emerald-100 text-emerald-700" },
   enrollment_rejected: { label: "강사 거절", cls: "bg-brand/10 text-brand" },
   payment_confirmed: { label: "결제 확인", cls: "bg-cta/10 text-cta" },
+  payment_adjusted: { label: "결제 금액 조정", cls: "bg-cta/10 text-cta" },
   payment_refunded: { label: "환불", cls: "bg-brand/10 text-brand" },
   enrollment_cancelled: { label: "수강신청 취소", cls: "bg-brand/10 text-brand" },
   class_postponed: { label: "수업 연기", cls: "bg-amber-100 text-amber-700" },
@@ -69,6 +70,14 @@ function summarize(e: AdminEvent): string {
       return str(d.reason) ? `사유: ${str(d.reason)}` : "";
     case "payment_confirmed":
       return `${num(d.sessionsGenerated) ?? "-"}회 클래스 생성`;
+    case "payment_adjusted": {
+      const oldA = num(d.oldAmount);
+      const newA = num(d.newAmount);
+      const parts: string[] = [];
+      if (oldA !== null && newA !== null) parts.push(`₩${oldA.toLocaleString()} → ₩${newA.toLocaleString()}`);
+      if ((str(d.oldNote) ?? "") !== (str(d.newNote) ?? "")) parts.push("메모 변경");
+      return parts.join(" · ");
+    }
     case "payment_refunded": {
       const amt = num(d.refundAmount);
       const parts = [];
