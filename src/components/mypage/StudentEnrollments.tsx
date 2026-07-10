@@ -86,10 +86,10 @@ function formatDateTime(iso: string): string {
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-// 결제 수단 라벨(무통장=receiptUrl 없음).
+// 결제 수단 라벨(무통장=receiptUrl 없음). PortOne V2는 카드를 "PaymentMethodCard"로 저장하므로 Card 포함 문자열도 카드로 인식.
 function payMethodLabel(method: string | null): string {
   if (method === "bank_transfer") return "무통장 입금";
-  if (method === "card") return "카드";
+  if (method && method.toLowerCase().includes("card")) return "카드";
   return method ?? "카드";
 }
 

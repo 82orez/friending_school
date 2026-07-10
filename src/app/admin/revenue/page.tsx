@@ -89,8 +89,8 @@ export default async function AdminRevenuePage() {
         isTest: enr?.is_test ?? false,
       };
     })
-    // 실현 매출만: failed 제외 + admin 테스트 수강신청 결제 제외.
-    .filter((r) => r.status !== "failed" && !r.isTest);
+    // 실현 매출만: failed 제외. 테스트(is_test) 건은 행에 플래그로 남기고 클라 토글로 포함/제외.
+    .filter((r) => r.status !== "failed");
 
   return <RevenueManager rows={rows} rates={rates} />;
 }

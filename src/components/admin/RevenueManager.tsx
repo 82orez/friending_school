@@ -49,8 +49,8 @@ const shiftMonth = (d: string, delta: number): string => {
 };
 const DOW_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
-type Period = "일간" | "주간" | "월간";
-const PERIODS: Period[] = ["일간", "주간", "월간"];
+type Period = "일간" | "주간" | "월간" | "년간";
+const PERIODS: Period[] = ["일간", "주간", "월간", "년간"];
 type Grouping = "과정별" | "결제수단별" | "학생별";
 const GROUPINGS: Grouping[] = ["과정별", "결제수단별", "학생별"];
 type SortKey = "name" | "count" | "amount";
@@ -63,6 +63,7 @@ function interval(anchor: string, period: Period): { start: string; end: string 
     const s = mondayOf(anchor);
     return { start: s, end: addDaysStr(s, 6) };
   }
+  if (period === "년간") return { start: `${anchor.slice(0, 4)}-01-01`, end: `${anchor.slice(0, 4)}-12-31` };
   return { start: monthStart(anchor), end: monthEnd(anchor) };
 }
 function periodLabel(anchor: string, period: Period): string {
@@ -71,20 +72,27 @@ function periodLabel(anchor: string, period: Period): string {
     const { start, end } = interval(anchor, "주간");
     return `${start} ~ ${end}`;
   }
+  if (period === "년간") return `${anchor.slice(0, 4)}년`;
   const [y, m] = anchor.split("-");
   return `${y}년 ${Number(m)}월`;
 }
 function shiftAnchor(anchor: string, period: Period, delta: number): string {
   if (period === "일간") return addDaysStr(anchor, delta);
   if (period === "주간") return addDaysStr(anchor, delta * 7);
+  if (period === "년간") return shiftMonth(anchor, delta * 12);
   return shiftMonth(anchor, delta);
 }
 
-// 결제 수단 라벨(EnrollmentsManager와 동일).
+// 결제 수단 라벨. PortOne V2는 카드를 method.type="PaymentMethodCard"로 저장하므로 "card"뿐 아니라 Card 포함 문자열도 카드로 인식.
 function payMethodLabel(method: string | null): string {
+  if (!method) return "기타";
   if (method === "bank_transfer") return "무통장 입금";
-  if (method === "card") return "카드";
-  return method ?? "기타";
+  const m = method.toLowerCase();
+  if (m.includes("card")) return "카드";
+  if (m.includes("transfer") || m.includes("bank")) return "계좌이체";
+  if (m.includes("virtualaccount")) return "가상계좌";
+  if (m.includes("easypay")) return "간편결제";
+  return method;
 }
 
 // 금액 → 원화 환산(KRW면 그대로, 외화면 환율 적용; 환율 미설정 외화는 0으로 보수 처리).
@@ -94,6 +102,7 @@ function toKrw(amount: number, currency: string, rates: Rates): number {
 }
 
 type Group = { key: string; label: string; count: number; grossKrw: number; refundKrw: number; netKrw: number };
+type TrendBucket = { key: string; net: number; tooltip: string; xLabel: string };
 
 function aggregate(rows: RevenueRow[], keyOf: (r: RevenueRow) => { key: string; label: string }, rates: Rates): Group[] {
   const map = new Map<string, Group>();
@@ -121,11 +130,15 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const [txQuery, setTxQuery] = useState("");
   const [txStatus, setTxStatus] = useState<StatusFilter>("전체");
+  const [includeTest, setIncludeTest] = useState(false);
 
+  const hasTest = useMemo(() => rows.some((r) => r.isTest), [rows]);
   const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const { start, end } = useMemo(() => interval(anchor, period), [anchor, period]);
-  const inRangeRows = useMemo(() => rows.filter((r) => r.kstDate >= start && r.kstDate <= end), [rows, start, end]);
+  // 테스트 결제(is_test)는 기본 제외(운영 정확도), 토글 시 포함.
+  const baseRows = useMemo(() => (includeTest ? rows : rows.filter((r) => !r.isTest)), [rows, includeTest]);
+  const inRangeRows = useMemo(() => baseRows.filter((r) => r.kstDate >= start && r.kstDate <= end), [baseRows, start, end]);
 
   // KPI(기간 내).
   const kpi = useMemo(() => {
@@ -141,16 +154,29 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
     return { gross, refund, net: gross - refund, count: inRangeRows.length, refundCount };
   }, [inRangeRows, rates]);
 
-  // 일자별 순매출(추이 차트).
-  const trend = useMemo(() => {
-    const byDate = new Map<string, number>();
-    for (const r of inRangeRows) {
-      byDate.set(r.kstDate, (byDate.get(r.kstDate) ?? 0) + (toKrw(r.amount, r.currency, rates) - toKrw(r.cancelledAmount, r.currency, rates)));
+  // 추이 차트 버킷 — 년간=월별 12개, 그 외=일별.
+  const trend = useMemo<TrendBucket[]>(() => {
+    const netOf = (r: RevenueRow) => toKrw(r.amount, r.currency, rates) - toKrw(r.cancelledAmount, r.currency, rates);
+    if (period === "년간") {
+      const y = anchor.slice(0, 4);
+      const byMonth = new Map<number, number>();
+      for (const r of inRangeRows) byMonth.set(Number(r.kstDate.slice(5, 7)), (byMonth.get(Number(r.kstDate.slice(5, 7))) ?? 0) + netOf(r));
+      return Array.from({ length: 12 }, (_, i) => {
+        const m = i + 1;
+        const net = byMonth.get(m) ?? 0;
+        return { key: `${y}-${m}`, net, tooltip: `${y}년 ${m}월 · ${formatPrice(net, "KRW")}`, xLabel: `${m}월` };
+      });
     }
-    const days: { date: string; net: number }[] = [];
-    for (let d = start; d <= end; d = addDaysStr(d, 1)) days.push({ date: d, net: byDate.get(d) ?? 0 });
+    const byDate = new Map<string, number>();
+    for (const r of inRangeRows) byDate.set(r.kstDate, (byDate.get(r.kstDate) ?? 0) + netOf(r));
+    const days: TrendBucket[] = [];
+    for (let d = start; d <= end; d = addDaysStr(d, 1)) {
+      const net = byDate.get(d) ?? 0;
+      const xLabel = period === "월간" ? String(Number(d.slice(8, 10))) : `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
+      days.push({ key: d, net, tooltip: `${d} (${DOW_KO[weekdayOf(d)]}) · ${formatPrice(net, "KRW")}`, xLabel });
+    }
     return days;
-  }, [inRangeRows, start, end, rates]);
+  }, [inRangeRows, start, end, rates, period, anchor]);
 
   // 분류별 집계.
   const groups = useMemo(() => {
@@ -220,13 +246,21 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
       </p>
 
       {/* 기간 토글 */}
-      <div className="mt-5 flex items-center gap-2">
-        <span className="text-muted-fg-faint text-xs font-semibold">기간</span>
-        <div className="flex gap-1.5">
-          {PERIODS.map((p) => (
-            <ToggleChip key={p} active={period === p} onClick={() => setPeriod(p)} label={p} />
-          ))}
+      <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-fg-faint text-xs font-semibold">기간</span>
+          <div className="flex gap-1.5">
+            {PERIODS.map((p) => (
+              <ToggleChip key={p} active={period === p} onClick={() => setPeriod(p)} label={p} />
+            ))}
+          </div>
         </div>
+        {hasTest && (
+          <label className="text-muted-fg ml-auto inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium">
+            <input type="checkbox" checked={includeTest} onChange={(e) => setIncludeTest(e.target.checked)} className="accent-accent-blue size-3.5" />
+            테스트 결제 포함
+          </label>
+        )}
       </div>
 
       {/* 기간 이동 */}
@@ -267,7 +301,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
       </div>
 
       {/* 추이 차트 */}
-      <RevenueTrendChart data={trend} period={period} />
+      <RevenueTrendChart data={trend} title={period === "년간" ? "월별 순매출" : "일자별 순매출"} />
 
       {/* 분류별 집계 */}
       <div className="mt-6 flex items-center gap-2">
@@ -432,26 +466,25 @@ function KpiCard({ label, value, hint, tone }: { label: string; value: string; h
   );
 }
 
-// 일자별 순매출 세로 막대(단일 시계열 — legend 없이 제목이 계열을 지칭). baseline 앵커·per-bar hover.
-function RevenueTrendChart({ data, period }: { data: { date: string; net: number }[]; period: Period }) {
+// 순매출 세로 막대(단일 시계열 — legend 없이 제목이 계열을 지칭). baseline 앵커·per-bar hover.
+function RevenueTrendChart({ data, title }: { data: TrendBucket[]; title: string }) {
   const max = Math.max(1, ...data.map((d) => d.net));
   const showLabelEvery = data.length > 15 ? 5 : data.length > 7 ? 2 : 1; // x축 라벨 밀도
   return (
     <div className="border-rule mt-4 rounded-xl border bg-white p-5">
-      <p className="text-ink text-sm font-bold">일자별 순매출</p>
+      <p className="text-ink text-sm font-bold">{title}</p>
       <div className="mt-4 flex items-end gap-[2px]" style={{ height: 160 }}>
         {data.map((d) => {
           const h = Math.round((d.net / max) * 140);
-          const dow = weekdayOf(d.date);
           return (
-            <div key={d.date} className="group relative flex flex-1 flex-col items-center justify-end" style={{ minWidth: 4 }}>
+            <div key={d.key} className="group relative flex flex-1 flex-col items-center justify-end" style={{ minWidth: 4 }}>
               <div
                 className={cn("w-full rounded-t-[4px] transition-colors", d.net > 0 ? "bg-accent-blue group-hover:bg-accent-blue-ink" : "bg-rule")}
                 style={{ height: Math.max(d.net > 0 ? 3 : 1, h) }}
               />
               {/* 툴팁 */}
-              <div className="pointer-events-none absolute bottom-full z-10 mb-1 hidden -translate-x-0 rounded-md bg-ink px-2 py-1 text-[11px] whitespace-nowrap text-white group-hover:block">
-                {d.date} ({DOW_KO[dow]}) · {formatPrice(d.net, "KRW")}
+              <div className="pointer-events-none absolute bottom-full z-10 mb-1 hidden rounded-md bg-ink px-2 py-1 text-[11px] whitespace-nowrap text-white group-hover:block">
+                {d.tooltip}
               </div>
             </div>
           );
@@ -460,8 +493,8 @@ function RevenueTrendChart({ data, period }: { data: { date: string; net: number
       {/* x축 라벨 */}
       <div className="mt-1.5 flex gap-[2px]">
         {data.map((d, i) => (
-          <div key={d.date} className="text-muted-fg-faint flex-1 text-center text-[10px]" style={{ minWidth: 4 }}>
-            {i % showLabelEvery === 0 ? (period === "월간" ? Number(d.date.slice(8, 10)) : `${Number(d.date.slice(5, 7))}/${Number(d.date.slice(8, 10))}`) : ""}
+          <div key={d.key} className="text-muted-fg-faint flex-1 text-center text-[10px]" style={{ minWidth: 4 }}>
+            {i % showLabelEvery === 0 ? d.xLabel : ""}
           </div>
         ))}
       </div>
