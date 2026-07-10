@@ -99,7 +99,7 @@ function toKrw(amount: number, currency: string, rates: Rates): number {
 }
 
 type Group = { key: string; label: string; count: number; grossKrw: number; refundKrw: number; netKrw: number };
-type TrendBucket = { key: string; net: number; tooltip: string; xLabel: string };
+type TrendBucket = { key: string; net: number; tooltip: string; xLabel: string; highlight?: boolean };
 
 function aggregate(rows: RevenueRow[], keyOf: (r: RevenueRow) => { key: string; label: string }, rates: Rates): Group[] {
   const map = new Map<string, Group>();
@@ -151,29 +151,31 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
     return { gross, refund, net: gross - refund, count: inRangeRows.length, refundCount };
   }, [inRangeRows, rates]);
 
-  // 추이 차트 버킷 — 년간=월별 12개, 그 외=일별.
+  // 추이 차트 버킷 — 주간=일별(7개), 월간·년간=앵커 연도의 월별 12개(월간은 선택 월 강조).
   const trend = useMemo<TrendBucket[]>(() => {
     const netOf = (r: RevenueRow) => toKrw(r.amount, r.currency, rates) - toKrw(r.cancelledAmount, r.currency, rates);
-    if (period === "년간") {
-      const y = anchor.slice(0, 4);
-      const byMonth = new Map<number, number>();
-      for (const r of inRangeRows) byMonth.set(Number(r.kstDate.slice(5, 7)), (byMonth.get(Number(r.kstDate.slice(5, 7))) ?? 0) + netOf(r));
-      return Array.from({ length: 12 }, (_, i) => {
-        const m = i + 1;
-        const net = byMonth.get(m) ?? 0;
-        return { key: `${y}-${m}`, net, tooltip: `${y}년 ${m}월 · ${formatPrice(net, "KRW")}`, xLabel: `${m}월` };
-      });
+    if (period === "주간") {
+      const byDate = new Map<string, number>();
+      for (const r of inRangeRows) byDate.set(r.kstDate, (byDate.get(r.kstDate) ?? 0) + netOf(r));
+      const days: TrendBucket[] = [];
+      for (let d = start; d <= end; d = addDaysStr(d, 1)) {
+        const net = byDate.get(d) ?? 0;
+        days.push({ key: d, net, tooltip: `${d} (${DOW_KO[weekdayOf(d)]}) · ${formatPrice(net, "KRW")}`, xLabel: `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` });
+      }
+      return days;
     }
-    const byDate = new Map<string, number>();
-    for (const r of inRangeRows) byDate.set(r.kstDate, (byDate.get(r.kstDate) ?? 0) + netOf(r));
-    const days: TrendBucket[] = [];
-    for (let d = start; d <= end; d = addDaysStr(d, 1)) {
-      const net = byDate.get(d) ?? 0;
-      const xLabel = period === "월간" ? String(Number(d.slice(8, 10))) : `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
-      days.push({ key: d, net, tooltip: `${d} (${DOW_KO[weekdayOf(d)]}) · ${formatPrice(net, "KRW")}`, xLabel });
-    }
-    return days;
-  }, [inRangeRows, start, end, rates, period, anchor]);
+    // 월간·년간: 앵커 연도 전체의 월별 순매출(월간은 KPI 기간과 별개로 연간 월별 추이를 보여주고 선택 월 강조).
+    const y = anchor.slice(0, 4);
+    const yearRows = baseRows.filter((r) => r.kstDate.slice(0, 4) === y);
+    const byMonth = new Map<number, number>();
+    for (const r of yearRows) byMonth.set(Number(r.kstDate.slice(5, 7)), (byMonth.get(Number(r.kstDate.slice(5, 7))) ?? 0) + netOf(r));
+    const selMonth = period === "월간" ? Number(anchor.slice(5, 7)) : -1;
+    return Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      const net = byMonth.get(m) ?? 0;
+      return { key: `${y}-${m}`, net, tooltip: `${y}년 ${m}월 · ${formatPrice(net, "KRW")}`, xLabel: `${m}월`, highlight: m === selMonth };
+    });
+  }, [inRangeRows, baseRows, start, end, rates, period, anchor]);
 
   // 분류별 집계.
   const groups = useMemo(() => {
@@ -298,7 +300,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
       </div>
 
       {/* 추이 차트 */}
-      <RevenueTrendChart data={trend} title={period === "년간" ? "월별 순매출" : "일자별 순매출"} />
+      <RevenueTrendChart data={trend} title={period === "주간" ? "일자별 순매출" : "월별 순매출"} />
 
       {/* 분류별 집계 */}
       <div className="mt-6 flex items-center gap-2">
@@ -476,7 +478,10 @@ function RevenueTrendChart({ data, title }: { data: TrendBucket[]; title: string
           return (
             <div key={d.key} className="group relative flex flex-1 flex-col items-center justify-end" style={{ minWidth: 4 }}>
               <div
-                className={cn("w-full rounded-t-[4px] transition-colors", d.net > 0 ? "bg-accent-blue group-hover:bg-accent-blue-ink" : "bg-rule")}
+                className={cn(
+                  "w-full rounded-t-[4px] transition-colors",
+                  d.net > 0 ? (d.highlight ? "bg-accent-blue-ink" : "bg-accent-blue group-hover:bg-accent-blue-ink") : d.highlight ? "bg-accent-blue/40" : "bg-rule",
+                )}
                 style={{ height: Math.max(d.net > 0 ? 3 : 1, h) }}
               />
               {/* 툴팁 */}
