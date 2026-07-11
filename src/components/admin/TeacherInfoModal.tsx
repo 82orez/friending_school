@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
-import { Loader2, X } from "lucide-react";
+import { Loader2, Printer, X } from "lucide-react";
 import { toast } from "sonner";
 import AvailabilityGrid from "@/components/teacher/AvailabilityGrid";
+import { openTimetablePrint } from "@/lib/timetable-print";
 import RateHistoryEditor from "@/components/admin/RateHistoryEditor";
 import { updateTeacherCenter } from "@/app/admin/actions";
 import { nationalityLabel } from "@/data/nationalities";
@@ -210,7 +211,17 @@ export default function TeacherInfoModal({
           </dl>
 
           <div className="mt-5">
-            <p className="text-ink mb-2 text-sm font-bold">주간 가능 시간</p>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-ink text-sm font-bold">주간 가능 시간</p>
+              <button
+                type="button"
+                onClick={() => openTimetablePrint({ teacherName: teacher.name || teacher.email, slots: teacher.slots, bookedSlots: teacher.bookedSlots })}
+                className="border-rule text-muted-fg hover:bg-surface inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
+              >
+                <Printer className="size-4" />
+                PDF로 내보내기
+              </button>
+            </div>
             <AvailabilityGrid initialSlots={teacher.slots} bookedSlots={teacher.bookedSlots} readOnly />
           </div>
         </div>
