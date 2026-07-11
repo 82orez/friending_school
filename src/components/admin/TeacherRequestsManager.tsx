@@ -117,7 +117,7 @@ export default function TeacherRequestsManager({
   const [rows, setRows] = useState(applications);
   const [teachers, setTeachers] = useState(currentTeachers);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | Status>("all");
+  const [filter, setFilter] = useState<"all" | Status>("신청");
   const [openId, setOpenId] = useState<string | null>(null);
   const [infoTarget, setInfoTarget] = useState<CurrentTeacher | null>(null);
   const closeInfo = useCallback(() => setInfoTarget(null), []);
