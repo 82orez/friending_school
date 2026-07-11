@@ -143,8 +143,7 @@ export default function RateHistoryEditor({
                   onClick={() => startEdit(r)}
                   disabled={pending}
                   aria-label="수정"
-                  className="text-muted-fg-faint hover:text-ink shrink-0 rounded p-1 transition-colors disabled:opacity-50"
-                >
+                  className="text-muted-fg-faint hover:text-ink shrink-0 rounded p-1 transition-colors disabled:opacity-50">
                   <Pencil className="size-4" />
                 </button>
                 <button
@@ -152,8 +151,7 @@ export default function RateHistoryEditor({
                   onClick={() => setDeleteId(r.id)}
                   disabled={pending}
                   aria-label="삭제"
-                  className="text-muted-fg-faint hover:text-brand shrink-0 rounded p-1 transition-colors disabled:opacity-50"
-                >
+                  className="text-muted-fg-faint hover:text-brand shrink-0 rounded p-1 transition-colors disabled:opacity-50">
                   <Trash2 className="size-4" />
                 </button>
               </li>
@@ -165,11 +163,11 @@ export default function RateHistoryEditor({
       {/* 추가/수정 폼 */}
       <div className="border-rule flex flex-col gap-2 rounded-md border p-3">
         <p className="text-muted-fg-faint text-xs font-semibold">
-          {scope === "teacher" ? (editingId ? "개별 단가 수정" : "개별 단가 설정") : editingId ? "단가 이력 수정" : "단가 이력 추가"}
+          {scope === "teacher" ? (editingId ? "개별 단가 수정" : "개별 단가 설정") : editingId ? "적용 단가 수정" : "적용 단가 변경"}
         </p>
         <div className="flex flex-wrap items-end gap-2">
           <div>
-            <label className="text-muted-fg-faint mb-1 block text-[11px] font-semibold">적용 시작일</label>
+            <label className="text-muted-fg-faint mb-1 block text-[11px] font-semibold">적용 시점</label>
             <input
               type="date"
               value={date}
@@ -184,8 +182,7 @@ export default function RateHistoryEditor({
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
               disabled={pending || useCenter}
-              className="border-rule-faint focus:border-accent-blue h-9 rounded-md border bg-white px-2 text-sm outline-none disabled:opacity-50"
-            >
+              className="border-rule-faint focus:border-accent-blue h-9 rounded-md border bg-white px-2 text-sm outline-none disabled:opacity-50">
               {CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>
                   {c.symbol} {c.code}
@@ -210,8 +207,7 @@ export default function RateHistoryEditor({
             type="button"
             onClick={submit}
             disabled={pending}
-            className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
+            className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
             {pending ? <Loader2 className="size-4 animate-spin" /> : editingId ? null : <Plus className="size-4" />}
             {editingId ? "저장" : "추가"}
           </button>
@@ -220,8 +216,7 @@ export default function RateHistoryEditor({
               type="button"
               onClick={resetForm}
               disabled={pending}
-              className="border-rule text-muted-fg hover:text-ink inline-flex h-9 shrink-0 items-center gap-1 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60"
-            >
+              className="border-rule text-muted-fg hover:text-ink inline-flex h-9 shrink-0 items-center gap-1 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60">
               <X className="size-4" />
               취소
             </button>

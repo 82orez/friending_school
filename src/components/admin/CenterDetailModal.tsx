@@ -97,7 +97,7 @@ export default function CenterDetailModal({
             />
           </div>
           <div>
-            <label className="text-muted-fg-faint mb-2 block text-xs font-semibold">회당 단가 (적용일 이력)</label>
+            <label className="text-muted-fg-faint mb-2 block text-xs font-semibold">회당 단가 (변경 이력)</label>
             <RateHistoryEditor scope="center" scopeId={center.id} rows={rows} rates={rates} allowRevert={false} />
           </div>
         </div>
