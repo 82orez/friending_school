@@ -163,8 +163,7 @@ export default function TeacherInfoModal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-      >
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-ink truncate text-lg font-bold">{title}</h2>
           <button
@@ -172,8 +171,7 @@ export default function TeacherInfoModal({
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             <X className="size-5" />
           </button>
         </div>
@@ -191,8 +189,7 @@ export default function TeacherInfoModal({
             ) : (
               <div
                 aria-hidden="true"
-                className="border-rule bg-surface text-muted-fg-faint flex size-20 shrink-0 items-center justify-center rounded-2xl border text-2xl font-bold"
-              >
+                className="border-rule bg-surface text-muted-fg-faint flex size-20 shrink-0 items-center justify-center rounded-2xl border text-2xl font-bold">
                 {initials(teacher.name, teacher.email)}
               </div>
             )}
@@ -225,8 +222,7 @@ export default function TeacherInfoModal({
                   value={centerSel}
                   onChange={(e) => setCenterSel(e.target.value)}
                   disabled={saving}
-                  className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
-                >
+                  className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50">
                   <option value="none">None</option>
                   {centers.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -241,8 +237,7 @@ export default function TeacherInfoModal({
                     disabled={saving}
                     className={cn(
                       "bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60",
-                    )}
-                  >
+                    )}>
                     {saving && <Loader2 className="size-4 animate-spin" />}
                     {saving ? "저장 중" : "저장"}
                   </button>
@@ -266,13 +261,10 @@ export default function TeacherInfoModal({
                       rateMode === "center"
                         ? "bg-cta border-cta text-white"
                         : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-                    )}
-                  >
+                    )}>
                     센터 단가
                   </button>
-                  <span className="text-muted-fg-faint text-xs whitespace-nowrap">
-                    현재 적용: <span className="text-ink font-semibold">{centerRateLabel}</span>
-                  </span>
+                  <span className="text-ink text-sm whitespace-nowrap">{centerRateLabel}</span>
                 </div>
 
                 {/* 개별 단가 행 — 버튼 오른쪽에 설정 입력 */}
@@ -287,8 +279,7 @@ export default function TeacherInfoModal({
                       rateMode === "custom"
                         ? "bg-cta border-cta text-white"
                         : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-                    )}
-                  >
+                    )}>
                     개별 단가
                   </button>
 
@@ -299,8 +290,7 @@ export default function TeacherInfoModal({
                         onChange={(e) => setCurrencySel(e.target.value)}
                         disabled={savingRate}
                         aria-label="개별 단가 통화"
-                        className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 shrink-0 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
-                      >
+                        className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 shrink-0 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50">
                         {CURRENCIES.map((c) => (
                           <option key={c.code} value={c.code}>
                             {c.symbol} {c.code}
@@ -323,8 +313,7 @@ export default function TeacherInfoModal({
                           type="button"
                           onClick={() => setConfirmRate(true)}
                           disabled={savingRate}
-                          className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60"
-                        >
+                          className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60">
                           {savingRate && <Loader2 className="size-4 animate-spin" />}
                           {savingRate ? "저장 중" : "저장"}
                         </button>
@@ -333,8 +322,7 @@ export default function TeacherInfoModal({
                         type="button"
                         onClick={requestSelectCenter}
                         disabled={savingRate}
-                        className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue h-9 shrink-0 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60"
-                      >
+                        className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue h-9 shrink-0 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60">
                         초기화
                       </button>
                     </>
@@ -374,8 +362,7 @@ export default function TeacherInfoModal({
           <button
             type="button"
             onClick={onClose}
-            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
-          >
+            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors">
             닫기
           </button>
         </div>
@@ -398,8 +385,7 @@ export default function TeacherInfoModal({
               onClick={() => {
                 setConfirmRate(false);
                 saveRate();
-              }}
-            >
+              }}>
               저장
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -422,8 +408,7 @@ export default function TeacherInfoModal({
               onClick={() => {
                 setConfirmCenter(false);
                 doSelectCenter();
-              }}
-            >
+              }}>
               초기화
             </AlertDialogAction>
           </AlertDialogFooter>
