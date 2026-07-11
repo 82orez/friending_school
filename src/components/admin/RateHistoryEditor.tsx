@@ -24,7 +24,7 @@ function priceLabel(price: number, currency: string | null, rates: Rates): strin
   return formatPrice(price, currency) + (eq != null ? ` ≈ ${formatPrice(eq, "KRW")}` : "");
 }
 
-// 단가 적용일 이력 편집기(센터·강사 개별 단가 공용). rows=이 scope_id의 스케줄(page가 필터해 전달).
+// 단가 변경 이력 편집기(센터·강사 개별 단가 공용). rows=이 scope_id의 스케줄(page가 필터해 전달).
 // allowRevert=강사 개별 단가에서 "센터 단가 사용"(price=null) 허용. fallbackLabel=현재 센터 단가(강사 표시용).
 export default function RateHistoryEditor({
   scope,
@@ -50,7 +50,7 @@ export default function RateHistoryEditor({
   const [useCenter, setUseCenter] = useState(false); // 강사: "센터 단가 사용"(price=null)
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const sorted = [...rows].sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? 1 : -1)); // 적용일 내림차순
+  const sorted = [...rows].sort((a, b) => (a.effectiveFrom < b.effectiveFrom ? 1 : -1)); // 적용 시점 내림차순
   const cur = currentRate(rows, scope, scopeId);
   const currentLabel =
     cur && cur.price != null
@@ -78,7 +78,7 @@ export default function RateHistoryEditor({
   const submit = () => {
     const revert = allowRevert && useCenter;
     if (!date) {
-      toast.error("적용 시작일을 선택하세요.");
+      toast.error("적용 시점을 선택하세요.");
       return;
     }
     if (!revert && !(price.trim() !== "" && Number(price) >= 0)) {
@@ -241,7 +241,7 @@ export default function RateHistoryEditor({
         <AlertDialogContent className="z-[130]">
           <AlertDialogHeader>
             <AlertDialogTitle>단가 이력을 삭제하시겠습니까?</AlertDialogTitle>
-            <AlertDialogDescription>해당 적용일 단가가 삭제되며, 그 이후 정산은 이전 이력·센터 단가로 재계산됩니다.</AlertDialogDescription>
+            <AlertDialogDescription>해당 시점의 단가가 삭제되며, 그 이후 정산은 이전 이력·센터 단가로 재계산됩니다.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
