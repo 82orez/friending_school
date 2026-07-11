@@ -437,6 +437,42 @@ export type Database = {
           },
         ]
       }
+      rate_schedules: {
+        Row: {
+          created_at: string
+          currency: string | null
+          effective_from: string
+          id: string
+          note: string | null
+          price_per_session: number | null
+          scope: string
+          scope_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          effective_from: string
+          id?: string
+          note?: string | null
+          price_per_session?: number | null
+          scope: string
+          scope_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          effective_from?: string
+          id?: string
+          note?: string | null
+          price_per_session?: number | null
+          scope?: string
+          scope_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reading_progress: {
         Row: {
           completed: boolean

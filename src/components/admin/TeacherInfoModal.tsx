@@ -5,21 +5,13 @@ import Image from "next/image";
 import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import AvailabilityGrid from "@/components/teacher/AvailabilityGrid";
-import { updateTeacherCenter, updateTeacherRate } from "@/app/admin/actions";
+import RateHistoryEditor from "@/components/admin/RateHistoryEditor";
+import { updateTeacherCenter } from "@/app/admin/actions";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
-import { CURRENCIES, formatPrice } from "@/data/currencies";
+import { formatPrice, type Rates } from "@/data/currencies";
 import { cn } from "@/lib/utils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import type { RateRow } from "@/lib/rates";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 
 // 아바타 미설정 시 폴백 이니셜(이름 우선, 없으면 이메일 앞글자).
@@ -34,44 +26,33 @@ function initials(name: string, email: string): string {
 export default function TeacherInfoModal({
   teacher,
   centers,
+  rows,
+  rates,
   onCenterUpdated,
-  onCustomRateUpdated,
   onClose,
 }: {
   teacher: CurrentTeacher | null;
   centers: { id: string; name: string; price: number | null; currency: string | null }[];
+  rows: RateRow[]; // 이 강사의 개별 단가 적용일 이력
+  rates: Rates;
   onCenterUpdated: (teacherId: string, centerId: string | null, centerName: string | null) => void;
-  onCustomRateUpdated: (teacherId: string, customPrice: number | null, customCurrency: string | null) => void;
   onClose: () => void;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   // 센터 셀렉트 로컬 상태("none"=소속 없음). 다른 강사 모달 열릴 때 재동기화.
   const [centerSel, setCenterSel] = useState<string>(teacher?.centerId ?? "none");
   const [saving, startSave] = useTransition();
-  // 적용 단가 로컬 상태 — mode(center=센터 단가 기본, custom=개별 단가) + 개별 단가 입력. 다른 강사 모달 열릴 때 재동기화.
-  const [rateMode, setRateMode] = useState<"center" | "custom">(teacher?.customPrice != null ? "custom" : "center");
-  const [priceInput, setPriceInput] = useState<string>(teacher?.customPrice != null ? String(teacher.customPrice) : "");
-  const [currencySel, setCurrencySel] = useState<string>(teacher?.customCurrency ?? "KRW");
-  const [savingRate, startSaveRate] = useTransition();
-  const [confirmRate, setConfirmRate] = useState(false); // 개별 단가 저장 확인 다이얼로그
-  const [confirmCenter, setConfirmCenter] = useState(false); // 센터 단가 초기화 확인 다이얼로그
 
   useEffect(() => {
     setCenterSel(teacher?.centerId ?? "none");
   }, [teacher?.id, teacher?.centerId]);
 
-  useEffect(() => {
-    setRateMode(teacher?.customPrice != null ? "custom" : "center");
-    setPriceInput(teacher?.customPrice != null ? String(teacher.customPrice) : "");
-    setCurrencySel(teacher?.customCurrency ?? "KRW");
-  }, [teacher?.id, teacher?.customPrice, teacher?.customCurrency]);
-
   // 열림 시: Esc 닫기 + body scroll lock + 닫기 버튼 포커스.
-  // 확인 다이얼로그가 열려 있으면 Esc는 그 다이얼로그만 닫도록 모달 닫기를 건너뜀.
+  // 중첩 확인 다이얼로그(role=alertdialog)가 열려 있으면 Esc는 그 다이얼로그만 닫도록 모달 닫기를 건너뜀.
   useEffect(() => {
     if (!teacher) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !confirmRate && !confirmCenter) onClose();
+      if (e.key === "Escape" && !document.querySelector('[role="alertdialog"]')) onClose();
     };
     document.addEventListener("keydown", onKeyDown);
     const prevOverflow = document.body.style.overflow;
@@ -81,7 +62,7 @@ export default function TeacherInfoModal({
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = prevOverflow;
     };
-  }, [teacher, onClose, confirmRate, confirmCenter]);
+  }, [teacher, onClose]);
 
   if (!teacher) return null;
 
@@ -103,53 +84,9 @@ export default function TeacherInfoModal({
     });
   };
 
-  const initPrice = teacher.customPrice != null ? String(teacher.customPrice) : "";
-  const initCurrency = teacher.customCurrency ?? "KRW";
-  const rateDirty = priceInput.trim() !== initPrice || (priceInput.trim() !== "" && currencySel !== initCurrency);
-
-  // 선택된 센터의 회당 단가(적용 단가 참조용). 센터 미지정/단가 미설정이면 "미설정".
+  // 선택된 센터의 회당 단가(개별 단가 이력의 "센터 단가" 폴백 표시용). 미지정/미설정이면 "미설정".
   const selectedCenter = centers.find((c) => c.id === centerSel);
   const centerRateLabel = selectedCenter && selectedCenter.price != null ? formatPrice(selectedCenter.price, selectedCenter.currency) : "미설정";
-
-  // 센터 단가 적용 요청(= "센터 단가" 토글 · "초기화" 공용): 저장된 개별 단가가 있으면 확인 다이얼로그,
-  // 없으면(이미 센터 단가) 서버 호출 없이 모드만 전환.
-  const requestSelectCenter = () => {
-    if (teacher.customPrice == null) {
-      setRateMode("center");
-      return;
-    }
-    setConfirmCenter(true);
-  };
-
-  // 확인 후 실제 개별 단가 해제 → 센터 단가로 복귀.
-  const doSelectCenter = () => {
-    setRateMode("center");
-    const t = teacher;
-    startSaveRate(async () => {
-      const res = await updateTeacherRate(t.id, "", currencySel);
-      if (res.ok) {
-        onCustomRateUpdated(t.id, null, null);
-        toast.success("센터 단가를 적용했습니다.");
-      } else {
-        toast.error(res.error ?? "오류가 발생했습니다.");
-      }
-    });
-  };
-
-  // 개별 단가 저장(금액 입력 후 "저장").
-  const saveRate = () => {
-    const t = teacher;
-    startSaveRate(async () => {
-      const res = await updateTeacherRate(t.id, priceInput, currencySel);
-      if (res.ok) {
-        onCustomRateUpdated(t.id, res.price ?? null, res.currency ?? null);
-        toast.success(res.price == null ? "센터 단가를 적용했습니다." : "개별 단가를 설정했습니다.");
-        if (res.price == null) setRateMode("center");
-      } else {
-        toast.error(res.error ?? "오류가 발생했습니다.");
-      }
-    });
-  };
 
   const title = teacher.name || teacher.email;
 
@@ -250,103 +187,11 @@ export default function TeacherInfoModal({
               </dd>
             </div>
 
-            {/* 적용 단가 — 센터 단가(기본) / 개별 단가 토글 */}
+            {/* 적용 단가 — 개별 단가 적용일 이력(없으면 센터 단가) */}
             <div className="flex items-start gap-2">
               <dt className="text-muted-fg-faint w-28 shrink-0 pt-1.5">적용 단가</dt>
-              <dd className="min-w-0 flex-1 space-y-2">
-                {/* 센터 단가 행 */}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={requestSelectCenter}
-                    disabled={savingRate}
-                    aria-pressed={rateMode === "center"}
-                    className={cn(
-                      "h-9 w-24 shrink-0 rounded-md border text-sm font-semibold transition-colors disabled:opacity-60",
-                      rateMode === "center"
-                        ? "bg-cta border-cta text-white"
-                        : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-                    )}
-                  >
-                    센터 단가
-                  </button>
-                  <span className={cn("text-sm whitespace-nowrap", rateMode === "custom" ? "text-muted-fg-faint" : "text-ink")}>
-                    {centerRateLabel}
-                  </span>
-                </div>
-
-                {/* 개별 단가 행 — 버튼 오른쪽에 설정 입력 */}
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRateMode("custom")}
-                    disabled={savingRate}
-                    aria-pressed={rateMode === "custom"}
-                    className={cn(
-                      "h-9 w-24 shrink-0 rounded-md border text-sm font-semibold transition-colors disabled:opacity-60",
-                      rateMode === "custom"
-                        ? "bg-cta border-cta text-white"
-                        : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-                    )}
-                  >
-                    개별 단가
-                  </button>
-
-                  {rateMode === "custom" && (
-                    <>
-                      <select
-                        value={currencySel}
-                        onChange={(e) => setCurrencySel(e.target.value)}
-                        disabled={savingRate}
-                        aria-label="개별 단가 통화"
-                        className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 shrink-0 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
-                      >
-                        {CURRENCIES.map((c) => (
-                          <option key={c.code} value={c.code}>
-                            {c.symbol} {c.code}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        min="0"
-                        inputMode="decimal"
-                        value={priceInput}
-                        onChange={(e) => setPriceInput(e.target.value)}
-                        disabled={savingRate}
-                        placeholder="회당 단가"
-                        aria-label="개별 단가 금액"
-                        className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
-                      />
-                      {rateDirty && (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmRate(true)}
-                          disabled={savingRate}
-                          className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60"
-                        >
-                          {savingRate && <Loader2 className="size-4 animate-spin" />}
-                          {savingRate ? "저장 중" : "저장"}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={requestSelectCenter}
-                        disabled={savingRate}
-                        className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue h-9 shrink-0 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60"
-                      >
-                        초기화
-                      </button>
-                    </>
-                  )}
-                  {savingRate && <Loader2 className="text-muted-fg-faint size-4 shrink-0 animate-spin" />}
-                </div>
-
-                <p className="text-muted-fg-faint text-xs">
-                  {rateMode === "center"
-                    ? "소속 센터의 회당 단가가 적용됩니다."
-                    : "이 강사에게만 적용할 회당 단가를 입력하세요. 초기화하면 센터 단가로 돌아갑니다."}
-                </p>
+              <dd className="min-w-0 flex-1">
+                <RateHistoryEditor scope="teacher" scopeId={teacher.id} rows={rows} rates={rates} allowRevert fallbackLabel={centerRateLabel} />
               </dd>
             </div>
 
@@ -380,55 +225,6 @@ export default function TeacherInfoModal({
           </button>
         </div>
       </div>
-
-      {/* 개별 단가 저장 확인 (모달 위에 표시되도록 z-[130]) */}
-      <AlertDialog open={confirmRate} onOpenChange={setConfirmRate}>
-        <AlertDialogContent className="z-[130]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>개별 단가를 저장하시겠습니까?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="text-ink font-semibold">{teacher.name || teacher.email}</span> 강사에게 회당{" "}
-              <span className="text-ink font-semibold">{formatPrice(Number(priceInput) || 0, currencySel)}</span> 단가가 적용됩니다. 이 강사의 정산은
-              소속 센터 단가 대신 이 개별 단가로 계산됩니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setConfirmRate(false);
-                saveRate();
-              }}
-            >
-              저장
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 센터 단가 초기화 확인 (모달 위에 표시되도록 z-[130]) */}
-      <AlertDialog open={confirmCenter} onOpenChange={setConfirmCenter}>
-        <AlertDialogContent className="z-[130]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>센터 단가로 초기화하시겠습니까?</AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="text-ink font-semibold">{teacher.name || teacher.email}</span> 강사의 개별 단가가 해제되고, 소속 센터의 회당{" "}
-              <span className="text-ink font-semibold">{centerRateLabel}</span> 단가로 정산됩니다.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                setConfirmCenter(false);
-                doSelectCenter();
-              }}
-            >
-              초기화
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

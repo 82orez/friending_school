@@ -7,6 +7,8 @@ import TeacherRequestsManager, {
 import { deriveBookedSlots, lessonEndMin, type BookedSlot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
+import { FOREIGN_CURRENCIES, ratesFromSettings } from "@/data/currencies";
+import type { RateRow } from "@/lib/rates";
 
 const STATUS_ORDER: Record<string, number> = { 신청: 0, 거절: 1, 승인: 2 };
 
@@ -169,5 +171,51 @@ export default async function AdminTeacherRequestsPage() {
     classes: classesByTeacher.get(p.id) ?? [],
   }));
 
-  return <TeacherRequestsManager applications={applications} currentTeachers={currentTeachers} centers={centers} />;
+  // 강사별 단가 적용일 이력(TeacherInfoModal 편집기용) + 외화 환율.
+  const schedulesByTeacher: Record<string, RateRow[]> = {};
+  if (teacherIds.length > 0) {
+    const { data: rsData } = await admin
+      .from("rate_schedules")
+      .select("id, scope, scope_id, price_per_session, currency, effective_from, note")
+      .eq("scope", "teacher")
+      .in("scope_id", teacherIds);
+    for (const r of (rsData ?? []) as {
+      id: string;
+      scope: "center" | "teacher";
+      scope_id: string;
+      price_per_session: number | string | null;
+      currency: string | null;
+      effective_from: string;
+      note: string | null;
+    }[]) {
+      (schedulesByTeacher[r.scope_id] ??= []).push({
+        id: r.id,
+        scope: r.scope,
+        scopeId: r.scope_id,
+        price: r.price_per_session == null ? null : Number(r.price_per_session),
+        currency: r.currency,
+        effectiveFrom: r.effective_from,
+        note: r.note,
+      });
+    }
+  }
+
+  const { data: rateSettingRows } = await admin
+    .from("settings")
+    .select("key, value")
+    .in(
+      "key",
+      FOREIGN_CURRENCIES.map((f) => f.settingKey),
+    );
+  const rates = ratesFromSettings(rateSettingRows as { key: string; value: string | null }[] | null);
+
+  return (
+    <TeacherRequestsManager
+      applications={applications}
+      currentTeachers={currentTeachers}
+      centers={centers}
+      rates={rates}
+      schedulesByTeacher={schedulesByTeacher}
+    />
+  );
 }

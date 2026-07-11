@@ -1,10 +1,11 @@
 import { createAdminClient } from "@/utils/supabase/admin";
 import SettlementsManager, { type SettlementRow } from "@/components/admin/SettlementsManager";
 import { FOREIGN_CURRENCIES, normalizeCurrency, ratesFromSettings } from "@/data/currencies";
+import { effectiveRate, type RateRow } from "@/lib/rates";
 
 // 강사 정산 리포트(읽기 전용). conducted_at이 찍힌(실제 진행된) 수업만 집계하고,
-// 단가는 강사의 "현재" 소속 센터(profiles.center_id → centers.price_per_session)로 역산한다.
-// classes에는 center/price 스냅샷이 없으므로 현재 소속 센터 기준(소급 변동 수용).
+// 단가는 rate_schedules 적용일 이력을 수업 날짜(session_date) 기준으로 역산한다
+// (강사 개별 단가 > 소속 센터 단가, price=null 행=센터 복귀). centers/profiles 컬럼은 현재값 캐시라 미참조.
 // 성능: conducted 수업 전량을 로드해 클라에서 기간·분류 집계 — 중규모까지 적정.
 // 대규모 시 월 파라미터로 조회 범위를 좁히는 것이 scale path.
 export default async function AdminSettlementsPage() {
@@ -32,54 +33,45 @@ export default async function AdminSettlementsPage() {
     is_makeup: boolean;
   }[];
 
-  // 강사 프로필(현재 소속 센터·이름·개별 단가 오버라이드).
+  // 강사 프로필(현재 소속 센터·이름) — 단가는 이력에서 역산, center_id는 어떤 센터 이력을 볼지 결정.
   const teacherIds = Array.from(new Set(classes.map((c) => c.teacher_id)));
-  const profileById = new Map<
-    string,
-    { first_name: string | null; last_name: string | null; center_id: string | null; custom_price: number | null; custom_currency: string | null }
-  >();
+  const profileById = new Map<string, { first_name: string | null; last_name: string | null; center_id: string | null }>();
   if (teacherIds.length > 0) {
-    const { data: profData } = await admin
-      .from("profiles")
-      .select("id, first_name, last_name, center_id, custom_price_per_session, custom_price_currency")
-      .in("id", teacherIds);
-    for (const p of (profData ?? []) as {
-      id: string;
-      first_name: string | null;
-      last_name: string | null;
-      center_id: string | null;
-      custom_price_per_session: number | string | null;
-      custom_price_currency: string | null;
-    }[]) {
-      // numeric 컬럼은 문자열로 올 수 있어 숫자로 강제(null 보존).
-      profileById.set(p.id, {
-        first_name: p.first_name,
-        last_name: p.last_name,
-        center_id: p.center_id,
-        custom_price: p.custom_price_per_session == null ? null : Number(p.custom_price_per_session),
-        custom_currency: p.custom_price_currency,
-      });
+    const { data: profData } = await admin.from("profiles").select("id, first_name, last_name, center_id").in("id", teacherIds);
+    for (const p of (profData ?? []) as { id: string; first_name: string | null; last_name: string | null; center_id: string | null }[]) {
+      profileById.set(p.id, { first_name: p.first_name, last_name: p.last_name, center_id: p.center_id });
     }
   }
 
-  // 센터 단가/통화/매니저 + 페소 환율.
-  const { data: centerData } = await admin.from("centers").select("id, name, price_per_session, price_currency, manager_name");
-  const centerById = new Map<string, { name: string; price: number | null; currency: string | null; manager: string | null }>();
-  for (const c of (centerData ?? []) as {
-    id: string;
-    name: string;
-    price_per_session: number | null;
-    price_currency: string | null;
-    manager_name: string | null;
-  }[]) {
-    // numeric 컬럼은 문자열로 올 수 있어 price를 숫자로 강제(null 보존).
-    centerById.set(c.id, {
-      name: c.name,
-      price: c.price_per_session == null ? null : Number(c.price_per_session),
-      currency: c.price_currency,
-      manager: c.manager_name,
-    });
+  // 센터 이름/매니저(표시용). 단가는 rate_schedules에서.
+  const { data: centerData } = await admin.from("centers").select("id, name, manager_name");
+  const centerById = new Map<string, { name: string; manager: string | null }>();
+  for (const c of (centerData ?? []) as { id: string; name: string; manager_name: string | null }[]) {
+    centerById.set(c.id, { name: c.name, manager: c.manager_name });
   }
+
+  // 단가 적용일 이력 전량(정산 역산 소스).
+  const { data: rsData } = await admin.from("rate_schedules").select("id, scope, scope_id, price_per_session, currency, effective_from, note");
+  const rateSchedules: RateRow[] = (
+    (rsData ?? []) as {
+      id: string;
+      scope: "center" | "teacher";
+      scope_id: string;
+      price_per_session: number | string | null;
+      currency: string | null;
+      effective_from: string;
+      note: string | null;
+    }[]
+  ).map((r) => ({
+    id: r.id,
+    scope: r.scope,
+    scopeId: r.scope_id,
+    price: r.price_per_session == null ? null : Number(r.price_per_session), // numeric은 문자열로 올 수 있음
+    currency: r.currency,
+    effectiveFrom: r.effective_from,
+    note: r.note,
+  }));
+
   const { data: rateRows } = await admin
     .from("settings")
     .select("key, value")
@@ -94,10 +86,8 @@ export default async function AdminSettlementsPage() {
     const fullName = [prof?.first_name, prof?.last_name].filter(Boolean).join(" ").trim();
     const teacherName = fullName || c.teacher_name || "강사";
     const center = prof?.center_id ? centerById.get(prof.center_id) : undefined;
-    // 단가 우선순위: 강사 개별 단가 > 소속 센터 단가. 개별 단가가 있으면 센터 미지정이어도 priced.
-    const hasCustom = prof?.custom_price != null;
-    const price = hasCustom ? prof!.custom_price! : center && center.price != null ? center.price : null;
-    const currency = price == null ? null : normalizeCurrency(hasCustom ? prof!.custom_currency : center?.currency);
+    // 수업 날짜 기준 유효 단가 역산(강사 개별 > 센터, price=null=센터 복귀).
+    const { price, currency, isCustom } = effectiveRate(rateSchedules, c.teacher_id, prof?.center_id ?? null, c.session_date);
     return {
       id: c.id,
       teacherId: c.teacher_id,
@@ -113,8 +103,8 @@ export default async function AdminSettlementsPage() {
       studentEnglishName: c.student_english_name,
       isMakeup: c.is_makeup,
       pricePerSession: price,
-      currency,
-      isCustomRate: hasCustom,
+      currency: price == null ? null : normalizeCurrency(currency),
+      isCustomRate: isCustom,
     };
   });
 

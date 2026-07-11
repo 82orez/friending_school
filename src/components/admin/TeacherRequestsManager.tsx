@@ -6,6 +6,8 @@ import { ChevronDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { BookedSlot } from "@/lib/availability";
+import type { Rates } from "@/data/currencies";
+import type { RateRow } from "@/lib/rates";
 import { approveTeacherApplication, rejectTeacherApplication, deleteTeacher } from "@/app/admin/actions";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
@@ -109,10 +111,14 @@ export default function TeacherRequestsManager({
   applications,
   currentTeachers,
   centers,
+  rates,
+  schedulesByTeacher,
 }: {
   applications: TeacherApplication[];
   currentTeachers: CurrentTeacher[];
   centers: { id: string; name: string; price: number | null; currency: string | null }[];
+  rates: Rates;
+  schedulesByTeacher: Record<string, RateRow[]>;
 }) {
   const [rows, setRows] = useState(applications);
   const [teachers, setTeachers] = useState(currentTeachers);
@@ -125,11 +131,6 @@ export default function TeacherRequestsManager({
   const onCenterUpdated = useCallback((teacherId: string, centerId: string | null, centerName: string | null) => {
     setTeachers((prev) => prev.map((t) => (t.id === teacherId ? { ...t, centerId, centerName } : t)));
     setInfoTarget((prev) => (prev && prev.id === teacherId ? { ...prev, centerId, centerName } : prev));
-  }, []);
-  // 강사 개별 단가 변경 낙관적 반영(테이블 + 열린 모달 동기화).
-  const onCustomRateUpdated = useCallback((teacherId: string, customPrice: number | null, customCurrency: string | null) => {
-    setTeachers((prev) => prev.map((t) => (t.id === teacherId ? { ...t, customPrice, customCurrency } : t)));
-    setInfoTarget((prev) => (prev && prev.id === teacherId ? { ...prev, customPrice, customCurrency } : prev));
   }, []);
   const [classesTarget, setClassesTarget] = useState<CurrentTeacher | null>(null);
   const closeClasses = useCallback(() => setClassesTarget(null), []);
@@ -251,8 +252,9 @@ export default function TeacherRequestsManager({
       <TeacherInfoModal
         teacher={infoTarget}
         centers={centers}
+        rows={infoTarget ? (schedulesByTeacher[infoTarget.id] ?? []) : []}
+        rates={rates}
         onCenterUpdated={onCenterUpdated}
-        onCustomRateUpdated={onCustomRateUpdated}
         onClose={closeInfo}
       />
 

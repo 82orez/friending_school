@@ -178,26 +178,28 @@ export async function addCenter(
   const { data: maxRow } = await admin.from("centers").select("sort_order").order("sort_order", { ascending: false }).limit(1).maybeSingle();
   const nextOrder = ((maxRow as { sort_order?: number } | null)?.sort_order ?? 0) + 1;
 
-  const { error } = await admin.from("centers").insert({
-    name: clean,
-    sort_order: nextOrder,
-    price_per_session: normalizePrice(price, currency),
-    price_currency: normalizeCurrency(currency),
-    manager_name: normalizeText(managerName),
-  });
-  if (error) return { ok: false, error: "등록 중 오류가 발생했습니다." };
+  const priceNum = normalizePrice(price, currency);
+  const cur = normalizeCurrency(currency);
+  const { data: inserted, error } = await admin
+    .from("centers")
+    .insert({ name: clean, sort_order: nextOrder, price_per_session: priceNum, price_currency: cur, manager_name: normalizeText(managerName) })
+    .select("id")
+    .single();
+  if (error || !inserted) return { ok: false, error: "등록 중 오류가 발생했습니다." };
+
+  // 초기 단가가 있으면 이력에도 (effective_from=오늘) 1행 기록 → 정산 역산의 시작점.
+  if (priceNum != null) {
+    await admin
+      .from("rate_schedules")
+      .insert({ scope: "center", scope_id: (inserted as { id: string }).id, price_per_session: priceNum, currency: cur, effective_from: todayKst() });
+  }
 
   revalidateCenterConsumers();
   return { ok: true };
 }
 
-export async function updateCenter(
-  id: string,
-  name: string,
-  price?: number | string | null,
-  currency?: string | null,
-  managerName?: string | null,
-): Promise<ActionResult> {
+// 센터 이름·매니저만 수정. 단가·통화는 rate_schedules 이력 편집(RateHistoryEditor)으로 관리.
+export async function updateCenter(id: string, name: string, managerName?: string | null): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   const clean = name?.trim();
   if (!id || !clean) return { ok: false, error: "센터 이름은 필수입니다." };
@@ -205,12 +207,7 @@ export async function updateCenter(
   const admin = createAdminClient();
   const { error } = await admin
     .from("centers")
-    .update({
-      name: clean,
-      price_per_session: normalizePrice(price, currency),
-      price_currency: normalizeCurrency(currency),
-      manager_name: normalizeText(managerName),
-    })
+    .update({ name: clean, manager_name: normalizeText(managerName) })
     .eq("id", id);
   if (error) return { ok: false, error: "수정 중 오류가 발생했습니다." };
 
@@ -253,30 +250,132 @@ export async function updateTeacherCenter(userId: string, centerRaw: string): Pr
   return { ok: true, centerId };
 }
 
-// 강사 상세 모달에서 개별 정산 단가(센터 단가 오버라이드) 설정/해제. priceRaw 빈값/음수 → null = 해제(센터 단가 사용).
-// 통화는 센터와 동일 KRW/PHP/USD. price null이면 통화도 함께 null로 비움. 정산 단가라 정산 화면 revalidate.
-export async function updateTeacherRate(
-  userId: string,
+/* ===== 정산 단가 적용일 이력(rate_schedules) ===== */
+
+const EFFECTIVE_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+// scope_id의 오늘 기준 유효 단가로 캐시 컬럼(centers/profiles) 동기화. 미래 적용일 행은 오늘 기준 제외돼 반영 안 됨.
+async function syncRateCache(admin: ReturnType<typeof createAdminClient>, scope: "center" | "teacher", scopeId: string) {
+  const { data } = await admin
+    .from("rate_schedules")
+    .select("price_per_session, currency, effective_from")
+    .eq("scope", scope)
+    .eq("scope_id", scopeId)
+    .lte("effective_from", todayKst())
+    .order("effective_from", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const price = data?.price_per_session == null ? null : Number(data.price_per_session);
+  const currency = price == null ? null : (data?.currency ?? null);
+  if (scope === "center") {
+    await admin
+      .from("centers")
+      .update({ price_per_session: price, price_currency: currency ?? "KRW" })
+      .eq("id", scopeId);
+  } else {
+    await admin.from("profiles").update({ custom_price_per_session: price, custom_price_currency: currency }).eq("id", scopeId);
+  }
+}
+
+// 대상(센터/강사) 존재·역할 검증.
+async function validateRateScope(admin: ReturnType<typeof createAdminClient>, scope: "center" | "teacher", scopeId: string): Promise<string | null> {
+  if (scope === "center") {
+    const { data } = await admin.from("centers").select("id").eq("id", scopeId).maybeSingle();
+    return data ? null : "센터를 찾을 수 없습니다.";
+  }
+  const { data } = await admin.from("profiles").select("role").eq("id", scopeId).maybeSingle();
+  return data && (data as { role?: string }).role === "teacher" ? null : "강사를 찾을 수 없습니다.";
+}
+
+function revalidateRateConsumers() {
+  revalidatePath("/admin/centers");
+  revalidatePath("/admin/settlements");
+  revalidatePath("/admin/teacher-requests");
+}
+
+// 단가 이력 행 추가. center scope는 price 필수, teacher scope는 빈 price=null=그 날짜부터 센터 단가 사용.
+export async function addRateSchedule(
+  scope: "center" | "teacher",
+  scopeId: string,
   priceRaw: string,
   currencyRaw: string,
-): Promise<ActionResult & { price?: number | null; currency?: string | null }> {
+  effectiveFrom: string,
+  note: string,
+): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
-  if (!userId) return { ok: false, error: "잘못된 요청입니다." };
+  if ((scope !== "center" && scope !== "teacher") || !scopeId || !EFFECTIVE_DATE_RE.test(effectiveFrom))
+    return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { data: prof } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
-  if (!prof || (prof as { role?: string }).role !== "teacher") return { ok: false, error: "강사를 찾을 수 없습니다." };
+  const invalid = await validateRateScope(admin, scope, scopeId);
+  if (invalid) return { ok: false, error: invalid };
 
   const currency = normalizeCurrency(currencyRaw);
-  const price = normalizePrice(priceRaw, currency); // 빈값/음수 → null = 오버라이드 해제
-  const nextCurrency = price == null ? null : currency;
+  const price = normalizePrice(priceRaw, currency);
+  if (scope === "center" && price == null) return { ok: false, error: "단가를 입력하세요." };
 
-  const { error } = await admin.from("profiles").update({ custom_price_per_session: price, custom_price_currency: nextCurrency }).eq("id", userId);
-  if (error) return { ok: false, error: "단가 변경 중 오류가 발생했습니다." };
+  const { error } = await admin.from("rate_schedules").insert({
+    scope,
+    scope_id: scopeId,
+    price_per_session: price,
+    currency: price == null ? null : currency,
+    effective_from: effectiveFrom,
+    note: normalizeText(note),
+  });
+  if (error) return { ok: false, error: "단가 추가 중 오류가 발생했습니다." };
 
-  revalidatePath("/admin/teacher-requests");
-  revalidatePath("/admin/settlements");
-  return { ok: true, price, currency: nextCurrency };
+  await syncRateCache(admin, scope, scopeId);
+  revalidateRateConsumers();
+  return { ok: true };
+}
+
+// 단가 이력 행 수정.
+export async function updateRateSchedule(
+  id: string,
+  priceRaw: string,
+  currencyRaw: string,
+  effectiveFrom: string,
+  note: string,
+): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id || !EFFECTIVE_DATE_RE.test(effectiveFrom)) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: existing } = await admin.from("rate_schedules").select("scope, scope_id").eq("id", id).maybeSingle();
+  if (!existing) return { ok: false, error: "이력을 찾을 수 없습니다." };
+  const row = existing as { scope: "center" | "teacher"; scope_id: string };
+
+  const currency = normalizeCurrency(currencyRaw);
+  const price = normalizePrice(priceRaw, currency);
+  if (row.scope === "center" && price == null) return { ok: false, error: "단가를 입력하세요." };
+
+  const { error } = await admin
+    .from("rate_schedules")
+    .update({ price_per_session: price, currency: price == null ? null : currency, effective_from: effectiveFrom, note: normalizeText(note) })
+    .eq("id", id);
+  if (error) return { ok: false, error: "단가 수정 중 오류가 발생했습니다." };
+
+  await syncRateCache(admin, row.scope, row.scope_id);
+  revalidateRateConsumers();
+  return { ok: true };
+}
+
+// 단가 이력 행 삭제.
+export async function deleteRateSchedule(id: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: existing } = await admin.from("rate_schedules").select("scope, scope_id").eq("id", id).maybeSingle();
+  if (!existing) return { ok: true }; // 이미 없음
+  const row = existing as { scope: "center" | "teacher"; scope_id: string };
+
+  const { error } = await admin.from("rate_schedules").delete().eq("id", id);
+  if (error) return { ok: false, error: "단가 삭제 중 오류가 발생했습니다." };
+
+  await syncRateCache(admin, row.scope, row.scope_id);
+  revalidateRateConsumers();
+  return { ok: true };
 }
 
 /* ===== 강사 삭제 ===== */

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { addCenter, deleteCenter, updateCenter, updateExchangeRate } from "@/app/admin/actions";
 import CenterDetailModal from "@/components/admin/CenterDetailModal";
 import { CURRENCIES, DEFAULT_CURRENCY, FOREIGN_CURRENCIES, formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
+import type { RateRow } from "@/lib/rates";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +30,15 @@ export type AdminCenter = {
 };
 
 // 강사 신청폼·프로필의 센터 드롭다운을 채우는 마스터 데이터. YoutubeManager CRUD 패턴 축약(필드=name 1개).
-export default function CentersManager({ centers, rates }: { centers: AdminCenter[]; rates: Rates }) {
+export default function CentersManager({
+  centers,
+  rates,
+  schedulesByCenter,
+}: {
+  centers: AdminCenter[];
+  rates: Rates;
+  schedulesByCenter: Record<string, RateRow[]>;
+}) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [manager, setManager] = useState("");
@@ -196,7 +205,7 @@ export default function CentersManager({ centers, rates }: { centers: AdminCente
               <tbody>
                 {centers.map((c, i) => (
                   <tr key={c.id} className="border-rule border-b last:border-b-0">
-                    <td className="text-muted-fg-faint px-4 py-3.5 text-center text-xs align-middle md:px-6">{i + 1}</td>
+                    <td className="text-muted-fg-faint px-4 py-3.5 text-center align-middle text-xs md:px-6">{i + 1}</td>
                     <td className="text-ink px-4 py-3.5 align-middle text-sm font-semibold">{c.name}</td>
                     <td className="px-4 py-3.5 align-middle text-sm">
                       {c.manager_name ? <span className="text-ink">{c.manager_name}</span> : <span className="text-muted-fg-faint">미지정</span>}
@@ -208,14 +217,20 @@ export default function CentersManager({ centers, rates }: { centers: AdminCente
                         <span className="text-ink">
                           {formatPrice(c.price_per_session, c.price_currency)}
                           {krwEquivalent(c.price_per_session, c.price_currency, rates) != null && (
-                            <span className="text-muted-fg-faint ml-1.5">≈ {formatPrice(krwEquivalent(c.price_per_session, c.price_currency, rates)!, "KRW")}</span>
+                            <span className="text-muted-fg-faint ml-1.5">
+                              ≈ {formatPrice(krwEquivalent(c.price_per_session, c.price_currency, rates)!, "KRW")}
+                            </span>
                           )}
                         </span>
                       )}
                     </td>
                     <td className="px-4 py-3.5 align-middle md:px-6">
                       <div className="flex justify-end gap-1.5">
-                        <button type="button" onClick={() => setEditTarget(c)} className="border-rule text-muted-fg rounded border px-2.5 py-1 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setEditTarget(c)}
+                          className="border-rule text-muted-fg rounded border px-2.5 py-1 text-xs"
+                        >
                           수정
                         </button>
                         <button
@@ -239,14 +254,15 @@ export default function CentersManager({ centers, rates }: { centers: AdminCente
       {/* 상세 편집 모달 */}
       <CenterDetailModal
         center={editTarget}
+        rows={editTarget ? (schedulesByCenter[editTarget.id] ?? []) : []}
         pending={pending}
         rates={rates}
         onClose={() => setEditTarget(null)}
-        onSave={(editName, editPrice, editCurrency, editManager) => {
+        onSave={(editName, editManager) => {
           const target = editTarget;
           if (!target) return;
           run(
-            () => updateCenter(target.id, editName, editPrice, editCurrency, editManager),
+            () => updateCenter(target.id, editName, editManager),
             () => setEditTarget(null),
           );
         }}

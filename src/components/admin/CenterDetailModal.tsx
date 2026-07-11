@@ -3,38 +3,34 @@
 import { useEffect, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import type { AdminCenter } from "@/components/admin/CentersManager";
-import { CURRENCIES, DEFAULT_CURRENCY, FOREIGN_CURRENCIES, formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
+import RateHistoryEditor from "@/components/admin/RateHistoryEditor";
+import type { Rates } from "@/data/currencies";
+import type { RateRow } from "@/lib/rates";
 
 // 센터 상세 편집 모달. TeacherInfoModal의 a11y 패턴(오버레이/패널/Esc/scroll lock) 미러.
 export default function CenterDetailModal({
   center,
+  rows,
   onClose,
   onSave,
   pending,
   rates,
 }: {
   center: AdminCenter | null;
+  rows: RateRow[];
   onClose: () => void;
-  onSave: (name: string, price: string, currency: string, managerName: string) => void;
+  onSave: (name: string, managerName: string) => void;
   pending: boolean;
   rates: Rates;
 }) {
   const [name, setName] = useState("");
   const [manager, setManager] = useState("");
-  const [price, setPrice] = useState("");
-  const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
-
-  // 외화 선택 + 환율 있으면 입력값을 원화로 환산 미리보기.
-  const krw = price === "" ? null : krwEquivalent(Number(price), currency, rates);
-  const foreign = FOREIGN_CURRENCIES.find((f) => f.code === currency);
 
   // 모달 대상이 바뀔 때 입력값 초기화.
   useEffect(() => {
     if (!center) return;
     setName(center.name);
     setManager(center.manager_name ?? "");
-    setPrice(center.price_per_session == null ? "" : String(center.price_per_session));
-    setCurrency(center.price_currency ?? DEFAULT_CURRENCY);
   }, [center]);
 
   // 열림 시: Esc 닫기 + body scroll lock.
@@ -101,35 +97,8 @@ export default function CenterDetailModal({
             />
           </div>
           <div>
-            <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">통화</label>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">1회당 단가</label>
-            <input
-              type="number"
-              min={0}
-              step={currency === "USD" ? 0.1 : 1}
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="예: 30000"
-              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-            />
-            {krw != null && foreign && (
-              <p className="text-muted-fg-faint mt-1 text-xs">
-                ≈ {formatPrice(krw, "KRW")} (환율 1{foreign.symbol} = {rates[currency]}₩)
-              </p>
-            )}
+            <label className="text-muted-fg-faint mb-2 block text-xs font-semibold">회당 단가 (적용일 이력)</label>
+            <RateHistoryEditor scope="center" scopeId={center.id} rows={rows} rates={rates} allowRevert={false} />
           </div>
         </div>
 
@@ -144,11 +113,11 @@ export default function CenterDetailModal({
           <button
             type="button"
             disabled={pending || !name.trim()}
-            onClick={() => onSave(name, price, currency, manager)}
+            onClick={() => onSave(name, manager)}
             className="bg-cta inline-flex items-center gap-1.5 rounded-md px-5 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {pending && <Loader2 className="size-3.5 animate-spin" />}
-            저장
+            이름·매니저 저장
           </button>
         </div>
       </div>
