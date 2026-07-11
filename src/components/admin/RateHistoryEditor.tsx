@@ -164,7 +164,9 @@ export default function RateHistoryEditor({
 
       {/* 추가/수정 폼 */}
       <div className="border-rule flex flex-col gap-2 rounded-md border p-3">
-        <p className="text-muted-fg-faint text-xs font-semibold">{editingId ? "단가 이력 수정" : "단가 이력 추가"}</p>
+        <p className="text-muted-fg-faint text-xs font-semibold">
+          {scope === "teacher" ? (editingId ? "개별 단가 수정" : "개별 단가 설정") : editingId ? "단가 이력 수정" : "단가 이력 추가"}
+        </p>
         <div className="flex flex-wrap items-end gap-2">
           <div>
             <label className="text-muted-fg-faint mb-1 block text-[11px] font-semibold">적용 시작일</label>
