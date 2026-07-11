@@ -198,8 +198,8 @@ export default function TeacherInfoModal({
 
             {(
               [
-                ["자기소개(Bio)", teacher.bio ?? "-"],
-                ["경력", teacher.experience ?? "-"],
+                ["학력", teacher.bio ?? "-"],
+                ["강의 경력", teacher.experience ?? "-"],
                 ["Zoom URL", teacher.zoomUrl ?? "-"],
               ] as const
             ).map(([label, value]) => (

@@ -400,8 +400,8 @@ function ApplicationRow({
               ["국적", nationalityLabel(row.nationality)],
               ["성별", genderLabelKo(row.gender)],
               ["센터", row.center_name ?? "None"],
-              ["자기소개(Bio)", row.bio],
-              ["경력", row.experience ?? "-"],
+              ["학력", row.bio],
+              ["강의 경력", row.experience ?? "-"],
               ["Zoom URL", row.zoom_url ?? "-"],
             ].map(([label, value]) => (
               <div key={label} className="flex gap-2">
