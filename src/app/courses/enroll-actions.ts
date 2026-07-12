@@ -292,7 +292,7 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
       await sendEnrollmentNotificationToTeacher([teacherEmail], {
         studentName,
         courseTitle: course.title,
-        schedule: summarizeSlots(slots, false),
+        schedule: summarizeSlots(slots, false, " / "),
         startDate,
         teacherUrl: `${origin}/teacher`,
         studentEnglishName: profile.english_name ?? "",
@@ -314,7 +314,7 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
       courseTitle: course.title,
       courseEnglishTitle: course.englishTitle,
       teacherName,
-      schedule: summarizeSlots(slots, false),
+      schedule: summarizeSlots(slots, false, " / "),
       startDate,
       endDate,
       totalSessions: TOTAL_SESSIONS,

@@ -1089,7 +1089,7 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
   // enrollment 이관 — 가용 차감·강사 대시보드·강의실 노출 정합. slots(주간 패턴)는 불변.
   await admin.from("enrollments").update({ teacher_id: teacherId, teacher_name: newName }).eq("id", id);
 
-  const schedule = summarizeSlots(scheduleSlots, false);
+  const schedule = summarizeSlots(scheduleSlots, false, " / ");
   const nextDate = targets[0].date;
 
   // 학생 결과 SMS (best-effort).

@@ -134,7 +134,7 @@ export async function finalizeEnrollmentPayment(
   // 알림 메일 공용 데이터(강사·관리자 블록 공유) — 중복 계산 방지.
   const origin = getOrigin(await headers());
   const sessions = enr.total_sessions ?? TOTAL_SESSIONS;
-  const schedule = summarizeSlots((enr.slots as Slot[]) ?? [], false);
+  const schedule = summarizeSlots((enr.slots as Slot[]) ?? [], false, " / ");
   const courseEnglishTitle = getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? "";
   const endDate = (() => {
     const [sy, sm, sd] = String(enr.start_date ?? "").split("-").map(Number);

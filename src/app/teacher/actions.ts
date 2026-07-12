@@ -162,7 +162,7 @@ function buildAdminEnrollmentEmail(
     courseTitle: enr.course_title,
     courseEnglishTitle: getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? "",
     teacherName: enr.teacher_name ?? "",
-    schedule: summarizeSlots(slots, false),
+    schedule: summarizeSlots(slots, false, " / "),
     startDate: enr.start_date,
     endDate,
     totalSessions,
