@@ -6,7 +6,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Loader2, Search, Triangl
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { adjustBankPayment, adminCancelEnrollment, confirmPayment, deleteTestEnrollment, refundPayment } from "@/app/admin/actions";
-import { overlappingIds, summarizeSlots, type Slot } from "@/lib/availability";
+import { lessonEndDate, overlappingIds, summarizeSlots, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
 import { COURSE_PRICE_KRW } from "@/data/pricing";
 import { formatPrice } from "@/data/currencies";
 import {
@@ -30,6 +30,7 @@ export type AdminEnrollment = {
   student_phone: string | null;
   slots: Slot[];
   start_date: string;
+  total_sessions?: number | null; // 총 수업 횟수(테스트=자유, 실 신청 null→기본 24) — 종료일 계산용
   status: "신청" | "승인" | "결제대기" | "결제완료" | "거절" | "취소";
   teacher_note: string | null;
   created_at: string;
@@ -454,6 +455,17 @@ function EnrollmentDetailModal({
 
   const studentLabel = row.student_name ?? "학생";
 
+  // 종료일 = 시작일부터 주간 일정대로 total회째 수업일(lessonEndDate, TZ 비종속). 위저드·안내 메일과 동일 계산.
+  const endYmd = (() => {
+    if (!row.start_date || row.slots.length === 0) return "";
+    const [sy, sm, sd] = row.start_date.split("-").map(Number);
+    const end = lessonEndDate(new Date(sy, sm - 1, sd), row.slots, row.total_sessions ?? TOTAL_SESSIONS);
+    if (!end) return "";
+    const p = (n: number) => String(n).padStart(2, "0");
+    return `${end.getFullYear()}-${p(end.getMonth() + 1)}-${p(end.getDate())}`;
+  })();
+  const scheduleRange = endYmd ? `${row.start_date} ~ ${endYmd}` : row.start_date;
+
   return (
     <>
       <div aria-hidden="true" onClick={onClose} className="fixed inset-0 z-[110] bg-black/40" />
@@ -499,8 +511,8 @@ function EnrollmentDetailModal({
               ["센터", row.centerName ?? "미지정"],
               ["과정", row.course_title],
               ["수강료", row.priceLabel || "-"],
-              ["수업 일정", summarizeSlots(row.slots)],
-              ["시작일", row.start_date],
+              ["주간 일정", summarizeSlots(row.slots)],
+              ["수업 일정", scheduleRange],
               ...(pay ? ([["결제 수단", payMethodLabel(pay.method)]] as [string, string][]) : []),
               // 실입금액 — 환불 반영 순액(amount − cancelled). 정가와 다르면(할인 등) 별도 노출.
               ...(pay ? ([["실입금액", formatPrice((pay.amount ?? 0) - (pay.cancelledAmount ?? 0), "KRW")]] as [string, string][]) : []),
