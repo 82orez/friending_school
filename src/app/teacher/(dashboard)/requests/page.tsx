@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { getCourse } from "@/data/courses";
+import { TOTAL_SESSIONS } from "@/lib/availability";
 import TeacherEnrollments, { type TeacherEnrollment } from "@/components/teacher/TeacherEnrollments";
 
 export default async function TeacherRequestsPage() {
@@ -15,7 +16,9 @@ export default async function TeacherRequestsPage() {
   // 본인에게 온 수강신청(신청 우선 정렬) — RLS enrollments_select_own_teacher로 본인 것만.
   const { data: enrollRows } = await supabase
     .from("enrollments")
-    .select("id, student_name, student_english_name, course, course_title, course_english_title, start_date, slots, status, teacher_note, created_at")
+    .select(
+      "id, student_name, student_english_name, course, course_title, course_english_title, start_date, total_sessions, slots, status, teacher_note, created_at",
+    )
     .eq("teacher_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -40,6 +43,7 @@ export default async function TeacherRequestsPage() {
       // 강사 UI는 영문 — 저장된 슬러그로 영문 과정명 live 해석(미해석 레거시 슬러그는 한글 course_title 폴백).
       courseTitle: getCourse(r.course)?.englishTitle ?? r.course_english_title ?? r.course_title,
       startDate: r.start_date,
+      totalSessions: r.total_sessions ?? TOTAL_SESSIONS,
       slots: Array.isArray(r.slots) ? r.slots : [],
       status: r.status,
       teacherNote: r.teacher_note,

@@ -5,7 +5,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Loader2, TriangleAlert, X } from "luci
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { approveEnrollment, rejectEnrollment } from "@/app/teacher/actions";
-import { overlappingIds, summarizeSlots, type Slot } from "@/lib/availability";
+import { overlappingIds, summarizeSlots, lessonEndDate, type Slot } from "@/lib/availability";
 
 // 시간 충돌 표시 대상 = 진행중 상태(거절/취소는 제외).
 const ACTIVE_STATUSES = new Set<TeacherEnrollment["status"]>(["신청", "승인", "결제대기", "결제완료"]);
@@ -26,6 +26,7 @@ export type TeacherEnrollment = {
   studentEnglishName: string;
   courseTitle: string;
   startDate: string;
+  totalSessions: number; // 총 수업 횟수(실 신청 24, 테스트 자유) — 종료일·수업 횟수 표시용
   slots: Slot[];
   status: "신청" | "승인" | "결제대기" | "결제완료" | "거절" | "취소";
   teacherNote: string | null;
@@ -88,6 +89,16 @@ function formatDate(iso: string): string {
 // 영어이름(한국이름) 표시 — 영문명 없으면(백필 안 된 구 행) 한국명만.
 function studentLabelOf(r: TeacherEnrollment): string {
   return r.studentEnglishName ? `${r.studentEnglishName}(${r.studentName})` : r.studentName;
+}
+
+// 수업 기간 "시작일 ~ 종료일"(YYYY-MM-DD). 종료일=lessonEndDate(시작+주간 slots+횟수), 계산 불가 시 시작일만.
+function schedulePeriod(startDate: string, slots: Slot[], totalSessions: number): string {
+  const [y, m, d] = startDate.split("-").map(Number);
+  if (!y || !m || !d) return startDate;
+  const end = lessonEndDate(new Date(y, m - 1, d), slots, totalSessions);
+  if (!end) return startDate;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${startDate} ~ ${end.getFullYear()}-${p(end.getMonth() + 1)}-${p(end.getDate())}`;
 }
 
 export default function TeacherEnrollments({ enrollments }: { enrollments: TeacherEnrollment[] }) {
@@ -343,8 +354,9 @@ function EnrollmentDetailModal({
               [
                 ["Student", studentLabel],
                 ["Course", row.courseTitle],
-                ["Weekly schedule", summarizeSlots(row.slots, false)],
-                ["Start date", row.startDate],
+                ["Weekly schedule", summarizeSlots(row.slots, false, " / ")],
+                ["Class period", schedulePeriod(row.startDate, row.slots, row.totalSessions)],
+                ["Sessions", `${row.totalSessions}`],
               ] as const
             ).map(([label, value]) => (
               <div key={label} className="flex gap-2">
