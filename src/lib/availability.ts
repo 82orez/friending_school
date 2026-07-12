@@ -94,7 +94,7 @@ export function isValidSlot(s: unknown): s is Slot {
 
 // 슬롯 목록 → 요일별 그룹 요약 문자열. 표시용. ko=true면 한국어 요일(월~일), false면 영문(Mon~Sun).
 // 예: "월 09:00, 09:30 · 수 14:00" / "Mon 09:00, 09:30 · Wed 14:00".
-export function summarizeSlots(slots: Slot[], ko = true): string {
+export function summarizeSlots(slots: Slot[], ko = true, sep = " · "): string {
   const byDay = new Map<number, number[]>();
   for (const s of slots) {
     const list = byDay.get(s.day) ?? [];
@@ -108,7 +108,7 @@ export function summarizeSlots(slots: Slot[], ko = true): string {
       const label = ko ? DAY_LABELS_KO[d] : DAY_LABELS[DISPLAY_DAYS.indexOf(d)];
       return `${label} ${mins.join(", ")}`;
     })
-    .join(" · ");
+    .join(sep);
 }
 
 // 슬롯의 요일 집합 → 월~일 순 요일 라벨. ko "월/수/금" / en "Mon/Wed/Fri". (시간 제외)

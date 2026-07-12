@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { type Slot } from "@/lib/availability";
+import { TOTAL_SESSIONS, type Slot } from "@/lib/availability";
 import { getCourse } from "@/data/courses";
 import { COURSE_PRICE_KRW } from "@/data/pricing";
 import { formatPrice } from "@/data/currencies";
@@ -14,6 +14,7 @@ type EnrollmentRow = {
   price_krw: number | null;
   teacher_name: string | null;
   start_date: string;
+  total_sessions: number | null;
   slots: Slot[];
   status: "신청" | "승인" | "결제대기" | "결제완료" | "거절" | "취소";
   teacher_note: string | null;
@@ -29,7 +30,7 @@ export default async function MyPageEnrollments() {
 
   const { data } = await supabase
     .from("enrollments")
-    .select("id, course, course_title, price_krw, teacher_name, start_date, slots, status, teacher_note, created_at")
+    .select("id, course, course_title, price_krw, teacher_name, start_date, total_sessions, slots, status, teacher_note, created_at")
     .eq("student_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -72,6 +73,7 @@ export default async function MyPageEnrollments() {
     priceKrw: e.price_krw ?? COURSE_PRICE_KRW,
     teacherName: e.teacher_name,
     startDate: e.start_date,
+    totalSessions: e.total_sessions ?? TOTAL_SESSIONS,
     slots: Array.isArray(e.slots) ? e.slots : [],
     status: e.status,
     teacherNote: e.teacher_note,

@@ -7,7 +7,7 @@ import { ChevronDown, CreditCard, ExternalLink, Loader2, TriangleAlert } from "l
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { cancelEnrollment, confirmPortonePayment } from "@/app/mypage/actions";
-import { summarizeSlots, type Slot } from "@/lib/availability";
+import { summarizeSlots, lessonEndDate, type Slot } from "@/lib/availability";
 import { PAYMENT_BANK } from "@/data/payment";
 import { formatPrice } from "@/data/currencies";
 import {
@@ -28,6 +28,7 @@ export type StudentEnrollment = {
   priceKrw: number; // 결제 금액(숫자) — 카드 결제창 totalAmount·서버 검증 기준
   teacherName: string | null;
   startDate: string;
+  totalSessions: number; // 총 수업 횟수(실 신청 24, 테스트 자유) — 종료일·수업 횟수 표시용
   slots: Slot[];
   status: "신청" | "승인" | "결제대기" | "결제완료" | "거절" | "취소";
   teacherNote: string | null;
@@ -76,6 +77,17 @@ function formatDate(iso: string): string {
   if (Number.isNaN(d.getTime())) return "";
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
+}
+
+// 수업 일정 기간 "시작일 ~ 종료일"(YYYY-MM-DD). 종료일=lessonEndDate(시작+주간 slots+횟수), 계산 불가 시 시작일만.
+function schedulePeriod(startDate: string, slots: Slot[], totalSessions: number): string {
+  const [y, m, d] = startDate.split("-").map(Number);
+  if (!y || !m || !d) return startDate;
+  const end = lessonEndDate(new Date(y, m - 1, d), slots, totalSessions);
+  if (!end) return startDate;
+  const p = (n: number) => String(n).padStart(2, "0");
+  const endStr = `${end.getFullYear()}-${p(end.getMonth() + 1)}-${p(end.getDate())}`;
+  return `${startDate} ~ ${endStr}`;
 }
 
 // 결제 일시(날짜 + 시:분).
@@ -209,8 +221,9 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
           <dl className="bg-surface border-rule rounded-xl border px-4 py-2">
             {[
               ["강사", row.teacherName ?? "강사"],
-              ["수업 일정", summarizeSlots(row.slots)],
-              ["시작일", row.startDate],
+              ["주간 일정", summarizeSlots(row.slots, true, " / ")],
+              ["수업 일정", schedulePeriod(row.startDate, row.slots, row.totalSessions)],
+              ["수업 횟수", `${row.totalSessions}회`],
               ...(row.status === "거절" && row.teacherNote ? ([["거절 사유", row.teacherNote]] as [string, string][]) : []),
             ].map(([label, value]) => (
               <div key={label} className="border-rule flex justify-between gap-4 border-b py-2.5 last:border-b-0">
