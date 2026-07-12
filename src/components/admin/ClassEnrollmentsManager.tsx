@@ -14,6 +14,7 @@ export type ClassEnrollmentSummary = {
   studentName: string | null;
   studentEnglishName: string | null;
   teacherName: string | null;
+  centerName: string | null; // 강사 현재 소속 센터명(역산, 미지정 강사는 null)
   total: number;
   upcoming: number;
   done: number;
@@ -76,7 +77,7 @@ export default function ClassEnrollmentsManager({ rows, sessions }: { rows: Clas
       if (filter === "진행중" && (r.refunded || !isOngoing(r))) return false;
       if (filter === "완료" && (r.refunded || isOngoing(r))) return false;
       if (!q) return true;
-      return `${r.studentName ?? ""} ${r.studentEnglishName ?? ""} ${r.teacherName ?? ""} ${r.courseTitle}`.toLowerCase().includes(q);
+      return `${r.studentName ?? ""} ${r.studentEnglishName ?? ""} ${r.teacherName ?? ""} ${r.centerName ?? ""} ${r.courseTitle}`.toLowerCase().includes(q);
     });
     let arr = base;
     if (sort) {
@@ -216,7 +217,10 @@ export default function ClassEnrollmentsManager({ rows, sessions }: { rows: Clas
                       {r.studentName ?? "학생"}
                       {r.studentEnglishName && <span className="text-muted-fg-faint"> ({r.studentEnglishName})</span>}
                     </td>
-                    <td className="text-muted-fg max-w-[10rem] truncate px-4 py-3.5 align-middle">{r.teacherName ?? "강사"}</td>
+                    <td className="text-muted-fg max-w-[10rem] px-4 py-3.5 align-middle">
+                      <span className="block truncate">{r.teacherName ?? "강사"}</span>
+                      <span className="text-muted-fg-faint mt-0.5 block truncate text-xs">{r.centerName ?? "미지정"}</span>
+                    </td>
                     <td className="text-muted-fg px-4 py-3.5 align-middle whitespace-nowrap">
                       <span className="block">
                         {r.firstDate}

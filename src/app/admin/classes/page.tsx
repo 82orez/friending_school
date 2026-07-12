@@ -53,6 +53,7 @@ export default async function AdminClassesPage() {
         studentName: r.student_name,
         studentEnglishName: r.student_english_name,
         teacherName: r.teacher_name,
+        centerName: null,
         total: 0,
         upcoming: 0,
         done: 0,
@@ -99,11 +100,13 @@ export default async function AdminClassesPage() {
   // slots 비어있는 레거시만 클래스 session_date 파생(slotSets)으로 폴백.
   const enrollmentIds = Array.from(map.keys());
   const slotsByEnrollment = new Map<string, Slot[]>();
+  const teacherIdByEnrollment = new Map<string, string | null>();
   if (enrollmentIds.length > 0) {
-    const { data: enrRows } = await admin.from("enrollments").select("id, slots, status, teacher_name").in("id", enrollmentIds);
-    for (const e of (enrRows ?? []) as { id: string; slots: unknown; status: string; teacher_name: string | null }[]) {
+    const { data: enrRows } = await admin.from("enrollments").select("id, slots, status, teacher_name, teacher_id").in("id", enrollmentIds);
+    for (const e of (enrRows ?? []) as { id: string; slots: unknown; status: string; teacher_name: string | null; teacher_id: string | null }[]) {
       const s = (Array.isArray(e.slots) ? e.slots : []).filter(isValidSlot).map((x) => ({ day: Number(x.day), min: Number(x.min) }));
       slotsByEnrollment.set(e.id, s);
+      teacherIdByEnrollment.set(e.id, e.teacher_id);
       const g = map.get(e.id);
       if (g) {
         // 환불/거절(status '취소'/'거절') = 과정 종료 → 목록 상태를 '완료' 아닌 '환불'로 표시.
@@ -113,6 +116,22 @@ export default async function AdminClassesPage() {
       }
     }
   }
+
+  // 강사 현재 소속 센터 역산(teacher_id → profiles.center_id → centers.name) — 매출/수강신청과 동일 원칙.
+  const teacherIds = Array.from(new Set(Array.from(teacherIdByEnrollment.values()).filter(Boolean) as string[]));
+  const centerNameByTeacher = new Map<string, string | null>();
+  if (teacherIds.length > 0) {
+    const { data: profData } = await admin.from("profiles").select("id, center_id").in("id", teacherIds);
+    const { data: centerData } = await admin.from("centers").select("id, name");
+    const centerNameById = new Map(((centerData ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]));
+    for (const p of (profData ?? []) as { id: string; center_id: string | null }[]) {
+      centerNameByTeacher.set(p.id, p.center_id ? (centerNameById.get(p.center_id) ?? null) : null);
+    }
+  }
+  map.forEach((g, id) => {
+    const tid = teacherIdByEnrollment.get(id) ?? null;
+    g.centerName = tid ? (centerNameByTeacher.get(tid) ?? null) : null;
+  });
 
   // 파생 주간 요일·시작시각 요약(예: "월 14:00 · 수 14:00") + 요일-only(예: "월/수/금", 주간 뷰 SlotModal용).
   const weekdaysByEnrollment = new Map<string, string>();
