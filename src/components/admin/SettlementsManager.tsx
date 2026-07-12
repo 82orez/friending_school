@@ -119,7 +119,7 @@ function aggregate(
 }
 
 export default function SettlementsManager({ rows, rates }: { rows: SettlementRow[]; rates: Rates }) {
-  const [grouping, setGrouping] = useState<Grouping>("강사별");
+  const [grouping, setGrouping] = useState<Grouping>("센터별");
   const [period, setPeriod] = useState<Period>("월간");
   const [anchor, setAnchor] = useState<string>(() => todayKst());
   const [query, setQuery] = useState("");
