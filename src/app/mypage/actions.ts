@@ -110,7 +110,7 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
       await sendEnrollmentCancellationToTeacher([teacherEmail], {
         studentName: enr.student_name ?? "회원",
         courseTitle: enr.course_title,
-        schedule: summarizeSlots(slots, false),
+        schedule: summarizeSlots(slots, false, " / "),
         startDate: enr.start_date,
         teacherUrl: `${origin}/teacher`,
       });

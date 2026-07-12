@@ -224,6 +224,7 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
               ["주간 일정", summarizeSlots(row.slots, true, " / ")],
               ["수업 일정", schedulePeriod(row.startDate, row.slots, row.totalSessions)],
               ["수업 횟수", `${row.totalSessions}회`],
+              ["수강료", row.priceLabel || "-"],
               ...(row.status === "거절" && row.teacherNote ? ([["거절 사유", row.teacherNote]] as [string, string][]) : []),
             ].map(([label, value]) => (
               <div key={label} className="border-rule flex justify-between gap-4 border-b py-2.5 last:border-b-0">
