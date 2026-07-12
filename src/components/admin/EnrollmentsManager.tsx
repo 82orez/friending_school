@@ -513,6 +513,7 @@ function EnrollmentDetailModal({
               ["수강료", row.priceLabel || "-"],
               ["주간 일정", summarizeSlots(row.slots)],
               ["수업 일정", scheduleRange],
+              ["수업 횟수", `${row.total_sessions ?? TOTAL_SESSIONS}회`],
               ...(pay ? ([["결제 수단", payMethodLabel(pay.method)]] as [string, string][]) : []),
               // 실입금액 — 환불 반영 순액(amount − cancelled). 정가와 다르면(할인 등) 별도 노출.
               ...(pay ? ([["실입금액", formatPrice((pay.amount ?? 0) - (pay.cancelledAmount ?? 0), "KRW")]] as [string, string][]) : []),
