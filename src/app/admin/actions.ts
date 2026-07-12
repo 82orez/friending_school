@@ -1167,6 +1167,7 @@ export async function createTestEnrollment(input: {
   studentEmail?: string;
   teacherId: string;
   course: string;
+  courseTitle?: string;
   slots: Slot[];
   startDate: string;
   sessions: number;
@@ -1177,8 +1178,21 @@ export async function createTestEnrollment(input: {
   } = await supabase.auth.getUser();
   if (!user || !(await isAdmin(supabase, user.id))) return { ok: false, error: "권한이 없습니다." };
 
-  const course = getCourse(input.course);
-  if (!course) return { ok: false, error: "잘못된 과정입니다." };
+  // 등록 과정이면 레지스트리 값, 아니면 관리자가 직접 입력한 과정명(테스트용 임의 강좌).
+  const known = getCourse(input.course);
+  let courseSlug: string;
+  let courseTitle: string;
+  if (known) {
+    courseSlug = known.slug;
+    courseTitle = known.title;
+  } else {
+    const custom = String(input.courseTitle ?? "")
+      .trim()
+      .slice(0, 100);
+    if (!custom) return { ok: false, error: "과정명을 입력해 주세요." };
+    courseSlug = "custom"; // 센티넬 — getCourse는 undefined → 다운스트림 폴백으로 course_title 표시
+    courseTitle = custom;
+  }
   const teacherId = String(input.teacherId ?? "").trim();
   if (!teacherId) return { ok: false, error: "강사를 선택해 주세요." };
   const slots: Slot[] = (Array.isArray(input.slots) ? input.slots : []).filter(isValidSlot).map((s) => ({ day: Number(s.day), min: Number(s.min) }));
@@ -1215,8 +1229,8 @@ export async function createTestEnrollment(input: {
     .insert({
       student_id: studentId,
       teacher_id: teacherId,
-      course: course.slug,
-      course_title: course.title,
+      course: courseSlug,
+      course_title: courseTitle,
       start_date: startDate,
       slots,
       teacher_name: teacherName,
@@ -1235,8 +1249,8 @@ export async function createTestEnrollment(input: {
     eventType: "enrollment_created",
     actorId: user.id,
     actorRole: "admin",
-    course: course.slug,
-    courseTitle: course.title,
+    course: courseSlug,
+    courseTitle: courseTitle,
     studentName,
     teacherName,
     detail: { isTest: true, totalSessions: sessions, startDate, slots },

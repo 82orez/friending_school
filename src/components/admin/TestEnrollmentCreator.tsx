@@ -78,6 +78,7 @@ function CreatorModal({
     students.some((s) => s.email === defaultStudentEmail) ? defaultStudentEmail : (students[0]?.email ?? ""),
   );
   const [course, setCourse] = useState(courses[0]?.slug ?? "");
+  const [customTitle, setCustomTitle] = useState("");
   const [slots, setSlots] = useState<Slot[]>([]);
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(todayKst());
@@ -108,6 +109,10 @@ function CreatorModal({
       toast.error("수업 일정을 선택해 주세요.");
       return;
     }
+    if (course === "__custom__" && !customTitle.trim()) {
+      toast.error("과정명을 입력해 주세요.");
+      return;
+    }
     if (!selectedTeacher) {
       toast.error("가능한 강사를 선택해 주세요.");
       return;
@@ -117,6 +122,7 @@ function CreatorModal({
         studentEmail: studentEmail.trim() || undefined,
         teacherId: selectedTeacher.id,
         course,
+        courseTitle: course === "__custom__" ? customTitle.trim() : undefined,
         slots,
         startDate,
         sessions,
@@ -182,8 +188,23 @@ function CreatorModal({
                   {c.title}
                 </option>
               ))}
+              <option value="__custom__">직접 입력…</option>
             </select>
           </label>
+
+          {course === "__custom__" && (
+            <label className="block">
+              <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">과정명 직접 입력</span>
+              <input
+                type="text"
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                maxLength={100}
+                placeholder="예) 여름특강 회화반"
+                className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              />
+            </label>
+          )}
 
           <div>
             <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">수업 일정 (주간 반복)</span>
