@@ -167,6 +167,10 @@ export default async function AdminClassesPage() {
       conductedAt: r.conducted_at,
       conductedOverride: r.conducted_override,
       teacherReassignedAt: r.teacher_reassigned_at,
+      centerName: (() => {
+        const tid = teacherIdByEnrollment.get(r.enrollment_id) ?? null;
+        return tid ? (centerNameByTeacher.get(tid) ?? null) : null;
+      })(),
     }));
 
   return <ClassEnrollmentsManager rows={summaries} sessions={sessions} />;

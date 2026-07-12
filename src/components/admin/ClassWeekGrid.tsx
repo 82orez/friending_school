@@ -12,6 +12,7 @@ export type AdminSession = {
   courseTitle: string;
   weekdays: string; // 과정 주간 요일 요약(예: "월/수/금") — 정규 수업 기준.
   teacherName: string | null;
+  centerName: string | null; // 강사 현재 소속 센터명(역산, 미지정 강사는 null)
   studentName: string | null;
   studentEnglishName: string | null;
   sessionDate: string; // YYYY-MM-DD (KST)
@@ -280,6 +281,7 @@ function SlotModal({ slot, now, onClose }: { slot: SlotSel; now: number; onClose
                   강사 {s.teacherName ?? "-"} · 학생 {s.studentName ?? "-"}
                   {s.studentEnglishName ? ` (${s.studentEnglishName})` : ""}
                 </span>
+                <span className="text-muted-fg-faint truncate text-xs">센터 {s.centerName ?? "미지정"}</span>
               </button>
             </li>
           ))}
