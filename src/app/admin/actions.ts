@@ -484,11 +484,16 @@ export async function confirmPayment(id: string, opts?: { amount?: number; note?
   const enrollmentId = String(id ?? "").trim();
   if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
 
+  // 유효가격 = enrollment.price_krw ?? 전역 고정가. 실입금액 캡의 상한.
+  const admin = createAdminClient();
+  const { data: enr } = await admin.from("enrollments").select("price_krw").eq("id", enrollmentId).maybeSingle();
+  const effectivePrice = enr?.price_krw ?? COURSE_PRICE_KRW;
+
   // 실입금액(무통장) — 미지정=정가, 지정 시 1~정가 범위(정가 초과 방지, 할인만 허용).
   let amount: number | undefined;
   if (opts?.amount != null) {
     amount = Math.floor(Number(opts.amount));
-    if (!Number.isFinite(amount) || amount < 1 || amount > COURSE_PRICE_KRW) return { ok: false, error: "입금액이 올바르지 않습니다." };
+    if (!Number.isFinite(amount) || amount < 1 || amount > effectivePrice) return { ok: false, error: "입금액이 올바르지 않습니다." };
   }
   const note = (opts?.note ?? "").trim().slice(0, 500) || undefined;
 
@@ -516,17 +521,19 @@ export async function adjustBankPayment(paymentId: string, opts: { amount: numbe
   // 환불/부분환불 건은 정산 정합성 위해 차단.
   if (pay.status !== "paid") return { ok: false, error: "환불된 결제는 수정할 수 없습니다." };
 
+  // enrollment 스냅샷 — 유효가격(정가) 캡 + 감사 로그(best-effort) 공용 조회.
+  const { data: enr } = pay.enrollment_id
+    ? await admin.from("enrollments").select("course, course_title, student_name, teacher_name, price_krw").eq("id", pay.enrollment_id).maybeSingle()
+    : { data: null };
+  const effectivePrice = enr?.price_krw ?? COURSE_PRICE_KRW; // 실입금액 캡 상한
+
   const amount = Math.floor(Number(opts.amount));
-  if (!Number.isFinite(amount) || amount < 1 || amount > COURSE_PRICE_KRW) return { ok: false, error: "입금액이 올바르지 않습니다." };
+  if (!Number.isFinite(amount) || amount < 1 || amount > effectivePrice) return { ok: false, error: "입금액이 올바르지 않습니다." };
   const note = (opts.note ?? "").trim().slice(0, 500) || null;
 
   const { error } = await admin.from("payments").update({ amount, note }).eq("payment_id", pid);
   if (error) return { ok: false, error: "결제 수정 중 오류가 발생했습니다." };
 
-  // 감사 로그(before/after). enrollment 스냅샷 조회는 best-effort.
-  const { data: enr } = pay.enrollment_id
-    ? await admin.from("enrollments").select("course, course_title, student_name, teacher_name").eq("id", pay.enrollment_id).maybeSingle()
-    : { data: null };
   await logEnrollmentEvent(admin, {
     enrollmentId: pay.enrollment_id,
     eventType: "payment_adjusted",
@@ -1169,6 +1176,7 @@ export async function createTestEnrollment(input: {
   course: string;
   courseTitle?: string;
   courseEnglishTitle?: string;
+  priceKrw?: number;
   slots: Slot[];
   startDate: string;
   sessions: number;
@@ -1208,6 +1216,12 @@ export async function createTestEnrollment(input: {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return { ok: false, error: "시작일 형식이 올바르지 않습니다." };
   const sessions = Number(input.sessions);
   if (!Number.isInteger(sessions) || sessions < 1 || sessions > 60) return { ok: false, error: "수업 횟수는 1~60 사이여야 합니다." };
+  // 수강료 — 미지정/빈값이면 null(전역 고정가 폴백), 지정 시 1~1억원 정수.
+  let priceKrw: number | null = null;
+  if (input.priceKrw != null && String(input.priceKrw) !== "") {
+    priceKrw = Math.floor(Number(input.priceKrw));
+    if (!Number.isFinite(priceKrw) || priceKrw < 1 || priceKrw > 100_000_000) return { ok: false, error: "수강료는 1~100,000,000원 사이여야 합니다." };
+  }
 
   const admin = createAdminClient();
 
@@ -1239,6 +1253,7 @@ export async function createTestEnrollment(input: {
       course: courseSlug,
       course_title: courseTitle,
       course_english_title: courseEnglishTitle,
+      price_krw: priceKrw,
       start_date: startDate,
       slots,
       teacher_name: teacherName,

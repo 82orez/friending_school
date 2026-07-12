@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { cancelEnrollment, confirmPortonePayment } from "@/app/mypage/actions";
 import { summarizeSlots, type Slot } from "@/lib/availability";
 import { PAYMENT_BANK } from "@/data/payment";
-import { COURSE_PRICE_KRW } from "@/data/pricing";
 import { formatPrice } from "@/data/currencies";
 import {
   AlertDialog,
@@ -25,7 +24,8 @@ import {
 export type StudentEnrollment = {
   id: string;
   courseTitle: string;
-  priceLabel: string; // 결제 금액 표시(과정 고정가, 예 "₩240,000")
+  priceLabel: string; // 결제 금액 표시(유효가격, 예 "₩240,000")
+  priceKrw: number; // 결제 금액(숫자) — 카드 결제창 totalAmount·서버 검증 기준
   teacherName: string | null;
   startDate: string;
   slots: Slot[];
@@ -163,7 +163,7 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
         channelKey,
         paymentId,
         orderName: row.courseTitle,
-        totalAmount: COURSE_PRICE_KRW,
+        totalAmount: row.priceKrw,
         currency: "CURRENCY_KRW",
         payMethod: "CARD",
         customData: { enrollmentId: row.id },

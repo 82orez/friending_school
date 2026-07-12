@@ -78,7 +78,7 @@ export async function finalizeEnrollmentPayment(
   const { data: enr } = await admin
     .from("enrollments")
     .select(
-      "status, student_phone, course_title, course_english_title, start_date, id, student_id, teacher_id, course, teacher_name, student_name, student_english_name, slots, total_sessions",
+      "status, student_phone, course_title, course_english_title, price_krw, start_date, id, student_id, teacher_id, course, teacher_name, student_name, student_english_name, slots, total_sessions",
     )
     .eq("id", enrollmentId)
     .maybeSingle();
@@ -98,7 +98,8 @@ export async function finalizeEnrollmentPayment(
 
   // 무통장 입금(admin 확인) 결제 기록 — 매출·환불 관리 단일 소스화. 합성 payment_id로 멱등.
   // 카드/웹훅(student/system)은 상류 settlePortonePayment가 이미 기록하므로 admin 경로만.
-  const bankAmount = opts?.amount ?? COURSE_PRICE_KRW; // 실입금액(미지정=정가)
+  const effectivePrice = enr.price_krw ?? COURSE_PRICE_KRW; // 유효가격 = per-건 수강료 ?? 전역 고정가
+  const bankAmount = opts?.amount ?? effectivePrice; // 실입금액(미지정=정가)
   if (actor.role === "admin") {
     await recordPayment(admin, {
       paymentId: `bank-${enrollmentId}`,
@@ -202,7 +203,7 @@ export async function finalizeEnrollmentPayment(
       startDate: enr.start_date,
       ...(actor.role === "student" ? { via: "portone_card" } : actor.role === "system" ? { via: "portone_webhook" } : {}),
       // 무통장(admin) 확정 시 실입금액·할인·메모 기록(감사).
-      ...(actor.role === "admin" ? { bankAmount, discounted: bankAmount < COURSE_PRICE_KRW, ...(opts?.note ? { note: opts.note } : {}) } : {}),
+      ...(actor.role === "admin" ? { bankAmount, discounted: bankAmount < effectivePrice, ...(opts?.note ? { note: opts.note } : {}) } : {}),
     },
   });
 
@@ -284,7 +285,11 @@ export async function settlePortonePayment(paymentId: string, actor: { id: strin
 
   const admin = createAdminClient();
   const enrollmentId = v.enrollmentId!;
-  const { data: enrRow } = await admin.from("enrollments").select("student_id").eq("id", enrollmentId).maybeSingle();
+  const { data: enrRow } = await admin.from("enrollments").select("student_id, price_krw").eq("id", enrollmentId).maybeSingle();
+
+  // 금액 검증 — enrollment 유효가격(price_krw ?? 전역 고정가) 기준. 불일치면 기록 전에 거부(기존 "불일치=미기록" 보존).
+  const expectedAmount = enrRow?.price_krw ?? COURSE_PRICE_KRW;
+  if (Number(v.amount) !== expectedAmount) return { ok: false, error: "결제 금액이 일치하지 않아요." };
 
   await recordPayment(admin, {
     paymentId,

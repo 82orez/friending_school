@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { adjustBankPayment, adminCancelEnrollment, confirmPayment, deleteTestEnrollment, refundPayment } from "@/app/admin/actions";
 import { lessonEndDate, overlappingIds, summarizeSlots, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
-import { COURSE_PRICE_KRW } from "@/data/pricing";
 import { formatPrice } from "@/data/currencies";
 import {
   AlertDialog,
@@ -35,7 +34,8 @@ export type AdminEnrollment = {
   teacher_note: string | null;
   created_at: string;
   is_test?: boolean;
-  priceLabel: string; // 수강료 표시(과정 고정가, 예 "₩240,000")
+  priceLabel: string; // 수강료 표시(유효가격, 예 "₩240,000")
+  priceKrw: number; // 유효가격(숫자) = per-건 수강료 ?? 전역 고정가 — 입금액 캡·기본값용
   payment?: { paymentId: string; status: string; amount: number; cancelledAmount: number; method?: string | null; receiptUrl?: string | null; createdAt?: string; note?: string | null } | null; // 결제 기록(카드/무통장, 환불용)
 };
 
@@ -303,7 +303,7 @@ function EnrollmentDetailModal({
   const [reason, setReason] = useState("");
   const [refundReason, setRefundReason] = useState("");
   const [refundAmountStr, setRefundAmountStr] = useState("");
-  const [payAmountStr, setPayAmountStr] = useState(String(COURSE_PRICE_KRW)); // 무통장 실입금액(기본=정가)
+  const [payAmountStr, setPayAmountStr] = useState(String(row.priceKrw)); // 무통장 실입금액(기본=정가)
   const [payNote, setPayNote] = useState(""); // 무통장 결제 메모(할인 사유 등)
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustAmountStr, setAdjustAmountStr] = useState("");
@@ -358,8 +358,8 @@ function EnrollmentDetailModal({
 
   const confirmPay = () => {
     const amount = Math.floor(Number(payAmountStr));
-    if (!Number.isFinite(amount) || amount < 1 || amount > COURSE_PRICE_KRW) {
-      toast.error(`입금액은 1 ~ ${COURSE_PRICE_KRW.toLocaleString()}원 사이여야 합니다.`);
+    if (!Number.isFinite(amount) || amount < 1 || amount > row.priceKrw) {
+      toast.error(`입금액은 1 ~ ${row.priceKrw.toLocaleString()}원 사이여야 합니다.`);
       return;
     }
     setPayConfirmOpen(false);
@@ -387,8 +387,8 @@ function EnrollmentDetailModal({
   const saveAdjust = () => {
     if (!pay) return;
     const amount = Math.floor(Number(adjustAmountStr));
-    if (!Number.isFinite(amount) || amount < 1 || amount > COURSE_PRICE_KRW) {
-      toast.error(`입금액은 1 ~ ${COURSE_PRICE_KRW.toLocaleString()}원 사이여야 합니다.`);
+    if (!Number.isFinite(amount) || amount < 1 || amount > row.priceKrw) {
+      toast.error(`입금액은 1 ~ ${row.priceKrw.toLocaleString()}원 사이여야 합니다.`);
       return;
     }
     setAdjustOpen(false);
@@ -754,14 +754,14 @@ function EnrollmentDetailModal({
                   value={payAmountStr}
                   onChange={(e) => setPayAmountStr(e.target.value)}
                   min={1}
-                  max={COURSE_PRICE_KRW}
+                  max={row.priceKrw}
                   className="border-rule-faint focus:border-accent-blue w-40 rounded-md border bg-white px-3 py-2 text-sm outline-none"
                 />
                 <span className="text-muted-fg-faint text-sm">원</span>
               </div>
-              {Number(payAmountStr) > 0 && Number(payAmountStr) < COURSE_PRICE_KRW && (
+              {Number(payAmountStr) > 0 && Number(payAmountStr) < row.priceKrw && (
                 <p className="text-[#B45309] mt-1 text-xs font-semibold">
-                  할인 적용: 정가보다 {(COURSE_PRICE_KRW - Math.floor(Number(payAmountStr))).toLocaleString()}원 낮게 매출에 기록됩니다.
+                  할인 적용: 정가보다 {(row.priceKrw - Math.floor(Number(payAmountStr))).toLocaleString()}원 낮게 매출에 기록됩니다.
                 </p>
               )}
             </div>
@@ -804,14 +804,14 @@ function EnrollmentDetailModal({
                   value={adjustAmountStr}
                   onChange={(e) => setAdjustAmountStr(e.target.value)}
                   min={1}
-                  max={COURSE_PRICE_KRW}
+                  max={row.priceKrw}
                   className="border-rule-faint focus:border-accent-blue w-40 rounded-md border bg-white px-3 py-2 text-sm outline-none"
                 />
                 <span className="text-muted-fg-faint text-sm">원</span>
               </div>
-              {Number(adjustAmountStr) > 0 && Number(adjustAmountStr) < COURSE_PRICE_KRW && (
+              {Number(adjustAmountStr) > 0 && Number(adjustAmountStr) < row.priceKrw && (
                 <p className="text-[#B45309] mt-1 text-xs font-semibold">
-                  할인 적용: 정가보다 {(COURSE_PRICE_KRW - Math.floor(Number(adjustAmountStr))).toLocaleString()}원 낮게 매출에 기록됩니다.
+                  할인 적용: 정가보다 {(row.priceKrw - Math.floor(Number(adjustAmountStr))).toLocaleString()}원 낮게 매출에 기록됩니다.
                 </p>
               )}
             </div>

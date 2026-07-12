@@ -12,6 +12,7 @@ import { teacherHasAllSlots, type Slot } from "@/lib/availability";
 import { type EnrollTeacherCard } from "@/app/courses/enroll-actions";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
+import { COURSE_PRICE_KRW } from "@/data/pricing";
 
 type CourseOpt = { slug: string; title: string };
 type StudentOpt = { email: string; label: string };
@@ -84,6 +85,7 @@ function CreatorModal({
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(todayKst());
   const [sessions, setSessions] = useState(3);
+  const [priceKrw, setPriceKrw] = useState(COURSE_PRICE_KRW);
   const [pending, startTransition] = useTransition();
 
   // 선택 슬롯 전부 비는 강사만 라이브 필터(실제 위저드와 동일 패턴, 추가 쿼리 0).
@@ -129,6 +131,7 @@ function CreatorModal({
         course,
         courseTitle: course === "__custom__" ? customTitle.trim() : undefined,
         courseEnglishTitle: course === "__custom__" ? customEnglishTitle.trim() : undefined,
+        priceKrw: Number(priceKrw) || COURSE_PRICE_KRW,
         slots,
         startDate,
         sessions,
@@ -300,6 +303,17 @@ function CreatorModal({
                 value={sessions}
                 onChange={(e) => setSessions(Math.max(1, Math.min(60, Number(e.target.value) || 1)))}
                 className="border-rule-faint focus:border-accent-blue w-28 rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              />
+            </label>
+            <label className="block">
+              <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">수강료 (원)</span>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={priceKrw}
+                onChange={(e) => setPriceKrw(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                className="border-rule-faint focus:border-accent-blue w-36 rounded-md border bg-white px-3 py-2 text-sm outline-none"
               />
             </label>
           </div>

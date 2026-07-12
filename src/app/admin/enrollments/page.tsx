@@ -5,6 +5,8 @@ import EnrollmentsManager, { type AdminEnrollment } from "@/components/admin/Enr
 import TestEnrollmentCreator from "@/components/admin/TestEnrollmentCreator";
 import { loadEnrollTeachers } from "@/app/courses/enroll-actions";
 import { COURSE_SLUGS, getCourse } from "@/data/courses";
+import { COURSE_PRICE_KRW } from "@/data/pricing";
+import { formatPrice } from "@/data/currencies";
 import { type Slot } from "@/lib/availability";
 
 export default async function AdminEnrollmentsPage() {
@@ -16,7 +18,9 @@ export default async function AdminEnrollmentsPage() {
   const admin = createAdminClient();
   const { data } = await admin
     .from("enrollments")
-    .select("id, teacher_id, course, course_title, teacher_name, student_name, student_phone, slots, start_date, status, teacher_note, created_at, is_test, total_sessions")
+    .select(
+      "id, teacher_id, course, course_title, teacher_name, student_name, student_phone, slots, start_date, status, teacher_note, created_at, is_test, total_sessions, price_krw",
+    )
     .order("created_at", { ascending: false });
 
   // 결제 기록(payments) 병합 — enrollment_id별 최신 1건(카드 결제/환불 상태·금액). 환불 버튼·배지용.
@@ -63,13 +67,14 @@ export default async function AdminEnrollmentsPage() {
   const { data: centerData } = await admin.from("centers").select("id, name");
   const centerNameById = new Map(((centerData ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]));
 
-  const enrollments: AdminEnrollment[] = ((data ?? []) as (AdminEnrollment & { course: string })[]).map((e) => {
+  const enrollments: AdminEnrollment[] = ((data ?? []) as (AdminEnrollment & { course: string; price_krw: number | null })[]).map((e) => {
     const cid = e.teacher_id ? (centerIdByTeacher.get(e.teacher_id) ?? null) : null;
     return {
       ...e,
       slots: (Array.isArray(e.slots) ? e.slots : []) as Slot[],
-      // 수강료 = 과정 고정가(슬러그로 live 해석, 미해석 레거시는 빈 값). 학생 결제대기 패널과 동일 표기.
-      priceLabel: getCourse(e.course)?.price ?? "",
+      // 수강료 = per-건 가격(price_krw) 우선, 없으면 과정 고정가. 유효가격(priceKrw)은 결제 캡·기본값용 숫자.
+      priceLabel: e.price_krw != null ? formatPrice(e.price_krw, "KRW") : (getCourse(e.course)?.price ?? ""),
+      priceKrw: e.price_krw ?? COURSE_PRICE_KRW,
       payment: paymentByEnrollment.get(e.id) ?? null,
       centerName: cid ? (centerNameById.get(cid) ?? null) : null,
     };

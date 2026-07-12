@@ -1,7 +1,5 @@
 import "server-only";
 
-import { COURSE_PRICE_KRW } from "@/data/pricing";
-
 // PortOne V2 결제 단건 조회 + 검증 공유 헬퍼 — 학생 액션(confirmPortonePayment)·웹훅 라우트 공용.
 // 성공 시 customData의 enrollmentId 반환. 금액·통화·상태를 서버가 authoritative하게 검증(클라/웹훅 body 신뢰 금지).
 // transient=true는 일시 오류(네트워크·5xx)라 웹훅에서 재시도(500) 유도용. false/미지정은 확정 실패(재시도 무의미).
@@ -65,7 +63,8 @@ export async function getVerifiedPortonePayment(paymentId: string): Promise<Veri
   }
 
   if (pay.status !== "PAID") return { ok: false, error: `결제가 완료되지 않았어요(상태 ${pay.status ?? "알 수 없음"}).` };
-  if (pay.currency !== "KRW" || Number(pay.amount?.total) !== COURSE_PRICE_KRW) return { ok: false, error: "결제 금액이 일치하지 않아요." };
+  // 통화만 여기서 검증. 금액은 enrollment 유효가격(price_krw ?? 전역 고정가) 기준으로 호출자(settlePortonePayment)가 검증.
+  if (pay.currency !== "KRW") return { ok: false, error: "결제 금액이 일치하지 않아요." };
 
   // customData는 V2에서 문자열로 반환될 수 있음 → 파싱.
   let custom: { enrollmentId?: string } = {};

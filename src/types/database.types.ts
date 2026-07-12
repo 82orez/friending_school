@@ -213,6 +213,7 @@ export type Database = {
           created_at: string
           id: string
           is_test: boolean
+          price_krw: number | null
           slots: Json
           start_date: string
           status: Database["public"]["Enums"]["enrollment_status"]
@@ -233,6 +234,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_test?: boolean
+          price_krw?: number | null
           slots: Json
           start_date: string
           status?: Database["public"]["Enums"]["enrollment_status"]
@@ -253,6 +255,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_test?: boolean
+          price_krw?: number | null
           slots?: Json
           start_date?: string
           status?: Database["public"]["Enums"]["enrollment_status"]
