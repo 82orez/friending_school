@@ -25,6 +25,7 @@ export type AdminEnrollment = {
   teacher_id: string;
   course_title: string;
   teacher_name: string | null;
+  centerName: string | null; // 강사 현재 소속 센터명(역산, 미지정 강사는 null)
   student_name: string | null;
   student_phone: string | null;
   slots: Slot[];
@@ -69,11 +70,12 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "환불", label: "환불" },
 ];
 
-type SortKey = "student" | "teacher" | "start" | "applied";
+type SortKey = "student" | "teacher" | "center" | "start" | "applied";
 
 const SORT_VALUE: Record<SortKey, (r: AdminEnrollment) => string> = {
   student: (r) => r.student_name ?? "",
   teacher: (r) => r.teacher_name ?? "",
+  center: (r) => r.centerName ?? "",
   start: (r) => r.start_date,
   applied: (r) => r.created_at,
 };
@@ -140,7 +142,7 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
         return false;
       }
       if (!q) return true;
-      return `${r.student_name ?? ""} ${r.teacher_name ?? ""} ${r.course_title}`.toLowerCase().includes(q);
+      return `${r.student_name ?? ""} ${r.teacher_name ?? ""} ${r.centerName ?? ""} ${r.course_title}`.toLowerCase().includes(q);
     });
     if (!sort) return base;
     const val = (r: AdminEnrollment) => SORT_VALUE[sort.key](r).trim();
@@ -200,6 +202,7 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
               <th className="px-4 py-2.5 md:px-6">상태</th>
               <SortHeader label="학생" sortKey="student" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <SortHeader label="강사" sortKey="teacher" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+              <SortHeader label="센터" sortKey="center" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <th className="px-4 py-2.5">과정</th>
               <SortHeader label="시작일" sortKey="start" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <SortHeader label="신청일" sortKey="applied" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
@@ -208,7 +211,7 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-muted-fg px-6 py-12 text-center text-sm">
+                <td colSpan={7} className="text-muted-fg px-6 py-12 text-center text-sm">
                   표시할 수강신청이 없습니다.
                 </td>
               </tr>
@@ -249,6 +252,7 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
                     </td>
                     <td className="text-ink max-w-[12rem] truncate px-4 py-3.5 align-middle font-bold">{r.student_name ?? "학생"}</td>
                     <td className="text-muted-fg max-w-[12rem] truncate px-4 py-3.5 align-middle">{r.teacher_name ?? "강사"}</td>
+                    <td className="text-muted-fg max-w-[10rem] truncate px-4 py-3.5 align-middle">{r.centerName ?? "미지정"}</td>
                     <td className="text-muted-fg max-w-[12rem] truncate px-4 py-3.5 align-middle">{r.course_title}</td>
                     <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">
                       <span className="block">{r.start_date}</span>
@@ -492,6 +496,7 @@ function EnrollmentDetailModal({
               ["학생", row.student_name ?? "-"],
               ["전화", row.student_phone ?? "-"],
               ["강사", row.teacher_name ?? "-"],
+              ["센터", row.centerName ?? "미지정"],
               ["과정", row.course_title],
               ["수강료", row.priceLabel || "-"],
               ["수업 일정", summarizeSlots(row.slots)],

@@ -53,13 +53,27 @@ export default async function AdminEnrollmentsPage() {
     }
   }
 
-  const enrollments: AdminEnrollment[] = ((data ?? []) as (AdminEnrollment & { course: string })[]).map((e) => ({
-    ...e,
-    slots: (Array.isArray(e.slots) ? e.slots : []) as Slot[],
-    // 수강료 = 과정 고정가(슬러그로 live 해석, 미해석 레거시는 빈 값). 학생 결제대기 패널과 동일 표기.
-    priceLabel: getCourse(e.course)?.price ?? "",
-    payment: paymentByEnrollment.get(e.id) ?? null,
-  }));
+  // 강사 현재 소속 센터 역산(teacher_id → profiles.center_id → centers.name) — 매출/정산과 동일 원칙.
+  const teacherIds = Array.from(new Set(((data ?? []) as { teacher_id: string | null }[]).map((e) => e.teacher_id).filter(Boolean) as string[]));
+  const centerIdByTeacher = new Map<string, string | null>();
+  if (teacherIds.length > 0) {
+    const { data: profData } = await admin.from("profiles").select("id, center_id").in("id", teacherIds);
+    for (const p of (profData ?? []) as { id: string; center_id: string | null }[]) centerIdByTeacher.set(p.id, p.center_id);
+  }
+  const { data: centerData } = await admin.from("centers").select("id, name");
+  const centerNameById = new Map(((centerData ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]));
+
+  const enrollments: AdminEnrollment[] = ((data ?? []) as (AdminEnrollment & { course: string })[]).map((e) => {
+    const cid = e.teacher_id ? (centerIdByTeacher.get(e.teacher_id) ?? null) : null;
+    return {
+      ...e,
+      slots: (Array.isArray(e.slots) ? e.slots : []) as Slot[],
+      // 수강료 = 과정 고정가(슬러그로 live 해석, 미해석 레거시는 빈 값). 학생 결제대기 패널과 동일 표기.
+      priceLabel: getCourse(e.course)?.price ?? "",
+      payment: paymentByEnrollment.get(e.id) ?? null,
+      centerName: cid ? (centerNameById.get(cid) ?? null) : null,
+    };
+  });
 
   const teachers = await loadEnrollTeachers();
   const courses = COURSE_SLUGS.map((slug) => ({ slug, title: getCourse(slug)?.title ?? slug }));
