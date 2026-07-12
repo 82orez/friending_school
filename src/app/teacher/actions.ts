@@ -109,7 +109,9 @@ export async function updateTeacherAvailability(slots: AvailabilitySlot[]): Prom
 async function loadOwnPendingEnrollment(admin: ReturnType<typeof createAdminClient>, enrollmentId: string, teacherId: string) {
   const { data } = await admin
     .from("enrollments")
-    .select("id, teacher_id, status, student_phone, student_name, student_english_name, course, course_title, teacher_name, slots, total_sessions, start_date")
+    .select(
+      "id, teacher_id, status, student_phone, student_name, student_english_name, course, course_title, course_english_title, teacher_name, slots, total_sessions, start_date",
+    )
     .eq("id", enrollmentId)
     .maybeSingle();
   if (!data || data.teacher_id !== teacherId) return null;
@@ -136,6 +138,7 @@ function buildAdminEnrollmentEmail(
     student_english_name: string | null;
     course: string;
     course_title: string;
+    course_english_title?: string | null;
     teacher_name: string | null;
     slots: unknown;
     total_sessions: number | null;
@@ -157,7 +160,7 @@ function buildAdminEnrollmentEmail(
     studentName: enr.student_name ?? "",
     studentEnglishName: enr.student_english_name ?? "",
     courseTitle: enr.course_title,
-    courseEnglishTitle: getCourse(enr.course)?.englishTitle ?? "",
+    courseEnglishTitle: getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? "",
     teacherName: enr.teacher_name ?? "",
     schedule: summarizeSlots(slots, false),
     startDate: enr.start_date,

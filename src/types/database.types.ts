@@ -53,6 +53,7 @@ export type Database = {
           conducted_at: string | null
           conducted_override: boolean | null
           course: string
+          course_english_title: string | null
           course_title: string
           created_at: string
           end_min: number
@@ -80,6 +81,7 @@ export type Database = {
           conducted_at?: string | null
           conducted_override?: boolean | null
           course: string
+          course_english_title?: string | null
           course_title: string
           created_at?: string
           end_min: number
@@ -107,6 +109,7 @@ export type Database = {
           conducted_at?: string | null
           conducted_override?: boolean | null
           course?: string
+          course_english_title?: string | null
           course_title?: string
           created_at?: string
           end_min?: number
@@ -205,6 +208,7 @@ export type Database = {
       enrollments: {
         Row: {
           course: string
+          course_english_title: string | null
           course_title: string
           created_at: string
           id: string
@@ -224,6 +228,7 @@ export type Database = {
         }
         Insert: {
           course: string
+          course_english_title?: string | null
           course_title: string
           created_at?: string
           id?: string
@@ -243,6 +248,7 @@ export type Database = {
         }
         Update: {
           course?: string
+          course_english_title?: string | null
           course_title?: string
           created_at?: string
           id?: string

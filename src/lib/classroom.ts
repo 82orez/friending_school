@@ -5,7 +5,7 @@ import type { ClassItem } from "@/components/classroom/ClassroomList";
 
 // classes 조회 컬럼(내 강의실 학생/강사 공용). teacher_id·original_teacher_id는 대체됨(reassigned-away) 판정용.
 export const CLASS_SELECT =
-  "id, enrollment_id, teacher_id, original_teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, cancel_reason, feedback, feedback_at, teacher_entered_at, conducted_at, conducted_override, teacher_reassigned_at";
+  "id, enrollment_id, teacher_id, original_teacher_id, course, course_title, course_english_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, cancel_reason, feedback, feedback_at, teacher_entered_at, conducted_at, conducted_override, teacher_reassigned_at";
 
 type ClassRow = {
   id: string;
@@ -14,6 +14,7 @@ type ClassRow = {
   original_teacher_id: string | null;
   course: string;
   course_title: string;
+  course_english_title: string | null;
   teacher_name: string | null;
   student_name: string | null;
   student_english_name: string | null;
@@ -55,7 +56,7 @@ export function mapClassRows(
     coveredByName: reassignedAway ? c.teacher_name : null, // teacher_name = 현재=대타 강사명
     enrollmentSlots: slotsByEnrollment?.get(c.enrollment_id),
     enrollmentTeacherName: teacherByEnrollment?.get(c.enrollment_id) ?? null,
-    courseTitle: isTeacher ? (getCourse(c.course)?.englishTitle ?? c.course_title) : c.course_title,
+    courseTitle: isTeacher ? (getCourse(c.course)?.englishTitle ?? c.course_english_title ?? c.course_title) : c.course_title,
     counterpart: isTeacher ? c.student_english_name || c.student_name || "학생" : c.teacher_name || "강사",
     sessionNo: c.session_no,
     sessionDate: c.session_date,

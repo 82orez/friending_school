@@ -963,7 +963,7 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
   const admin = createAdminClient();
   const { data: enr } = await admin
     .from("enrollments")
-    .select("id, teacher_id, teacher_name, student_id, student_phone, course, course_title, student_name, student_english_name, slots")
+    .select("id, teacher_id, teacher_name, student_id, student_phone, course, course_title, course_english_title, student_name, student_english_name, slots")
     .eq("id", id)
     .maybeSingle();
   if (!enr) return { ok: false, error: "수강신청을 찾을 수 없습니다." };
@@ -1102,7 +1102,7 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
     const origin = getOrigin(await headers());
     const base = {
       studentName: enr.student_english_name || enr.student_name || "Student",
-      courseTitle: getCourse(enr.course)?.englishTitle || enr.course_title,
+      courseTitle: getCourse(enr.course)?.englishTitle || enr.course_english_title || enr.course_title,
       schedule,
       remainingCount: remaining.length,
       nextDate,
@@ -1168,6 +1168,7 @@ export async function createTestEnrollment(input: {
   teacherId: string;
   course: string;
   courseTitle?: string;
+  courseEnglishTitle?: string;
   slots: Slot[];
   startDate: string;
   sessions: number;
@@ -1179,19 +1180,25 @@ export async function createTestEnrollment(input: {
   if (!user || !(await isAdmin(supabase, user.id))) return { ok: false, error: "권한이 없습니다." };
 
   // 등록 과정이면 레지스트리 값, 아니면 관리자가 직접 입력한 과정명(테스트용 임의 강좌).
+  // 강사 화면/이메일은 영문, 학생 화면은 한글이라 한글·영문 과정명을 모두 스냅샷.
   const known = getCourse(input.course);
   let courseSlug: string;
   let courseTitle: string;
+  let courseEnglishTitle: string;
   if (known) {
     courseSlug = known.slug;
     courseTitle = known.title;
+    courseEnglishTitle = known.englishTitle;
   } else {
-    const custom = String(input.courseTitle ?? "")
+    courseTitle = String(input.courseTitle ?? "")
       .trim()
       .slice(0, 100);
-    if (!custom) return { ok: false, error: "과정명을 입력해 주세요." };
-    courseSlug = "custom"; // 센티넬 — getCourse는 undefined → 다운스트림 폴백으로 course_title 표시
-    courseTitle = custom;
+    courseEnglishTitle = String(input.courseEnglishTitle ?? "")
+      .trim()
+      .slice(0, 100);
+    if (!courseTitle) return { ok: false, error: "과정명을 입력해 주세요." };
+    if (!courseEnglishTitle) return { ok: false, error: "영문 과정명을 입력해 주세요." };
+    courseSlug = "custom"; // 센티넬 — getCourse는 undefined → 다운스트림 폴백으로 course_title/english 표시
   }
   const teacherId = String(input.teacherId ?? "").trim();
   if (!teacherId) return { ok: false, error: "강사를 선택해 주세요." };
@@ -1231,6 +1238,7 @@ export async function createTestEnrollment(input: {
       teacher_id: teacherId,
       course: courseSlug,
       course_title: courseTitle,
+      course_english_title: courseEnglishTitle,
       start_date: startDate,
       slots,
       teacher_name: teacherName,

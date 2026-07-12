@@ -79,6 +79,7 @@ function CreatorModal({
   );
   const [course, setCourse] = useState(courses[0]?.slug ?? "");
   const [customTitle, setCustomTitle] = useState("");
+  const [customEnglishTitle, setCustomEnglishTitle] = useState("");
   const [slots, setSlots] = useState<Slot[]>([]);
   const [teacherId, setTeacherId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(todayKst());
@@ -113,6 +114,10 @@ function CreatorModal({
       toast.error("과정명을 입력해 주세요.");
       return;
     }
+    if (course === "__custom__" && !customEnglishTitle.trim()) {
+      toast.error("영문 과정명을 입력해 주세요.");
+      return;
+    }
     if (!selectedTeacher) {
       toast.error("가능한 강사를 선택해 주세요.");
       return;
@@ -123,6 +128,7 @@ function CreatorModal({
         teacherId: selectedTeacher.id,
         course,
         courseTitle: course === "__custom__" ? customTitle.trim() : undefined,
+        courseEnglishTitle: course === "__custom__" ? customEnglishTitle.trim() : undefined,
         slots,
         startDate,
         sessions,
@@ -193,17 +199,30 @@ function CreatorModal({
           </label>
 
           {course === "__custom__" && (
-            <label className="block">
-              <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">과정명 직접 입력</span>
-              <input
-                type="text"
-                value={customTitle}
-                onChange={(e) => setCustomTitle(e.target.value)}
-                maxLength={100}
-                placeholder="예) 여름특강 회화반"
-                className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-              />
-            </label>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">과정명 (한글) — 학생 화면</span>
+                <input
+                  type="text"
+                  value={customTitle}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                  maxLength={100}
+                  placeholder="예) 여름특강 회화반"
+                  className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+                />
+              </label>
+              <label className="block">
+                <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">과정명 (영문) — 강사 화면</span>
+                <input
+                  type="text"
+                  value={customEnglishTitle}
+                  onChange={(e) => setCustomEnglishTitle(e.target.value)}
+                  maxLength={100}
+                  placeholder="e.g. Summer Speaking"
+                  className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+                />
+              </label>
+            </div>
           )}
 
           <div>

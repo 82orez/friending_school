@@ -27,6 +27,7 @@ export type EnrollmentForClasses = {
   teacher_id: string;
   course: string;
   course_title: string;
+  course_english_title?: string | null;
   teacher_name: string | null;
   student_name: string | null;
   student_english_name: string | null;
@@ -50,6 +51,7 @@ export async function generateClassesForEnrollment(admin: ReturnType<typeof crea
     teacher_id: enr.teacher_id,
     course: enr.course,
     course_title: enr.course_title,
+    course_english_title: enr.course_english_title ?? null,
     teacher_name: enr.teacher_name,
     student_name: enr.student_name,
     student_english_name: enr.student_english_name,
@@ -75,7 +77,9 @@ export async function finalizeEnrollmentPayment(
   const admin = createAdminClient();
   const { data: enr } = await admin
     .from("enrollments")
-    .select("status, student_phone, course_title, start_date, id, student_id, teacher_id, course, teacher_name, student_name, student_english_name, slots, total_sessions")
+    .select(
+      "status, student_phone, course_title, course_english_title, start_date, id, student_id, teacher_id, course, teacher_name, student_name, student_english_name, slots, total_sessions",
+    )
     .eq("id", enrollmentId)
     .maybeSingle();
   if (!enr) return { ok: false, error: "신청을 찾을 수 없습니다." };
@@ -130,7 +134,7 @@ export async function finalizeEnrollmentPayment(
   const origin = getOrigin(await headers());
   const sessions = enr.total_sessions ?? TOTAL_SESSIONS;
   const schedule = summarizeSlots((enr.slots as Slot[]) ?? [], false);
-  const courseEnglishTitle = getCourse(enr.course)?.englishTitle ?? "";
+  const courseEnglishTitle = getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? "";
   const endDate = (() => {
     const [sy, sm, sd] = String(enr.start_date ?? "").split("-").map(Number);
     if (!sy || !sm || !sd) return "";
@@ -352,7 +356,7 @@ export async function refundEnrollmentPayment(admin: ReturnType<typeof createAdm
 
   const { data: enr } = await admin
     .from("enrollments")
-    .select("id, status, student_phone, student_name, course, course_title, teacher_id, teacher_name")
+    .select("id, status, student_phone, student_name, course, course_title, course_english_title, teacher_id, teacher_name")
     .eq("id", enrollmentId)
     .maybeSingle();
 
@@ -389,7 +393,7 @@ export async function refundEnrollmentPayment(admin: ReturnType<typeof createAdm
         await sendEnrollmentRefundToTeacher([teacherEmail], {
           studentName: enr.student_name,
           courseTitle: enr.course_title,
-          courseEnglishTitle: getCourse(enr.course)?.englishTitle,
+          courseEnglishTitle: getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? undefined,
           teacherUrl: `${origin}/teacher`,
         });
       }
