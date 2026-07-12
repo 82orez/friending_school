@@ -20,6 +20,7 @@ export type AdminSession = {
   isMakeup: boolean;
   conductedAt: string | null;
   conductedOverride: boolean | null;
+  teacherReassignedAt: string | null; // 강사 대체 시각(있으면 "대체" 배지)
 };
 
 const ROW_H = 48; // 30분 슬롯 셀 높이(px)
@@ -263,6 +264,7 @@ function SlotModal({ slot, now, onClose }: { slot: SlotSel; now: number; onClose
                 <div className="flex items-center gap-2">
                   <span className="text-ink text-sm font-bold">{fmtTime(s.startMin)}~{fmtTime(lessonEndMin(s.endMin))}</span>
                   {s.isMakeup && <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 text-xs font-bold">보강</span>}
+                  {s.teacherReassignedAt && <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5 text-xs font-bold">대체</span>}
                   {now >= kstDateMinToMs(s.sessionDate, lessonEndMin(s.endMin)) &&
                     ((s.conductedOverride ?? !!s.conductedAt) ? (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">진행됨</span>
