@@ -48,10 +48,13 @@ const shiftMonth = (d: string, delta: number): string => {
   const [y, m] = d.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 10);
 };
+const yearStart = (d: string): string => `${d.slice(0, 4)}-01-01`;
+const yearEnd = (d: string): string => `${d.slice(0, 4)}-12-31`;
+const shiftYear = (d: string, delta: number): string => `${Number(d.slice(0, 4)) + delta}-01-01`;
 const DOW_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
-type Period = "일간" | "주간" | "월간";
-const PERIODS: Period[] = ["일간", "주간", "월간"];
+type Period = "일간" | "주간" | "월간" | "년간";
+const PERIODS: Period[] = ["일간", "주간", "월간", "년간"];
 type Grouping = "센터별" | "강사별" | "과정별";
 const GROUPINGS: Grouping[] = ["센터별", "강사별", "과정별"];
 
@@ -74,6 +77,7 @@ function interval(anchor: string, period: Period): { start: string; end: string 
     const s = mondayOf(anchor);
     return { start: s, end: addDaysStr(s, 6) };
   }
+  if (period === "년간") return { start: yearStart(anchor), end: yearEnd(anchor) };
   return { start: monthStart(anchor), end: monthEnd(anchor) };
 }
 
@@ -83,6 +87,7 @@ function periodLabel(anchor: string, period: Period): string {
     const { start, end } = interval(anchor, "주간");
     return `${start} ~ ${end}`;
   }
+  if (period === "년간") return `${anchor.slice(0, 4)}년`;
   const [y, m] = anchor.split("-");
   return `${y}년 ${Number(m)}월`;
 }
@@ -90,6 +95,7 @@ function periodLabel(anchor: string, period: Period): string {
 function shiftAnchor(anchor: string, period: Period, delta: number): string {
   if (period === "일간") return addDaysStr(anchor, delta);
   if (period === "주간") return addDaysStr(anchor, delta * 7);
+  if (period === "년간") return shiftYear(anchor, delta);
   return shiftMonth(anchor, delta);
 }
 
@@ -344,8 +350,8 @@ export default function SettlementsManager({ rows, rates }: { rows: SettlementRo
   );
 }
 
-// 센터별 상세 정산 모달 — 그 센터 소속 강사별 집계. 자체 주간/월간 토글 + 이전/다음(메인 기간과 독립).
-const MODAL_PERIODS: Period[] = ["주간", "월간"];
+// 센터별 상세 정산 모달 — 그 센터 소속 강사별 집계. 자체 주간/월간/년간 토글 + 이전/다음(메인 기간과 독립).
+const MODAL_PERIODS: Period[] = ["주간", "월간", "년간"];
 
 // 강사 상세: 과정별 그룹(소계) + 날짜별 세션 목록.
 type CourseDetail = {
