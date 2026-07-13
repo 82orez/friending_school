@@ -61,7 +61,7 @@ export default async function AdminCentersPage() {
     .map((u) => {
       const p = profById.get(u.id);
       const nm = p ? [p.last_name, p.first_name].filter(Boolean).join("") : "";
-      return { id: u.id, label: nm ? `${nm} (${u.email})` : (u.email as string) };
+      return { id: u.id, label: nm ? `${nm} (${u.email})` : (u.email as string), email: u.email as string };
     })
     .sort((a, b) => a.label.localeCompare(b.label, "ko"));
 

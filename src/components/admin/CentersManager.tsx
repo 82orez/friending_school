@@ -30,7 +30,7 @@ export type AdminCenter = {
   manager_id: string | null; // 센터 매니저 계정(지정 시 '센터 관리' 권한 부여)
 };
 
-export type CenterUserOption = { id: string; label: string };
+export type CenterUserOption = { id: string; label: string; email: string };
 
 // 강사 신청폼·프로필의 센터 드롭다운을 채우는 마스터 데이터. YoutubeManager CRUD 패턴 축약(필드=name 1개).
 export default function CentersManager({
@@ -45,6 +45,7 @@ export default function CentersManager({
   users: CenterUserOption[];
 }) {
   const router = useRouter();
+  const emailById = new Map(users.map((u) => [u.id, u.email]));
   const [name, setName] = useState("");
   const [manager, setManager] = useState("");
   const [price, setPrice] = useState("");
@@ -213,7 +214,16 @@ export default function CentersManager({
                     <td className="text-muted-fg-faint px-4 py-3.5 text-center align-middle text-xs md:px-6">{i + 1}</td>
                     <td className="text-ink px-4 py-3.5 align-middle text-sm font-semibold">{c.name}</td>
                     <td className="px-4 py-3.5 align-middle text-sm">
-                      {c.manager_name ? <span className="text-ink">{c.manager_name}</span> : <span className="text-muted-fg-faint">미지정</span>}
+                      {(() => {
+                        const email = c.manager_id ? emailById.get(c.manager_id) : undefined;
+                        if (!c.manager_name && !email) return <span className="text-muted-fg-faint">미지정</span>;
+                        return (
+                          <div>
+                            <span className="text-ink block">{email ?? c.manager_name}</span>
+                            {email && c.manager_name && <span className="text-muted-fg-faint block text-xs">{c.manager_name}</span>}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3.5 align-middle whitespace-nowrap">
                       {c.price_per_session == null ? (
