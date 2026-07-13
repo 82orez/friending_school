@@ -201,7 +201,7 @@ export default function CentersManager({
                 <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
                   <th className="w-12 px-4 py-2.5 text-center md:px-6">#</th>
                   <th className="px-4 py-2.5">센터명</th>
-                  <th className="px-4 py-2.5">매니저</th>
+                  <th className="px-4 py-2.5">매니저 계정</th>
                   <th className="px-4 py-2.5">회당 단가</th>
                   <th className="px-4 py-2.5 text-right md:px-6">
                     <span className="sr-only">관리</span>
@@ -216,11 +216,11 @@ export default function CentersManager({
                     <td className="px-4 py-3.5 align-middle text-sm">
                       {(() => {
                         const email = c.manager_id ? emailById.get(c.manager_id) : undefined;
-                        if (!c.manager_name && !email) return <span className="text-muted-fg-faint">미지정</span>;
+                        if (!email) return <span className="text-muted-fg-faint">미지정</span>;
                         return (
                           <div>
-                            <span className="text-ink block">{email ?? c.manager_name}</span>
-                            {email && c.manager_name && <span className="text-muted-fg-faint block text-xs">{c.manager_name}</span>}
+                            <span className="text-ink block">{email}</span>
+                            {c.manager_name && <span className="text-muted-fg-faint block text-xs">{c.manager_name}</span>}
                           </div>
                         );
                       })()}
