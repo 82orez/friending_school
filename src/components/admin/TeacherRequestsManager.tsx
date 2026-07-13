@@ -55,7 +55,8 @@ export type TeacherClassItem = {
   status: string; // 승인 | 결제대기 | 결제완료
   slots: { day: number; min: number }[];
   startDate: string | null;
-  total: number; // 계획 회차(보강 제외)
+  totalSessions: number; // enrollment 계획 횟수(실=24/테스트=자유) — 종료일·수업 횟수 표시용
+  total: number; // 계획 회차(보강 제외, 생성된 클래스 수)
   done: number; // 완료 회차
   nextDate: string | null; // 다음 예정 수업일
   nextMin: number | null;

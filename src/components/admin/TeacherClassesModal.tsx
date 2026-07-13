@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { summarizeSlots, formatDateKo } from "@/lib/availability";
+import { summarizeSlots, formatDateKo, lessonEndDate } from "@/lib/availability";
 import type { CurrentTeacher, TeacherClassItem } from "@/components/admin/TeacherRequestsManager";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -22,6 +22,17 @@ const STATUS_BADGE: Record<string, string> = {
 function studentLabel(item: TeacherClassItem): string {
   const en = item.studentEnglishName?.trim();
   return en ? `${item.studentName} (${en})` : item.studentName;
+}
+
+// 수업 기간 "시작일 ~ 종료일"(YYYY-MM-DD). 종료일=lessonEndDate(시작+주간 slots+횟수), 계산 불가 시 시작일만.
+function schedulePeriod(item: TeacherClassItem): string {
+  if (!item.startDate) return "-";
+  const [y, m, d] = item.startDate.split("-").map(Number);
+  if (!y || !m || !d) return item.startDate;
+  const end = lessonEndDate(new Date(y, m - 1, d), item.slots, item.totalSessions);
+  if (!end) return item.startDate;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${item.startDate} ~ ${end.getFullYear()}-${p(end.getMonth() + 1)}-${p(end.getDate())}`;
 }
 
 export default function TeacherClassesModal({ teacher, onClose }: { teacher: CurrentTeacher | null; onClose: () => void }) {
@@ -96,12 +107,20 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
 
                   <dl className="mt-3 grid grid-cols-1 gap-y-1.5 text-sm">
                     <div className="flex gap-2">
-                      <dt className="text-muted-fg-faint w-20 shrink-0">일정</dt>
-                      <dd className="text-ink break-words">{summarizeSlots(item.slots, true) || "-"}</dd>
+                      <dt className="text-muted-fg-faint w-24 shrink-0">주간 일정</dt>
+                      <dd className="text-ink break-words">{summarizeSlots(item.slots, true, " / ") || "-"}</dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="text-muted-fg-faint w-24 shrink-0">수업 일정</dt>
+                      <dd className="text-ink break-words">{schedulePeriod(item)}</dd>
+                    </div>
+                    <div className="flex gap-2">
+                      <dt className="text-muted-fg-faint w-24 shrink-0">수업 횟수</dt>
+                      <dd className="text-ink">{item.totalSessions}회</dd>
                     </div>
                     {item.status === "결제완료" ? (
                       <div className="flex gap-2">
-                        <dt className="text-muted-fg-faint w-20 shrink-0">진행</dt>
+                        <dt className="text-muted-fg-faint w-24 shrink-0">진행</dt>
                         <dd className="text-ink">
                           {item.done}/{item.total}회
                           <span className="text-muted-fg-faint"> · 다음 {item.nextDate ? formatDateKo(item.nextDate) : "예정 수업 없음"}</span>
@@ -109,7 +128,7 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
                       </div>
                     ) : (
                       <div className="flex gap-2">
-                        <dt className="text-muted-fg-faint w-20 shrink-0">시작 예정</dt>
+                        <dt className="text-muted-fg-faint w-24 shrink-0">시작 예정</dt>
                         <dd className="text-ink">{item.startDate ? formatDateKo(item.startDate) : "-"}</dd>
                       </div>
                     )}

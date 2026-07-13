@@ -4,7 +4,7 @@ import TeacherRequestsManager, {
   type CurrentTeacher,
   type TeacherClassItem,
 } from "@/components/admin/TeacherRequestsManager";
-import { deriveBookedSlots, lessonEndMin, type BookedSlot } from "@/lib/availability";
+import { deriveBookedSlots, lessonEndMin, TOTAL_SESSIONS, type BookedSlot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
 import { FOREIGN_CURRENCIES, ratesFromSettings } from "@/data/currencies";
@@ -70,7 +70,7 @@ export default async function AdminTeacherRequestsPage() {
   if (teacherIds.length > 0) {
     const { data: enrollRows } = await admin
       .from("enrollments")
-      .select("id, teacher_id, course, course_title, slots, status, start_date, student_name, student_english_name")
+      .select("id, teacher_id, course, course_title, slots, status, start_date, total_sessions, student_name, student_english_name")
       .in("teacher_id", teacherIds)
       .in("status", ["승인", "결제대기", "결제완료"]);
     // 종료된 '결제완료'(남은 예정 수업 없음)는 그리드 오버레이·수업 목록에서 제외.
@@ -118,6 +118,7 @@ export default async function AdminTeacherRequestsPage() {
           status: r.status,
           slots: (r.slots ?? []) as { day: number; min: number }[],
           startDate: r.start_date,
+          totalSessions: r.total_sessions ?? TOTAL_SESSIONS,
           total: agg?.total ?? 0,
           done: agg?.done ?? 0,
           nextDate: agg?.nextDate ?? null,

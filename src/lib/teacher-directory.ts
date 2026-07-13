@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/utils/supabase/admin";
-import { deriveBookedSlots, lessonEndMin, type BookedSlot } from "@/lib/availability";
+import { deriveBookedSlots, lessonEndMin, TOTAL_SESSIONS, type BookedSlot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
 import type { CurrentTeacher, TeacherClassItem } from "@/components/admin/TeacherRequestsManager";
@@ -52,7 +52,7 @@ export async function loadCenterTeachers(admin: ReturnType<typeof createAdminCli
   const classesByTeacher = new Map<string, TeacherClassItem[]>();
   const { data: enrollRows } = await admin
     .from("enrollments")
-    .select("id, teacher_id, course, course_title, slots, status, start_date, student_name, student_english_name")
+    .select("id, teacher_id, course, course_title, slots, status, start_date, total_sessions, student_name, student_english_name")
     .in("teacher_id", teacherIds)
     .in("status", ["승인", "결제대기", "결제완료"]);
   const ended = await loadEndedEnrollmentIds(admin, teacherIds);
@@ -98,6 +98,7 @@ export async function loadCenterTeachers(admin: ReturnType<typeof createAdminCli
         status: r.status,
         slots: (r.slots ?? []) as { day: number; min: number }[],
         startDate: r.start_date,
+        totalSessions: r.total_sessions ?? TOTAL_SESSIONS,
         total: agg?.total ?? 0,
         done: agg?.done ?? 0,
         nextDate: agg?.nextDate ?? null,
