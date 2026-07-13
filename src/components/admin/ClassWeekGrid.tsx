@@ -49,7 +49,7 @@ function mondayOf(d: Date): Date {
 
 type SlotSel = { date: Date; min: number; list: AdminSession[] };
 
-export default function ClassWeekGrid({ sessions, now }: { sessions: AdminSession[]; now: number }) {
+export default function ClassWeekGrid({ sessions, now, readOnly = false }: { sessions: AdminSession[]; now: number; readOnly?: boolean }) {
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date(now)));
   const thisMonday = mondayOf(new Date(now));
   const isThisWeek = weekStart.getTime() === thisMonday.getTime();
@@ -202,7 +202,7 @@ export default function ClassWeekGrid({ sessions, now }: { sessions: AdminSessio
         </div>
       </div>
 
-      {slot && <SlotModal slot={slot} now={now} onClose={() => setSlot(null)} />}
+      {slot && <SlotModal slot={slot} now={now} readOnly={readOnly} onClose={() => setSlot(null)} />}
     </div>
   );
 }
@@ -212,7 +212,7 @@ function formatDayLabel(d: Date): string {
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_LABELS_KO[dow]})`;
 }
 
-function SlotModal({ slot, now, onClose }: { slot: SlotSel; now: number; onClose: () => void }) {
+function SlotModal({ slot, now, onClose, readOnly = false }: { slot: SlotSel; now: number; onClose: () => void; readOnly?: boolean }) {
   const router = useRouter();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const list = useMemo(() => [...slot.list].sort((a, b) => a.startMin - b.startMin), [slot.list]);
@@ -256,12 +256,9 @@ function SlotModal({ slot, now, onClose }: { slot: SlotSel; now: number; onClose
         </div>
 
         <ul className="divide-rule divide-y overflow-y-auto">
-          {list.map((s, idx) => (
-            <li key={idx}>
-              <button
-                type="button"
-                onClick={() => router.push(`/admin/classes/${s.enrollmentId}`)}
-                className="hover:bg-surface focus-visible:ring-accent-blue/50 flex w-full flex-col gap-1 px-6 py-3.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:-outline-offset-2">
+          {list.map((s, idx) => {
+            const inner = (
+              <>
                 <div className="flex items-center gap-2">
                   <span className="text-ink text-sm font-bold">{fmtTime(s.startMin)}~{fmtTime(lessonEndMin(s.endMin))}</span>
                   {s.isMakeup && <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 text-xs font-bold">보강</span>}
@@ -282,9 +279,23 @@ function SlotModal({ slot, now, onClose }: { slot: SlotSel; now: number; onClose
                   {s.studentEnglishName ? ` (${s.studentEnglishName})` : ""}
                 </span>
                 <span className="text-muted-fg-faint truncate text-xs">센터 {s.centerName ?? "미지정"}</span>
-              </button>
-            </li>
-          ))}
+              </>
+            );
+            return (
+              <li key={idx}>
+                {readOnly ? (
+                  <div className="flex w-full flex-col gap-1 px-6 py-3.5 text-left">{inner}</div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/admin/classes/${s.enrollmentId}`)}
+                    className="hover:bg-surface focus-visible:ring-accent-blue/50 flex w-full flex-col gap-1 px-6 py-3.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:-outline-offset-2">
+                    {inner}
+                  </button>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </div>
     </>
