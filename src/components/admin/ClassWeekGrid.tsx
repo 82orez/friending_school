@@ -9,6 +9,9 @@ import { kstDateMinToMs } from "@/lib/classtime";
 
 export type AdminSession = {
   enrollmentId: string;
+  classId: string; // 개별 회차 id(센터 매니저 인라인 강사 대체 대상)
+  teacherId: string; // 현재 담당 강사 id(대체 후보에서 제외)
+  sessionNo: number; // 회차 번호(대체 피커 표시용)
   courseTitle: string;
   weekdays: string; // 과정 주간 요일 요약(예: "월/수/금") — 정규 수업 기준.
   teacherName: string | null;
@@ -51,7 +54,17 @@ function mondayOf(d: Date): Date {
 
 type SlotSel = { date: Date; min: number; list: AdminSession[] };
 
-export default function ClassWeekGrid({ sessions, now, readOnly = false }: { sessions: AdminSession[]; now: number; readOnly?: boolean }) {
+export default function ClassWeekGrid({
+  sessions,
+  now,
+  readOnly = false,
+  onReassign,
+}: {
+  sessions: AdminSession[];
+  now: number;
+  readOnly?: boolean;
+  onReassign?: (s: AdminSession) => void;
+}) {
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date(now)));
   const thisMonday = mondayOf(new Date(now));
   const isThisWeek = weekStart.getTime() === thisMonday.getTime();
@@ -204,7 +217,7 @@ export default function ClassWeekGrid({ sessions, now, readOnly = false }: { ses
         </div>
       </div>
 
-      {slot && <SlotModal slot={slot} now={now} readOnly={readOnly} onClose={() => setSlot(null)} />}
+      {slot && <SlotModal slot={slot} now={now} readOnly={readOnly} onReassign={onReassign} onClose={() => setSlot(null)} />}
     </div>
   );
 }
@@ -214,7 +227,19 @@ function formatDayLabel(d: Date): string {
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_LABELS_KO[dow]})`;
 }
 
-function SlotModal({ slot, now, onClose, readOnly = false }: { slot: SlotSel; now: number; onClose: () => void; readOnly?: boolean }) {
+function SlotModal({
+  slot,
+  now,
+  onClose,
+  readOnly = false,
+  onReassign,
+}: {
+  slot: SlotSel;
+  now: number;
+  onClose: () => void;
+  readOnly?: boolean;
+  onReassign?: (s: AdminSession) => void;
+}) {
   const router = useRouter();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const list = useMemo(() => [...slot.list].sort((a, b) => a.startMin - b.startMin), [slot.list]);
@@ -285,10 +310,24 @@ function SlotModal({ slot, now, onClose, readOnly = false }: { slot: SlotSel; no
                 <span className="text-muted-fg-faint truncate text-xs">수업 횟수 {s.totalSessions}회</span>
               </>
             );
+            const canReassign = !!onReassign && now < kstDateMinToMs(s.sessionDate, s.startMin);
             return (
               <li key={idx}>
                 {readOnly ? (
-                  <div className="flex w-full flex-col gap-1 px-6 py-3.5 text-left">{inner}</div>
+                  <div className="flex w-full items-start justify-between gap-3 px-6 py-3.5 text-left">
+                    <div className="flex min-w-0 flex-col gap-1">{inner}</div>
+                    {canReassign && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onReassign!(s);
+                          onClose();
+                        }}
+                        className="border-cta text-cta hover:bg-cta/5 shrink-0 self-center rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
+                        강사 대체
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <button
                     type="button"

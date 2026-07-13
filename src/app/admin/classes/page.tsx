@@ -11,10 +11,13 @@ const weekdayOf = (d: string): number => {
 };
 
 type Row = {
+  id: string;
   enrollment_id: string;
   course: string;
   course_title: string;
+  teacher_id: string;
   teacher_name: string | null;
+  session_no: number;
   student_name: string | null;
   student_english_name: string | null;
   session_date: string;
@@ -32,7 +35,9 @@ export default async function AdminClassesPage() {
   const admin = createAdminClient();
   const { data } = await admin
     .from("classes")
-    .select("enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup, cancel_reason, conducted_at, conducted_override, teacher_reassigned_at")
+    .select(
+      "id, enrollment_id, course, course_title, teacher_id, teacher_name, session_no, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup, cancel_reason, conducted_at, conducted_override, teacher_reassigned_at",
+    )
     .order("session_date", { ascending: true });
 
   const rows = (data ?? []) as Row[];
@@ -172,6 +177,9 @@ export default async function AdminClassesPage() {
     .filter((r) => r.status !== "취소")
     .map((r) => ({
       enrollmentId: r.enrollment_id,
+      classId: r.id,
+      teacherId: r.teacher_id,
+      sessionNo: r.session_no,
       courseTitle: r.course_title,
       weekdays: weekdaysByEnrollment.get(r.enrollment_id) ?? "",
       teacherName: r.teacher_name,

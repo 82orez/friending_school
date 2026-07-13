@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { requireCenterManager } from "@/lib/center-manager";
-import { loadCenterSessions } from "@/lib/teacher-directory";
+import { loadCenterSessions, loadCenterTeacherCards } from "@/lib/teacher-directory";
 import CenterWeekSchedule from "@/components/center/CenterWeekSchedule";
 
 export default async function CenterSchedulePage() {
@@ -9,7 +9,7 @@ export default async function CenterSchedulePage() {
   if (!mgr) redirect("/");
 
   const admin = createAdminClient();
-  const sessions = await loadCenterSessions(admin, mgr.centerIds);
+  const [sessions, teachers] = await Promise.all([loadCenterSessions(admin, mgr.centerIds), loadCenterTeacherCards(admin, mgr.centerIds)]);
 
-  return <CenterWeekSchedule sessions={sessions} />;
+  return <CenterWeekSchedule sessions={sessions} teachers={teachers} />;
 }

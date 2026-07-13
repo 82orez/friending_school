@@ -6,6 +6,7 @@ import { kstDateMinToMs } from "@/lib/classtime";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
 import type { CurrentTeacher, TeacherClassItem } from "@/components/admin/TeacherRequestsManager";
 import type { AdminSession } from "@/components/admin/ClassWeekGrid";
+import type { CenterTeacher } from "@/components/center/ReassignModal";
 
 // 센터 스코프 강사 디렉토리 — admin teacher-requests 페이지의 CurrentTeacher 조립을 재사용(센터 소속 강사만).
 // 프로필·주간 가용·진행 중 강좌(승인/결제대기/결제완료, 종료분 제외) 집계 포함. 가드(requireCenterManager) 후 service_role로 호출.
@@ -155,14 +156,16 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
   const { data: clsRows } = await admin
     .from("classes")
     .select(
-      "enrollment_id, teacher_id, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override, teacher_reassigned_at",
+      "id, enrollment_id, teacher_id, session_no, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override, teacher_reassigned_at",
     )
     .in("teacher_id", teacherIds)
     .neq("status", "취소")
     .order("session_date", { ascending: true });
   const rows = (clsRows ?? []) as {
+    id: string;
     enrollment_id: string;
     teacher_id: string;
+    session_no: number;
     course_title: string;
     teacher_name: string | null;
     student_name: string | null;
@@ -208,6 +211,9 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
 
   return rows.map((r) => ({
     enrollmentId: r.enrollment_id,
+    classId: r.id,
+    teacherId: r.teacher_id,
+    sessionNo: r.session_no,
     courseTitle: r.course_title,
     weekdays: weekdaysByEnrollment.get(r.enrollment_id) ?? "",
     teacherName: r.teacher_name,
@@ -224,4 +230,43 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
     conductedOverride: r.conducted_override,
     teacherReassignedAt: r.teacher_reassigned_at,
   }));
+}
+
+// 대체 피커 후보용 소속 센터 강사 카드(이름·국적·성별·아바타·주간 가용).
+export async function loadCenterTeacherCards(admin: ReturnType<typeof createAdminClient>, centerIds: string[]): Promise<CenterTeacher[]> {
+  if (centerIds.length === 0) return [];
+  const { data: profRows } = await admin
+    .from("profiles")
+    .select("id, first_name, last_name, avatar_url, nationality, gender")
+    .eq("role", "teacher")
+    .in("center_id", centerIds);
+  const teacherRows = (profRows ?? []) as {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
+    nationality: string | null;
+    gender: string | null;
+  }[];
+  const teacherIds = teacherRows.map((t) => t.id);
+  if (teacherIds.length === 0) return [];
+
+  const slotsByTeacher = new Map<string, Slot[]>();
+  const { data: slotRows } = await admin.from("teacher_availability").select("teacher_id, day_of_week, start_min").in("teacher_id", teacherIds);
+  for (const s of (slotRows ?? []) as { teacher_id: string; day_of_week: number; start_min: number }[]) {
+    const list = slotsByTeacher.get(s.teacher_id) ?? [];
+    list.push({ day: s.day_of_week, min: s.start_min });
+    slotsByTeacher.set(s.teacher_id, list);
+  }
+
+  return teacherRows
+    .map((t) => ({
+      id: t.id,
+      name: [t.first_name, t.last_name].filter(Boolean).join(" ").trim() || "강사",
+      nationality: t.nationality,
+      gender: t.gender,
+      avatarUrl: t.avatar_url,
+      slots: slotsByTeacher.get(t.id) ?? [],
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }

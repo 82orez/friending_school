@@ -3,13 +3,11 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { CheckCircle2, ChevronLeft, Loader2, Users, X } from "lucide-react";
+import { CheckCircle2, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { centerReassignClass } from "@/app/center/actions";
 import { dowOf, fmtTime, formatDateKo, lessonEndMin, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
-import { nationalityLabel } from "@/data/nationalities";
-import { genderLabelKo } from "@/data/genders";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,145 +51,8 @@ function timeLabel(c: CenterClass): string {
   return `${fmtTime(c.startMin)}~${fmtTime(lessonEndMin(c.endMin))}`;
 }
 
-export default function CenterDashboard({
-  teachers,
-  classes,
-}: {
-  teachers: CenterTeacher[];
-  classes: CenterClass[];
-}) {
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
-  const [reassignTarget, setReassignTarget] = useState<CenterClass | null>(null);
-
-  const classesByTeacher = useMemo(() => {
-    const m = new Map<string, CenterClass[]>();
-    for (const c of classes) {
-      const list = m.get(c.teacherId) ?? [];
-      list.push(c);
-      m.set(c.teacherId, list);
-    }
-    m.forEach((list) => list.sort((a, b) => a.sessionDate.localeCompare(b.sessionDate) || a.startMin - b.startMin));
-    return m;
-  }, [classes]);
-
-  const selectedTeacher = teachers.find((t) => t.id === selectedTeacherId) ?? null;
-
-  return (
-    <div className="space-y-4">
-      {!selectedTeacher ? (
-        <TeacherList teachers={teachers} countOf={(id) => classesByTeacher.get(id)?.length ?? 0} onSelect={setSelectedTeacherId} />
-      ) : (
-        <TeacherClasses
-          teacher={selectedTeacher}
-          classes={classesByTeacher.get(selectedTeacher.id) ?? []}
-          onBack={() => setSelectedTeacherId(null)}
-          onReassign={setReassignTarget}
-        />
-      )}
-
-      {reassignTarget && (
-        <ReassignModal
-          cls={reassignTarget}
-          teachers={teachers}
-          onClose={() => setReassignTarget(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function TeacherList({
-  teachers,
-  countOf,
-  onSelect,
-}: {
-  teachers: CenterTeacher[];
-  countOf: (id: string) => number;
-  onSelect: (id: string) => void;
-}) {
-  if (teachers.length === 0) return <p className="text-muted-fg-faint py-10 text-center text-sm">소속 센터에 등록된 강사가 없습니다.</p>;
-  return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {teachers.map((t) => {
-        const count = countOf(t.id);
-        return (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => onSelect(t.id)}
-            className="border-rule hover:border-rule-faint flex items-center gap-3 rounded-xl border bg-white p-4 text-left transition-colors"
-          >
-            {t.avatarUrl ? (
-              <Image src={t.avatarUrl} alt="" width={44} height={44} className="size-11 shrink-0 rounded-lg object-cover" />
-            ) : (
-              <span className="bg-surface text-muted-fg-faint flex size-11 shrink-0 items-center justify-center rounded-lg text-base font-bold">
-                {t.name.charAt(0)}
-              </span>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="text-ink truncate text-sm font-bold">{t.name}</p>
-              <p className="text-muted-fg-faint truncate text-xs">
-                {nationalityLabel(t.nationality)} · {genderLabelKo(t.gender)}
-              </p>
-            </div>
-            <span className="text-muted-fg shrink-0 text-xs font-semibold">예정 {count}건</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function TeacherClasses({
-  teacher,
-  classes,
-  onBack,
-  onReassign,
-}: {
-  teacher: CenterTeacher;
-  classes: CenterClass[];
-  onBack: () => void;
-  onReassign: (c: CenterClass) => void;
-}) {
-  return (
-    <div>
-      <button type="button" onClick={onBack} className="text-accent-blue-ink mb-3 inline-flex items-center gap-1 text-sm font-semibold">
-        <ChevronLeft className="size-4" /> 강사 목록으로
-      </button>
-      <div className="mb-3 flex items-center gap-2">
-        <Users className="text-accent-blue-ink size-4" aria-hidden />
-        <h2 className="text-ink text-base font-bold">{teacher.name} · 예정 수업</h2>
-      </div>
-      {classes.length === 0 ? (
-        <p className="text-muted-fg-faint py-10 text-center text-sm">예정된 수업이 없습니다.</p>
-      ) : (
-        <ul className="divide-rule border-rule divide-y rounded-xl border bg-white">
-          {classes.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0">
-                <p className="text-ink text-sm font-semibold">
-                  {formatDateKo(c.sessionDate)} · {timeLabel(c)}
-                </p>
-                <p className="text-muted-fg-faint truncate text-xs">
-                  {c.courseTitle} · {c.studentName} · {c.sessionNo}회차
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onReassign(c)}
-                className="border-cta text-cta hover:bg-cta/5 shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
-              >
-                강사 대체
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function ReassignModal({ cls, teachers, onClose }: { cls: CenterClass; teachers: CenterTeacher[]; onClose: () => void }) {
+// 센터 매니저 개별 회차 강사 대체 피커 — 같은 센터·그 시간 가용 강사만 후보. centerReassignClass 호출.
+export default function ReassignModal({ cls, teachers, onClose }: { cls: CenterClass; teachers: CenterTeacher[]; onClose: () => void }) {
   const router = useRouter();
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
