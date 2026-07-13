@@ -55,7 +55,7 @@ const DOW_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
 type Period = "일간" | "주간" | "월간" | "년간";
 const PERIODS: Period[] = ["일간", "주간", "월간", "년간"];
-type Grouping = "센터별" | "강사별" | "과정별";
+export type Grouping = "센터별" | "강사별" | "과정별";
 const GROUPINGS: Grouping[] = ["센터별", "강사별", "과정별"];
 
 type SortKey = "name" | "count" | "amount";
@@ -124,8 +124,16 @@ function aggregate(
   return Array.from(map.values());
 }
 
-export default function SettlementsManager({ rows, rates }: { rows: SettlementRow[]; rates: Rates }) {
-  const [grouping, setGrouping] = useState<Grouping>("센터별");
+export default function SettlementsManager({
+  rows,
+  rates,
+  initialGrouping = "센터별",
+}: {
+  rows: SettlementRow[];
+  rates: Rates;
+  initialGrouping?: Grouping;
+}) {
+  const [grouping, setGrouping] = useState<Grouping>(initialGrouping);
   const [period, setPeriod] = useState<Period>("월간");
   const [anchor, setAnchor] = useState<string>(() => todayKst());
   const [query, setQuery] = useState("");

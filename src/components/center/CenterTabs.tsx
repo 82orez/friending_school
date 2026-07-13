@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const TABS: { href: string; label: string }[] = [
   { href: "/center", label: "강사 관리" },
   { href: "/center/schedule", label: "주간 일정" },
+  { href: "/center/settlements", label: "정산" },
 ];
 
 export default function CenterTabs() {
