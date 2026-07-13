@@ -2,10 +2,10 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { createAdminClient } from "@/utils/supabase/admin";
+import { createAdminClient, getAdminEmails } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
 import { sendSms } from "@/lib/sms";
-import { sendClassReassignToNewTeacher, sendClassReassignToOldTeacher } from "@/lib/mailer";
+import { sendClassReassignToAdmin, sendClassReassignToNewTeacher, sendClassReassignToOldTeacher } from "@/lib/mailer";
 import { teacherHasAllSlots, fmtTime, SLOT_MIN, LESSON_MIN, type Slot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { weekdayOf } from "@/lib/makeup";
@@ -133,6 +133,40 @@ export async function reassignClassCore(
     if (oldEmail) await sendClassReassignToOldTeacher([oldEmail], base);
   } catch (err) {
     console.error("[reassignClassCore] 강사 알림 발송 실패:", err);
+  }
+
+  // 관리자 알림 메일 (센터 매니저가 대체할 때만, best-effort) — admin 본인 대체는 제외.
+  if (input.actor.role === "center_manager") {
+    try {
+      const adminEmails = await getAdminEmails();
+      if (adminEmails.length > 0) {
+        // Resend는 초당 2건 제한 — 위 강사 2건 직후라 짧게 간격을 둬 rate limit(429) 회피.
+        await new Promise((resolve) => setTimeout(resolve, 1100));
+        const origin = getOrigin(await headers());
+        // 대체를 실행한 센터 매니저 이름.
+        const { data: actorProf } = await admin.from("profiles").select("first_name, last_name").eq("id", input.actor.id).maybeSingle();
+        const actorName = actorProf ? [actorProf.first_name, actorProf.last_name].filter(Boolean).join(" ").trim() : "";
+        // 담당 센터명(새 강사 소속 센터).
+        let centerName: string | undefined;
+        if (newProf.center_id) {
+          const { data: ctr } = await admin.from("centers").select("name").eq("id", newProf.center_id).maybeSingle();
+          centerName = ctr?.name ?? undefined;
+        }
+        await sendClassReassignToAdmin(adminEmails, {
+          studentName: cls.student_english_name || cls.student_name || "Student",
+          courseTitle: cls.course_title,
+          sessionDate: cls.session_date,
+          sessionTime,
+          oldTeacherName: oldTeacherName ?? undefined,
+          newTeacherName: newName,
+          centerName,
+          actorName: actorName || undefined,
+          adminUrl: `${origin}/admin/classes/${cls.enrollment_id}`,
+        });
+      }
+    } catch (err) {
+      console.error("[reassignClassCore] 관리자 알림 발송 실패:", err);
+    }
   }
 
   await logEnrollmentEvent(admin, {

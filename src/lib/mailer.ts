@@ -402,6 +402,56 @@ export async function sendClassReassignToOldTeacher(to: string[], data: ClassRea
   await sendResultEmail(to, `[Friending School] Class reassigned · ${data.studentName}`, html, text);
 }
 
+export type ClassReassignAdminEmailData = {
+  studentName: string;
+  courseTitle: string;
+  sessionDate: string; // YYYY-MM-DD
+  sessionTime: string; // "09:00~09:25"
+  oldTeacherName?: string;
+  newTeacherName?: string;
+  centerName?: string; // 담당 센터명
+  actorName?: string; // 대체를 실행한 센터 매니저
+  adminUrl: string; // 관리자 화상수업(상세) 링크
+};
+
+/**
+ * 관리자에게 센터 매니저의 개별 회차 강사 대체 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ * 영문 본문(관리자 알림 통일). 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않음.
+ */
+export async function sendClassReassignToAdmin(to: string[], data: ClassReassignAdminEmailData): Promise<void> {
+  const rows: [string, string][] = [
+    ["Student", data.studentName || "-"],
+    ["Course", data.courseTitle],
+    ["Session", `${data.sessionDate} ${data.sessionTime}`],
+    ["Previous teacher", data.oldTeacherName || "-"],
+    ["New teacher", data.newTeacherName || "-"],
+    ...(data.centerName ? ([["Center", data.centerName]] as [string, string][]) : []),
+    ...(data.actorName ? ([["Changed by", data.actorName]] as [string, string][]) : []),
+  ];
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">A class teacher was reassigned by a center manager</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(data.courseTitle)} · ${escapeHtml(data.studentName)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">A center manager changed the assigned teacher for this session. You can review it on the admin page.</p>
+    <a href="${escapeHtml(data.adminUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to class management</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School admin notification</p>
+  </div>`;
+  const text = [
+    "A class teacher was reassigned by a center manager.",
+    "",
+    `Student: ${data.studentName || "-"}`,
+    `Course: ${data.courseTitle}`,
+    `Session: ${data.sessionDate} ${data.sessionTime}`,
+    `Previous teacher: ${data.oldTeacherName || "-"}`,
+    `New teacher: ${data.newTeacherName || "-"}`,
+    ...(data.centerName ? [`Center: ${data.centerName}`] : []),
+    ...(data.actorName ? [`Changed by: ${data.actorName}`] : []),
+    "",
+    `Class management: ${data.adminUrl}`,
+  ].join("\n");
+  await sendResultEmail(to, `[Class reassigned] ${data.courseTitle} · ${data.studentName}`, html, text);
+}
+
 /* ===== 강사 중도 하차 — 과정 전체 이관 알림 ===== */
 
 export type CourseReassignEmailData = {
