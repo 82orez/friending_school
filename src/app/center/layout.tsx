@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { requireCenterManager } from "@/lib/center-manager";
+import CenterTabs from "@/components/center/CenterTabs";
 
 export const metadata: Metadata = { title: "센터 관리 — Friending School", robots: { index: false } };
 
@@ -29,6 +30,8 @@ export default async function CenterLayout({ children }: { children: React.React
           <p className="mt-2 text-xl font-bold md:text-2xl">안녕하세요, {displayName}님! 👋</p>
           <p className="mt-1 text-sm opacity-90">소속 센터 강사를 조회하고, 수업이 불가한 회차의 강사를 대체할 수 있습니다.</p>
         </div>
+
+        <CenterTabs />
 
         {children}
       </div>

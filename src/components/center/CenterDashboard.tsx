@@ -54,11 +54,9 @@ function timeLabel(c: CenterClass): string {
 }
 
 export default function CenterDashboard({
-  centerNames,
   teachers,
   classes,
 }: {
-  centerNames: string[];
   teachers: CenterTeacher[];
   classes: CenterClass[];
 }) {
@@ -80,8 +78,6 @@ export default function CenterDashboard({
 
   return (
     <div className="space-y-4">
-      <div className="text-muted-fg-faint text-xs font-semibold">담당 센터: {centerNames.join(" · ") || "-"}</div>
-
       {!selectedTeacher ? (
         <TeacherList teachers={teachers} countOf={(id) => classesByTeacher.get(id)?.length ?? 0} onSelect={setSelectedTeacherId} />
       ) : (

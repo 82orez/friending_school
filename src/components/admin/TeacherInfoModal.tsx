@@ -31,13 +31,15 @@ export default function TeacherInfoModal({
   rates,
   onCenterUpdated,
   onClose,
+  readOnly = false,
 }: {
   teacher: CurrentTeacher | null;
   centers: { id: string; name: string; price: number | null; currency: string | null }[];
   rows: RateRow[]; // 이 강사의 개별 단가 적용일 이력
   rates: Rates;
-  onCenterUpdated: (teacherId: string, centerId: string | null, centerName: string | null) => void;
+  onCenterUpdated?: (teacherId: string, centerId: string | null, centerName: string | null) => void;
   onClose: () => void;
+  readOnly?: boolean; // 센터 매니저 뷰 — 센터 변경·단가(급여) 편집 숨김(조회 전용)
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   // 센터 셀렉트 로컬 상태("none"=소속 없음). 다른 강사 모달 열릴 때 재동기화.
@@ -77,7 +79,7 @@ export default function TeacherInfoModal({
       if (res.ok) {
         const centerId = res.centerId ?? null;
         const centerName = centerId ? (centers.find((c) => c.id === centerId)?.name ?? null) : null;
-        onCenterUpdated(t.id, centerId, centerName);
+        onCenterUpdated?.(t.id, centerId, centerName);
         toast.success("센터를 변경했습니다.");
       } else {
         toast.error(res.error ?? "오류가 발생했습니다.");
@@ -155,46 +157,55 @@ export default function TeacherInfoModal({
               </div>
             ))}
 
-            {/* 센터 — 편집 가능 */}
-            <div className="flex items-center gap-2">
-              <dt className="text-muted-fg-faint w-28 shrink-0">센터</dt>
-              <dd className="flex flex-1 items-center gap-2">
-                <select
-                  value={centerSel}
-                  onChange={(e) => setCenterSel(e.target.value)}
-                  disabled={saving}
-                  className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
-                >
-                  <option value="none">None</option>
-                  {centers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                {centerDirty && (
-                  <button
-                    type="button"
-                    onClick={saveCenter}
+            {/* 센터 — admin은 편집, 센터 매니저(readOnly)는 텍스트 표시 */}
+            {readOnly ? (
+              <div className="flex gap-2">
+                <dt className="text-muted-fg-faint w-28 shrink-0">센터</dt>
+                <dd className="text-ink break-words">{selectedCenter?.name ?? "미지정"}</dd>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <dt className="text-muted-fg-faint w-28 shrink-0">센터</dt>
+                <dd className="flex flex-1 items-center gap-2">
+                  <select
+                    value={centerSel}
+                    onChange={(e) => setCenterSel(e.target.value)}
                     disabled={saving}
-                    className={cn(
-                      "bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60",
-                    )}
+                    className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
                   >
-                    {saving && <Loader2 className="size-4 animate-spin" />}
-                    {saving ? "저장 중" : "저장"}
-                  </button>
-                )}
-              </dd>
-            </div>
+                    <option value="none">None</option>
+                    {centers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                  {centerDirty && (
+                    <button
+                      type="button"
+                      onClick={saveCenter}
+                      disabled={saving}
+                      className={cn(
+                        "bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60",
+                      )}
+                    >
+                      {saving && <Loader2 className="size-4 animate-spin" />}
+                      {saving ? "저장 중" : "저장"}
+                    </button>
+                  )}
+                </dd>
+              </div>
+            )}
 
-            {/* 적용 단가 — 개별 단가 적용일 이력(없으면 센터 단가) */}
-            <div className="flex items-start gap-2">
-              <dt className="text-muted-fg-faint w-28 shrink-0 pt-1.5">적용 단가</dt>
-              <dd className="min-w-0 flex-1">
-                <RateHistoryEditor scope="teacher" scopeId={teacher.id} rows={rows} rates={rates} allowRevert fallbackLabel={centerRateLabel} />
-              </dd>
-            </div>
+            {/* 적용 단가 — 개별 단가 적용일 이력(없으면 센터 단가). 센터 매니저에겐 급여라 미노출. */}
+            {!readOnly && (
+              <div className="flex items-start gap-2">
+                <dt className="text-muted-fg-faint w-28 shrink-0 pt-1.5">적용 단가</dt>
+                <dd className="min-w-0 flex-1">
+                  <RateHistoryEditor scope="teacher" scopeId={teacher.id} rows={rows} rates={rates} allowRevert fallbackLabel={centerRateLabel} />
+                </dd>
+              </div>
+            )}
 
             {(
               [
