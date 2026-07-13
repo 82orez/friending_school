@@ -2,7 +2,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import ClassEnrollmentsManager, { type ClassEnrollmentSummary } from "@/components/admin/ClassEnrollmentsManager";
 import { type AdminSession } from "@/components/admin/ClassWeekGrid";
 import { kstDateMinToMs, ENTRY_LEAD_MS } from "@/lib/classtime";
-import { lessonEndMin, summarizeSlots, summarizeWeekdays, isValidSlot, type Slot } from "@/lib/availability";
+import { lessonEndMin, summarizeSlots, summarizeWeekdays, scheduleDateRange, isValidSlot, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
 
 // KST 날짜(YYYY-MM-DD) → 요일(0=일). TZ 비종속.
 const weekdayOf = (d: string): number => {
@@ -101,12 +101,27 @@ export default async function AdminClassesPage() {
   const enrollmentIds = Array.from(map.keys());
   const slotsByEnrollment = new Map<string, Slot[]>();
   const teacherIdByEnrollment = new Map<string, string | null>();
+  const startDateByEnrollment = new Map<string, string | null>();
+  const totalByEnrollment = new Map<string, number>();
   if (enrollmentIds.length > 0) {
-    const { data: enrRows } = await admin.from("enrollments").select("id, slots, status, teacher_name, teacher_id").in("id", enrollmentIds);
-    for (const e of (enrRows ?? []) as { id: string; slots: unknown; status: string; teacher_name: string | null; teacher_id: string | null }[]) {
+    const { data: enrRows } = await admin
+      .from("enrollments")
+      .select("id, slots, status, teacher_name, teacher_id, start_date, total_sessions")
+      .in("id", enrollmentIds);
+    for (const e of (enrRows ?? []) as {
+      id: string;
+      slots: unknown;
+      status: string;
+      teacher_name: string | null;
+      teacher_id: string | null;
+      start_date: string | null;
+      total_sessions: number | null;
+    }[]) {
       const s = (Array.isArray(e.slots) ? e.slots : []).filter(isValidSlot).map((x) => ({ day: Number(x.day), min: Number(x.min) }));
       slotsByEnrollment.set(e.id, s);
       teacherIdByEnrollment.set(e.id, e.teacher_id);
+      startDateByEnrollment.set(e.id, e.start_date);
+      totalByEnrollment.set(e.id, e.total_sessions ?? TOTAL_SESSIONS);
       const g = map.get(e.id);
       if (g) {
         // 환불/거절(status '취소'/'거절') = 과정 종료 → 목록 상태를 '완료' 아닌 '환불'로 표시.
@@ -135,11 +150,13 @@ export default async function AdminClassesPage() {
 
   // 파생 주간 요일·시작시각 요약(예: "월 14:00 · 수 14:00") + 요일-only(예: "월/수/금", 주간 뷰 SlotModal용).
   const weekdaysByEnrollment = new Map<string, string>();
+  const periodByEnrollment = new Map<string, string>();
   map.forEach((g, id) => {
     const s = slotsByEnrollment.get(id) ?? [];
     const src = s.length ? s : Array.from(slotSets.get(id)!.values());
     g.schedule = summarizeSlots(src, true);
     weekdaysByEnrollment.set(id, summarizeWeekdays(src, true));
+    periodByEnrollment.set(id, scheduleDateRange(startDateByEnrollment.get(id), src, totalByEnrollment.get(id) ?? TOTAL_SESSIONS));
   });
 
   // 진행중(예정 있음) 먼저, 그 안에서 가장 가까운 시작일 순.
@@ -163,6 +180,8 @@ export default async function AdminClassesPage() {
       sessionDate: r.session_date,
       startMin: r.start_min,
       endMin: r.end_min,
+      period: periodByEnrollment.get(r.enrollment_id) ?? "-",
+      totalSessions: totalByEnrollment.get(r.enrollment_id) ?? TOTAL_SESSIONS,
       isMakeup: r.is_makeup,
       conductedAt: r.conducted_at,
       conductedOverride: r.conducted_override,

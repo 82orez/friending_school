@@ -18,6 +18,8 @@ export type AdminSession = {
   sessionDate: string; // YYYY-MM-DD (KST)
   startMin: number;
   endMin: number;
+  period: string; // 과정 수업 일정(시작일 ~ 종료일)
+  totalSessions: number; // 과정 계획 수업 횟수
   isMakeup: boolean;
   conductedAt: string | null;
   conductedOverride: boolean | null;
@@ -279,6 +281,8 @@ function SlotModal({ slot, now, onClose, readOnly = false }: { slot: SlotSel; no
                   {s.studentEnglishName ? ` (${s.studentEnglishName})` : ""}
                 </span>
                 <span className="text-muted-fg-faint truncate text-xs">센터 {s.centerName ?? "미지정"}</span>
+                <span className="text-muted-fg-faint truncate text-xs">수업 일정 {s.period}</span>
+                <span className="text-muted-fg-faint truncate text-xs">수업 횟수 {s.totalSessions}회</span>
               </>
             );
             return (

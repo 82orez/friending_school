@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/utils/supabase/admin";
-import { deriveBookedSlots, lessonEndMin, summarizeWeekdays, isValidSlot, dowOf, TOTAL_SESSIONS, type BookedSlot, type Slot } from "@/lib/availability";
+import { deriveBookedSlots, lessonEndMin, summarizeWeekdays, scheduleDateRange, isValidSlot, dowOf, TOTAL_SESSIONS, type BookedSlot, type Slot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
 import type { CurrentTeacher, TeacherClassItem } from "@/components/admin/TeacherRequestsManager";
@@ -180,10 +180,14 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
   // 주간 요일 요약 — 현재 템플릿(enrollments.slots) 우선, 비면 클래스 session_date에서 파생.
   const enrollmentIds = Array.from(new Set(rows.map((r) => r.enrollment_id)));
   const slotsByEnrollment = new Map<string, Slot[]>();
-  const { data: enrRows } = await admin.from("enrollments").select("id, slots").in("id", enrollmentIds);
-  for (const e of (enrRows ?? []) as { id: string; slots: unknown }[]) {
+  const startDateByEnrollment = new Map<string, string | null>();
+  const totalByEnrollment = new Map<string, number>();
+  const { data: enrRows } = await admin.from("enrollments").select("id, slots, start_date, total_sessions").in("id", enrollmentIds);
+  for (const e of (enrRows ?? []) as { id: string; slots: unknown; start_date: string | null; total_sessions: number | null }[]) {
     const s = (Array.isArray(e.slots) ? e.slots : []).filter(isValidSlot).map((x) => ({ day: Number(x.day), min: Number(x.min) }));
     slotsByEnrollment.set(e.id, s);
+    startDateByEnrollment.set(e.id, e.start_date);
+    totalByEnrollment.set(e.id, e.total_sessions ?? TOTAL_SESSIONS);
   }
   const slotSetByEnr = new Map<string, Map<string, Slot>>();
   for (const r of rows) {
@@ -194,10 +198,12 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
     slotSetByEnr.set(r.enrollment_id, m);
   }
   const weekdaysByEnrollment = new Map<string, string>();
+  const periodByEnrollment = new Map<string, string>();
   for (const id of enrollmentIds) {
     const s = slotsByEnrollment.get(id) ?? [];
     const src = s.length ? s : Array.from((slotSetByEnr.get(id) ?? new Map<string, Slot>()).values());
     weekdaysByEnrollment.set(id, summarizeWeekdays(src, true));
+    periodByEnrollment.set(id, scheduleDateRange(startDateByEnrollment.get(id), src, totalByEnrollment.get(id) ?? TOTAL_SESSIONS));
   }
 
   return rows.map((r) => ({
@@ -211,6 +217,8 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
     sessionDate: r.session_date,
     startMin: r.start_min,
     endMin: r.end_min,
+    period: periodByEnrollment.get(r.enrollment_id) ?? "-",
+    totalSessions: totalByEnrollment.get(r.enrollment_id) ?? TOTAL_SESSIONS,
     isMakeup: r.is_makeup,
     conductedAt: r.conducted_at,
     conductedOverride: r.conducted_override,

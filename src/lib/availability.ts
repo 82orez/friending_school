@@ -167,6 +167,17 @@ export function lessonEndDate(start: Date, slots: Slot[], totalSessions: number)
   return last;
 }
 
+// 수업 기간 "시작일 ~ 종료일"(YYYY-MM-DD). 종료일=lessonEndDate, 계산 불가 시 시작일만. 클라/서버 공용 표시 헬퍼.
+export function scheduleDateRange(startDate: string | null | undefined, slots: Slot[], totalSessions: number): string {
+  if (!startDate) return "-";
+  const [y, m, d] = startDate.split("-").map(Number);
+  if (!y || !m || !d) return startDate;
+  const end = lessonEndDate(new Date(y, m - 1, d), slots, totalSessions);
+  if (!end) return startDate;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${startDate} ~ ${end.getFullYear()}-${p(end.getMonth() + 1)}-${p(end.getDate())}`;
+}
+
 // 개별 수업(클래스) 1회 = 매칭 요일 하루(같은 날 여러 슬롯이면 한 클래스, 시작=최소 min·종료=최대 min+30).
 export type LessonSession = { sessionNo: number; date: Date; startMin: number; endMin: number };
 
