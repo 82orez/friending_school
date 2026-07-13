@@ -37,11 +37,17 @@ export default async function RootLayout({
   const role = user ? await getUserRole(supabase, user.id) : null;
   const admin = role === "admin";
   const teacher = role === "teacher";
+  // 센터 매니저 여부 — centers.manager_id에 본인이 지정됐는지(공개 select라 세션 클라로 조회 가능).
+  let centerManager = false;
+  if (user) {
+    const { count } = await supabase.from("centers").select("id", { count: "exact", head: true }).eq("manager_id", user.id);
+    centerManager = (count ?? 0) > 0;
+  }
 
   return (
     <html lang="ko" data-scroll-behavior="smooth" className={cn("font-sans", geist.variable)}>
       <body className={`${pretendard.variable} bg-white font-sans text-[#1a1a1a] antialiased`}>
-        <Navbar user={user ? { email: user.email } : null} isAdmin={admin} isTeacher={teacher} />
+        <Navbar user={user ? { email: user.email } : null} isAdmin={admin} isTeacher={teacher} isCenterManager={centerManager} />
         <AuthHashHandler />
         {children}
         <Footer />

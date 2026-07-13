@@ -7,7 +7,7 @@ export default async function AdminCentersPage() {
   const admin = createAdminClient();
   const { data } = await admin
     .from("centers")
-    .select("id, name, sort_order, created_at, price_per_session, price_currency, manager_name")
+    .select("id, name, sort_order, created_at, price_per_session, price_currency, manager_name, manager_id")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -52,5 +52,18 @@ export default async function AdminCentersPage() {
     });
   }
 
-  return <CentersManager centers={centers} rates={rates} schedulesByCenter={schedulesByCenter} />;
+  // 매니저 계정 후보 — 가입 회원(이메일 인증 완료) 목록. 회원 관리와 동일 listUsers+profiles 병합 패턴.
+  const { data: usersData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const { data: profs } = await admin.from("profiles").select("id, first_name, last_name");
+  const profById = new Map(((profs ?? []) as { id: string; first_name: string | null; last_name: string | null }[]).map((p) => [p.id, p]));
+  const users = (usersData?.users ?? [])
+    .filter((u) => u.email && u.email_confirmed_at)
+    .map((u) => {
+      const p = profById.get(u.id);
+      const nm = p ? [p.last_name, p.first_name].filter(Boolean).join("") : "";
+      return { id: u.id, label: nm ? `${nm} (${u.email})` : (u.email as string) };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label, "ko"));
+
+  return <CentersManager centers={centers} rates={rates} schedulesByCenter={schedulesByCenter} users={users} />;
 }

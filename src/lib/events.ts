@@ -24,7 +24,7 @@ export type LogEnrollmentEventInput = {
   classId?: string | null;
   eventType: EnrollmentEventType;
   actorId?: string | null;
-  actorRole?: "student" | "teacher" | "admin" | "system";
+  actorRole?: "student" | "teacher" | "admin" | "system" | "center_manager";
   actorName?: string | null;
   course?: string | null;
   courseTitle?: string | null;

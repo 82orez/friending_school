@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          manager_id: string | null
           manager_name: string | null
           name: string
           price_currency: string
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          manager_id?: string | null
           manager_name?: string | null
           name: string
           price_currency?: string
@@ -38,6 +40,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          manager_id?: string | null
           manager_name?: string | null
           name?: string
           price_currency?: string

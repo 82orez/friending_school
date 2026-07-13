@@ -27,17 +27,22 @@ export type AdminCenter = {
   price_per_session: number | null;
   price_currency: string | null;
   manager_name: string | null;
+  manager_id: string | null; // 센터 매니저 계정(지정 시 '센터 관리' 권한 부여)
 };
+
+export type CenterUserOption = { id: string; label: string };
 
 // 강사 신청폼·프로필의 센터 드롭다운을 채우는 마스터 데이터. YoutubeManager CRUD 패턴 축약(필드=name 1개).
 export default function CentersManager({
   centers,
   rates,
   schedulesByCenter,
+  users,
 }: {
   centers: AdminCenter[];
   rates: Rates;
   schedulesByCenter: Record<string, RateRow[]>;
+  users: CenterUserOption[];
 }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -257,12 +262,13 @@ export default function CentersManager({
         rows={editTarget ? (schedulesByCenter[editTarget.id] ?? []) : []}
         pending={pending}
         rates={rates}
+        users={users}
         onClose={() => setEditTarget(null)}
-        onSave={(editName, editManager) => {
+        onSave={(editName, editManager, editManagerId) => {
           const target = editTarget;
           if (!target) return;
           run(
-            () => updateCenter(target.id, editName, editManager),
+            () => updateCenter(target.id, editName, editManager, editManagerId),
             () => setEditTarget(null),
           );
         }}

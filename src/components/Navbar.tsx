@@ -24,10 +24,12 @@ export default function Navbar({
   user: initialUser,
   isAdmin = false,
   isTeacher = false,
+  isCenterManager = false,
 }: {
   user: NavbarUser;
   isAdmin?: boolean;
   isTeacher?: boolean;
+  isCenterManager?: boolean;
 }) {
   const [user, setUser] = useState<NavbarUser>(initialUser);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -127,6 +129,13 @@ export default function Navbar({
                     href="/teacher"
                     className="text-accent-blue-ink hover:text-accent-blue focus-visible:ring-accent-blue/50 rounded text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
                     Teacher
+                  </Link>
+                )}
+                {isCenterManager && (
+                  <Link
+                    href="/center"
+                    className="text-cta hover:text-cta/80 focus-visible:ring-accent-blue/50 rounded text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                    센터 관리
                   </Link>
                 )}
                 {!isTeacher && (
@@ -286,6 +295,16 @@ export default function Navbar({
                     onClick={closeMenu}
                     className="text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-semibold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
                     Teacher
+                  </Link>
+                </li>
+              )}
+              {isCenterManager && (
+                <li className="border-rule border-b py-4">
+                  <Link
+                    href="/center"
+                    onClick={closeMenu}
+                    className="text-cta focus-visible:ring-accent-blue/50 rounded text-[15px] font-semibold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                    센터 관리
                   </Link>
                 </li>
               )}
