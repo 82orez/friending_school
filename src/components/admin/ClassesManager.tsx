@@ -4,9 +4,11 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, CalendarRange, Eye, Loader2, Search, UserCog, X } from "lucide-react";
+import { ko as koLocale } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { adminCancelClass, adminReassignClass, adminRescheduleRemaining, adminReassignRemaining, adminSetClassConducted } from "@/app/admin/actions";
+import { Calendar } from "@/components/ui/calendar";
 import { fmtTime, formatDateKo, lessonEndMin, summarizeSlots, teacherHasAllSlots, type Slot } from "@/lib/availability";
 import type { EnrollTeacherCard } from "@/app/courses/enroll-actions";
 import EnrollScheduleField from "@/components/course/EnrollScheduleField";
@@ -48,6 +50,7 @@ export type AdminClass = {
 };
 
 type DisplayStatus = "예정" | "진행중" | "완료" | "취소";
+type View = "list" | "calendar";
 
 // 표시 상태 — DB status(예정/취소)에 시간 기반 '진행중'(입장 가능 시점=시작 15분 전~레슨 종료)·'완료'(레슨 종료 후)를 더해 파생.
 function displayStatus(r: AdminClass, now: number): DisplayStatus {
@@ -125,6 +128,7 @@ export default function ClassesManager({
   backHref?: string;
 }) {
   const [rows, setRows] = useState(classes);
+  const [view, setView] = useState<View>("calendar");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"전체" | DisplayStatus>("전체");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
@@ -235,38 +239,46 @@ export default function ClassesManager({
         )}
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-2">
-        {FILTERS.map((f) => {
-          const active = filter === f.key;
-          return (
-            <button
-              key={f.key}
-              type="button"
-              onClick={() => setFilter(f.key)}
-              aria-pressed={active}
-              className={cn(
-                "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                active ? "bg-ink border-ink text-white" : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-              )}
-            >
-              {f.label} <span className={cn("ml-0.5", active ? "text-white/70" : "text-muted-fg-faint")}>{counts[f.key] ?? 0}</span>
-            </button>
-          );
-        })}
+      <div className="mt-5">
+        <ViewToggle view={view} setView={setView} />
       </div>
 
-      <div className="border-rule mt-4 flex items-center gap-2 rounded-lg border bg-white px-3">
-        <Search className="text-muted-fg-faint size-4" aria-hidden />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="학생·강사·과정 검색..."
-          className="h-10 flex-1 bg-transparent text-sm outline-none"
-        />
-      </div>
+      {view === "calendar" ? (
+        <ClassAdminCalendar rows={rows} now={now} onSelect={setSelectedId} />
+      ) : (
+        <>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {FILTERS.map((f) => {
+              const active = filter === f.key;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setFilter(f.key)}
+                  aria-pressed={active}
+                  className={cn(
+                    "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                    active ? "bg-ink border-ink text-white" : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
+                  )}
+                >
+                  {f.label} <span className={cn("ml-0.5", active ? "text-white/70" : "text-muted-fg-faint")}>{counts[f.key] ?? 0}</span>
+                </button>
+              );
+            })}
+          </div>
 
-      <div className="border-rule mt-4 overflow-x-auto rounded-xl border bg-white">
+          <div className="border-rule mt-4 flex items-center gap-2 rounded-lg border bg-white px-3">
+            <Search className="text-muted-fg-faint size-4" aria-hidden />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="학생·강사·과정 검색..."
+              className="h-10 flex-1 bg-transparent text-sm outline-none"
+            />
+          </div>
+
+          <div className="border-rule mt-4 overflow-x-auto rounded-xl border bg-white">
         <table className="w-full min-w-[680px] border-collapse text-sm">
           <thead>
             <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
@@ -345,7 +357,9 @@ export default function ClassesManager({
             )}
           </tbody>
         </table>
-      </div>
+          </div>
+        </>
+      )}
 
       {selected && (
         <ClassDetailModal
@@ -383,6 +397,165 @@ export default function ClassesManager({
           onClose={() => setBulkReassignOpen(false)}
         />
       )}
+    </div>
+  );
+}
+
+// 달력/목록 뷰 토글 — 강의실 CourseDetail의 ViewToggle과 동일 패턴(한국어 라벨).
+function ViewToggle({ view, setView }: { view: View; setView: (v: View) => void }) {
+  const tabs: [View, string][] = [
+    ["calendar", "달력"],
+    ["list", "목록"],
+  ];
+  return (
+    <div className="bg-surface inline-flex rounded-lg p-1">
+      {tabs.map(([key, label]) => (
+        <button
+          key={key}
+          type="button"
+          aria-pressed={view === key}
+          onClick={() => setView(key)}
+          className={cn(
+            "focus-visible:ring-accent-blue/50 rounded-md px-4 py-1.5 text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:outline-none",
+            view === key ? "text-ink bg-white shadow-sm" : "text-muted-fg",
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// admin 화상수업 상세 — 단일 과정 월간 달력. 예정/완료/취소 색 구분 + 진행여부 마커(● 진행됨 / ▲ 미진행),
+// 날짜 클릭 시 그 날 회차 목록 → 행 클릭으로 기존 ClassDetailModal(onSelect=setSelectedId) 오픈.
+const pad = (n: number) => String(n).padStart(2, "0");
+const dateToStr = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseDate = (s: string) => {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
+function ClassAdminCalendar({ rows, now, onSelect }: { rows: AdminClass[]; now: number; onSelect: (id: string) => void }) {
+  const endMsOf = (r: AdminClass) => kstDateMinToMs(r.session_date, lessonEndMin(r.end_min));
+
+  // 기본 포커스 = 다음 예정(종료 안 지난) 회차 → 없으면 마지막 회차 → 없으면 오늘. 1회만 계산.
+  const [selected, setSelected] = useState<Date | undefined>(() => {
+    const t = Date.now();
+    const sorted = rows.slice().sort((a, b) => a.session_date.localeCompare(b.session_date));
+    const src = sorted.find((r) => r.status !== "취소" && endMsOf(r) >= t) ?? sorted[sorted.length - 1];
+    return src ? parseDate(src.session_date) : new Date();
+  });
+
+  const { byDate, upcoming, past, cancelled, conducted, unconducted } = useMemo(() => {
+    const byDate = new Map<string, AdminClass[]>();
+    for (const r of rows) {
+      const arr = byDate.get(r.session_date) ?? [];
+      arr.push(r);
+      byDate.set(r.session_date, arr);
+    }
+    const upcoming: Date[] = [];
+    const past: Date[] = [];
+    const cancelled: Date[] = [];
+    const conducted: Date[] = []; // ● 진행됨(유효 진행여부)
+    const unconducted: Date[] = []; // ▲ 종료됐으나 미진행
+    for (const [ds, items] of Array.from(byDate.entries())) {
+      const date = parseDate(ds);
+      const active = items.filter((r) => r.status !== "취소");
+      if (active.some((r) => displayStatus(r, now) !== "완료")) upcoming.push(date);
+      else if (active.length > 0) past.push(date);
+      else cancelled.push(date);
+      // 진행 마커 — 한 날짜에 진행됨 회차가 있으면 ● 우선, 없고 완료·미진행만 있으면 ▲.
+      if (active.some((r) => effectiveConducted(r))) conducted.push(date);
+      else if (active.some((r) => displayStatus(r, now) === "완료" && !effectiveConducted(r))) unconducted.push(date);
+    }
+    return { byDate, upcoming, past, cancelled, conducted, unconducted };
+  }, [rows, now]);
+
+  const selectedStr = selected ? dateToStr(selected) : "";
+  const dayItems = (byDate.get(selectedStr) ?? []).slice().sort((a, b) => a.start_min - b.start_min);
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex justify-center">
+        <div className="border-rule rounded-xl border bg-white p-3">
+          <Calendar
+            mode="single"
+            required
+            selected={selected}
+            onSelect={setSelected}
+            defaultMonth={selected}
+            locale={koLocale}
+            weekStartsOn={0}
+            showOutsideDays={false}
+            formatters={{ formatWeekdayName: (d: Date) => d.toLocaleDateString("ko-KR", { weekday: "short" }) }}
+            modifiers={{ upcoming, past, cancelled, conducted, unconducted, sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
+            modifiersClassNames={{
+              upcoming: "bg-accent-blue/10 text-accent-blue-ink font-bold rounded-(--cell-radius)",
+              past: "bg-rule/60 text-muted-fg rounded-(--cell-radius)",
+              cancelled: "text-muted-fg-faint line-through",
+              conducted: "after:content-['●'] after:absolute after:top-0.5 after:right-1 after:text-[10px] after:leading-none after:text-cta",
+              unconducted: "after:content-['▲'] after:absolute after:top-0.5 after:right-1 after:text-[10px] after:leading-none after:text-brand",
+              sunday: "!text-brand",
+              saturday: "!text-accent-blue-ink",
+            }}
+            classNames={{
+              today: "bg-[#FFF3CD] text-ink font-bold ring-1 ring-[#F5A623] ring-inset rounded-(--cell-radius) !opacity-100",
+            }}
+            className="text-base [--cell-size:--spacing(10)] [&_.rdp-weekday:first-child]:!text-brand [&_.rdp-weekday:last-child]:!text-accent-blue-ink"
+          />
+        </div>
+      </div>
+
+      <p className="text-muted-fg-faint flex items-center justify-center gap-3 text-xs">
+        <span className="inline-flex items-center gap-1">
+          <span className="text-cta">●</span> 진행됨
+        </span>
+        <span className="inline-flex items-center gap-1">
+          <span className="text-brand">▲</span> 미진행
+        </span>
+      </p>
+
+      <div className="border-rule overflow-hidden rounded-xl border bg-white">
+        <div className="border-rule text-ink border-b px-4 py-3 text-sm font-bold md:px-6">
+          {selectedStr ? formatDateKo(selectedStr) : ""} <span className="text-muted-fg-faint font-medium">· {dayItems.length}건</span>
+        </div>
+        {dayItems.length === 0 ? (
+          <p className="text-muted-fg px-6 py-8 text-center text-sm">이 날은 수업이 없어요.</p>
+        ) : (
+          <ul className="list-none">
+            {dayItems.map((r) => {
+              const ds = displayStatus(r, now);
+              const ci = conductInfo(r, now);
+              return (
+                <li
+                  key={r.id}
+                  onClick={() => onSelect(r.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSelect(r.id);
+                    }
+                  }}
+                  tabIndex={0}
+                  className={cn(
+                    "border-rule hover:bg-surface/60 focus-visible:bg-surface/60 flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1.5 border-b px-4 py-3 transition-colors outline-none last:border-b-0 md:px-6",
+                    r.status === "취소" && "opacity-55",
+                  )}
+                >
+                  <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[ds])}>{ds}</span>
+                  <span className="text-muted-fg shrink-0 text-sm whitespace-nowrap">{timeRange(r.start_min, r.end_min)}</span>
+                  <span className="text-ink min-w-0 flex-1 truncate text-sm">{r.teacher_name ?? "강사"}</span>
+                  {r.is_makeup && <span className="bg-progress/10 text-progress shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">보강</span>}
+                  {r.teacher_reassigned_at && <span className="bg-cta/10 text-cta shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">대체</span>}
+                  <span className="text-muted-fg-faint shrink-0 text-xs">#{r.session_no}</span>
+                  <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", ci.cls)}>{ci.label}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
