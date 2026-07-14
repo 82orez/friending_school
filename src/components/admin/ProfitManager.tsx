@@ -7,19 +7,9 @@ import { formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
 import type { RevenueRow } from "@/components/admin/RevenueManager";
 import type { SettlementRow } from "@/components/admin/SettlementsManager";
 
-// ── TZ 비종속 날짜 헬퍼(server-only 헬퍼 재사용 불가 → 인라인, Revenue/SettlementsManager와 동일) ──
-const weekdayOf = (d: string): number => {
-  const [y, m, day] = d.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, day)).getUTCDay();
-};
-const addDaysStr = (d: string, days: number): string => {
-  const [y, m, day] = d.split("-").map(Number);
-  const t = new Date(Date.UTC(y, m - 1, day));
-  t.setUTCDate(t.getUTCDate() + days);
-  return t.toISOString().slice(0, 10);
-};
+// ── TZ 비종속 날짜 헬퍼(server-only 헬퍼 재사용 불가 → 인라인) ──
+// 정산은 월 단위로 이뤄져 주간 집계는 의미가 없어 매출이익은 월간·년간만 지원(주간 없음).
 const todayKst = (): string => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
-const mondayOf = (d: string): string => addDaysStr(d, -((weekdayOf(d) + 6) % 7)); // 주 시작 = 월요일
 const monthStart = (d: string): string => `${d.slice(0, 7)}-01`;
 const monthEnd = (d: string): string => {
   const [y, m] = d.split("-").map(Number);
@@ -29,33 +19,23 @@ const shiftMonth = (d: string, delta: number): string => {
   const [y, m] = d.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 10);
 };
-const DOW_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
-type Period = "주간" | "월간" | "년간";
-const PERIODS: Period[] = ["주간", "월간", "년간"];
+type Period = "월간" | "년간";
+const PERIODS: Period[] = ["월간", "년간"];
 type Grouping = "센터별" | "과정별" | "강사별";
 const GROUPINGS: Grouping[] = ["센터별", "과정별", "강사별"];
 type SortKey = "name" | "revenue" | "settlement" | "profit";
 
 function interval(anchor: string, period: Period): { start: string; end: string } {
-  if (period === "주간") {
-    const s = mondayOf(anchor);
-    return { start: s, end: addDaysStr(s, 6) };
-  }
   if (period === "년간") return { start: `${anchor.slice(0, 4)}-01-01`, end: `${anchor.slice(0, 4)}-12-31` };
   return { start: monthStart(anchor), end: monthEnd(anchor) };
 }
 function periodLabel(anchor: string, period: Period): string {
-  if (period === "주간") {
-    const { start, end } = interval(anchor, "주간");
-    return `${start} ~ ${end}`;
-  }
   if (period === "년간") return `${anchor.slice(0, 4)}년`;
   const [y, m] = anchor.split("-");
   return `${y}년 ${Number(m)}월`;
 }
 function shiftAnchor(anchor: string, period: Period, delta: number): string {
-  if (period === "주간") return addDaysStr(anchor, delta * 7);
   if (period === "년간") return shiftMonth(anchor, delta * 12);
   return shiftMonth(anchor, delta);
 }
@@ -70,7 +50,7 @@ const revenueNetKrw = (r: RevenueRow, rates: Rates): number => toKrw(r.amount, r
 // 정산 1건 원가(KRW) — 단가 미설정이면 0.
 const settlementKrw = (s: SettlementRow, rates: Rates): number => (s.pricePerSession != null && s.currency ? toKrw(s.pricePerSession, s.currency, rates) : 0);
 
-type TrendBucket = { key: string; revenue: number; settlement: number; tooltip: string; xLabel: string; highlight?: boolean; dow?: number };
+type TrendBucket = { key: string; revenue: number; settlement: number; tooltip: string; xLabel: string; highlight?: boolean };
 type ProfitGroup = { key: string; label: string; revenueKrw: number; settlementKrw: number; unpriced: number };
 
 export default function ProfitManager({ revenueRows, settlementRows, rates }: { revenueRows: RevenueRow[]; settlementRows: SettlementRow[]; rates: Rates }) {
@@ -104,22 +84,8 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
     return { revenue, settlement, profit, margin: revenue > 0 ? (profit / revenue) * 100 : null, unpriced };
   }, [inRev, inSet, rates]);
 
-  // 추이 차트 버킷(매출·정산 2계열) — 주간=일별, 월간·년간은 연간 맥락(선택 구간 강조).
+  // 추이 차트 버킷(매출·정산 2계열) — 월간=앵커 연도 12개월, 년간=연도 범위(선택 구간 강조).
   const trend = useMemo<TrendBucket[]>(() => {
-    if (period === "주간") {
-      const rev = new Map<string, number>();
-      const set = new Map<string, number>();
-      for (const r of inRev) rev.set(r.kstDate, (rev.get(r.kstDate) ?? 0) + revenueNetKrw(r, rates));
-      for (const s of inSet) set.set(s.sessionDate, (set.get(s.sessionDate) ?? 0) + settlementKrw(s, rates));
-      const out: TrendBucket[] = [];
-      for (let d = start; d <= end; d = addDaysStr(d, 1)) {
-        const revenue = rev.get(d) ?? 0;
-        const settlement = set.get(d) ?? 0;
-        const dow = weekdayOf(d);
-        out.push({ key: d, revenue, settlement, tooltip: tooltipOf(`${d} (${DOW_KO[dow]})`, revenue, settlement), xLabel: `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}일(${DOW_KO[dow]})`, dow });
-      }
-      return out;
-    }
     if (period === "년간") {
       const rev = new Map<number, number>();
       const set = new Map<number, number>();
@@ -256,7 +222,6 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
         >
           오늘
         </button>
-        <span className="text-muted-fg-faint ml-auto text-xs">주 시작: 월요일</span>
       </div>
 
       {/* KPI 카드 */}
@@ -274,7 +239,7 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
       )}
 
       {/* 추이 차트(매출 vs 정산) */}
-      <ProfitTrendChart data={trend} title={period === "주간" ? "일자별 매출·정산" : period === "년간" ? "년도별 매출·정산" : "월별 매출·정산"} />
+      <ProfitTrendChart data={trend} title={period === "년간" ? "년도별 매출·정산" : "월별 매출·정산"} />
 
       {/* 분류별 매출이익 */}
       <div className="mt-6 flex items-center gap-2">
@@ -404,7 +369,7 @@ function ProfitTrendChart({ data, title }: { data: TrendBucket[]; title: string 
         {data.map((d, i) => (
           <div
             key={d.key}
-            className={cn("text-center text-[10px]", colClass, d.dow === 0 ? "text-brand" : d.dow === 6 ? "text-accent-blue-ink" : "text-muted-fg-faint")}
+            className={cn("text-muted-fg-faint text-center text-[10px]", colClass)}
           >
             {i % showLabelEvery === 0 ? d.xLabel : ""}
           </div>
