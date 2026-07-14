@@ -428,11 +428,12 @@ export default function SettlementsManager({
 // 센터별 상세 정산 모달 — 그 센터 소속 강사별 집계. 자체 주간/월간/년간 토글 + 이전/다음(메인 기간과 독립).
 const MODAL_PERIODS: Period[] = ["주간", "월간", "년간"];
 
-// 강사 상세: 과정별 그룹(소계) + 날짜별 세션 목록.
-type CourseDetail = {
-  course: string;
-  courseTitle: string;
-  courseEnglishTitle: string | null;
+// 강사 상세 그룹 모드: 과정별(과정 카드 → 날짜순 세션) 또는 날짜별(날짜 카드 → 시간순 세션).
+type DetailMode = "과정별" | "날짜별";
+
+// 강사 상세 그룹(소계). key = 과정 슬러그(과정별) 또는 'YYYY-MM-DD'(날짜별). 과정명 등은 sessions[0]에서 파생.
+type DetailGroup = {
+  key: string;
   count: number;
   currencyTotals: Map<string, number>;
   unpriced: number;
@@ -458,17 +459,18 @@ function SessionAmount({ row, rates, showKrwEquivalent = true }: { row: Settleme
   );
 }
 
-type TeacherDetail = { list: CourseDetail[]; tot: { count: number; krwTotal: number; unpriced: number; currencyTotals: Map<string, number> } };
+type TeacherDetail = { mode: DetailMode; list: DetailGroup[]; tot: { count: number; krwTotal: number; unpriced: number; currencyTotals: Map<string, number> } };
 
-// 한 강사의 기간 내 정산 상세(과정별 그룹 + 날짜별 세션). teacherId만으로 스코프(각 row centerId=강사 현재 센터라 유일).
-function buildTeacherDetail(rows: SettlementRow[], teacherId: string, start: string, end: string, rates: Rates): TeacherDetail {
+// 한 강사의 기간 내 정산 상세(mode에 따라 과정별/날짜별 그룹). teacherId만으로 스코프(각 row centerId=강사 현재 센터라 유일).
+function buildTeacherDetail(rows: SettlementRow[], teacherId: string, start: string, end: string, rates: Rates, mode: DetailMode): TeacherDetail {
   const teacherRows = rows.filter((r) => r.teacherId === teacherId && r.sessionDate >= start && r.sessionDate <= end);
-  const map = new Map<string, CourseDetail>();
+  const map = new Map<string, DetailGroup>();
   for (const r of teacherRows) {
-    let g = map.get(r.course);
+    const key = mode === "날짜별" ? r.sessionDate : r.course;
+    let g = map.get(key);
     if (!g) {
-      g = { course: r.course, courseTitle: r.courseTitle, courseEnglishTitle: r.courseEnglishTitle, count: 0, currencyTotals: new Map(), unpriced: 0, krwTotal: 0, sessions: [] };
-      map.set(r.course, g);
+      g = { key, count: 0, currencyTotals: new Map(), unpriced: 0, krwTotal: 0, sessions: [] };
+      map.set(key, g);
     }
     g.count += 1;
     g.sessions.push(r);
@@ -480,8 +482,15 @@ function buildTeacherDetail(rows: SettlementRow[], teacherId: string, start: str
     }
   }
   const list = Array.from(map.values());
-  for (const g of list) g.sessions.sort((a, b) => a.sessionDate.localeCompare(b.sessionDate));
-  list.sort((a, b) => (a.sessions[0]?.sessionDate ?? "").localeCompare(b.sessions[0]?.sessionDate ?? ""));
+  if (mode === "날짜별") {
+    // 날짜별: 세션은 시간순, 그룹은 날짜 오름차순.
+    for (const g of list) g.sessions.sort((a, b) => a.startMin - b.startMin);
+    list.sort((a, b) => a.key.localeCompare(b.key));
+  } else {
+    // 과정별: 세션은 날짜순, 그룹은 최이른 세션 날짜순.
+    for (const g of list) g.sessions.sort((a, b) => a.sessionDate.localeCompare(b.sessionDate));
+    list.sort((a, b) => (a.sessions[0]?.sessionDate ?? "").localeCompare(b.sessions[0]?.sessionDate ?? ""));
+  }
   const currencyTotals = new Map<string, number>();
   for (const g of list) for (const [cur, amt] of Array.from(g.currencyTotals)) currencyTotals.set(cur, (currencyTotals.get(cur) ?? 0) + amt);
   const base = list.reduce((acc, g) => ({ count: acc.count + g.count, krwTotal: acc.krwTotal + g.krwTotal, unpriced: acc.unpriced + g.unpriced }), {
@@ -489,32 +498,50 @@ function buildTeacherDetail(rows: SettlementRow[], teacherId: string, start: str
     krwTotal: 0,
     unpriced: 0,
   });
-  return { list, tot: { ...base, currencyTotals } };
+  return { mode, list, tot: { ...base, currencyTotals } };
 }
 
-// 강사 상세 렌더(과정 카드 + 세션 행 + 합계). 센터 상세 모달·강사 정산 모달 공용.
+// 세션의 과정명(로케일 해석) — 과정별 헤더·날짜별 세션 행 공용.
+const courseLabelOf = (s: SettlementRow, en: boolean): string =>
+  en ? (getCourse(s.course)?.englishTitle ?? s.courseEnglishTitle ?? s.courseTitle) : s.courseTitle;
+
+// 강사 상세 그룹 모드 토글(과정별/날짜별).
+const DETAIL_MODES: DetailMode[] = ["과정별", "날짜별"];
+function DetailModeChips({ mode, onChange, en }: { mode: DetailMode; onChange: (m: DetailMode) => void; en: boolean }) {
+  const label = (m: DetailMode) => (en ? (m === "날짜별" ? "By date" : "By course") : m);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {DETAIL_MODES.map((m) => (
+        <ToggleChip key={m} active={mode === m} onClick={() => onChange(m)} label={label(m)} />
+      ))}
+    </div>
+  );
+}
+
+// 강사 상세 렌더(과정/날짜 카드 + 세션 행 + 합계). 센터 상세 모달·강사 정산 모달 공용.
 function TeacherDetailBody({ detail, rates, showKrwEquivalent = true }: { detail: TeacherDetail; rates: Rates; showKrwEquivalent?: boolean }) {
   const en = useLang() === "en";
+  const byDate = detail.mode === "날짜별";
   if (detail.list.length === 0)
     return <p className="text-muted-fg py-10 text-center text-sm">{en ? "No classes were conducted in this period." : "이 기간에 진행된 수업이 없습니다."}</p>;
   return (
     <div className="flex flex-col gap-3">
-      {detail.list.map((c) => (
-        <div key={c.course} className="border-rule overflow-hidden rounded-xl border">
+      {detail.list.map((g) => (
+        <div key={g.key} className="border-rule overflow-hidden rounded-xl border">
           <div className="border-rule bg-surface flex items-center justify-between gap-2 border-b px-4 py-2.5">
             <span className="text-ink text-sm font-bold">
-              {en ? (getCourse(c.course)?.englishTitle ?? c.courseEnglishTitle ?? c.courseTitle) : c.courseTitle}
-              <span className="text-muted-fg-faint ml-1.5 font-medium">{en ? c.count : `${c.count}회`}</span>
-              {c.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">{en ? `No rate ${c.unpriced}` : `단가 미설정 ${c.unpriced}`}</span>}
+              {byDate ? fmtSessionDate(g.key, en) : courseLabelOf(g.sessions[0], en)}
+              <span className="text-muted-fg-faint ml-1.5 font-medium">{en ? g.count : `${g.count}회`}</span>
+              {g.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">{en ? `No rate ${g.unpriced}` : `단가 미설정 ${g.unpriced}`}</span>}
             </span>
-            <AmountCell currencyTotals={c.currencyTotals} rates={rates} showKrwEquivalent={showKrwEquivalent} />
+            <AmountCell currencyTotals={g.currencyTotals} rates={rates} showKrwEquivalent={showKrwEquivalent} />
           </div>
           <ul>
-            {c.sessions.map((s) => (
+            {g.sessions.map((s) => (
               <li key={s.id} className="border-rule flex items-center justify-between gap-3 border-b px-4 py-2 last:border-b-0">
                 <span className="min-w-0">
                   <span className="text-ink block text-sm">
-                    {fmtSessionDate(s.sessionDate, en)} {fmtTime(s.startMin)}
+                    {byDate ? courseLabelOf(s, en) : fmtSessionDate(s.sessionDate, en)} {fmtTime(s.startMin)}
                     {s.isMakeup && <span className="text-accent-blue-ink ml-1.5 text-xs font-medium">{en ? " ·Makeup" : "·보강"}</span>}
                   </span>
                   {(s.studentName || s.studentEnglishName) && (
@@ -566,6 +593,7 @@ function TeacherSettlementModal({
   const lang = en ? "en" : "ko";
   const [period, setPeriod] = useState<Period>(initialPeriod === "일간" ? "월간" : initialPeriod);
   const [anchor, setAnchor] = useState<string>(initialAnchor);
+  const [detailMode, setDetailMode] = useState<DetailMode>("과정별");
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -581,7 +609,7 @@ function TeacherSettlementModal({
   }, [onClose]);
 
   const { start, end } = useMemo(() => interval(anchor, period), [anchor, period]);
-  const detail = useMemo(() => buildTeacherDetail(rows, teacher.id, start, end, rates), [rows, teacher.id, start, end, rates]);
+  const detail = useMemo(() => buildTeacherDetail(rows, teacher.id, start, end, rates, detailMode), [rows, teacher.id, start, end, rates, detailMode]);
 
   return (
     <>
@@ -636,6 +664,8 @@ function TeacherSettlementModal({
               </button>
             </div>
           </div>
+
+          <DetailModeChips mode={detailMode} onChange={setDetailMode} en={en} />
 
           <TeacherDetailBody detail={detail} rates={rates} showKrwEquivalent={showKrwEquivalent} />
         </div>
@@ -698,10 +728,11 @@ function SettlementDetailModal({
 
   // 강사 상세 뷰(선택된 강사의 과정별/날짜별 내역). null이면 강사 목록 뷰.
   const [selectedTeacher, setSelectedTeacher] = useState<{ id: string; name: string } | null>(null);
+  const [detailMode, setDetailMode] = useState<DetailMode>("과정별");
 
   const detail = useMemo(
-    () => (selectedTeacher ? buildTeacherDetail(rows, selectedTeacher.id, start, end, rates) : null),
-    [selectedTeacher, rows, start, end, rates],
+    () => (selectedTeacher ? buildTeacherDetail(rows, selectedTeacher.id, start, end, rates, detailMode) : null),
+    [selectedTeacher, rows, start, end, rates, detailMode],
   );
 
   return (
@@ -860,8 +891,13 @@ function SettlementDetailModal({
             </div>
           )}
 
-          {/* 강사 상세 뷰(과정별 그룹 + 날짜별 세션) */}
-          {selectedTeacher && detail && <TeacherDetailBody detail={detail} rates={rates} />}
+          {/* 강사 상세 뷰(과정별/날짜별 그룹 토글) */}
+          {selectedTeacher && detail && (
+            <>
+              <DetailModeChips mode={detailMode} onChange={setDetailMode} en={false} />
+              <TeacherDetailBody detail={detail} rates={rates} />
+            </>
+          )}
         </div>
       </div>
     </>
