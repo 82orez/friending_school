@@ -506,7 +506,7 @@ const courseLabelOf = (s: SettlementRow, en: boolean): string =>
   en ? (getCourse(s.course)?.englishTitle ?? s.courseEnglishTitle ?? s.courseTitle) : s.courseTitle;
 
 // 강사 상세 그룹 모드 토글(과정별/날짜별).
-const DETAIL_MODES: DetailMode[] = ["과정별", "날짜별"];
+const DETAIL_MODES: DetailMode[] = ["날짜별", "과정별"];
 function DetailModeChips({ mode, onChange, en }: { mode: DetailMode; onChange: (m: DetailMode) => void; en: boolean }) {
   const label = (m: DetailMode) => (en ? (m === "날짜별" ? "By date" : "By course") : m);
   return (
@@ -593,7 +593,7 @@ function TeacherSettlementModal({
   const lang = en ? "en" : "ko";
   const [period, setPeriod] = useState<Period>(initialPeriod === "일간" ? "월간" : initialPeriod);
   const [anchor, setAnchor] = useState<string>(initialAnchor);
-  const [detailMode, setDetailMode] = useState<DetailMode>("과정별");
+  const [detailMode, setDetailMode] = useState<DetailMode>("날짜별");
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -728,7 +728,7 @@ function SettlementDetailModal({
 
   // 강사 상세 뷰(선택된 강사의 과정별/날짜별 내역). null이면 강사 목록 뷰.
   const [selectedTeacher, setSelectedTeacher] = useState<{ id: string; name: string } | null>(null);
-  const [detailMode, setDetailMode] = useState<DetailMode>("과정별");
+  const [detailMode, setDetailMode] = useState<DetailMode>("날짜별");
 
   const detail = useMemo(
     () => (selectedTeacher ? buildTeacherDetail(rows, selectedTeacher.id, start, end, rates, detailMode) : null),
