@@ -135,10 +135,10 @@ export default function Navbar({
                   <Link
                     href="/center"
                     className="text-cta hover:text-cta/80 focus-visible:ring-accent-blue/50 rounded text-sm font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-                    센터 관리
+                    Center Management
                   </Link>
                 )}
-                {!isTeacher && (
+                {!isTeacher && !isCenterManager && (
                   <Link
                     href="/mypage"
                     className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
@@ -304,11 +304,11 @@ export default function Navbar({
                     href="/center"
                     onClick={closeMenu}
                     className="text-cta focus-visible:ring-accent-blue/50 rounded text-[15px] font-semibold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-                    센터 관리
+                    Center Management
                   </Link>
                 </li>
               )}
-              {!isTeacher && (
+              {!isTeacher && !isCenterManager && (
                 <li className="border-rule border-b py-4">
                   <Link
                     href="/mypage"
