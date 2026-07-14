@@ -130,12 +130,14 @@ export default function SettlementsManager({
   initialGrouping = "센터별",
   groupings = GROUPINGS,
   enableTeacherDetail = false,
+  showKrwEquivalent = true,
 }: {
   rows: SettlementRow[];
   rates: Rates;
   initialGrouping?: Grouping;
   groupings?: Grouping[]; // 노출할 분류 칩(기본 3분류). 1개면 분류 토글 숨김.
   enableTeacherDetail?: boolean; // 강사별 모드에서 행 클릭 시 강사 정산 상세 모달 열기.
+  showKrwEquivalent?: boolean; // false면 외화의 ≈₩ 환산·원화 합계 생략(센터 매니저 뷰).
 }) {
   const [grouping, setGrouping] = useState<Grouping>(initialGrouping);
   const [period, setPeriod] = useState<Period>("월간");
@@ -179,12 +181,14 @@ export default function SettlementsManager({
     let count = 0;
     let krwTotal = 0;
     let unpriced = 0;
+    const currencyTotals = new Map<string, number>();
     for (const g of groups) {
       count += g.count;
       krwTotal += g.krwTotal;
       unpriced += g.unpriced;
+      for (const [cur, amt] of Array.from(g.currencyTotals)) currencyTotals.set(cur, (currencyTotals.get(cur) ?? 0) + amt);
     }
-    return { count, krwTotal, unpriced };
+    return { count, krwTotal, unpriced, currencyTotals };
   }, [groups]);
 
   return (
@@ -335,7 +339,7 @@ export default function SettlementsManager({
                       <span className="text-muted-fg-faint">회</span>
                     </td>
                     <td className="text-ink px-4 py-3.5 align-middle md:px-6">
-                      <AmountCell currencyTotals={g.currencyTotals} rates={rates} />
+                      <AmountCell currencyTotals={g.currencyTotals} rates={rates} showKrwEquivalent={showKrwEquivalent} />
                     </td>
                   </tr>
                 );
@@ -350,7 +354,13 @@ export default function SettlementsManager({
                   {totals.count}
                   <span className="text-muted-fg-faint font-medium">회</span>
                 </td>
-                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap md:px-6">≈ {formatPrice(totals.krwTotal, "KRW")}</td>
+                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap md:px-6">
+                  {showKrwEquivalent ? (
+                    <>≈ {formatPrice(totals.krwTotal, "KRW")}</>
+                  ) : (
+                    <AmountCell currencyTotals={totals.currencyTotals} rates={rates} showKrwEquivalent={false} />
+                  )}
+                </td>
               </tr>
             </tfoot>
           )}
@@ -375,6 +385,7 @@ export default function SettlementsManager({
           rates={rates}
           initialAnchor={anchor}
           initialPeriod={period}
+          showKrwEquivalent={showKrwEquivalent}
           onClose={() => setDetailTeacher(null)}
         />
       )}
@@ -403,18 +414,18 @@ const fmtSessionDate = (d: string): string => {
 };
 
 // 단건 세션 금액(원화 환산 병기, 단가 미설정이면 —).
-function SessionAmount({ row, rates }: { row: SettlementRow; rates: Rates }) {
+function SessionAmount({ row, rates, showKrwEquivalent = true }: { row: SettlementRow; rates: Rates; showKrwEquivalent?: boolean }) {
   if (row.pricePerSession == null || !row.currency) return <span className="text-muted-fg-faint text-sm">—</span>;
   const eq = krwEquivalent(row.pricePerSession, row.currency, rates);
   return (
     <span className="text-ink text-sm whitespace-nowrap">
       {formatPrice(row.pricePerSession, row.currency)}
-      {eq != null && <span className="text-muted-fg-faint ml-1.5">≈ {formatPrice(eq, "KRW")}</span>}
+      {showKrwEquivalent && eq != null && <span className="text-muted-fg-faint ml-1.5">≈ {formatPrice(eq, "KRW")}</span>}
     </span>
   );
 }
 
-type TeacherDetail = { list: CourseDetail[]; tot: { count: number; krwTotal: number; unpriced: number } };
+type TeacherDetail = { list: CourseDetail[]; tot: { count: number; krwTotal: number; unpriced: number; currencyTotals: Map<string, number> } };
 
 // 한 강사의 기간 내 정산 상세(과정별 그룹 + 날짜별 세션). teacherId만으로 스코프(각 row centerId=강사 현재 센터라 유일).
 function buildTeacherDetail(rows: SettlementRow[], teacherId: string, start: string, end: string, rates: Rates): TeacherDetail {
@@ -438,16 +449,18 @@ function buildTeacherDetail(rows: SettlementRow[], teacherId: string, start: str
   const list = Array.from(map.values());
   for (const g of list) g.sessions.sort((a, b) => a.sessionDate.localeCompare(b.sessionDate));
   list.sort((a, b) => (a.sessions[0]?.sessionDate ?? "").localeCompare(b.sessions[0]?.sessionDate ?? ""));
-  const tot = list.reduce((acc, g) => ({ count: acc.count + g.count, krwTotal: acc.krwTotal + g.krwTotal, unpriced: acc.unpriced + g.unpriced }), {
+  const currencyTotals = new Map<string, number>();
+  for (const g of list) for (const [cur, amt] of Array.from(g.currencyTotals)) currencyTotals.set(cur, (currencyTotals.get(cur) ?? 0) + amt);
+  const base = list.reduce((acc, g) => ({ count: acc.count + g.count, krwTotal: acc.krwTotal + g.krwTotal, unpriced: acc.unpriced + g.unpriced }), {
     count: 0,
     krwTotal: 0,
     unpriced: 0,
   });
-  return { list, tot };
+  return { list, tot: { ...base, currencyTotals } };
 }
 
 // 강사 상세 렌더(과정 카드 + 세션 행 + 합계). 센터 상세 모달·강사 정산 모달 공용.
-function TeacherDetailBody({ detail, rates }: { detail: TeacherDetail; rates: Rates }) {
+function TeacherDetailBody({ detail, rates, showKrwEquivalent = true }: { detail: TeacherDetail; rates: Rates; showKrwEquivalent?: boolean }) {
   if (detail.list.length === 0) return <p className="text-muted-fg py-10 text-center text-sm">이 기간에 진행된 수업이 없습니다.</p>;
   return (
     <div className="flex flex-col gap-3">
@@ -459,7 +472,7 @@ function TeacherDetailBody({ detail, rates }: { detail: TeacherDetail; rates: Ra
               <span className="text-muted-fg-faint ml-1.5 font-medium">{c.count}회</span>
               {c.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">단가 미설정 {c.unpriced}</span>}
             </span>
-            <AmountCell currencyTotals={c.currencyTotals} rates={rates} />
+            <AmountCell currencyTotals={c.currencyTotals} rates={rates} showKrwEquivalent={showKrwEquivalent} />
           </div>
           <ul>
             {c.sessions.map((s) => (
@@ -476,7 +489,7 @@ function TeacherDetailBody({ detail, rates }: { detail: TeacherDetail; rates: Ra
                     </span>
                   )}
                 </span>
-                <SessionAmount row={s} rates={rates} />
+                <SessionAmount row={s} rates={rates} showKrwEquivalent={showKrwEquivalent} />
               </li>
             ))}
           </ul>
@@ -486,7 +499,11 @@ function TeacherDetailBody({ detail, rates }: { detail: TeacherDetail; rates: Ra
         <span className="text-ink text-sm">
           합계 <span className="text-muted-fg-faint font-medium">{detail.tot.count}회</span>
         </span>
-        <span className="text-ink text-sm whitespace-nowrap">≈ {formatPrice(detail.tot.krwTotal, "KRW")}</span>
+        {showKrwEquivalent ? (
+          <span className="text-ink text-sm whitespace-nowrap">≈ {formatPrice(detail.tot.krwTotal, "KRW")}</span>
+        ) : (
+          <AmountCell currencyTotals={detail.tot.currencyTotals} rates={rates} showKrwEquivalent={false} />
+        )}
       </div>
     </div>
   );
@@ -499,6 +516,7 @@ function TeacherSettlementModal({
   rates,
   initialAnchor,
   initialPeriod,
+  showKrwEquivalent = true,
   onClose,
 }: {
   teacher: { id: string; name: string };
@@ -506,6 +524,7 @@ function TeacherSettlementModal({
   rates: Rates;
   initialAnchor: string;
   initialPeriod: Period;
+  showKrwEquivalent?: boolean;
   onClose: () => void;
 }) {
   const [period, setPeriod] = useState<Period>(initialPeriod === "일간" ? "월간" : initialPeriod);
@@ -581,7 +600,7 @@ function TeacherSettlementModal({
             </div>
           </div>
 
-          <TeacherDetailBody detail={detail} rates={rates} />
+          <TeacherDetailBody detail={detail} rates={rates} showKrwEquivalent={showKrwEquivalent} />
         </div>
       </div>
     </>
@@ -812,7 +831,16 @@ function SettlementDetailModal({
   );
 }
 
-function AmountCell({ currencyTotals, rates }: { currencyTotals: Map<string, number>; rates: Rates }) {
+// showKrwEquivalent=false면 외화의 ≈₩ 환산 병기를 생략(센터 매니저 뷰 — 외화 정산 센터엔 원화 표시 불필요).
+function AmountCell({
+  currencyTotals,
+  rates,
+  showKrwEquivalent = true,
+}: {
+  currencyTotals: Map<string, number>;
+  rates: Rates;
+  showKrwEquivalent?: boolean;
+}) {
   const entries = Array.from(currencyTotals.entries()).filter(([, amt]) => amt > 0);
   if (entries.length === 0) return <span className="text-muted-fg-faint">—</span>;
   return (
@@ -822,7 +850,7 @@ function AmountCell({ currencyTotals, rates }: { currencyTotals: Map<string, num
         return (
           <span key={cur} className="whitespace-nowrap">
             {formatPrice(amt, cur)}
-            {eq != null && <span className="text-muted-fg-faint ml-1.5">≈ {formatPrice(eq, "KRW")}</span>}
+            {showKrwEquivalent && eq != null && <span className="text-muted-fg-faint ml-1.5">≈ {formatPrice(eq, "KRW")}</span>}
           </span>
         );
       })}

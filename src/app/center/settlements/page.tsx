@@ -17,5 +17,7 @@ export default async function CenterSettlementsPage() {
 
   const { rows, rates } = await loadSettlementRows(admin, teacherIds);
 
-  return <SettlementsManager rows={rows} rates={rates} initialGrouping="강사별" groupings={["강사별"]} enableTeacherDetail />;
+  return (
+    <SettlementsManager rows={rows} rates={rates} initialGrouping="강사별" groupings={["강사별"]} enableTeacherDetail showKrwEquivalent={false} />
+  );
 }
