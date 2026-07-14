@@ -30,7 +30,7 @@ export async function loadSettlementRows(
   let clsQuery = admin
     .from("classes")
     .select(
-      "id, teacher_id, teacher_name, student_name, student_english_name, course, course_title, course_english_title, session_date, start_min, is_makeup, conducted_at, conducted_override",
+      "id, enrollment_id, teacher_id, teacher_name, student_name, student_english_name, course, course_title, course_english_title, session_date, start_min, is_makeup, conducted_at, conducted_override",
     )
     .or("conducted_override.eq.true,and(conducted_override.is.null,conducted_at.not.is.null)")
     .neq("status", "취소");
@@ -38,6 +38,7 @@ export async function loadSettlementRows(
   const { data: clsData } = await clsQuery.order("session_date", { ascending: true });
   const classes = (clsData ?? []) as {
     id: string;
+    enrollment_id: string | null;
     teacher_id: string;
     teacher_name: string | null;
     student_name: string | null;
@@ -49,6 +50,16 @@ export async function loadSettlementRows(
     start_min: number;
     is_makeup: boolean;
   }[];
+
+  // 테스트 수강신청(enrollments.is_test) 판별 — 매출이익 대시보드의 테스트 포함 토글용(정산 화면은 미사용).
+  const enrollmentIds = Array.from(new Set(classes.map((c) => c.enrollment_id).filter(Boolean) as string[]));
+  const testEnrollmentIds = new Set<string>();
+  if (enrollmentIds.length > 0) {
+    const { data: enrData } = await admin.from("enrollments").select("id, is_test").in("id", enrollmentIds);
+    for (const e of (enrData ?? []) as { id: string; is_test: boolean | null }[]) {
+      if (e.is_test) testEnrollmentIds.add(e.id);
+    }
+  }
 
   // 강사 프로필(현재 소속 센터·이름) — 단가는 이력에서 역산, center_id는 어떤 센터 이력을 볼지 결정.
   const ids = Array.from(new Set(classes.map((c) => c.teacher_id)));
@@ -114,6 +125,7 @@ export async function loadSettlementRows(
       pricePerSession: price,
       currency: price == null ? null : normalizeCurrency(currency),
       isCustomRate: isCustom,
+      isTest: c.enrollment_id ? testEnrollmentIds.has(c.enrollment_id) : false,
     };
   });
 

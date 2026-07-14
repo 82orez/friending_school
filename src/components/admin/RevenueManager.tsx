@@ -29,6 +29,7 @@ export type RevenueRow = {
   courseTitle: string | null;
   studentName: string | null;
   studentEnglishName: string | null;
+  teacherId: string | null;
   teacherName: string | null;
   centerId: string | null;
   centerName: string | null;

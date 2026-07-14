@@ -27,6 +27,7 @@ export type SettlementRow = {
   pricePerSession: number | null; // 센터 단가 미설정/센터 미지정 시 null
   currency: string | null; // pricePerSession 있을 때만
   isCustomRate: boolean; // 강사 개별 단가(센터 단가 오버라이드) 적용 여부
+  isTest?: boolean; // 테스트 수강신청(enrollments.is_test)의 수업 여부 — 매출이익 대시보드 필터용(정산 화면은 미사용)
 };
 
 // ── TZ 비종속 날짜 헬퍼(makeup.ts/booking.ts는 server-only라 클라에서 재사용 불가 → 인라인) ──
