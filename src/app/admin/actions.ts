@@ -227,7 +227,8 @@ export async function deleteExchangeRateSchedule(id: string): Promise<ActionResu
   return { ok: true };
 }
 
-/* ===== 월간 강사 정산 확정(teacher_settlements) ===== */
+/* ===== 월간 센터 정산 확정(center_settlements) ===== */
+// 정산은 센터 단위(각 센터가 선 정산받은 뒤 소속 강사에게 지급). 확정 대상 = 센터 × 월.
 
 const PERIOD_MONTH_RE = /^\d{4}-\d{2}$/;
 type AdjustmentInput = { label: string; amount: number | string; currency: string };
@@ -251,11 +252,12 @@ async function loadFxRows(admin: ReturnType<typeof createAdminClient>): Promise<
   }));
 }
 
-// 그 강사·월의 기본 정산액 서버 재계산(진행 수업 수·통화별 native 합·원화 합).
-async function computeMonthlyBase(admin: ReturnType<typeof createAdminClient>, teacherId: string, periodMonth: string) {
+// 그 센터·월의 기본 정산액 서버 재계산(소속 강사들의 진행 수업 수·통화별 native 합·원화 합).
+// 센터 소속 = 각 정산 row의 현재 centerId(강사 현재 소속 센터) 기준.
+async function computeCenterMonthlyBase(admin: ReturnType<typeof createAdminClient>, centerId: string, periodMonth: string) {
   const { start, end } = monthBounds(periodMonth);
-  const { rows } = await loadSettlementRows(admin, [teacherId]);
-  const inMonth = rows.filter((r) => r.sessionDate >= start && r.sessionDate <= end);
+  const { rows } = await loadSettlementRows(admin); // 전량(대규모 시 센터 강사 스코프로 최적화)
+  const inMonth = rows.filter((r) => r.centerId === centerId && r.sessionDate >= start && r.sessionDate <= end);
   const baseNative: Record<string, number> = {};
   let baseKrw = 0;
   for (const r of inMonth) {
@@ -289,29 +291,33 @@ function normalizeKrwOverride(raw: number | string | null | undefined): number |
   return Number.isFinite(n) ? Math.round(n) : null;
 }
 
-// 월간 정산 확정(스냅샷). 마감 월(월말 < 오늘)만 허용. 재확정 시 스냅샷 갱신.
-export async function confirmMonthlySettlement(
-  teacherId: string,
+// 센터 월간 정산 확정(스냅샷). 마감 월(월말 < 오늘)만 허용. 재확정 시 스냅샷 갱신.
+export async function confirmCenterSettlement(
+  centerId: string,
   periodMonth: string,
   input: { adjustments: AdjustmentInput[]; totalKrwOverride?: number | string | null; note?: string | null },
 ): Promise<ActionResult> {
   const adminId = await requireAdmin();
   if (!adminId) return { ok: false, error: "권한이 없습니다." };
-  if (!teacherId || !PERIOD_MONTH_RE.test(periodMonth)) return { ok: false, error: "잘못된 요청입니다." };
+  if (!centerId || !PERIOD_MONTH_RE.test(periodMonth)) return { ok: false, error: "잘못된 요청입니다." };
   const { end } = monthBounds(periodMonth);
   if (!(end < todayKst())) return { ok: false, error: "마감된 지난 달만 확정할 수 있습니다." };
 
   const admin = createAdminClient();
-  const base = await computeMonthlyBase(admin, teacherId, periodMonth);
+  const { data: center } = await admin.from("centers").select("name").eq("id", centerId).maybeSingle();
+  if (!center) return { ok: false, error: "센터를 찾을 수 없습니다." };
+
+  const base = await computeCenterMonthlyBase(admin, centerId, periodMonth);
   const fxRows = await loadFxRows(admin);
   const adjustments = normalizeAdjustments(input.adjustments, fxRows, end);
   const adjKrw = adjustments.reduce((s, a) => s + a.krw, 0);
   const override = normalizeKrwOverride(input.totalKrwOverride);
   const totalKrw = override ?? base.baseKrw + adjKrw;
 
-  const { error } = await admin.from("teacher_settlements").upsert(
+  const { error } = await admin.from("center_settlements").upsert(
     {
-      teacher_id: teacherId,
+      center_id: centerId,
+      center_name: (center as { name: string }).name,
       period_month: periodMonth,
       sessions_count: base.sessionsCount,
       currency: base.currency,
@@ -326,7 +332,7 @@ export async function confirmMonthlySettlement(
       confirmed_at: new Date().toISOString(),
       paid_at: null,
     },
-    { onConflict: "teacher_id,period_month" },
+    { onConflict: "center_id,period_month" },
   );
   if (error) return { ok: false, error: "정산 확정 중 오류가 발생했습니다." };
 
@@ -335,7 +341,7 @@ export async function confirmMonthlySettlement(
 }
 
 // 확정 레코드의 조정/실지급액/메모 수정(재계산 없이). 지급완료 상태는 잠금.
-export async function updateMonthlySettlement(
+export async function updateCenterSettlement(
   id: string,
   input: { adjustments: AdjustmentInput[]; totalKrwOverride?: number | string | null; note?: string | null },
 ): Promise<ActionResult> {
@@ -343,7 +349,7 @@ export async function updateMonthlySettlement(
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { data: existing } = await admin.from("teacher_settlements").select("status, base_krw, period_month").eq("id", id).maybeSingle();
+  const { data: existing } = await admin.from("center_settlements").select("status, base_krw, period_month").eq("id", id).maybeSingle();
   if (!existing) return { ok: false, error: "정산 내역을 찾을 수 없습니다." };
   const row = existing as { status: string; base_krw: number; period_month: string };
   if (row.status !== "확정") return { ok: false, error: "지급완료 상태는 수정할 수 없습니다. 먼저 되돌려 주세요." };
@@ -356,7 +362,7 @@ export async function updateMonthlySettlement(
   const totalKrw = override ?? Number(row.base_krw) + adjKrw;
 
   const { error } = await admin
-    .from("teacher_settlements")
+    .from("center_settlements")
     .update({ adjustments, total_krw: totalKrw, note: normalizeText(input.note) })
     .eq("id", id)
     .eq("status", "확정");
@@ -372,7 +378,7 @@ export async function markSettlementPaid(id: string, paidAt: string): Promise<Ac
   if (!id || !EFFECTIVE_DATE_RE.test(paidAt)) return { ok: false, error: "송금일을 입력하세요." };
 
   const admin = createAdminClient();
-  const { error } = await admin.from("teacher_settlements").update({ status: "지급완료", paid_at: paidAt }).eq("id", id).eq("status", "확정");
+  const { error } = await admin.from("center_settlements").update({ status: "지급완료", paid_at: paidAt }).eq("id", id).eq("status", "확정");
   if (error) return { ok: false, error: "지급 완료 처리 중 오류가 발생했습니다." };
 
   revalidatePath("/admin/settlements");
@@ -385,7 +391,7 @@ export async function reopenSettlement(id: string): Promise<ActionResult> {
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { error } = await admin.from("teacher_settlements").update({ status: "확정", paid_at: null }).eq("id", id);
+  const { error } = await admin.from("center_settlements").update({ status: "확정", paid_at: null }).eq("id", id);
   if (error) return { ok: false, error: "되돌리기 중 오류가 발생했습니다." };
 
   revalidatePath("/admin/settlements");
@@ -393,12 +399,12 @@ export async function reopenSettlement(id: string): Promise<ActionResult> {
 }
 
 // 확정 취소(레코드 삭제). 미확정 상태로 되돌림.
-export async function unconfirmMonthlySettlement(id: string): Promise<ActionResult> {
+export async function unconfirmCenterSettlement(id: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { error } = await admin.from("teacher_settlements").delete().eq("id", id);
+  const { error } = await admin.from("center_settlements").delete().eq("id", id);
   if (error) return { ok: false, error: "확정 취소 중 오류가 발생했습니다." };
 
   revalidatePath("/admin/settlements");

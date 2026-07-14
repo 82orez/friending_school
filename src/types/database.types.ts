@@ -14,6 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      center_settlements: {
+        Row: {
+          adjustments: Json
+          base_amount: number | null
+          base_krw: number
+          base_native: Json
+          center_id: string | null
+          center_name: string | null
+          confirmed_at: string
+          confirmed_by: string | null
+          created_at: string
+          currency: string | null
+          id: string
+          note: string | null
+          paid_at: string | null
+          period_month: string
+          sessions_count: number
+          status: string
+          total_krw: number
+          updated_at: string
+        }
+        Insert: {
+          adjustments?: Json
+          base_amount?: number | null
+          base_krw?: number
+          base_native?: Json
+          center_id?: string | null
+          center_name?: string | null
+          confirmed_at?: string
+          confirmed_by?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          note?: string | null
+          paid_at?: string | null
+          period_month: string
+          sessions_count?: number
+          status?: string
+          total_krw?: number
+          updated_at?: string
+        }
+        Update: {
+          adjustments?: Json
+          base_amount?: number | null
+          base_krw?: number
+          base_native?: Json
+          center_id?: string | null
+          center_name?: string | null
+          confirmed_at?: string
+          confirmed_by?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          note?: string | null
+          paid_at?: string | null
+          period_month?: string
+          sessions_count?: number
+          status?: string
+          total_krw?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "center_settlements_center_id_fkey"
+            columns: ["center_id"]
+            isOneToOne: false
+            referencedRelation: "centers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       centers: {
         Row: {
           created_at: string
@@ -645,66 +716,6 @@ export type Database = {
           day_of_week?: number
           start_min?: number
           teacher_id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      teacher_settlements: {
-        Row: {
-          adjustments: Json
-          base_amount: number | null
-          base_krw: number
-          base_native: Json
-          confirmed_at: string
-          confirmed_by: string | null
-          created_at: string
-          currency: string | null
-          id: string
-          note: string | null
-          paid_at: string | null
-          period_month: string
-          sessions_count: number
-          status: string
-          teacher_id: string
-          total_krw: number
-          updated_at: string
-        }
-        Insert: {
-          adjustments?: Json
-          base_amount?: number | null
-          base_krw?: number
-          base_native?: Json
-          confirmed_at?: string
-          confirmed_by?: string | null
-          created_at?: string
-          currency?: string | null
-          id?: string
-          note?: string | null
-          paid_at?: string | null
-          period_month: string
-          sessions_count?: number
-          status?: string
-          teacher_id: string
-          total_krw?: number
-          updated_at?: string
-        }
-        Update: {
-          adjustments?: Json
-          base_amount?: number | null
-          base_krw?: number
-          base_native?: Json
-          confirmed_at?: string
-          confirmed_by?: string | null
-          created_at?: string
-          currency?: string | null
-          id?: string
-          note?: string | null
-          paid_at?: string | null
-          period_month?: string
-          sessions_count?: number
-          status?: string
-          teacher_id?: string
-          total_krw?: number
           updated_at?: string
         }
         Relationships: []

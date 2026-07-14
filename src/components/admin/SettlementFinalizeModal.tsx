@@ -6,13 +6,13 @@ import { Loader2, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { CURRENCIES, DEFAULT_CURRENCY, formatPrice, type Rates } from "@/data/currencies";
 import {
-  confirmMonthlySettlement,
-  updateMonthlySettlement,
+  confirmCenterSettlement,
+  updateCenterSettlement,
   markSettlementPaid,
   reopenSettlement,
-  unconfirmMonthlySettlement,
+  unconfirmCenterSettlement,
 } from "@/app/admin/actions";
-import type { SettlementRecord } from "@/components/admin/SettlementsManager";
+import type { CenterSettlementRecord, LiveBase } from "@/components/admin/MonthlySettlementSection";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +24,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export type LiveBase = { sessionsCount: number; baseNative: Record<string, number>; baseKrw: number; currency: string | null };
 type AdjRow = { label: string; amount: string; currency: string };
 
 const todayKstStr = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
@@ -33,18 +32,20 @@ const adjKrwPreview = (amount: number, currency: string, rates: Rates): number =
   currency === "KRW" ? Math.round(amount) : rates[currency] > 0 ? Math.round(amount * rates[currency]) : 0;
 
 export default function SettlementFinalizeModal({
-  teacher,
+  center,
   periodMonth,
   monthLabel,
+  monthClosed,
   record,
   liveBase,
   rates,
   onClose,
 }: {
-  teacher: { id: string; name: string };
+  center: { id: string; name: string };
   periodMonth: string;
   monthLabel: string;
-  record: SettlementRecord | null;
+  monthClosed: boolean;
+  record: CenterSettlementRecord | null;
   liveBase: LiveBase;
   rates: Rates;
   onClose: () => void;
@@ -109,11 +110,11 @@ export default function SettlementFinalizeModal({
     note: note.trim() || null,
   });
 
-  const doConfirm = () => run(() => confirmMonthlySettlement(teacher.id, periodMonth, payload()), "정산을 확정했습니다.", true);
-  const doSave = () => (record ? run(() => updateMonthlySettlement(record.id, payload()), "정산 내역을 저장했습니다.") : undefined);
+  const doConfirm = () => run(() => confirmCenterSettlement(center.id, periodMonth, payload()), "정산을 확정했습니다.", true);
+  const doSave = () => (record ? run(() => updateCenterSettlement(record.id, payload()), "정산 내역을 저장했습니다.") : undefined);
   const doPaid = () => (record ? run(() => markSettlementPaid(record.id, paidAt), "지급 완료로 처리했습니다.") : undefined);
   const doReopen = () => (record ? run(() => reopenSettlement(record.id), "확정 상태로 되돌렸습니다.") : undefined);
-  const doCancel = () => (record ? run(() => unconfirmMonthlySettlement(record.id), "확정을 취소했습니다.", true) : undefined);
+  const doCancel = () => (record ? run(() => unconfirmCenterSettlement(record.id), "확정을 취소했습니다.", true) : undefined);
 
   const baseEntries = Object.entries(base.baseNative).filter(([, v]) => v > 0);
 
@@ -128,7 +129,7 @@ export default function SettlementFinalizeModal({
       >
         <div className="border-rule flex items-start justify-between border-b px-6 py-4">
           <div className="min-w-0">
-            <h2 className="text-ink truncate text-lg font-bold">{teacher.name}</h2>
+            <h2 className="text-ink truncate text-lg font-bold">{center.name}</h2>
             <p className="text-muted-fg-faint mt-0.5 text-xs">
               {monthLabel} 정산
               {confirmed && (
@@ -280,13 +281,15 @@ export default function SettlementFinalizeModal({
 
           {paid && record?.paidAt && <p className="text-muted-fg text-xs">송금일: {record.paidAt}</p>}
 
+          {!confirmed && !monthClosed && <p className="text-brand text-xs">아직 마감 전인 달이라 확정할 수 없습니다(월말 이후 가능).</p>}
+
           {/* 액션 */}
           <div className="border-rule flex flex-wrap items-center gap-2 border-t pt-4">
             {!confirmed && (
               <button
                 type="button"
                 onClick={() => setConfirmOpen(true)}
-                disabled={pending || base.sessionsCount === 0}
+                disabled={pending || base.sessionsCount === 0 || !monthClosed}
                 className="bg-cta inline-flex h-10 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
               >
                 {pending && <Loader2 className="size-4 animate-spin" />}
