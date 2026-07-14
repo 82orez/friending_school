@@ -4,10 +4,12 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { addCenter, deleteCenter, updateCenter, updateExchangeRate } from "@/app/admin/actions";
+import { addCenter, deleteCenter, updateCenter } from "@/app/admin/actions";
 import CenterDetailModal from "@/components/admin/CenterDetailModal";
+import ExchangeRateHistoryEditor from "@/components/admin/ExchangeRateHistoryEditor";
 import { CURRENCIES, DEFAULT_CURRENCY, FOREIGN_CURRENCIES, formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
 import type { RateRow } from "@/lib/rates";
+import type { FxRow } from "@/lib/fx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,11 +39,13 @@ export default function CentersManager({
   centers,
   rates,
   schedulesByCenter,
+  fxSchedulesByCurrency,
   users,
 }: {
   centers: AdminCenter[];
   rates: Rates;
   schedulesByCenter: Record<string, RateRow[]>;
+  fxSchedulesByCurrency: Record<string, FxRow[]>;
   users: CenterUserOption[];
 }) {
   const router = useRouter();
@@ -50,10 +54,6 @@ export default function CentersManager({
   const [manager, setManager] = useState("");
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState(DEFAULT_CURRENCY);
-  // 외화별 환율 입력값(초기값=저장된 환율).
-  const [rateInputs, setRateInputs] = useState<Record<string, string>>(() =>
-    Object.fromEntries(FOREIGN_CURRENCIES.map((f) => [f.code, rates[f.code] ? String(rates[f.code]) : ""])),
-  );
   const [editTarget, setEditTarget] = useState<AdminCenter | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminCenter | null>(null);
   const [pending, startTransition] = useTransition();
@@ -77,42 +77,16 @@ export default function CentersManager({
         강사 신청·프로필에서 선택하는 센터 목록을 관리합니다. 센터를 삭제하면 해당 강사는 자동으로 미지정(None)됩니다.
       </p>
 
-      {/* 환율 설정 */}
-      <div className="border-rule mt-5 rounded-xl border bg-white p-5">
+      {/* 환율 설정 (적용일 이력) */}
+      <div className="mt-5">
         <p className="text-ink mb-1 text-base font-bold">환율 설정</p>
-        <p className="text-muted-fg-faint mb-3 text-xs">외화(₱·$)로 입력한 단가를 원화로 환산해 표시합니다.</p>
-        <div className="flex flex-col gap-3">
-          {FOREIGN_CURRENCIES.map((f) => {
-            const val = rateInputs[f.code] ?? "";
-            return (
-              <div key={f.code} className="flex flex-wrap items-end gap-3">
-                <span className="text-ink w-28 pb-2 text-sm font-semibold">
-                  1 {f.rateLabel}({f.symbol}) =
-                </span>
-                <div className="w-32">
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={val}
-                    onChange={(e) => setRateInputs((prev) => ({ ...prev, [f.code]: e.target.value }))}
-                    placeholder="예: 25"
-                    className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-                  />
-                </div>
-                <span className="text-ink pb-2 text-sm font-semibold">원(₩)</span>
-                <button
-                  type="button"
-                  disabled={pending || !(Number(val) > 0)}
-                  onClick={() => run(() => updateExchangeRate(f.code, val))}
-                  className="bg-ink inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-                >
-                  {pending && <Loader2 className="size-3.5 animate-spin" />}
-                  환율 적용
-                </button>
-              </div>
-            );
-          })}
+        <p className="text-muted-fg-faint mb-3 text-xs">
+          외화(₱·$) 단가를 원화로 환산하는 환율을 적용일별로 관리합니다. 정산·매출이익은 수업/결제 날짜의 환율로 환산되어, 환율을 바꿔도 과거 집계는 그대로 유지됩니다.
+        </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          {FOREIGN_CURRENCIES.map((f) => (
+            <ExchangeRateHistoryEditor key={f.code} currency={f.code} symbol={f.symbol} rateLabel={f.rateLabel} rows={fxSchedulesByCurrency[f.code] ?? []} />
+          ))}
         </div>
       </div>
 

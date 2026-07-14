@@ -3,6 +3,7 @@ import "server-only";
 import type { createAdminClient } from "@/utils/supabase/admin";
 import type { RevenueRow } from "@/components/admin/RevenueManager";
 import { FOREIGN_CURRENCIES, normalizeCurrency, ratesFromSettings, type Rates } from "@/data/currencies";
+import { toKrwAt, type FxRow } from "@/lib/fx";
 
 // 매출 row 조립 공유 로더 — 매출 현황·매출이익 대시보드 공용(loadSettlementRows 미러).
 // payments를 소스로 순매출(amount − cancelled_amount)을 결제일(KST) 기준으로 집계 가능한 row로 변환.
@@ -95,20 +96,33 @@ export async function loadRevenueRows(admin: ReturnType<typeof createAdminClient
     );
   const rates = ratesFromSettings(rateRows as { key: string; value: string | null }[] | null);
 
+  // 환율 적용일 이력 전량(결제일 기준 원화 환산 소스).
+  const { data: fxData } = await admin.from("exchange_rate_schedules").select("id, currency, rate_to_krw, effective_from, note");
+  const fxRows: FxRow[] = ((fxData ?? []) as { id: string; currency: string; rate_to_krw: number | string; effective_from: string; note: string | null }[]).map(
+    (r) => ({ id: r.id, currency: r.currency, rate: Number(r.rate_to_krw), effectiveFrom: r.effective_from, note: r.note }),
+  );
+
   const rows: RevenueRow[] = payments
     .map((p) => {
       const enr = p.enrollment_id ? enrById.get(p.enrollment_id) : undefined;
       const centerId = enr?.teacher_id ? (centerIdByTeacher.get(enr.teacher_id) ?? null) : null;
+      // created_at(timestamptz) → KST 날짜 문자열(기간 필터·집계·환율 환산 기준).
+      const kstDate = new Date(p.created_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+      const amount = Number(p.amount) || 0;
+      const cancelledAmount = Number(p.cancelled_amount) || 0;
+      const currency = normalizeCurrency(p.currency);
       return {
         paymentId: p.payment_id,
         createdAt: p.created_at,
-        // created_at(timestamptz) → KST 날짜 문자열(기간 필터·집계 기준, 문자열 비교).
-        kstDate: new Date(p.created_at).toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }),
-        amount: Number(p.amount) || 0,
-        cancelledAmount: Number(p.cancelled_amount) || 0,
+        kstDate,
+        amount,
+        cancelledAmount,
+        // 결제일 기준 환율로 원화 환산(집계는 이 값 합산). KRW 결제는 passthrough.
+        krwAmount: toKrwAt(amount, currency, fxRows, kstDate),
+        krwCancelledAmount: toKrwAt(cancelledAmount, currency, fxRows, kstDate),
         status: p.status,
         method: p.method,
-        currency: normalizeCurrency(p.currency),
+        currency,
         course: enr?.course ?? null,
         courseTitle: enr?.course_title ?? null,
         studentName: enr?.student_name ?? null,

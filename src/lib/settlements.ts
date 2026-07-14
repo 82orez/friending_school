@@ -4,6 +4,7 @@ import type { createAdminClient } from "@/utils/supabase/admin";
 import type { SettlementRow } from "@/components/admin/SettlementsManager";
 import { FOREIGN_CURRENCIES, normalizeCurrency, ratesFromSettings, type Rates } from "@/data/currencies";
 import { effectiveRate, type RateRow } from "@/lib/rates";
+import { krwAtOrNull, type FxRow } from "@/lib/fx";
 
 // 강사 정산 row 조립 공유 로더 — admin(전체)·센터 매니저(담당 센터 강사만) 공용.
 // conducted_at이 찍힌(실제 진행된) 수업만 집계하고, 단가는 rate_schedules 적용일 이력을
@@ -100,6 +101,12 @@ export async function loadSettlementRows(
     note: r.note,
   }));
 
+  // 환율 적용일 이력 전량(수업 날짜 기준 원화 환산 소스).
+  const { data: fxData } = await admin.from("exchange_rate_schedules").select("id, currency, rate_to_krw, effective_from, note");
+  const fxRows: FxRow[] = ((fxData ?? []) as { id: string; currency: string; rate_to_krw: number | string; effective_from: string; note: string | null }[]).map(
+    (r) => ({ id: r.id, currency: r.currency, rate: Number(r.rate_to_krw), effectiveFrom: r.effective_from, note: r.note }),
+  );
+
   const rows: SettlementRow[] = classes.map((c) => {
     const prof = profileById.get(c.teacher_id);
     const fullName = [prof?.first_name, prof?.last_name].filter(Boolean).join(" ").trim();
@@ -107,6 +114,7 @@ export async function loadSettlementRows(
     const center = prof?.center_id ? centerById.get(prof.center_id) : undefined;
     // 수업 날짜 기준 유효 단가 역산(강사 개별 > 센터, price=null=센터 복귀).
     const { price, currency, isCustom } = effectiveRate(rateSchedules, c.teacher_id, prof?.center_id ?? null, c.session_date);
+    const cur = price == null ? null : normalizeCurrency(currency);
     return {
       id: c.id,
       teacherId: c.teacher_id,
@@ -123,7 +131,9 @@ export async function loadSettlementRows(
       studentEnglishName: c.student_english_name,
       isMakeup: c.is_makeup,
       pricePerSession: price,
-      currency: price == null ? null : normalizeCurrency(currency),
+      currency: cur,
+      // 수업 진행일(session_date) 기준 환율로 원화 환산 — 집계는 이 값을 합산(다날짜·다통화도 정확).
+      krwPerSession: price == null || !cur ? null : krwAtOrNull(price, cur, fxRows, c.session_date),
       isCustomRate: isCustom,
       isTest: c.enrollment_id ? testEnrollmentIds.has(c.enrollment_id) : false,
     };

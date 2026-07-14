@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
+import { formatPrice, type Rates } from "@/data/currencies";
 import { fmtTime } from "@/lib/availability";
 import { getCourse } from "@/data/courses";
 import { useLang } from "@/components/LangProvider";
@@ -24,8 +24,9 @@ export type SettlementRow = {
   studentName: string | null;
   studentEnglishName: string | null;
   isMakeup: boolean;
-  pricePerSession: number | null; // 센터 단가 미설정/센터 미지정 시 null
+  pricePerSession: number | null; // 센터 단가 미설정/센터 미지정 시 null (native 통화)
   currency: string | null; // pricePerSession 있을 때만
+  krwPerSession: number | null; // pricePerSession을 수업 진행일(session_date) 기준 환율로 원화 환산(로더 계산). KRW=그대로, 미설정/환산불가=null
   isCustomRate: boolean; // 강사 개별 단가(센터 단가 오버라이드) 적용 여부
   isTest?: boolean; // 테스트 수강신청(enrollments.is_test)의 수업 여부 — 매출이익 대시보드 필터용(정산 화면은 미사용)
 };
@@ -89,7 +90,8 @@ type Group = {
   manager: string | null; // 센터별 모드에서만 표시(센터 담당 매니저)
   custom: boolean; // 강사별 모드에서만 세팅(개별 단가 적용 강사) — 구분 배지용
   count: number;
-  currencyTotals: Map<string, number>;
+  currencyTotals: Map<string, number>; // 통화별 native 합(표시용)
+  currencyKrwTotals: Map<string, number>; // 통화별 원화 환산 합(행별 날짜 환율로 사전 환산된 값의 합 — 다날짜 정확)
   unpriced: number;
   krwTotal: number;
 };
@@ -124,23 +126,25 @@ function shiftAnchor(anchor: string, period: Period, delta: number): string {
 }
 
 // 행 배열을 keyOf 기준으로 그룹 집계(수업 수·통화별 합·원화 합·단가 미설정 수). 메인 표·상세 모달 공용.
+// 원화 환산은 로더가 행별 수업 날짜 환율로 사전 계산(r.krwPerSession) → 여기선 합산만(다날짜·다통화 정확).
 function aggregate(
   rows: SettlementRow[],
   keyOf: (r: SettlementRow) => { key: string; label: string; manager?: string | null; custom?: boolean },
-  rates: Rates,
 ): Group[] {
   const map = new Map<string, Group>();
   for (const r of rows) {
     const { key, label, manager, custom } = keyOf(r);
     let g = map.get(key);
     if (!g) {
-      g = { key, label, manager: manager ?? null, custom: custom ?? false, count: 0, currencyTotals: new Map(), unpriced: 0, krwTotal: 0 };
+      g = { key, label, manager: manager ?? null, custom: custom ?? false, count: 0, currencyTotals: new Map(), currencyKrwTotals: new Map(), unpriced: 0, krwTotal: 0 };
       map.set(key, g);
     }
     g.count += 1;
     if (r.pricePerSession != null && r.currency) {
       g.currencyTotals.set(r.currency, (g.currencyTotals.get(r.currency) ?? 0) + r.pricePerSession);
-      g.krwTotal += r.currency === "KRW" ? r.pricePerSession : (krwEquivalent(r.pricePerSession, r.currency, rates) ?? 0);
+      const krw = r.krwPerSession ?? 0;
+      g.currencyKrwTotals.set(r.currency, (g.currencyKrwTotals.get(r.currency) ?? 0) + krw);
+      g.krwTotal += krw;
     } else {
       g.unpriced += 1;
     }
@@ -189,7 +193,7 @@ export default function SettlementsManager({
       if (grouping === "강사별") return { key: r.teacherId, label: r.teacherName, custom: r.isCustomRate };
       return { key: r.course, label: en ? (getCourse(r.course)?.englishTitle ?? r.courseEnglishTitle ?? r.courseTitle) : r.courseTitle };
     };
-    let list = aggregate(inRangeRows, keyOf, rates);
+    let list = aggregate(inRangeRows, keyOf);
     const q = query.trim().toLowerCase();
     if (q) list = list.filter((g) => g.label.toLowerCase().includes(q));
     list.sort((a, b) => {
@@ -208,13 +212,15 @@ export default function SettlementsManager({
     let krwTotal = 0;
     let unpriced = 0;
     const currencyTotals = new Map<string, number>();
+    const currencyKrwTotals = new Map<string, number>();
     for (const g of groups) {
       count += g.count;
       krwTotal += g.krwTotal;
       unpriced += g.unpriced;
       for (const [cur, amt] of Array.from(g.currencyTotals)) currencyTotals.set(cur, (currencyTotals.get(cur) ?? 0) + amt);
+      for (const [cur, amt] of Array.from(g.currencyKrwTotals)) currencyKrwTotals.set(cur, (currencyKrwTotals.get(cur) ?? 0) + amt);
     }
-    return { count, krwTotal, unpriced, currencyTotals };
+    return { count, krwTotal, unpriced, currencyTotals, currencyKrwTotals };
   }, [groups]);
 
   return (
@@ -372,7 +378,7 @@ export default function SettlementsManager({
                       <span className="text-muted-fg-faint">{en ? "" : "회"}</span>
                     </td>
                     <td className="text-ink px-4 py-3.5 align-middle md:px-6">
-                      <AmountCell currencyTotals={g.currencyTotals} rates={rates} showKrwEquivalent={showKrwEquivalent} />
+                      <AmountCell currencyTotals={g.currencyTotals} currencyKrwTotals={g.currencyKrwTotals} showKrwEquivalent={showKrwEquivalent} />
                     </td>
                   </tr>
                 );
@@ -391,7 +397,7 @@ export default function SettlementsManager({
                   {showKrwEquivalent ? (
                     <>≈ {formatPrice(totals.krwTotal, "KRW")}</>
                   ) : (
-                    <AmountCell currencyTotals={totals.currencyTotals} rates={rates} showKrwEquivalent={false} />
+                    <AmountCell currencyTotals={totals.currencyTotals} currencyKrwTotals={totals.currencyKrwTotals} showKrwEquivalent={false} />
                   )}
                 </td>
               </tr>
@@ -437,6 +443,7 @@ type DetailGroup = {
   key: string;
   count: number;
   currencyTotals: Map<string, number>;
+  currencyKrwTotals: Map<string, number>;
   unpriced: number;
   krwTotal: number;
   sessions: SettlementRow[];
@@ -448,10 +455,10 @@ const fmtSessionDate = (d: string, en = false): string => {
   return `${m}/${day} (${(en ? DOW_EN : DOW_KO)[weekdayOf(d)]})`;
 };
 
-// 단건 세션 금액(원화 환산 병기, 단가 미설정이면 —).
-function SessionAmount({ row, rates, showKrwEquivalent = true }: { row: SettlementRow; rates: Rates; showKrwEquivalent?: boolean }) {
+// 단건 세션 금액(원화 환산 병기, 단가 미설정이면 —). ≈₩는 로더가 수업 날짜 환율로 사전 환산한 row.krwPerSession.
+function SessionAmount({ row, showKrwEquivalent = true }: { row: SettlementRow; showKrwEquivalent?: boolean }) {
   if (row.pricePerSession == null || !row.currency) return <span className="text-muted-fg-faint text-sm">—</span>;
-  const eq = krwEquivalent(row.pricePerSession, row.currency, rates);
+  const eq = row.currency === "KRW" ? null : row.krwPerSession;
   return (
     <span className="text-ink text-sm whitespace-nowrap">
       {formatPrice(row.pricePerSession, row.currency)}
@@ -460,24 +467,31 @@ function SessionAmount({ row, rates, showKrwEquivalent = true }: { row: Settleme
   );
 }
 
-type TeacherDetail = { mode: DetailMode; list: DetailGroup[]; tot: { count: number; krwTotal: number; unpriced: number; currencyTotals: Map<string, number> } };
+type TeacherDetail = {
+  mode: DetailMode;
+  list: DetailGroup[];
+  tot: { count: number; krwTotal: number; unpriced: number; currencyTotals: Map<string, number>; currencyKrwTotals: Map<string, number> };
+};
 
 // 한 강사의 기간 내 정산 상세(mode에 따라 과정별/날짜별 그룹). teacherId만으로 스코프(각 row centerId=강사 현재 센터라 유일).
-function buildTeacherDetail(rows: SettlementRow[], teacherId: string, start: string, end: string, rates: Rates, mode: DetailMode): TeacherDetail {
+// 원화 환산은 로더가 행별 수업 날짜 환율로 사전 계산(r.krwPerSession) → 합산만.
+function buildTeacherDetail(rows: SettlementRow[], teacherId: string, start: string, end: string, mode: DetailMode): TeacherDetail {
   const teacherRows = rows.filter((r) => r.teacherId === teacherId && r.sessionDate >= start && r.sessionDate <= end);
   const map = new Map<string, DetailGroup>();
   for (const r of teacherRows) {
     const key = mode === "날짜별" ? r.sessionDate : r.course;
     let g = map.get(key);
     if (!g) {
-      g = { key, count: 0, currencyTotals: new Map(), unpriced: 0, krwTotal: 0, sessions: [] };
+      g = { key, count: 0, currencyTotals: new Map(), currencyKrwTotals: new Map(), unpriced: 0, krwTotal: 0, sessions: [] };
       map.set(key, g);
     }
     g.count += 1;
     g.sessions.push(r);
     if (r.pricePerSession != null && r.currency) {
       g.currencyTotals.set(r.currency, (g.currencyTotals.get(r.currency) ?? 0) + r.pricePerSession);
-      g.krwTotal += r.currency === "KRW" ? r.pricePerSession : (krwEquivalent(r.pricePerSession, r.currency, rates) ?? 0);
+      const krw = r.krwPerSession ?? 0;
+      g.currencyKrwTotals.set(r.currency, (g.currencyKrwTotals.get(r.currency) ?? 0) + krw);
+      g.krwTotal += krw;
     } else {
       g.unpriced += 1;
     }
@@ -493,13 +507,17 @@ function buildTeacherDetail(rows: SettlementRow[], teacherId: string, start: str
     list.sort((a, b) => (a.sessions[0]?.sessionDate ?? "").localeCompare(b.sessions[0]?.sessionDate ?? ""));
   }
   const currencyTotals = new Map<string, number>();
-  for (const g of list) for (const [cur, amt] of Array.from(g.currencyTotals)) currencyTotals.set(cur, (currencyTotals.get(cur) ?? 0) + amt);
+  const currencyKrwTotals = new Map<string, number>();
+  for (const g of list) {
+    for (const [cur, amt] of Array.from(g.currencyTotals)) currencyTotals.set(cur, (currencyTotals.get(cur) ?? 0) + amt);
+    for (const [cur, amt] of Array.from(g.currencyKrwTotals)) currencyKrwTotals.set(cur, (currencyKrwTotals.get(cur) ?? 0) + amt);
+  }
   const base = list.reduce((acc, g) => ({ count: acc.count + g.count, krwTotal: acc.krwTotal + g.krwTotal, unpriced: acc.unpriced + g.unpriced }), {
     count: 0,
     krwTotal: 0,
     unpriced: 0,
   });
-  return { mode, list, tot: { ...base, currencyTotals } };
+  return { mode, list, tot: { ...base, currencyTotals, currencyKrwTotals } };
 }
 
 // 세션의 과정명(로케일 해석) — 과정별 헤더·날짜별 세션 행 공용.
@@ -535,7 +553,7 @@ function TeacherDetailBody({ detail, rates, showKrwEquivalent = true }: { detail
               <span className="text-muted-fg-faint ml-1.5 font-medium">{en ? g.count : `${g.count}회`}</span>
               {g.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">{en ? `No rate ${g.unpriced}` : `단가 미설정 ${g.unpriced}`}</span>}
             </span>
-            <AmountCell currencyTotals={g.currencyTotals} rates={rates} showKrwEquivalent={showKrwEquivalent} />
+            <AmountCell currencyTotals={g.currencyTotals} currencyKrwTotals={g.currencyKrwTotals} showKrwEquivalent={showKrwEquivalent} />
           </div>
           <ul>
             {g.sessions.map((s) => (
@@ -552,7 +570,7 @@ function TeacherDetailBody({ detail, rates, showKrwEquivalent = true }: { detail
                     </span>
                   )}
                 </span>
-                <SessionAmount row={s} rates={rates} showKrwEquivalent={showKrwEquivalent} />
+                <SessionAmount row={s} showKrwEquivalent={showKrwEquivalent} />
               </li>
             ))}
           </ul>
@@ -565,7 +583,7 @@ function TeacherDetailBody({ detail, rates, showKrwEquivalent = true }: { detail
         {showKrwEquivalent ? (
           <span className="text-ink text-sm whitespace-nowrap">≈ {formatPrice(detail.tot.krwTotal, "KRW")}</span>
         ) : (
-          <AmountCell currencyTotals={detail.tot.currencyTotals} rates={rates} showKrwEquivalent={false} />
+          <AmountCell currencyTotals={detail.tot.currencyTotals} currencyKrwTotals={detail.tot.currencyKrwTotals} showKrwEquivalent={false} />
         )}
       </div>
     </div>
@@ -610,7 +628,7 @@ function TeacherSettlementModal({
   }, [onClose]);
 
   const { start, end } = useMemo(() => interval(anchor, period), [anchor, period]);
-  const detail = useMemo(() => buildTeacherDetail(rows, teacher.id, start, end, rates, detailMode), [rows, teacher.id, start, end, rates, detailMode]);
+  const detail = useMemo(() => buildTeacherDetail(rows, teacher.id, start, end, detailMode), [rows, teacher.id, start, end, rates, detailMode]);
 
   return (
     <>
@@ -712,7 +730,7 @@ function SettlementDetailModal({
 
   const groups = useMemo(() => {
     const inRange = rows.filter((r) => (r.centerId ?? "__none__") === center.key && r.sessionDate >= start && r.sessionDate <= end);
-    const list = aggregate(inRange, (r) => ({ key: r.teacherId, label: r.teacherName, custom: r.isCustomRate }), rates);
+    const list = aggregate(inRange, (r) => ({ key: r.teacherId, label: r.teacherName, custom: r.isCustomRate }));
     list.sort((a, b) => b.count - a.count); // 수업 수 내림차순
     return list;
   }, [rows, center.key, start, end, rates]);
@@ -732,7 +750,7 @@ function SettlementDetailModal({
   const [detailMode, setDetailMode] = useState<DetailMode>("날짜별");
 
   const detail = useMemo(
-    () => (selectedTeacher ? buildTeacherDetail(rows, selectedTeacher.id, start, end, rates, detailMode) : null),
+    () => (selectedTeacher ? buildTeacherDetail(rows, selectedTeacher.id, start, end, detailMode) : null),
     [selectedTeacher, rows, start, end, rates, detailMode],
   );
 
@@ -869,7 +887,7 @@ function SettlementDetailModal({
                             <span className="text-muted-fg-faint">회</span>
                           </td>
                           <td className="text-ink px-4 py-3 align-middle">
-                            <AmountCell currencyTotals={g.currencyTotals} rates={rates} />
+                            <AmountCell currencyTotals={g.currencyTotals} currencyKrwTotals={g.currencyKrwTotals} />
                           </td>
                         </tr>
                       );
@@ -906,13 +924,14 @@ function SettlementDetailModal({
 }
 
 // showKrwEquivalent=false면 외화의 ≈₩ 환산 병기를 생략(센터 매니저 뷰 — 외화 정산 센터엔 원화 표시 불필요).
+// ≈₩는 currencyKrwTotals(행별 날짜 환율로 사전 환산된 통화별 합)를 그대로 표시 — native 합×단일환율(다날짜 오류) 금지.
 function AmountCell({
   currencyTotals,
-  rates,
+  currencyKrwTotals,
   showKrwEquivalent = true,
 }: {
   currencyTotals: Map<string, number>;
-  rates: Rates;
+  currencyKrwTotals: Map<string, number>;
   showKrwEquivalent?: boolean;
 }) {
   const entries = Array.from(currencyTotals.entries()).filter(([, amt]) => amt > 0);
@@ -920,11 +939,11 @@ function AmountCell({
   return (
     <div className="flex flex-col gap-0.5">
       {entries.map(([cur, amt]) => {
-        const eq = krwEquivalent(amt, cur, rates);
+        const eq = cur === "KRW" ? null : currencyKrwTotals.get(cur);
         return (
           <span key={cur} className="whitespace-nowrap">
             {formatPrice(amt, cur)}
-            {showKrwEquivalent && eq != null && <span className="text-muted-fg-faint ml-1.5">≈ {formatPrice(eq, "KRW")}</span>}
+            {showKrwEquivalent && eq != null && eq > 0 && <span className="text-muted-fg-faint ml-1.5">≈ {formatPrice(eq, "KRW")}</span>}
           </span>
         );
       })}

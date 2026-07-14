@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, ExternalLink, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
+import { formatPrice, type Rates } from "@/data/currencies";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +22,8 @@ export type RevenueRow = {
   kstDate: string; // 'YYYY-MM-DD' (KST) — 기간 필터·집계 기준
   amount: number;
   cancelledAmount: number;
+  krwAmount: number; // amount를 결제일(kstDate) 기준 환율로 원화 환산(로더 계산). KRW=그대로.
+  krwCancelledAmount: number; // cancelledAmount의 원화 환산
   status: string; // paid | cancelled | partial_cancelled
   method: string | null;
   currency: string;
@@ -106,16 +108,11 @@ function payMethodLabel(method: string | null): string {
   return method;
 }
 
-// 금액 → 원화 환산(KRW면 그대로, 외화면 환율 적용; 환율 미설정 외화는 0으로 보수 처리).
-function toKrw(amount: number, currency: string, rates: Rates): number {
-  if (currency === "KRW") return amount;
-  return krwEquivalent(amount, currency, rates) ?? 0;
-}
-
+// 원화 환산은 로더가 결제일 환율로 사전 계산(r.krwAmount/r.krwCancelledAmount) → 여기선 합산만.
 type Group = { key: string; label: string; count: number; grossKrw: number; refundKrw: number; netKrw: number };
 type TrendBucket = { key: string; net: number; tooltip: string; xLabel: string; highlight?: boolean; dow?: number };
 
-function aggregate(rows: RevenueRow[], keyOf: (r: RevenueRow) => { key: string; label: string }, rates: Rates): Group[] {
+function aggregate(rows: RevenueRow[], keyOf: (r: RevenueRow) => { key: string; label: string }): Group[] {
   const map = new Map<string, Group>();
   for (const r of rows) {
     const { key, label } = keyOf(r);
@@ -124,12 +121,10 @@ function aggregate(rows: RevenueRow[], keyOf: (r: RevenueRow) => { key: string; 
       g = { key, label, count: 0, grossKrw: 0, refundKrw: 0, netKrw: 0 };
       map.set(key, g);
     }
-    const gross = toKrw(r.amount, r.currency, rates);
-    const refund = toKrw(r.cancelledAmount, r.currency, rates);
     g.count += 1;
-    g.grossKrw += gross;
-    g.refundKrw += refund;
-    g.netKrw += gross - refund;
+    g.grossKrw += r.krwAmount;
+    g.refundKrw += r.krwCancelledAmount;
+    g.netKrw += r.krwAmount - r.krwCancelledAmount;
   }
   return Array.from(map.values());
 }
@@ -159,17 +154,16 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
     let refund = 0;
     let refundCount = 0;
     for (const r of inRangeRows) {
-      gross += toKrw(r.amount, r.currency, rates);
-      const rf = toKrw(r.cancelledAmount, r.currency, rates);
-      refund += rf;
+      gross += r.krwAmount;
+      refund += r.krwCancelledAmount;
       if (r.cancelledAmount > 0) refundCount += 1;
     }
     return { gross, refund, net: gross - refund, count: inRangeRows.length, refundCount };
-  }, [inRangeRows, rates]);
+  }, [inRangeRows]);
 
   // 추이 차트 버킷 — 주간=일별(7개), 월간·년간=앵커 연도의 월별 12개(월간은 선택 월 강조).
   const trend = useMemo<TrendBucket[]>(() => {
-    const netOf = (r: RevenueRow) => toKrw(r.amount, r.currency, rates) - toKrw(r.cancelledAmount, r.currency, rates);
+    const netOf = (r: RevenueRow) => r.krwAmount - r.krwCancelledAmount;
     if (period === "주간") {
       const byDate = new Map<string, number>();
       for (const r of inRangeRows) byDate.set(r.kstDate, (byDate.get(r.kstDate) ?? 0) + netOf(r));
@@ -227,7 +221,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
       const label = r.studentEnglishName ? `${r.studentName ?? "-"} (${r.studentEnglishName})` : (r.studentName ?? "-");
       return { key: `${r.studentName ?? "-"}|${r.studentEnglishName ?? ""}`, label };
     };
-    const list = aggregate(inRangeRows, keyOf, rates);
+    const list = aggregate(inRangeRows, keyOf);
     list.sort((a, b) => {
       if (!sort) return b.netKrw - a.netKrw; // 기본: 순매출 내림차순
       let cmp: number;

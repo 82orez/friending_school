@@ -2,6 +2,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import CentersManager, { type AdminCenter } from "@/components/admin/CentersManager";
 import { FOREIGN_CURRENCIES, ratesFromSettings } from "@/data/currencies";
 import type { RateRow } from "@/lib/rates";
+import type { FxRow } from "@/lib/fx";
 
 export default async function AdminCentersPage() {
   const admin = createAdminClient();
@@ -52,6 +53,22 @@ export default async function AdminCentersPage() {
     });
   }
 
+  // 통화별 환율 적용일 이력(환율 설정 카드 편집기용).
+  const { data: fxData } = await admin
+    .from("exchange_rate_schedules")
+    .select("id, currency, rate_to_krw, effective_from, note")
+    .order("effective_from", { ascending: false });
+  const fxSchedulesByCurrency: Record<string, FxRow[]> = {};
+  for (const r of (fxData ?? []) as { id: string; currency: string; rate_to_krw: number | string; effective_from: string; note: string | null }[]) {
+    (fxSchedulesByCurrency[r.currency] ??= []).push({
+      id: r.id,
+      currency: r.currency,
+      rate: Number(r.rate_to_krw),
+      effectiveFrom: r.effective_from,
+      note: r.note,
+    });
+  }
+
   // 매니저 계정 후보 — 가입 회원(이메일 인증 완료) 목록. 회원 관리와 동일 listUsers+profiles 병합 패턴.
   const { data: usersData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   const { data: profs } = await admin.from("profiles").select("id, first_name, last_name");
@@ -65,5 +82,7 @@ export default async function AdminCentersPage() {
     })
     .sort((a, b) => a.label.localeCompare(b.label, "ko"));
 
-  return <CentersManager centers={centers} rates={rates} schedulesByCenter={schedulesByCenter} users={users} />;
+  return (
+    <CentersManager centers={centers} rates={rates} schedulesByCenter={schedulesByCenter} fxSchedulesByCurrency={fxSchedulesByCurrency} users={users} />
+  );
 }

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
+import { formatPrice, type Rates } from "@/data/currencies";
 import type { RevenueRow } from "@/components/admin/RevenueManager";
 import type { SettlementRow } from "@/components/admin/SettlementsManager";
 
@@ -40,15 +40,10 @@ function shiftAnchor(anchor: string, period: Period, delta: number): string {
   return shiftMonth(anchor, delta);
 }
 
-// 금액 → 원화 환산(KRW면 그대로, 외화면 환율 적용; 환율 미설정 외화는 0으로 보수 처리).
-function toKrw(amount: number, currency: string, rates: Rates): number {
-  if (currency === "KRW") return amount;
-  return krwEquivalent(amount, currency, rates) ?? 0;
-}
-// 매출 1건 순액(KRW).
-const revenueNetKrw = (r: RevenueRow, rates: Rates): number => toKrw(r.amount, r.currency, rates) - toKrw(r.cancelledAmount, r.currency, rates);
-// 정산 1건 원가(KRW) — 단가 미설정이면 0.
-const settlementKrw = (s: SettlementRow, rates: Rates): number => (s.pricePerSession != null && s.currency ? toKrw(s.pricePerSession, s.currency, rates) : 0);
+// 매출 1건 순액(KRW) — 로더가 결제일 환율로 사전 환산.
+const revenueNetKrw = (r: RevenueRow): number => r.krwAmount - r.krwCancelledAmount;
+// 정산 1건 원가(KRW) — 로더가 수업 진행일 환율로 사전 환산, 단가 미설정이면 0.
+const settlementKrw = (s: SettlementRow): number => s.krwPerSession ?? 0;
 
 type TrendBucket = { key: string; revenue: number; settlement: number; tooltip: string; xLabel: string; highlight?: boolean };
 type ProfitGroup = { key: string; label: string; revenueKrw: number; settlementKrw: number; unpriced: number };
@@ -73,11 +68,11 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
   // KPI(기간 내). 매출=결제일 기준 순매출, 정산=수업 진행일 기준 지급 예정액, 이익=매출−정산.
   const kpi = useMemo(() => {
     let revenue = 0;
-    for (const r of inRev) revenue += revenueNetKrw(r, rates);
+    for (const r of inRev) revenue += revenueNetKrw(r);
     let settlement = 0;
     let unpriced = 0;
     for (const s of inSet) {
-      settlement += settlementKrw(s, rates);
+      settlement += settlementKrw(s);
       if (s.pricePerSession == null || !s.currency) unpriced += 1;
     }
     const profit = revenue - settlement;
@@ -89,8 +84,8 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
     if (period === "년간") {
       const rev = new Map<number, number>();
       const set = new Map<number, number>();
-      for (const r of baseRev) rev.set(Number(r.kstDate.slice(0, 4)), (rev.get(Number(r.kstDate.slice(0, 4))) ?? 0) + revenueNetKrw(r, rates));
-      for (const s of baseSet) set.set(Number(s.sessionDate.slice(0, 4)), (set.get(Number(s.sessionDate.slice(0, 4))) ?? 0) + settlementKrw(s, rates));
+      for (const r of baseRev) rev.set(Number(r.kstDate.slice(0, 4)), (rev.get(Number(r.kstDate.slice(0, 4))) ?? 0) + revenueNetKrw(r));
+      for (const s of baseSet) set.set(Number(s.sessionDate.slice(0, 4)), (set.get(Number(s.sessionDate.slice(0, 4))) ?? 0) + settlementKrw(s));
       const anchorY = Number(anchor.slice(0, 4));
       let minY = anchorY;
       let maxY = anchorY;
@@ -110,8 +105,8 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
     const y = anchor.slice(0, 4);
     const rev = new Map<number, number>();
     const set = new Map<number, number>();
-    for (const r of baseRev) if (r.kstDate.slice(0, 4) === y) rev.set(Number(r.kstDate.slice(5, 7)), (rev.get(Number(r.kstDate.slice(5, 7))) ?? 0) + revenueNetKrw(r, rates));
-    for (const s of baseSet) if (s.sessionDate.slice(0, 4) === y) set.set(Number(s.sessionDate.slice(5, 7)), (set.get(Number(s.sessionDate.slice(5, 7))) ?? 0) + settlementKrw(s, rates));
+    for (const r of baseRev) if (r.kstDate.slice(0, 4) === y) rev.set(Number(r.kstDate.slice(5, 7)), (rev.get(Number(r.kstDate.slice(5, 7))) ?? 0) + revenueNetKrw(r));
+    for (const s of baseSet) if (s.sessionDate.slice(0, 4) === y) set.set(Number(s.sessionDate.slice(5, 7)), (set.get(Number(s.sessionDate.slice(5, 7))) ?? 0) + settlementKrw(s));
     const selMonth = Number(anchor.slice(5, 7));
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
@@ -146,12 +141,12 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
     };
     for (const r of inRev) {
       const { key, label } = revKeyOf(r);
-      ensure(key, label).revenueKrw += revenueNetKrw(r, rates);
+      ensure(key, label).revenueKrw += revenueNetKrw(r);
     }
     for (const s of inSet) {
       const { key, label } = setKeyOf(s);
       const g = ensure(key, label);
-      g.settlementKrw += settlementKrw(s, rates);
+      g.settlementKrw += settlementKrw(s);
       if (s.pricePerSession == null || !s.currency) g.unpriced += 1;
     }
     const list = Array.from(map.values());

@@ -132,19 +132,96 @@ function revalidateCenterConsumers() {
   revalidatePath("/admin/teacher-requests");
 }
 
-// 외화 1단위당 원화 환율 저장(settings.<code>_to_krw). admin만, 지원 통화·양수만 허용.
-export async function updateExchangeRate(code: string, value: number | string): Promise<ActionResult> {
+/* ===== 외화 환율 적용일 이력(exchange_rate_schedules) ===== */
+
+// FX 환율 정규화: 빈 값/비숫자/≤0 → null. numeric(12,4) → 소수 넷째자리까지 반올림.
+function normalizeFxRate(raw: number | string | null | undefined): number | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 10000) / 10000;
+}
+
+// 통화의 오늘 기준 유효 환율을 settings.<settingKey> 캐시에 동기화 → 기존 현재값 소비처(ratesFromSettings) 무변경 동작.
+async function syncFxCache(admin: ReturnType<typeof createAdminClient>, currency: string) {
+  const foreign = FOREIGN_CURRENCIES.find((f) => f.code === currency);
+  if (!foreign) return;
+  const { data } = await admin
+    .from("exchange_rate_schedules")
+    .select("rate_to_krw, effective_from")
+    .eq("currency", currency)
+    .lte("effective_from", todayKst())
+    .order("effective_from", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const rate = data?.rate_to_krw == null ? 0 : Number(data.rate_to_krw);
+  await admin.from("settings").upsert({ key: foreign.settingKey, value: String(rate) }, { onConflict: "key" });
+}
+
+// 환율 변경은 정산·매출·이익·센터 카드에 영향.
+function revalidateFxConsumers() {
+  revalidatePath("/admin/centers");
+  revalidatePath("/admin/settlements");
+  revalidatePath("/admin/revenue");
+  revalidatePath("/admin/profit");
+  revalidatePath("/center/settlements");
+}
+
+// 환율 이력 행 추가.
+export async function addExchangeRateSchedule(currency: string, rateRaw: string, effectiveFrom: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
-  const foreign = FOREIGN_CURRENCIES.find((f) => f.code === code);
-  if (!foreign) return { ok: false, error: "지원하지 않는 통화입니다." };
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return { ok: false, error: "유효한 환율을 입력하세요." };
+  const foreign = FOREIGN_CURRENCIES.find((f) => f.code === currency);
+  if (!foreign || !EFFECTIVE_DATE_RE.test(effectiveFrom)) return { ok: false, error: "잘못된 요청입니다." };
+  const rate = normalizeFxRate(rateRaw);
+  if (rate == null) return { ok: false, error: "유효한 환율을 입력하세요." };
 
   const admin = createAdminClient();
-  const { error } = await admin.from("settings").upsert({ key: foreign.settingKey, value: String(n) }, { onConflict: "key" });
-  if (error) return { ok: false, error: "환율 저장 중 오류가 발생했습니다." };
+  const { error } = await admin.from("exchange_rate_schedules").upsert(
+    { currency, rate_to_krw: rate, effective_from: effectiveFrom },
+    { onConflict: "currency,effective_from" }, // 같은 적용일이면 덮어쓰기
+  );
+  if (error) return { ok: false, error: "환율 추가 중 오류가 발생했습니다." };
 
-  revalidatePath("/admin/centers");
+  await syncFxCache(admin, currency);
+  revalidateFxConsumers();
+  return { ok: true };
+}
+
+// 환율 이력 행 수정(환율·적용일).
+export async function updateExchangeRateSchedule(id: string, rateRaw: string, effectiveFrom: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id || !EFFECTIVE_DATE_RE.test(effectiveFrom)) return { ok: false, error: "잘못된 요청입니다." };
+  const rate = normalizeFxRate(rateRaw);
+  if (rate == null) return { ok: false, error: "유효한 환율을 입력하세요." };
+
+  const admin = createAdminClient();
+  const { data: existing } = await admin.from("exchange_rate_schedules").select("currency").eq("id", id).maybeSingle();
+  if (!existing) return { ok: false, error: "환율 이력을 찾을 수 없습니다." };
+  const currency = (existing as { currency: string }).currency;
+
+  const { error } = await admin.from("exchange_rate_schedules").update({ rate_to_krw: rate, effective_from: effectiveFrom }).eq("id", id);
+  if (error) return { ok: false, error: "환율 수정 중 오류가 발생했습니다." };
+
+  await syncFxCache(admin, currency);
+  revalidateFxConsumers();
+  return { ok: true };
+}
+
+// 환율 이력 행 삭제.
+export async function deleteExchangeRateSchedule(id: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: existing } = await admin.from("exchange_rate_schedules").select("currency").eq("id", id).maybeSingle();
+  if (!existing) return { ok: true }; // 이미 없음
+  const currency = (existing as { currency: string }).currency;
+
+  const { error } = await admin.from("exchange_rate_schedules").delete().eq("id", id);
+  if (error) return { ok: false, error: "환율 삭제 중 오류가 발생했습니다." };
+
+  await syncFxCache(admin, currency);
+  revalidateFxConsumers();
   return { ok: true };
 }
 

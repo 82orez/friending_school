@@ -274,6 +274,36 @@ export type Database = {
         }
         Relationships: []
       }
+      exchange_rate_schedules: {
+        Row: {
+          created_at: string
+          currency: string
+          effective_from: string
+          id: string
+          note: string | null
+          rate_to_krw: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          effective_from: string
+          id?: string
+          note?: string | null
+          rate_to_krw: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          effective_from?: string
+          id?: string
+          note?: string | null
+          rate_to_krw?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
