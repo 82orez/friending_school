@@ -156,7 +156,7 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
   const { data: clsRows } = await admin
     .from("classes")
     .select(
-      "id, enrollment_id, teacher_id, session_no, course, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override, teacher_reassigned_at",
+      "id, enrollment_id, teacher_id, session_no, course, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override, teacher_reassigned_at, feedback, feedback_at",
     )
     .in("teacher_id", teacherIds)
     .neq("status", "취소")
@@ -178,6 +178,8 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
     conducted_at: string | null;
     conducted_override: boolean | null;
     teacher_reassigned_at: string | null;
+    feedback: string | null;
+    feedback_at: string | null;
   }[];
   if (rows.length === 0) return [];
 
@@ -231,6 +233,8 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
     conductedAt: r.conducted_at,
     conductedOverride: r.conducted_override,
     teacherReassignedAt: r.teacher_reassigned_at,
+    feedback: r.feedback,
+    feedbackAt: r.feedback_at,
   }));
 }
 

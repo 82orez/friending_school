@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fmtTime, lessonEndMin, DAY_LABELS, DAY_LABELS_KO, DAY_LABELS_EN, DISPLAY_DAYS, ROW_MINS, SLOT_MIN, GRID_START_HOUR } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
@@ -35,6 +35,8 @@ export type AdminSession = {
   conductedAt: string | null;
   conductedOverride: boolean | null;
   teacherReassignedAt: string | null; // 강사 대체 시각(있으면 "대체" 배지)
+  feedback?: string | null; // 강사 수업 피드백(있으면 센터 SlotModal에 열람 버튼) — 옵셔널이라 admin 빌더 무변경
+  feedbackAt?: string | null;
 };
 
 const ROW_H = 48; // 30분 슬롯 셀 높이(px)
@@ -256,11 +258,13 @@ function SlotModal({
   const router = useRouter();
   const en = useLang() === "en";
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const [feedbackTarget, setFeedbackTarget] = useState<AdminSession | null>(null);
   const list = useMemo(() => [...slot.list].sort((a, b) => a.startMin - b.startMin), [slot.list]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      // 피드백 모달(위 레이어)이 열려 있으면 Esc는 그 모달만 닫도록 SlotModal 닫기를 건너뜀.
+      if (e.key === "Escape" && !document.querySelector("[data-slot-feedback]")) onClose();
     };
     document.addEventListener("keydown", onKeyDown);
     const prevOverflow = document.body.style.overflow;
@@ -340,16 +344,28 @@ function SlotModal({
                 {readOnly ? (
                   <div className="flex w-full items-start justify-between gap-3 px-6 py-3.5 text-left">
                     <div className="flex min-w-0 flex-col gap-1">{inner}</div>
-                    {canReassign && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onReassign!(s);
-                          onClose();
-                        }}
-                        className="border-cta text-cta hover:bg-cta/5 shrink-0 self-center rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
-                        {en ? "Reassign" : "강사 대체"}
-                      </button>
+                    {(s.feedback || canReassign) && (
+                      <div className="flex shrink-0 flex-col gap-1.5 self-center">
+                        {s.feedback && (
+                          <button
+                            type="button"
+                            onClick={() => setFeedbackTarget(s)}
+                            className="border-rule text-accent-blue-ink hover:bg-accent-blue-soft/40 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
+                            <Eye className="size-3.5" aria-hidden /> {en ? "View feedback" : "피드백 보기"}
+                          </button>
+                        )}
+                        {canReassign && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onReassign!(s);
+                              onClose();
+                            }}
+                            className="border-cta text-cta hover:bg-cta/5 inline-flex items-center justify-center rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
+                            {en ? "Reassign" : "강사 대체"}
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 ) : (
@@ -364,6 +380,74 @@ function SlotModal({
             );
           })}
         </ul>
+      </div>
+
+      {feedbackTarget && <SlotFeedbackModal session={feedbackTarget} en={en} onClose={() => setFeedbackTarget(null)} />}
+    </>
+  );
+}
+
+// 강사 피드백 읽기 전용 모달(센터 SlotModal 위 레이어). 이중언어. admin ClassesManager.FeedbackModal 패턴 축약.
+function SlotFeedbackModal({ session, en, onClose }: { session: AdminSession; en: boolean; onClose: () => void }) {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  const student = en ? session.studentEnglishName || session.studentName || "Student" : session.studentName || "학생";
+
+  return (
+    <>
+      <div aria-hidden="true" onClick={onClose} className="fixed inset-0 z-[130] bg-black/40" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        data-slot-feedback
+        aria-label={en ? "Teacher feedback" : "강사 피드백"}
+        className="fixed top-1/2 left-1/2 z-[140] flex max-h-[85vh] w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="border-rule flex items-center justify-between gap-3 border-b px-6 py-4">
+          <h2 className="text-ink truncate text-lg font-bold">
+            {en ? "Feedback" : "강사 피드백"}
+            <span className="text-muted-fg-faint font-normal">
+              {" "}
+              · {student} · {en ? `Session ${session.sessionNo}` : `${session.sessionNo}회차`}
+            </span>
+          </h2>
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={onClose}
+            aria-label={en ? "Close" : "닫기"}
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-1 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <div className="overflow-auto px-6 py-5">
+          {session.feedbackAt && (
+            <p className="text-muted-fg-faint mb-2 text-xs">{new Date(session.feedbackAt).toLocaleDateString(en ? "en-US" : "ko-KR")}</p>
+          )}
+          <p className="text-ink-soft text-sm break-words whitespace-pre-wrap">{session.feedback}</p>
+        </div>
+
+        <div className="border-rule flex justify-end gap-2 border-t px-6 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors">
+            {en ? "Close" : "닫기"}
+          </button>
+        </div>
       </div>
     </>
   );
