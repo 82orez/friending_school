@@ -180,6 +180,7 @@ export default async function AdminClassesPage() {
       classId: r.id,
       teacherId: r.teacher_id,
       sessionNo: r.session_no,
+      course: r.course,
       courseTitle: r.course_title,
       weekdays: weekdaysByEnrollment.get(r.enrollment_id) ?? "",
       teacherName: r.teacher_name,

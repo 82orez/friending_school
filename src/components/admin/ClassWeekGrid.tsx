@@ -4,14 +4,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtTime, lessonEndMin, DAY_LABELS_KO, DISPLAY_DAYS, ROW_MINS, SLOT_MIN, GRID_START_HOUR } from "@/lib/availability";
+import { fmtTime, lessonEndMin, DAY_LABELS, DAY_LABELS_KO, DAY_LABELS_EN, DISPLAY_DAYS, ROW_MINS, SLOT_MIN, GRID_START_HOUR } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
+import { getCourse } from "@/data/courses";
+import { useLang } from "@/components/LangProvider";
+
+// 한국어 요일 요약("월/수/금")을 영어("Mon/Wed/Fri")로 변환 — AdminSession.weekdays는 한국어 사전계산값.
+const KO_TO_EN_DOW: Record<string, string> = { 일: "Sun", 월: "Mon", 화: "Tue", 수: "Wed", 목: "Thu", 금: "Fri", 토: "Sat" };
+const weekdaysEn = (s: string) => s.split("/").map((x) => KO_TO_EN_DOW[x] ?? x).join("/");
+const mdEn = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 export type AdminSession = {
   enrollmentId: string;
   classId: string; // 개별 회차 id(센터 매니저 인라인 강사 대체 대상)
   teacherId: string; // 현재 담당 강사 id(대체 후보에서 제외)
   sessionNo: number; // 회차 번호(대체 피커 표시용)
+  course: string; // 과정 슬러그(영어 과정명 해석용, getCourse().englishTitle)
   courseTitle: string;
   weekdays: string; // 과정 주간 요일 요약(예: "월/수/금") — 정규 수업 기준.
   teacherName: string | null;
@@ -65,6 +73,7 @@ export default function ClassWeekGrid({
   readOnly?: boolean;
   onReassign?: (s: AdminSession) => void;
 }) {
+  const en = useLang() === "en";
   const [weekStart, setWeekStart] = useState<Date>(() => mondayOf(new Date(now)));
   const thisMonday = mondayOf(new Date(now));
   const isThisWeek = weekStart.getTime() === thisMonday.getTime();
@@ -95,7 +104,9 @@ export default function ClassWeekGrid({
     return map;
   }, [sessions, weekStart]);
 
-  const weekLabel = `${weekStart.getMonth() + 1}월 ${weekStart.getDate()}일 – ${addDays(weekStart, 6).getMonth() + 1}월 ${addDays(weekStart, 6).getDate()}일`;
+  const weekLabel = en
+    ? `${mdEn(weekStart)} – ${mdEn(addDays(weekStart, 6))}`
+    : `${weekStart.getMonth() + 1}월 ${weekStart.getDate()}일 – ${addDays(weekStart, 6).getMonth() + 1}월 ${addDays(weekStart, 6).getDate()}일`;
 
   return (
     <div className="space-y-4">
@@ -104,7 +115,7 @@ export default function ClassWeekGrid({
         <button
           type="button"
           onClick={() => setWeekStart((w) => addDays(w, -7))}
-          aria-label="이전 주"
+          aria-label={en ? "Previous week" : "이전 주"}
           className="text-muted-fg hover:text-ink border-rule focus-visible:ring-accent-blue/50 inline-flex size-8 items-center justify-center rounded-md border transition-colors focus-visible:ring-2 focus-visible:outline-none">
           <ChevronLeft className="size-4" />
         </button>
@@ -112,7 +123,7 @@ export default function ClassWeekGrid({
         <button
           type="button"
           onClick={() => setWeekStart((w) => addDays(w, 7))}
-          aria-label="다음 주"
+          aria-label={en ? "Next week" : "다음 주"}
           className="text-muted-fg hover:text-ink border-rule focus-visible:ring-accent-blue/50 inline-flex size-8 items-center justify-center rounded-md border transition-colors focus-visible:ring-2 focus-visible:outline-none">
           <ChevronRight className="size-4" />
         </button>
@@ -121,7 +132,7 @@ export default function ClassWeekGrid({
           onClick={() => setWeekStart(mondayOf(new Date(now)))}
           disabled={isThisWeek}
           className="text-accent-blue-ink hover:bg-accent-blue-soft/40 border-accent-blue/40 focus-visible:ring-accent-blue/50 ml-1 inline-flex h-8 items-center rounded-md border px-3 text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:opacity-40 disabled:hover:bg-transparent">
-          이번 주
+          {en ? "This week" : "이번 주"}
         </button>
       </div>
 
@@ -138,7 +149,9 @@ export default function ClassWeekGrid({
                 const weekendColor = dow === 0 ? "text-brand" : dow === 6 ? "text-accent-blue-ink" : null;
                 return (
                   <div key={i} className="flex-1 py-1.5 text-center">
-                    <div className={cn("text-xs font-bold", weekendColor ?? (today ? "text-accent-blue-ink" : "text-muted-fg"))}>{DAY_LABELS_KO_MON[i]}</div>
+                    <div className={cn("text-xs font-bold", weekendColor ?? (today ? "text-accent-blue-ink" : "text-muted-fg"))}>
+                      {en ? DAY_LABELS[i] : DAY_LABELS_KO_MON[i]}
+                    </div>
                     <div className={cn("text-[11px]", today && "font-bold", weekendColor ?? (today ? "text-accent-blue-ink" : "text-muted-fg-faint"))}>
                       {d.getMonth() + 1}/{d.getDate()}
                     </div>
@@ -190,7 +203,7 @@ export default function ClassWeekGrid({
                             <button
                               type="button"
                               onClick={() => setSlot({ date: d, min, list })}
-                              title={`${fmtTime(min)} · ${count}개 수업`}
+                              title={en ? `${fmtTime(min)} · ${count} ${count === 1 ? "class" : "classes"}` : `${fmtTime(min)} · ${count}개 수업`}
                               className={cn(
                                 "focus-visible:ring-cta/50 flex size-[calc(100%-4px)] m-0.5 items-center justify-center rounded-md text-xs font-bold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:outline-none",
                                 past
@@ -222,9 +235,9 @@ export default function ClassWeekGrid({
   );
 }
 
-function formatDayLabel(d: Date): string {
+function formatDayLabel(d: Date, en: boolean): string {
   const dow = d.getDay();
-  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_LABELS_KO[dow]})`;
+  return en ? `${mdEn(d)} (${DAY_LABELS_EN[dow]})` : `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_LABELS_KO[dow]})`;
 }
 
 function SlotModal({
@@ -241,6 +254,7 @@ function SlotModal({
   onReassign?: (s: AdminSession) => void;
 }) {
   const router = useRouter();
+  const en = useLang() === "en";
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const list = useMemo(() => [...slot.list].sort((a, b) => a.startMin - b.startMin), [slot.list]);
 
@@ -267,16 +281,16 @@ function SlotModal({
         className="fixed top-1/2 left-1/2 z-[120] flex max-h-[85vh] w-[min(92vw,460px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-start justify-between gap-3 border-b px-6 py-4">
           <div className="min-w-0">
-            <h2 className="text-ink text-lg font-bold">{formatDayLabel(slot.date)}</h2>
+            <h2 className="text-ink text-lg font-bold">{formatDayLabel(slot.date, en)}</h2>
             <p className="text-muted-fg mt-0.5 text-sm">
-              {fmtTime(slot.min)} · 수업 {list.length}개
+              {fmtTime(slot.min)} · {en ? `${list.length} ${list.length === 1 ? "class" : "classes"}` : `수업 ${list.length}개`}
             </p>
           </div>
           <button
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={en ? "Close" : "닫기"}
             className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             <X className="size-5" />
           </button>
@@ -288,26 +302,36 @@ function SlotModal({
               <>
                 <div className="flex items-center gap-2">
                   <span className="text-ink text-sm font-bold">{fmtTime(s.startMin)}~{fmtTime(lessonEndMin(s.endMin))}</span>
-                  {s.isMakeup && <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 text-xs font-bold">보강</span>}
-                  {s.teacherReassignedAt && <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5 text-xs font-bold">대체</span>}
+                  {s.isMakeup && (
+                    <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 text-xs font-bold">{en ? "Makeup" : "보강"}</span>
+                  )}
+                  {s.teacherReassignedAt && (
+                    <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5 text-xs font-bold">{en ? "Reassigned" : "대체"}</span>
+                  )}
                   {now >= kstDateMinToMs(s.sessionDate, lessonEndMin(s.endMin)) &&
                     ((s.conductedOverride ?? !!s.conductedAt) ? (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">진행됨</span>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">{en ? "Conducted" : "진행됨"}</span>
                     ) : (
-                      <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 text-xs font-bold">미진행</span>
+                      <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 text-xs font-bold">{en ? "Not conducted" : "미진행"}</span>
                     ))}
                 </div>
                 <span className="text-ink truncate text-sm font-semibold">
-                  {s.courseTitle}
-                  {s.weekdays && <span className="text-muted-fg-faint font-normal"> · {s.weekdays}</span>}
+                  {en ? (getCourse(s.course)?.englishTitle ?? s.courseTitle) : s.courseTitle}
+                  {s.weekdays && <span className="text-muted-fg-faint font-normal"> · {en ? weekdaysEn(s.weekdays) : s.weekdays}</span>}
                 </span>
                 <span className="text-muted-fg truncate text-xs">
-                  강사 {s.teacherName ?? "-"} · 학생 {s.studentName ?? "-"}
+                  {en ? "Teacher" : "강사"} {s.teacherName ?? "-"} · {en ? "Student" : "학생"} {s.studentName ?? "-"}
                   {s.studentEnglishName ? ` (${s.studentEnglishName})` : ""}
                 </span>
-                <span className="text-muted-fg-faint truncate text-xs">센터 {s.centerName ?? "미지정"}</span>
-                <span className="text-muted-fg-faint truncate text-xs">수업 일정 {s.period}</span>
-                <span className="text-muted-fg-faint truncate text-xs">수업 횟수 {s.totalSessions}회</span>
+                <span className="text-muted-fg-faint truncate text-xs">
+                  {en ? "Center" : "센터"} {s.centerName ?? (en ? "None" : "미지정")}
+                </span>
+                <span className="text-muted-fg-faint truncate text-xs">
+                  {en ? "Period" : "수업 일정"} {s.period}
+                </span>
+                <span className="text-muted-fg-faint truncate text-xs">
+                  {en ? "Sessions" : "수업 횟수"} {en ? s.totalSessions : `${s.totalSessions}회`}
+                </span>
               </>
             );
             const canReassign = !!onReassign && now < kstDateMinToMs(s.sessionDate, s.startMin);
@@ -324,7 +348,7 @@ function SlotModal({
                           onClose();
                         }}
                         className="border-cta text-cta hover:bg-cta/5 shrink-0 self-center rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
-                        강사 대체
+                        {en ? "Reassign" : "강사 대체"}
                       </button>
                     )}
                   </div>

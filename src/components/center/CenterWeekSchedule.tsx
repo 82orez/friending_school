@@ -10,7 +10,7 @@ function toCenterClass(s: AdminSession): CenterClass {
     id: s.classId,
     teacherId: s.teacherId,
     courseTitle: s.courseTitle,
-    studentName: s.studentName ?? "학생",
+    studentName: s.studentName ?? "Student",
     sessionNo: s.sessionNo,
     sessionDate: s.sessionDate,
     startMin: s.startMin,
@@ -30,9 +30,9 @@ export default function CenterWeekSchedule({ sessions, teachers }: { sessions: A
 
   return (
     <div>
-      <h2 className="text-ink mb-3 text-lg font-bold">소속 강사 주간 일정</h2>
+      <h2 className="text-ink mb-3 text-lg font-bold">Weekly schedule</h2>
       {sessions.length === 0 ? (
-        <p className="text-muted-fg-faint py-10 text-center text-sm">표시할 수업이 없습니다.</p>
+        <p className="text-muted-fg-faint py-10 text-center text-sm">No classes to show.</p>
       ) : (
         <ClassWeekGrid sessions={sessions} now={now} readOnly onReassign={(s) => setReassignTarget(toCenterClass(s))} />
       )}

@@ -3,13 +3,20 @@
 import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { summarizeSlots, formatDateKo, lessonEndDate } from "@/lib/availability";
+import { summarizeSlots, formatDate, lessonEndDate } from "@/lib/availability";
+import { getCourse } from "@/data/courses";
+import { useLang } from "@/components/LangProvider";
 import type { CurrentTeacher, TeacherClassItem } from "@/components/admin/TeacherRequestsManager";
 
 const STATUS_LABEL: Record<string, string> = {
   승인: "승인",
   결제대기: "결제 대기",
   결제완료: "결제 완료",
+};
+const STATUS_LABEL_EN: Record<string, string> = {
+  승인: "Approved",
+  결제대기: "Payment pending",
+  결제완료: "Paid",
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -18,10 +25,11 @@ const STATUS_BADGE: Record<string, string> = {
   결제완료: "bg-[#E1F5EE] text-[#0F6E56]",
 };
 
-// 학생 표시명: 한글명 (영문명).
-function studentLabel(item: TeacherClassItem): string {
-  const en = item.studentEnglishName?.trim();
-  return en ? `${item.studentName} (${en})` : item.studentName;
+// 학생 표시명: ko="한글명 (영문명)" / en="영문명" 우선.
+function studentLabel(item: TeacherClassItem, en: boolean): string {
+  const eng = item.studentEnglishName?.trim();
+  if (en) return eng || item.studentName;
+  return eng ? `${item.studentName} (${eng})` : item.studentName;
 }
 
 // 수업 기간 "시작일 ~ 종료일"(YYYY-MM-DD). 종료일=lessonEndDate(시작+주간 slots+횟수), 계산 불가 시 시작일만.
@@ -37,6 +45,7 @@ function schedulePeriod(item: TeacherClassItem): string {
 
 export default function TeacherClassesModal({ teacher, onClose }: { teacher: CurrentTeacher | null; onClose: () => void }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const en = useLang() === "en";
 
   // 열림 시: Esc 닫기 + body scroll lock + 닫기 버튼 포커스.
   useEffect(() => {
@@ -57,7 +66,7 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
   if (!teacher) return null;
 
   const name = teacher.name || teacher.email;
-  const title = `${name} · 진행 중인 수업`;
+  const title = `${name} · ${en ? "In-progress classes" : "진행 중인 수업"}`;
   const classes = teacher.classes;
 
   return (
@@ -75,13 +84,15 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
         <div className="border-rule flex items-center justify-between border-b px-6 py-4">
           <div className="flex min-w-0 items-center gap-2">
             <h2 className="text-ink truncate text-lg font-bold">{name}</h2>
-            <span className="bg-accent-blue-soft text-accent-blue-ink shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold">진행 중인 수업</span>
+            <span className="bg-accent-blue-soft text-accent-blue-ink shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold">
+              {en ? "In progress" : "진행 중인 수업"}
+            </span>
           </div>
           <button
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={en ? "Close" : "닫기"}
             className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <X className="size-5" />
@@ -90,46 +101,50 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
 
         <div className="overflow-auto px-6 py-5">
           {classes.length === 0 ? (
-            <p className="text-muted-fg py-8 text-center text-sm">진행 중인 수업이 없습니다.</p>
+            <p className="text-muted-fg py-8 text-center text-sm">{en ? "No classes in progress." : "진행 중인 수업이 없습니다."}</p>
           ) : (
             <ul className="flex flex-col gap-3">
               {classes.map((item) => (
                 <li key={item.enrollmentId} className="border-rule rounded-xl border bg-white p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-ink truncate font-bold">{item.courseTitle}</p>
-                      <p className="text-muted-fg mt-0.5 truncate text-sm">{studentLabel(item)}</p>
+                      <p className="text-ink truncate font-bold">{en ? (getCourse(item.course)?.englishTitle ?? item.courseTitle) : item.courseTitle}</p>
+                      <p className="text-muted-fg mt-0.5 truncate text-sm">{studentLabel(item, en)}</p>
                     </div>
                     <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[item.status] ?? "bg-surface text-muted-fg")}>
-                      {STATUS_LABEL[item.status] ?? item.status}
+                      {(en ? STATUS_LABEL_EN : STATUS_LABEL)[item.status] ?? item.status}
                     </span>
                   </div>
 
                   <dl className="mt-3 grid grid-cols-1 gap-y-1.5 text-sm">
                     <div className="flex gap-2">
-                      <dt className="text-muted-fg-faint w-24 shrink-0">주간 일정</dt>
-                      <dd className="text-ink break-words">{summarizeSlots(item.slots, true, " / ") || "-"}</dd>
+                      <dt className="text-muted-fg-faint w-24 shrink-0">{en ? "Weekly" : "주간 일정"}</dt>
+                      <dd className="text-ink break-words">{summarizeSlots(item.slots, !en, " / ") || "-"}</dd>
                     </div>
                     <div className="flex gap-2">
-                      <dt className="text-muted-fg-faint w-24 shrink-0">수업 일정</dt>
+                      <dt className="text-muted-fg-faint w-24 shrink-0">{en ? "Period" : "수업 일정"}</dt>
                       <dd className="text-ink break-words">{schedulePeriod(item)}</dd>
                     </div>
                     <div className="flex gap-2">
-                      <dt className="text-muted-fg-faint w-24 shrink-0">수업 횟수</dt>
-                      <dd className="text-ink">{item.totalSessions}회</dd>
+                      <dt className="text-muted-fg-faint w-24 shrink-0">{en ? "Sessions" : "수업 횟수"}</dt>
+                      <dd className="text-ink">{en ? item.totalSessions : `${item.totalSessions}회`}</dd>
                     </div>
                     {item.status === "결제완료" ? (
                       <div className="flex gap-2">
-                        <dt className="text-muted-fg-faint w-24 shrink-0">진행</dt>
+                        <dt className="text-muted-fg-faint w-24 shrink-0">{en ? "Progress" : "진행"}</dt>
                         <dd className="text-ink">
-                          {item.done}/{item.total}회
-                          <span className="text-muted-fg-faint"> · 다음 {item.nextDate ? formatDateKo(item.nextDate) : "예정 수업 없음"}</span>
+                          {en ? `${item.done}/${item.total}` : `${item.done}/${item.total}회`}
+                          <span className="text-muted-fg-faint">
+                            {" · "}
+                            {en ? "Next " : "다음 "}
+                            {item.nextDate ? formatDate(item.nextDate, !en) : en ? "no upcoming class" : "예정 수업 없음"}
+                          </span>
                         </dd>
                       </div>
                     ) : (
                       <div className="flex gap-2">
-                        <dt className="text-muted-fg-faint w-24 shrink-0">시작 예정</dt>
-                        <dd className="text-ink">{item.startDate ? formatDateKo(item.startDate) : "-"}</dd>
+                        <dt className="text-muted-fg-faint w-24 shrink-0">{en ? "Starts" : "시작 예정"}</dt>
+                        <dd className="text-ink">{item.startDate ? formatDate(item.startDate, !en) : "-"}</dd>
                       </div>
                     )}
                   </dl>
@@ -145,7 +160,7 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
             onClick={onClose}
             className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
           >
-            닫기
+            {en ? "Close" : "닫기"}
           </button>
         </div>
       </div>

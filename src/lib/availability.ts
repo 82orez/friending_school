@@ -19,6 +19,7 @@ export const GRID_END_HOUR = 24;
 export const DISPLAY_DAYS = [1, 2, 3, 4, 5, 6, 0];
 export const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export const DAY_LABELS_KO = ["일", "월", "화", "수", "목", "금", "토"]; // index = day(0=일 ~ 6=토)
+export const DAY_LABELS_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]; // index = getDay(0=Sun ~ 6=Sat)
 
 export type Slot = { day: number; min: number };
 
@@ -34,6 +35,10 @@ export const dowOf = (dateStr: string): number => {
 
 // YYYY-MM-DD → "2026-07-04 (토)". 날짜 원문 유지 + 요일 접미.
 export const formatDateKo = (dateStr: string): string => `${dateStr} (${DAY_LABELS_KO[dowOf(dateStr)]})`;
+
+// 로케일 대응 날짜 라벨 — ko="2026-07-04 (토)" / en="2026-07-04 (Sat)". formatDateKo의 이중언어 버전.
+export const formatDate = (dateStr: string, ko = true): string =>
+  `${dateStr} (${(ko ? DAY_LABELS_KO : DAY_LABELS_EN)[dowOf(dateStr)]})`;
 
 // 그리드 행(시작 분) 목록: 360(06:00) ~ 1410(23:30).
 export const ROW_MINS: number[] = [];

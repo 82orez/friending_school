@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { nationalityLabel } from "@/data/nationalities";
-import { genderLabelKo } from "@/data/genders";
+import { nationalityLabel, nationalityLabelEn } from "@/data/nationalities";
+import { genderLabelKo, genderLabelEn } from "@/data/genders";
+import { useLang } from "@/components/LangProvider";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 
 type SortKey = "name" | "center" | "nationality" | "gender";
@@ -33,6 +34,7 @@ export default function CurrentTeacherTable({
   className?: string;
 }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
+  const en = useLang() === "en";
 
   const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
@@ -56,13 +58,13 @@ export default function CurrentTeacherTable({
       <table className="w-full min-w-[640px] border-collapse text-sm">
         <thead>
           <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
-            <SortHeader label="이름" sortKey="name" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
-            <SortHeader label="센터" sortKey="center" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-            <SortHeader label="국적" sortKey="nationality" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-            <SortHeader label="성별" sortKey="gender" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-            {onViewClasses && <th className="px-4 py-2.5 whitespace-nowrap">수업 목록</th>}
+            <SortHeader label={en ? "Name" : "이름"} sortKey="name" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
+            <SortHeader label={en ? "Center" : "센터"} sortKey="center" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+            <SortHeader label={en ? "Nationality" : "국적"} sortKey="nationality" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+            <SortHeader label={en ? "Gender" : "성별"} sortKey="gender" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+            {onViewClasses && <th className="px-4 py-2.5 whitespace-nowrap">{en ? "Classes" : "수업 목록"}</th>}
             <th className="px-4 py-2.5 text-right md:px-6">
-              <span className="sr-only">관리</span>
+              <span className="sr-only">{en ? "Manage" : "관리"}</span>
             </th>
           </tr>
         </thead>
@@ -74,8 +76,8 @@ export default function CurrentTeacherTable({
                 {t.name && <p className="text-muted-fg text-xs">{t.email}</p>}
               </td>
               <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{t.centerName ?? "None"}</td>
-              <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{nationalityLabel(t.nationality)}</td>
-              <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{genderLabelKo(t.gender)}</td>
+              <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{en ? nationalityLabelEn(t.nationality) : nationalityLabel(t.nationality)}</td>
+              <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{en ? genderLabelEn(t.gender) : genderLabelKo(t.gender)}</td>
               {onViewClasses && (
                 <td className="px-4 py-3.5 align-middle">
                   <button
@@ -83,7 +85,7 @@ export default function CurrentTeacherTable({
                     onClick={() => onViewClasses(t)}
                     className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
                   >
-                    수업 보기
+                    {en ? "View classes" : "수업 보기"}
                   </button>
                 </td>
               )}
@@ -94,7 +96,7 @@ export default function CurrentTeacherTable({
                     onClick={() => onView(t)}
                     className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
                   >
-                    정보 보기
+                    {en ? "View info" : "정보 보기"}
                   </button>
                   {onDelete && (
                     <button
@@ -103,7 +105,7 @@ export default function CurrentTeacherTable({
                       disabled={deleting}
                       className="border-brand/40 text-brand hover:bg-brand/5 shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60"
                     >
-                      강사 삭제
+                      {en ? "Delete teacher" : "강사 삭제"}
                     </button>
                   )}
                 </div>

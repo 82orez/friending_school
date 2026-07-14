@@ -8,9 +8,10 @@ import AvailabilityGrid from "@/components/teacher/AvailabilityGrid";
 import { openTimetablePrint } from "@/lib/timetable-print";
 import RateHistoryEditor from "@/components/admin/RateHistoryEditor";
 import { updateTeacherCenter } from "@/app/admin/actions";
-import { nationalityLabel } from "@/data/nationalities";
-import { genderLabelKo } from "@/data/genders";
+import { nationalityLabel, nationalityLabelEn } from "@/data/nationalities";
+import { genderLabelKo, genderLabelEn } from "@/data/genders";
 import { formatPrice, type Rates } from "@/data/currencies";
+import { useLang } from "@/components/LangProvider";
 import { cn } from "@/lib/utils";
 import type { RateRow } from "@/lib/rates";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
@@ -42,6 +43,7 @@ export default function TeacherInfoModal({
   readOnly?: boolean; // 센터 매니저 뷰 — 센터 변경·단가(급여) 편집 숨김(조회 전용)
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const en = useLang() === "en";
   // 센터 셀렉트 로컬 상태("none"=소속 없음). 다른 강사 모달 열릴 때 재동기화.
   const [centerSel, setCenterSel] = useState<string>(teacher?.centerId ?? "none");
   const [saving, startSave] = useTransition();
@@ -89,7 +91,7 @@ export default function TeacherInfoModal({
 
   // 선택된 센터의 회당 단가(개별 단가 이력의 "센터 단가" 폴백 표시용). 미지정/미설정이면 "미설정".
   const selectedCenter = centers.find((c) => c.id === centerSel);
-  const centerRateLabel = selectedCenter && selectedCenter.price != null ? formatPrice(selectedCenter.price, selectedCenter.currency) : "미설정";
+  const centerRateLabel = selectedCenter && selectedCenter.price != null ? formatPrice(selectedCenter.price, selectedCenter.currency) : en ? "Not set" : "미설정";
 
   const title = teacher.name || teacher.email;
 
@@ -111,7 +113,7 @@ export default function TeacherInfoModal({
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={en ? "Close" : "닫기"}
             className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <X className="size-5" />
@@ -145,10 +147,10 @@ export default function TeacherInfoModal({
           <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm">
             {(
               [
-                ["이메일", teacher.email],
-                ["전화", teacher.phone ?? "-"],
-                ["국적", nationalityLabel(teacher.nationality)],
-                ["성별", genderLabelKo(teacher.gender)],
+                [en ? "Email" : "이메일", teacher.email],
+                [en ? "Phone" : "전화", teacher.phone ?? "-"],
+                [en ? "Nationality" : "국적", en ? nationalityLabelEn(teacher.nationality) : nationalityLabel(teacher.nationality)],
+                [en ? "Gender" : "성별", en ? genderLabelEn(teacher.gender) : genderLabelKo(teacher.gender)],
               ] as const
             ).map(([label, value]) => (
               <div key={label} className="flex gap-2">
@@ -160,8 +162,8 @@ export default function TeacherInfoModal({
             {/* 센터 — admin은 편집, 센터 매니저(readOnly)는 텍스트 표시 */}
             {readOnly ? (
               <div className="flex gap-2">
-                <dt className="text-muted-fg-faint w-28 shrink-0">센터</dt>
-                <dd className="text-ink break-words">{selectedCenter?.name ?? "미지정"}</dd>
+                <dt className="text-muted-fg-faint w-28 shrink-0">{en ? "Center" : "센터"}</dt>
+                <dd className="text-ink break-words">{selectedCenter?.name ?? (en ? "None" : "미지정")}</dd>
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -209,8 +211,8 @@ export default function TeacherInfoModal({
 
             {(
               [
-                ["학력", teacher.bio ?? "-"],
-                ["강의 경력", teacher.experience ?? "-"],
+                [en ? "Education" : "학력", teacher.bio ?? "-"],
+                [en ? "Experience" : "강의 경력", teacher.experience ?? "-"],
                 ["Zoom URL", teacher.zoomUrl ?? "-"],
               ] as const
             ).map(([label, value]) => (
@@ -223,14 +225,14 @@ export default function TeacherInfoModal({
 
           <div className="mt-5">
             <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-ink text-sm font-bold">주간 가능 시간</p>
+              <p className="text-ink text-sm font-bold">{en ? "Weekly availability" : "주간 가능 시간"}</p>
               <button
                 type="button"
                 onClick={() => openTimetablePrint({ teacherName: teacher.name || teacher.email, slots: teacher.slots, bookedSlots: teacher.bookedSlots })}
                 className="border-rule text-muted-fg hover:bg-surface inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
               >
                 <Printer className="size-4" />
-                PDF로 내보내기
+                {en ? "Export PDF" : "PDF로 내보내기"}
               </button>
             </div>
             <AvailabilityGrid initialSlots={teacher.slots} bookedSlots={teacher.bookedSlots} readOnly />
@@ -243,7 +245,7 @@ export default function TeacherInfoModal({
             onClick={onClose}
             className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
           >
-            닫기
+            {en ? "Close" : "닫기"}
           </button>
         </div>
       </div>

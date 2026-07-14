@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { requireCenterManager } from "@/lib/center-manager";
 import CenterTabs from "@/components/center/CenterTabs";
+import { LangProvider } from "@/components/LangProvider";
 
-export const metadata: Metadata = { title: "센터 관리 — Friending School", robots: { index: false } };
+export const metadata: Metadata = { title: "Center Management — Friending School", robots: { index: false } };
 
 export default async function CenterLayout({ children }: { children: React.ReactNode }) {
   const mgr = await requireCenterManager();
@@ -16,7 +17,8 @@ export default async function CenterLayout({ children }: { children: React.React
     data: { user },
   } = await supabase.auth.getUser();
   const { data: profile } = await supabase.from("profiles").select("first_name, last_name").eq("id", mgr.userId).maybeSingle();
-  const displayName = profile ? [profile.last_name, profile.first_name].filter(Boolean).join("") || user?.email?.split("@")[0] : user?.email?.split("@")[0];
+  // 원어민 강사/매니저 위주라 영문 이름 순서(first last), 없으면 이메일 앞부분.
+  const displayName = profile ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || user?.email?.split("@")[0] : user?.email?.split("@")[0];
 
   return (
     <div className="bg-surface min-h-screen">
@@ -26,14 +28,14 @@ export default async function CenterLayout({ children }: { children: React.React
 
       <div className="mx-auto max-w-[760px] px-5 pb-16">
         <div className="bg-brand-gradient mb-5 rounded-2xl px-6 py-7 text-white">
-          <p className="text-xs font-bold tracking-[0.1em] opacity-90">FRIENDING SCHOOL · 센터 매니저</p>
-          <p className="mt-2 text-xl font-bold md:text-2xl">안녕하세요, {displayName}님! 👋</p>
-          <p className="mt-1 text-sm opacity-90">소속 센터 강사를 조회하고, 수업이 불가한 회차의 강사를 대체할 수 있습니다.</p>
+          <p className="text-xs font-bold tracking-[0.1em] opacity-90">FRIENDING SCHOOL · CENTER MANAGER</p>
+          <p className="mt-2 text-xl font-bold md:text-2xl">Welcome, {displayName}! 👋</p>
+          <p className="mt-1 text-sm opacity-90">View your center&apos;s teachers and reassign a session&apos;s teacher when a class can&apos;t be held.</p>
         </div>
 
         <CenterTabs />
 
-        {children}
+        <LangProvider lang="en">{children}</LangProvider>
       </div>
     </div>
   );

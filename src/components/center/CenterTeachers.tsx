@@ -16,9 +16,9 @@ export default function CenterTeachers({ teachers, centers }: { teachers: Curren
 
   return (
     <div>
-      <h2 className="text-ink mb-3 text-lg font-bold">소속 센터 강사</h2>
+      <h2 className="text-ink mb-3 text-lg font-bold">Center teachers</h2>
       {teachers.length === 0 ? (
-        <p className="text-muted-fg-faint py-10 text-center text-sm">소속 센터에 등록된 강사가 없습니다.</p>
+        <p className="text-muted-fg-faint py-10 text-center text-sm">No teachers are registered at your center.</p>
       ) : (
         <CurrentTeacherTable teachers={teachers} onView={setInfoTarget} onViewClasses={setClassesTarget} />
       )}

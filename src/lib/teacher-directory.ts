@@ -156,7 +156,7 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
   const { data: clsRows } = await admin
     .from("classes")
     .select(
-      "id, enrollment_id, teacher_id, session_no, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override, teacher_reassigned_at",
+      "id, enrollment_id, teacher_id, session_no, course, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override, teacher_reassigned_at",
     )
     .in("teacher_id", teacherIds)
     .neq("status", "취소")
@@ -166,6 +166,7 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
     enrollment_id: string;
     teacher_id: string;
     session_no: number;
+    course: string;
     course_title: string;
     teacher_name: string | null;
     student_name: string | null;
@@ -214,6 +215,7 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
     classId: r.id,
     teacherId: r.teacher_id,
     sessionNo: r.session_no,
+    course: r.course,
     courseTitle: r.course_title,
     weekdays: weekdaysByEnrollment.get(r.enrollment_id) ?? "",
     teacherName: r.teacher_name,

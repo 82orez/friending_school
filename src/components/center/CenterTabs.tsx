@@ -5,15 +5,15 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const TABS: { href: string; label: string }[] = [
-  { href: "/center", label: "강사 관리" },
-  { href: "/center/schedule", label: "주간 일정" },
-  { href: "/center/settlements", label: "정산" },
+  { href: "/center", label: "Teachers" },
+  { href: "/center/schedule", label: "Weekly Schedule" },
+  { href: "/center/settlements", label: "Settlement" },
 ];
 
 export default function CenterTabs() {
   const pathname = usePathname();
   return (
-    <nav className="border-rule mb-5 flex gap-1 border-b" aria-label="센터 관리 메뉴">
+    <nav className="border-rule mb-5 flex gap-1 border-b" aria-label="Center management menu">
       {TABS.map((t) => {
         const active = t.href === "/center" ? pathname === "/center" : pathname.startsWith(t.href);
         return (

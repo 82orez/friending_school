@@ -5,6 +5,8 @@ import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, 
 import { cn } from "@/lib/utils";
 import { formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
 import { fmtTime } from "@/lib/availability";
+import { getCourse } from "@/data/courses";
+import { useLang } from "@/components/LangProvider";
 
 // 서버 page가 conducted 수업 1건씩 enriched row로 전달(단가=강사 현재 소속 센터).
 export type SettlementRow = {
@@ -52,11 +54,30 @@ const yearStart = (d: string): string => `${d.slice(0, 4)}-01-01`;
 const yearEnd = (d: string): string => `${d.slice(0, 4)}-12-31`;
 const shiftYear = (d: string, delta: number): string => `${Number(d.slice(0, 4)) + delta}-01-01`;
 const DOW_KO = ["일", "월", "화", "수", "목", "금", "토"];
+const DOW_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 type Period = "일간" | "주간" | "월간" | "년간";
 const PERIODS: Period[] = ["일간", "주간", "월간", "년간"];
 export type Grouping = "센터별" | "강사별" | "과정별";
 const GROUPINGS: Grouping[] = ["센터별", "강사별", "과정별"];
+
+// enum 값(Period/Grouping)은 내부 key로 한국어 유지 — 표시 라벨만 로케일 매핑.
+const PERIOD_LABEL: Record<"ko" | "en", Record<Period, string>> = {
+  ko: { 일간: "일간", 주간: "주간", 월간: "월간", 년간: "년간" },
+  en: { 일간: "Daily", 주간: "Weekly", 월간: "Monthly", 년간: "Yearly" },
+};
+const GROUPING_LABEL: Record<"ko" | "en", Record<Grouping, string>> = {
+  ko: { 센터별: "센터별", 강사별: "강사별", 과정별: "과정별" },
+  en: { 센터별: "By center", 강사별: "By teacher", 과정별: "By course" },
+};
+const GROUPING_COL: Record<"ko" | "en", Record<Grouping, string>> = {
+  ko: { 센터별: "센터", 강사별: "강사", 과정별: "과정" },
+  en: { 센터별: "Center", 강사별: "Teacher", 과정별: "Course" },
+};
+const SEARCH_PLACEHOLDER: Record<"ko" | "en", Record<Grouping, string>> = {
+  ko: { 센터별: "센터 검색...", 강사별: "강사 검색...", 과정별: "과정 검색..." },
+  en: { 센터별: "Search centers...", 강사별: "Search teachers...", 과정별: "Search courses..." },
+};
 
 type SortKey = "name" | "count" | "amount";
 
@@ -81,14 +102,15 @@ function interval(anchor: string, period: Period): { start: string; end: string 
   return { start: monthStart(anchor), end: monthEnd(anchor) };
 }
 
-function periodLabel(anchor: string, period: Period): string {
-  if (period === "일간") return `${anchor} (${DOW_KO[weekdayOf(anchor)]})`;
+function periodLabel(anchor: string, period: Period, en = false): string {
+  if (period === "일간") return `${anchor} (${(en ? DOW_EN : DOW_KO)[weekdayOf(anchor)]})`;
   if (period === "주간") {
     const { start, end } = interval(anchor, "주간");
     return `${start} ~ ${end}`;
   }
-  if (period === "년간") return `${anchor.slice(0, 4)}년`;
   const [y, m] = anchor.split("-");
+  if (period === "년간") return en ? y : `${y}년`;
+  if (en) return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   return `${y}년 ${Number(m)}월`;
 }
 
@@ -139,6 +161,8 @@ export default function SettlementsManager({
   enableTeacherDetail?: boolean; // 강사별 모드에서 행 클릭 시 강사 정산 상세 모달 열기.
   showKrwEquivalent?: boolean; // false면 외화의 ≈₩ 환산·원화 합계 생략(센터 매니저 뷰).
 }) {
+  const en = useLang() === "en";
+  const lang = en ? "en" : "ko";
   const [grouping, setGrouping] = useState<Grouping>(initialGrouping);
   const [period, setPeriod] = useState<Period>("월간");
   const [anchor, setAnchor] = useState<string>(() => todayKst());
@@ -159,9 +183,9 @@ export default function SettlementsManager({
   const groups = useMemo(() => {
     // 센터별 모드에서만 매니저 표시(같은 센터=같은 매니저); 그 외 모드에선 미사용.
     const keyOf = (r: SettlementRow): { key: string; label: string; manager?: string | null; custom?: boolean } => {
-      if (grouping === "센터별") return { key: r.centerId ?? "__none__", label: r.centerName ?? "미지정 센터", manager: r.centerManager };
+      if (grouping === "센터별") return { key: r.centerId ?? "__none__", label: r.centerName ?? (en ? "Unassigned center" : "미지정 센터"), manager: r.centerManager };
       if (grouping === "강사별") return { key: r.teacherId, label: r.teacherName, custom: r.isCustomRate };
-      return { key: r.course, label: r.courseTitle };
+      return { key: r.course, label: en ? (getCourse(r.course)?.englishTitle ?? r.courseTitle) : r.courseTitle };
     };
     let list = aggregate(inRangeRows, keyOf, rates);
     const q = query.trim().toLowerCase();
@@ -193,17 +217,18 @@ export default function SettlementsManager({
 
   return (
     <div>
-      <h1 className="text-ink text-2xl font-extrabold">강사 정산</h1>
+      <h1 className="text-ink text-2xl font-extrabold">{en ? "Teacher Settlement" : "강사 정산"}</h1>
       <p className="text-muted-fg mt-1 text-sm">
-        실제 진행된 수업(강사 입장 + 피드백 작성)만 집계합니다. 지급 단가는 강사의 현재 소속 센터의 회당 단가를 기준으로 하되, 개별 단가가 설정된
-        강사는 그 단가를 우선 적용하며, 학생 출석 여부와는 무관합니다.
+        {en
+          ? "Only classes actually conducted (teacher joined + feedback written) are counted. The pay rate is based on the teacher's current center's per-session rate, unless an individual rate is set, and is independent of student attendance."
+          : "실제 진행된 수업(강사 입장 + 피드백 작성)만 집계합니다. 지급 단가는 강사의 현재 소속 센터의 회당 단가를 기준으로 하되, 개별 단가가 설정된 강사는 그 단가를 우선 적용하며, 학생 출석 여부와는 무관합니다."}
       </p>
 
       {/* 분류 + 기간 단위 토글 */}
       <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
         {groupings.length > 1 && (
           <div className="flex items-center gap-2">
-            <span className="text-muted-fg-faint text-xs font-semibold">분류</span>
+            <span className="text-muted-fg-faint text-xs font-semibold">{en ? "Group by" : "분류"}</span>
             <div className="flex gap-1.5">
               {groupings.map((g) => (
                 <ToggleChip
@@ -215,17 +240,17 @@ export default function SettlementsManager({
                     if (g !== "센터별") setDetailCenter(null);
                     if (g !== "강사별") setDetailTeacher(null);
                   }}
-                  label={g}
+                  label={GROUPING_LABEL[lang][g]}
                 />
               ))}
             </div>
           </div>
         )}
         <div className="flex items-center gap-2">
-          <span className="text-muted-fg-faint text-xs font-semibold">기간</span>
+          <span className="text-muted-fg-faint text-xs font-semibold">{en ? "Period" : "기간"}</span>
           <div className="flex gap-1.5">
             {PERIODS.map((p) => (
-              <ToggleChip key={p} active={period === p} onClick={() => setPeriod(p)} label={p} />
+              <ToggleChip key={p} active={period === p} onClick={() => setPeriod(p)} label={PERIOD_LABEL[lang][p]} />
             ))}
           </div>
         </div>
@@ -237,16 +262,16 @@ export default function SettlementsManager({
           type="button"
           onClick={() => setAnchor((a) => shiftAnchor(a, period, -1))}
           className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-8 items-center justify-center rounded-md border transition-colors"
-          aria-label="이전 기간"
+          aria-label={en ? "Previous period" : "이전 기간"}
         >
           <ChevronLeft className="size-4" aria-hidden />
         </button>
-        <span className="text-ink min-w-[9rem] text-center text-sm font-bold whitespace-nowrap">{periodLabel(anchor, period)}</span>
+        <span className="text-ink min-w-[9rem] text-center text-sm font-bold whitespace-nowrap">{periodLabel(anchor, period, en)}</span>
         <button
           type="button"
           onClick={() => setAnchor((a) => shiftAnchor(a, period, 1))}
           className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-8 items-center justify-center rounded-md border transition-colors"
-          aria-label="다음 기간"
+          aria-label={en ? "Next period" : "다음 기간"}
         >
           <ChevronRight className="size-4" aria-hidden />
         </button>
@@ -255,9 +280,9 @@ export default function SettlementsManager({
           onClick={() => setAnchor(todayKst())}
           className="border-rule text-muted-fg hover:text-ink rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
         >
-          오늘
+          {en ? "Today" : "오늘"}
         </button>
-        <span className="text-muted-fg-faint ml-auto text-xs">주 시작: 월요일</span>
+        <span className="text-muted-fg-faint ml-auto text-xs">{en ? "Week starts: Monday" : "주 시작: 월요일"}</span>
       </div>
 
       {/* 검색 */}
@@ -267,15 +292,16 @@ export default function SettlementsManager({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={`${grouping === "센터별" ? "센터" : grouping === "강사별" ? "강사" : "과정"} 검색...`}
+          placeholder={SEARCH_PLACEHOLDER[lang][grouping]}
           className="h-10 flex-1 bg-transparent text-sm outline-none"
         />
       </div>
 
       {totals.unpriced > 0 && (
         <p className="bg-brand/5 border-brand/30 text-brand mt-4 rounded-lg border px-3.5 py-2.5 text-sm">
-          단가 미설정 {totals.unpriced}건 — 센터가 미지정이거나 센터 회당 단가가 설정되지 않은 강사의 수업입니다. 수업 수에는 포함되나 금액 합계에서는
-          제외됩니다.
+          {en
+            ? `${totals.unpriced} session(s) have no rate — the teacher has no center or no per-session rate set. They are counted in the session total but excluded from the amount total.`
+            : `단가 미설정 ${totals.unpriced}건 — 센터가 미지정이거나 센터 회당 단가가 설정되지 않은 강사의 수업입니다. 수업 수에는 포함되나 금액 합계에서는 제외됩니다.`}
         </p>
       )}
 
@@ -284,16 +310,16 @@ export default function SettlementsManager({
         <table className="w-full min-w-[560px] border-collapse text-sm">
           <thead>
             <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
-              <SortHeader label={grouping.replace("별", "")} sortKey="name" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
-              <SortHeader label="진행 수업" sortKey="count" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-              <SortHeader label="지급 예정액" sortKey="amount" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
+              <SortHeader label={GROUPING_COL[lang][grouping]} sortKey="name" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
+              <SortHeader label={en ? "Sessions" : "진행 수업"} sortKey="count" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+              <SortHeader label={en ? "Payable" : "지급 예정액"} sortKey="amount" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
             </tr>
           </thead>
           <tbody>
             {groups.length === 0 ? (
               <tr>
                 <td colSpan={3} className="text-muted-fg px-6 py-12 text-center text-sm">
-                  이 기간에 진행된 수업이 없습니다.
+                  {en ? "No classes were conducted in this period." : "이 기간에 진행된 수업이 없습니다."}
                 </td>
               </tr>
             ) : (
@@ -328,15 +354,20 @@ export default function SettlementsManager({
                         {g.label}
                         {clickable && <ChevronRight className="text-muted-fg-faint size-4" aria-hidden />}
                         {g.custom && <CustomRateBadge />}
-                        {g.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">단가 미설정 {g.unpriced}</span>}
+                        {g.unpriced > 0 && (
+                          <span className="text-brand ml-1.5 text-xs font-medium">{en ? `No rate ${g.unpriced}` : `단가 미설정 ${g.unpriced}`}</span>
+                        )}
                       </span>
                       {grouping === "센터별" && (
-                        <span className="text-muted-fg-faint mt-0.5 block text-xs font-medium">매니저: {g.manager || "미지정"}</span>
+                        <span className="text-muted-fg-faint mt-0.5 block text-xs font-medium">
+                          {en ? "Manager: " : "매니저: "}
+                          {g.manager || (en ? "None" : "미지정")}
+                        </span>
                       )}
                     </td>
                     <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">
                       {g.count}
-                      <span className="text-muted-fg-faint">회</span>
+                      <span className="text-muted-fg-faint">{en ? "" : "회"}</span>
                     </td>
                     <td className="text-ink px-4 py-3.5 align-middle md:px-6">
                       <AmountCell currencyTotals={g.currencyTotals} rates={rates} showKrwEquivalent={showKrwEquivalent} />
@@ -349,10 +380,10 @@ export default function SettlementsManager({
           {groups.length > 0 && (
             <tfoot>
               <tr className="border-rule bg-surface border-t-2 font-bold">
-                <td className="text-ink px-4 py-3 align-middle md:px-6">합계</td>
+                <td className="text-ink px-4 py-3 align-middle md:px-6">{en ? "Total" : "합계"}</td>
                 <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">
                   {totals.count}
-                  <span className="text-muted-fg-faint font-medium">회</span>
+                  <span className="text-muted-fg-faint font-medium">{en ? "" : "회"}</span>
                 </td>
                 <td className="text-ink px-4 py-3 align-middle whitespace-nowrap md:px-6">
                   {showKrwEquivalent ? (
@@ -408,9 +439,9 @@ type CourseDetail = {
 };
 
 // 'YYYY-MM-DD' → 'M/D (요일)'.
-const fmtSessionDate = (d: string): string => {
+const fmtSessionDate = (d: string, en = false): string => {
   const [, m, day] = d.split("-").map(Number);
-  return `${m}/${day} (${DOW_KO[weekdayOf(d)]})`;
+  return `${m}/${day} (${(en ? DOW_EN : DOW_KO)[weekdayOf(d)]})`;
 };
 
 // 단건 세션 금액(원화 환산 병기, 단가 미설정이면 —).
@@ -461,16 +492,18 @@ function buildTeacherDetail(rows: SettlementRow[], teacherId: string, start: str
 
 // 강사 상세 렌더(과정 카드 + 세션 행 + 합계). 센터 상세 모달·강사 정산 모달 공용.
 function TeacherDetailBody({ detail, rates, showKrwEquivalent = true }: { detail: TeacherDetail; rates: Rates; showKrwEquivalent?: boolean }) {
-  if (detail.list.length === 0) return <p className="text-muted-fg py-10 text-center text-sm">이 기간에 진행된 수업이 없습니다.</p>;
+  const en = useLang() === "en";
+  if (detail.list.length === 0)
+    return <p className="text-muted-fg py-10 text-center text-sm">{en ? "No classes were conducted in this period." : "이 기간에 진행된 수업이 없습니다."}</p>;
   return (
     <div className="flex flex-col gap-3">
       {detail.list.map((c) => (
         <div key={c.course} className="border-rule overflow-hidden rounded-xl border">
           <div className="border-rule bg-surface flex items-center justify-between gap-2 border-b px-4 py-2.5">
             <span className="text-ink text-sm font-bold">
-              {c.courseTitle}
-              <span className="text-muted-fg-faint ml-1.5 font-medium">{c.count}회</span>
-              {c.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">단가 미설정 {c.unpriced}</span>}
+              {en ? (getCourse(c.course)?.englishTitle ?? c.courseTitle) : c.courseTitle}
+              <span className="text-muted-fg-faint ml-1.5 font-medium">{en ? c.count : `${c.count}회`}</span>
+              {c.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">{en ? `No rate ${c.unpriced}` : `단가 미설정 ${c.unpriced}`}</span>}
             </span>
             <AmountCell currencyTotals={c.currencyTotals} rates={rates} showKrwEquivalent={showKrwEquivalent} />
           </div>
@@ -479,8 +512,8 @@ function TeacherDetailBody({ detail, rates, showKrwEquivalent = true }: { detail
               <li key={s.id} className="border-rule flex items-center justify-between gap-3 border-b px-4 py-2 last:border-b-0">
                 <span className="min-w-0">
                   <span className="text-ink block text-sm">
-                    {fmtSessionDate(s.sessionDate)} {fmtTime(s.startMin)}
-                    {s.isMakeup && <span className="text-accent-blue-ink ml-1.5 text-xs font-medium">·보강</span>}
+                    {fmtSessionDate(s.sessionDate, en)} {fmtTime(s.startMin)}
+                    {s.isMakeup && <span className="text-accent-blue-ink ml-1.5 text-xs font-medium">{en ? " ·Makeup" : "·보강"}</span>}
                   </span>
                   {(s.studentName || s.studentEnglishName) && (
                     <span className="text-muted-fg-faint mt-0.5 block truncate text-xs">
@@ -497,7 +530,7 @@ function TeacherDetailBody({ detail, rates, showKrwEquivalent = true }: { detail
       ))}
       <div className="border-rule bg-surface flex items-center justify-between rounded-xl border px-4 py-3 font-bold">
         <span className="text-ink text-sm">
-          합계 <span className="text-muted-fg-faint font-medium">{detail.tot.count}회</span>
+          {en ? "Total" : "합계"} <span className="text-muted-fg-faint font-medium">{en ? detail.tot.count : `${detail.tot.count}회`}</span>
         </span>
         {showKrwEquivalent ? (
           <span className="text-ink text-sm whitespace-nowrap">≈ {formatPrice(detail.tot.krwTotal, "KRW")}</span>
@@ -527,6 +560,8 @@ function TeacherSettlementModal({
   showKrwEquivalent?: boolean;
   onClose: () => void;
 }) {
+  const en = useLang() === "en";
+  const lang = en ? "en" : "ko";
   const [period, setPeriod] = useState<Period>(initialPeriod === "일간" ? "월간" : initialPeriod);
   const [anchor, setAnchor] = useState<string>(initialAnchor);
 
@@ -552,7 +587,7 @@ function TeacherSettlementModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="강사 정산 상세"
+        aria-label={en ? "Teacher settlement detail" : "강사 정산 상세"}
         className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
       >
         <div className="border-rule flex items-start justify-between border-b px-6 py-4">
@@ -560,7 +595,7 @@ function TeacherSettlementModal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="닫기"
+            aria-label={en ? "Close" : "닫기"}
             className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             <X className="size-5" />
@@ -570,23 +605,23 @@ function TeacherSettlementModal({
         <div className="flex flex-col gap-4 overflow-auto px-6 py-5">
           <div className="flex flex-wrap items-center gap-2">
             {MODAL_PERIODS.map((p) => (
-              <ToggleChip key={p} active={period === p} onClick={() => setPeriod(p)} label={p} />
+              <ToggleChip key={p} active={period === p} onClick={() => setPeriod(p)} label={PERIOD_LABEL[lang][p]} />
             ))}
             <div className="ml-auto flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setAnchor((a) => shiftAnchor(a, period, -1))}
                 className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-7 items-center justify-center rounded-md border transition-colors"
-                aria-label="이전 기간"
+                aria-label={en ? "Previous period" : "이전 기간"}
               >
                 <ChevronLeft className="size-4" aria-hidden />
               </button>
-              <span className="text-ink min-w-[7.5rem] text-center text-xs font-bold whitespace-nowrap">{periodLabel(anchor, period)}</span>
+              <span className="text-ink min-w-[7.5rem] text-center text-xs font-bold whitespace-nowrap">{periodLabel(anchor, period, en)}</span>
               <button
                 type="button"
                 onClick={() => setAnchor((a) => shiftAnchor(a, period, 1))}
                 className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-7 items-center justify-center rounded-md border transition-colors"
-                aria-label="다음 기간"
+                aria-label={en ? "Next period" : "다음 기간"}
               >
                 <ChevronRight className="size-4" aria-hidden />
               </button>
@@ -595,7 +630,7 @@ function TeacherSettlementModal({
                 onClick={() => setAnchor(todayKst())}
                 className="border-rule text-muted-fg hover:text-ink rounded-md border px-2.5 py-1 text-xs font-medium transition-colors"
               >
-                오늘
+                {en ? "Today" : "오늘"}
               </button>
             </div>
           </div>
@@ -860,7 +895,12 @@ function AmountCell({
 
 // 강사 개별 단가(센터 단가 오버라이드) 적용 표시 배지.
 function CustomRateBadge() {
-  return <span className="bg-accent-blue-soft text-accent-blue-ink ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold">개별 단가</span>;
+  const en = useLang() === "en";
+  return (
+    <span className="bg-accent-blue-soft text-accent-blue-ink ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold">
+      {en ? "Custom rate" : "개별 단가"}
+    </span>
+  );
 }
 
 function ToggleChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
