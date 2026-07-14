@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { ArrowDown, ArrowLeft, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice, type Rates } from "@/data/currencies";
 import { fmtTime } from "@/lib/availability";
 import { getCourse } from "@/data/courses";
 import { useLang } from "@/components/LangProvider";
+import SettlementFinalizeModal, { type LiveBase } from "@/components/admin/SettlementFinalizeModal";
 
 // 서버 page가 conducted 수업 1건씩 enriched row로 전달(단가=강사 현재 소속 센터).
 export type SettlementRow = {
@@ -29,6 +30,25 @@ export type SettlementRow = {
   krwPerSession: number | null; // pricePerSession을 수업 진행일(session_date) 기준 환율로 원화 환산(로더 계산). KRW=그대로, 미설정/환산불가=null
   isCustomRate: boolean; // 강사 개별 단가(센터 단가 오버라이드) 적용 여부
   isTest?: boolean; // 테스트 수강신청(enrollments.is_test)의 수업 여부 — 매출이익 대시보드 필터용(정산 화면은 미사용)
+};
+
+// 월간 정산 확정 원장(teacher_settlements) — page가 teacherId|YYYY-MM 키로 전달.
+export type SettlementAdjustment = { label: string; amount: number; currency: string; krw: number };
+export type SettlementRecord = {
+  id: string;
+  teacherId: string;
+  periodMonth: string; // 'YYYY-MM'
+  sessionsCount: number;
+  currency: string | null; // 지급 통화(native 기본액 표시용)
+  baseAmount: number | null; // 지급 통화 native 기본 정산액
+  baseKrw: number; // 기본 정산액 원화 환산(확정 시점 환율)
+  baseNative: Record<string, number>; // 통화→금액
+  adjustments: SettlementAdjustment[];
+  totalKrw: number; // 실지급액(원화)
+  status: "확정" | "지급완료";
+  note: string | null;
+  paidAt: string | null; // 송금일 'YYYY-MM-DD'
+  confirmedAt: string;
 };
 
 // ── TZ 비종속 날짜 헬퍼(makeup.ts/booking.ts는 server-only라 클라에서 재사용 불가 → 인라인) ──
@@ -159,6 +179,8 @@ export default function SettlementsManager({
   groupings = GROUPINGS,
   enableTeacherDetail = false,
   showKrwEquivalent = true,
+  enableFinalize = false,
+  settlementRecords = {},
 }: {
   rows: SettlementRow[];
   rates: Rates;
@@ -166,6 +188,8 @@ export default function SettlementsManager({
   groupings?: Grouping[]; // 노출할 분류 칩(기본 3분류). 1개면 분류 토글 숨김.
   enableTeacherDetail?: boolean; // 강사별 모드에서 행 클릭 시 강사 정산 상세 모달 열기.
   showKrwEquivalent?: boolean; // false면 외화의 ≈₩ 환산·원화 합계 생략(센터 매니저 뷰).
+  enableFinalize?: boolean; // admin 전용: 강사별+월간+마감월에서 월간 정산 확정 열 노출.
+  settlementRecords?: Record<string, SettlementRecord>; // 키: `${teacherId}|${YYYY-MM}`
 }) {
   const en = useLang() === "en";
   const lang = en ? "en" : "ko";
@@ -178,6 +202,30 @@ export default function SettlementsManager({
   const [detailCenter, setDetailCenter] = useState<{ key: string; label: string; manager: string | null } | null>(null);
   // 강사별 상세 모달 대상(enableTeacherDetail + 강사별 모드에서만).
   const [detailTeacher, setDetailTeacher] = useState<{ id: string; name: string } | null>(null);
+  // 월간 정산 확정 모달 대상.
+  const [finalizeTarget, setFinalizeTarget] = useState<{ id: string; name: string } | null>(null);
+
+  // 마감 월(월말 < 오늘 KST)인지 — 확정은 지난 달만 허용.
+  const periodMonth = anchor.slice(0, 7);
+  const monthClosed = period === "월간" && interval(anchor, "월간").end < todayKst();
+  const showFinalizeCol = enableFinalize && grouping === "강사별" && monthClosed;
+  // 확정 모달 라이브 base(선택 강사·현재 월 rows에서 파생).
+  const finalizeLiveBase: LiveBase | null = useMemo(() => {
+    if (!finalizeTarget) return null;
+    const { start: ms, end: me } = interval(anchor, "월간");
+    const mine = rows.filter((r) => r.teacherId === finalizeTarget.id && r.sessionDate >= ms && r.sessionDate <= me);
+    const baseNative: Record<string, number> = {};
+    let baseKrw = 0;
+    let currency: string | null = null;
+    for (const r of mine) {
+      if (r.pricePerSession != null && r.currency) {
+        baseNative[r.currency] = (baseNative[r.currency] ?? 0) + r.pricePerSession;
+        baseKrw += r.krwPerSession ?? 0;
+      }
+    }
+    currency = Object.keys(baseNative).sort((a, b) => (baseNative[b] ?? 0) - (baseNative[a] ?? 0))[0] ?? null;
+    return { sessionsCount: mine.length, baseNative, baseKrw: Math.round(baseKrw), currency };
+  }, [finalizeTarget, rows, anchor]);
 
   const toggleSort = (key: SortKey) =>
     setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
@@ -321,12 +369,13 @@ export default function SettlementsManager({
               <SortHeader label={GROUPING_COL[lang][grouping]} sortKey="name" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
               <SortHeader label={en ? "Sessions" : "진행 수업"} sortKey="count" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <SortHeader label={en ? "Payable" : "지급 예정액"} sortKey="amount" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
+              {showFinalizeCol && <th className="px-4 py-2.5 md:px-6">월 정산</th>}
             </tr>
           </thead>
           <tbody>
             {groups.length === 0 ? (
               <tr>
-                <td colSpan={3} className="text-muted-fg px-6 py-12 text-center text-sm">
+                <td colSpan={showFinalizeCol ? 4 : 3} className="text-muted-fg px-6 py-12 text-center text-sm">
                   {en ? "No classes were conducted in this period." : "이 기간에 진행된 수업이 없습니다."}
                 </td>
               </tr>
@@ -380,6 +429,17 @@ export default function SettlementsManager({
                     <td className="text-ink px-4 py-3.5 align-middle md:px-6">
                       <AmountCell currencyTotals={g.currencyTotals} currencyKrwTotals={g.currencyKrwTotals} showKrwEquivalent={showKrwEquivalent} />
                     </td>
+                    {showFinalizeCol && (
+                      <td className="px-4 py-3.5 align-middle md:px-6">
+                        <SettlementStatusChip
+                          record={settlementRecords[`${g.key}|${periodMonth}`]}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFinalizeTarget({ id: g.key, name: g.label });
+                          }}
+                        />
+                      </td>
+                    )}
                   </tr>
                 );
               })
@@ -400,11 +460,24 @@ export default function SettlementsManager({
                     <AmountCell currencyTotals={totals.currencyTotals} currencyKrwTotals={totals.currencyKrwTotals} showKrwEquivalent={false} />
                   )}
                 </td>
+                {showFinalizeCol && <td className="md:px-6" />}
               </tr>
             </tfoot>
           )}
         </table>
       </div>
+
+      {finalizeTarget && finalizeLiveBase && (
+        <SettlementFinalizeModal
+          teacher={finalizeTarget}
+          periodMonth={periodMonth}
+          monthLabel={periodLabel(anchor, "월간")}
+          record={settlementRecords[`${finalizeTarget.id}|${periodMonth}`] ?? null}
+          liveBase={finalizeLiveBase}
+          rates={rates}
+          onClose={() => setFinalizeTarget(null)}
+        />
+      )}
 
       {detailCenter && (
         <SettlementDetailModal
@@ -958,6 +1031,23 @@ function CustomRateBadge() {
     <span className="bg-accent-blue-soft text-accent-blue-ink ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold">
       {en ? "Custom rate" : "개별 단가"}
     </span>
+  );
+}
+
+// 월간 정산 상태 칩(클릭 시 확정 모달). 미확정=회색·확정=파랑·지급완료=초록.
+function SettlementStatusChip({ record, onClick }: { record?: SettlementRecord; onClick: (e: ReactMouseEvent) => void }) {
+  const status = record?.status;
+  const style =
+    status === "지급완료"
+      ? "bg-[#E6F4EA] text-[#1E7E34]"
+      : status === "확정"
+        ? "bg-accent-blue-soft text-accent-blue-ink"
+        : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white border";
+  return (
+    <button type="button" onClick={onClick} className={cn("rounded-full px-2.5 py-1 text-xs font-semibold transition-colors", style)}>
+      {status ?? "미확정"}
+      {record && <span className="ml-1 font-bold">{formatPrice(record.totalKrw, "KRW")}</span>}
+    </button>
   );
 }
 

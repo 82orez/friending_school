@@ -649,6 +649,66 @@ export type Database = {
         }
         Relationships: []
       }
+      teacher_settlements: {
+        Row: {
+          adjustments: Json
+          base_amount: number | null
+          base_krw: number
+          base_native: Json
+          confirmed_at: string
+          confirmed_by: string | null
+          created_at: string
+          currency: string | null
+          id: string
+          note: string | null
+          paid_at: string | null
+          period_month: string
+          sessions_count: number
+          status: string
+          teacher_id: string
+          total_krw: number
+          updated_at: string
+        }
+        Insert: {
+          adjustments?: Json
+          base_amount?: number | null
+          base_krw?: number
+          base_native?: Json
+          confirmed_at?: string
+          confirmed_by?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          note?: string | null
+          paid_at?: string | null
+          period_month: string
+          sessions_count?: number
+          status?: string
+          teacher_id: string
+          total_krw?: number
+          updated_at?: string
+        }
+        Update: {
+          adjustments?: Json
+          base_amount?: number | null
+          base_krw?: number
+          base_native?: Json
+          confirmed_at?: string
+          confirmed_by?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          note?: string | null
+          paid_at?: string | null
+          period_month?: string
+          sessions_count?: number
+          status?: string
+          teacher_id?: string
+          total_krw?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       youtube_videos: {
         Row: {
           created_at: string
