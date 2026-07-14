@@ -50,6 +50,7 @@ export type TeacherClassItem = {
   enrollmentId: string;
   course: string;
   courseTitle: string;
+  courseEnglishTitle?: string | null; // 커스텀 과정 영어명 폴백(center 로더만 채움)
   studentName: string;
   studentEnglishName: string | null;
   status: string; // 승인 | 결제대기 | 결제완료

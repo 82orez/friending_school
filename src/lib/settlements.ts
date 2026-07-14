@@ -30,7 +30,7 @@ export async function loadSettlementRows(
   let clsQuery = admin
     .from("classes")
     .select(
-      "id, teacher_id, teacher_name, student_name, student_english_name, course, course_title, session_date, start_min, is_makeup, conducted_at, conducted_override",
+      "id, teacher_id, teacher_name, student_name, student_english_name, course, course_title, course_english_title, session_date, start_min, is_makeup, conducted_at, conducted_override",
     )
     .or("conducted_override.eq.true,and(conducted_override.is.null,conducted_at.not.is.null)")
     .neq("status", "취소");
@@ -44,6 +44,7 @@ export async function loadSettlementRows(
     student_english_name: string | null;
     course: string;
     course_title: string;
+    course_english_title: string | null;
     session_date: string;
     start_min: number;
     is_makeup: boolean;
@@ -104,6 +105,7 @@ export async function loadSettlementRows(
       centerManager: center?.manager ?? null,
       course: c.course,
       courseTitle: c.course_title,
+      courseEnglishTitle: c.course_english_title,
       sessionDate: c.session_date,
       startMin: c.start_min,
       studentName: c.student_name,

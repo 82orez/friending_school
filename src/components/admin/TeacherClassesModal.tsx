@@ -108,7 +108,9 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
                 <li key={item.enrollmentId} className="border-rule rounded-xl border bg-white p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-ink truncate font-bold">{en ? (getCourse(item.course)?.englishTitle ?? item.courseTitle) : item.courseTitle}</p>
+                      <p className="text-ink truncate font-bold">
+                        {en ? (getCourse(item.course)?.englishTitle ?? item.courseEnglishTitle ?? item.courseTitle) : item.courseTitle}
+                      </p>
                       <p className="text-muted-fg mt-0.5 truncate text-sm">{studentLabel(item, en)}</p>
                     </div>
                     <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[item.status] ?? "bg-surface text-muted-fg")}>

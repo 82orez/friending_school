@@ -54,7 +54,7 @@ export async function loadCenterTeachers(admin: ReturnType<typeof createAdminCli
   const classesByTeacher = new Map<string, TeacherClassItem[]>();
   const { data: enrollRows } = await admin
     .from("enrollments")
-    .select("id, teacher_id, course, course_title, slots, status, start_date, total_sessions, student_name, student_english_name")
+    .select("id, teacher_id, course, course_title, course_english_title, slots, status, start_date, total_sessions, student_name, student_english_name")
     .in("teacher_id", teacherIds)
     .in("status", ["승인", "결제대기", "결제완료"]);
   const ended = await loadEndedEnrollmentIds(admin, teacherIds);
@@ -95,6 +95,7 @@ export async function loadCenterTeachers(admin: ReturnType<typeof createAdminCli
         enrollmentId: r.id,
         course: r.course,
         courseTitle: r.course_title,
+        courseEnglishTitle: r.course_english_title,
         studentName: r.student_name,
         studentEnglishName: r.student_english_name,
         status: r.status,
@@ -156,7 +157,7 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
   const { data: clsRows } = await admin
     .from("classes")
     .select(
-      "id, enrollment_id, teacher_id, session_no, course, course_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override, teacher_reassigned_at, feedback, feedback_at",
+      "id, enrollment_id, teacher_id, session_no, course, course_title, course_english_title, teacher_name, student_name, student_english_name, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override, teacher_reassigned_at, feedback, feedback_at",
     )
     .in("teacher_id", teacherIds)
     .neq("status", "취소")
@@ -168,6 +169,7 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
     session_no: number;
     course: string;
     course_title: string;
+    course_english_title: string | null;
     teacher_name: string | null;
     student_name: string | null;
     student_english_name: string | null;
@@ -219,6 +221,7 @@ export async function loadCenterSessions(admin: ReturnType<typeof createAdminCli
     sessionNo: r.session_no,
     course: r.course,
     courseTitle: r.course_title,
+    courseEnglishTitle: r.course_english_title,
     weekdays: weekdaysByEnrollment.get(r.enrollment_id) ?? "",
     teacherName: r.teacher_name,
     centerName: centerNameByTeacher.get(r.teacher_id) ?? null,

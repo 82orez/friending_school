@@ -18,6 +18,7 @@ export type SettlementRow = {
   centerManager: string | null; // 센터 담당 매니저 이름(선택), 센터별 정산 표시용
   course: string;
   courseTitle: string;
+  courseEnglishTitle: string | null; // 커스텀 과정 영어명(등록 과정은 null → 레지스트리 englishTitle 사용)
   sessionDate: string; // 'YYYY-MM-DD' (KST)
   startMin: number; // 수업 시작 분(자정 기준)
   studentName: string | null;
@@ -185,7 +186,7 @@ export default function SettlementsManager({
     const keyOf = (r: SettlementRow): { key: string; label: string; manager?: string | null; custom?: boolean } => {
       if (grouping === "센터별") return { key: r.centerId ?? "__none__", label: r.centerName ?? (en ? "Unassigned center" : "미지정 센터"), manager: r.centerManager };
       if (grouping === "강사별") return { key: r.teacherId, label: r.teacherName, custom: r.isCustomRate };
-      return { key: r.course, label: en ? (getCourse(r.course)?.englishTitle ?? r.courseTitle) : r.courseTitle };
+      return { key: r.course, label: en ? (getCourse(r.course)?.englishTitle ?? r.courseEnglishTitle ?? r.courseTitle) : r.courseTitle };
     };
     let list = aggregate(inRangeRows, keyOf, rates);
     const q = query.trim().toLowerCase();
@@ -431,6 +432,7 @@ const MODAL_PERIODS: Period[] = ["주간", "월간", "년간"];
 type CourseDetail = {
   course: string;
   courseTitle: string;
+  courseEnglishTitle: string | null;
   count: number;
   currencyTotals: Map<string, number>;
   unpriced: number;
@@ -465,7 +467,7 @@ function buildTeacherDetail(rows: SettlementRow[], teacherId: string, start: str
   for (const r of teacherRows) {
     let g = map.get(r.course);
     if (!g) {
-      g = { course: r.course, courseTitle: r.courseTitle, count: 0, currencyTotals: new Map(), unpriced: 0, krwTotal: 0, sessions: [] };
+      g = { course: r.course, courseTitle: r.courseTitle, courseEnglishTitle: r.courseEnglishTitle, count: 0, currencyTotals: new Map(), unpriced: 0, krwTotal: 0, sessions: [] };
       map.set(r.course, g);
     }
     g.count += 1;
@@ -501,7 +503,7 @@ function TeacherDetailBody({ detail, rates, showKrwEquivalent = true }: { detail
         <div key={c.course} className="border-rule overflow-hidden rounded-xl border">
           <div className="border-rule bg-surface flex items-center justify-between gap-2 border-b px-4 py-2.5">
             <span className="text-ink text-sm font-bold">
-              {en ? (getCourse(c.course)?.englishTitle ?? c.courseTitle) : c.courseTitle}
+              {en ? (getCourse(c.course)?.englishTitle ?? c.courseEnglishTitle ?? c.courseTitle) : c.courseTitle}
               <span className="text-muted-fg-faint ml-1.5 font-medium">{en ? c.count : `${c.count}회`}</span>
               {c.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">{en ? `No rate ${c.unpriced}` : `단가 미설정 ${c.unpriced}`}</span>}
             </span>

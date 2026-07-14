@@ -21,6 +21,7 @@ export type AdminSession = {
   sessionNo: number; // 회차 번호(대체 피커 표시용)
   course: string; // 과정 슬러그(영어 과정명 해석용, getCourse().englishTitle)
   courseTitle: string;
+  courseEnglishTitle?: string | null; // 커스텀 과정 영어명 폴백(등록 과정은 레지스트리, center 로더만 채움)
   weekdays: string; // 과정 주간 요일 요약(예: "월/수/금") — 정규 수업 기준.
   teacherName: string | null;
   centerName: string | null; // 강사 현재 소속 센터명(역산, 미지정 강사는 null)
@@ -320,7 +321,7 @@ function SlotModal({
                     ))}
                 </div>
                 <span className="text-ink truncate text-sm font-semibold">
-                  {en ? (getCourse(s.course)?.englishTitle ?? s.courseTitle) : s.courseTitle}
+                  {en ? (getCourse(s.course)?.englishTitle ?? s.courseEnglishTitle ?? s.courseTitle) : s.courseTitle}
                   {s.weekdays && <span className="text-muted-fg-faint font-normal"> · {en ? weekdaysEn(s.weekdays) : s.weekdays}</span>}
                 </span>
                 <span className="text-muted-fg truncate text-xs">
