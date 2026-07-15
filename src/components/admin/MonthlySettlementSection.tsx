@@ -190,10 +190,10 @@ export default function MonthlySettlementSection({
                         className={cn(
                           "rounded-full px-2.5 py-1 text-xs font-semibold transition-colors",
                           rec?.status === "지급완료"
-                            ? "bg-[#E6F4EA] text-[#1E7E34]"
+                            ? "bg-[#1E7E34] text-white hover:bg-[#1a6f2e]"
                             : rec?.status === "확정"
-                              ? "bg-accent-blue-soft text-accent-blue-ink"
-                              : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink border bg-white",
+                              ? "bg-[#E6F4EA] text-[#1E7E34] hover:bg-[#d8eecd]"
+                              : "bg-brand/10 text-brand hover:bg-brand/15 border-brand/30 border",
                         )}
                       >
                         {rec?.status ?? "미확정"}
