@@ -53,17 +53,21 @@ export default function MonthlySettlementSection({
   rows,
   rates,
   records,
+  allowEarly = false,
 }: {
   centers: Center[];
   rows: SettlementRow[];
   rates: Rates;
   records: Record<string, CenterSettlementRecord>;
+  allowEarly?: boolean; // 테스트용: 마감 전(당월) 확정 허용(서버 env 기반)
 }) {
   const [anchorMonth, setAnchorMonth] = useState<string>(() => prevMonth(thisMonth())); // 기본 = 지난 달
   const [finalizeCenter, setFinalizeCenter] = useState<{ id: string; name: string } | null>(null);
 
   const { start, end } = monthBounds(anchorMonth);
-  const monthClosed = end < todayKst();
+  const rawClosed = end < todayKst(); // 실제 마감 여부
+  // 유효 게이트 — 마감월이거나 테스트 플래그면 확정 가능.
+  const monthClosed = rawClosed || allowEarly;
 
   // 그 달 rows를 센터별로 집계 → 센터 목록(미지정 센터 제외).
   const centerRows = useMemo<CenterRow[]>(() => {
@@ -139,7 +143,12 @@ export default function MonthlySettlementSection({
         >
           지난 달
         </button>
-        {!monthClosed && <span className="text-brand ml-auto text-xs font-medium">아직 마감 전인 달입니다(확정 불가).</span>}
+        {!rawClosed &&
+          (allowEarly ? (
+            <span className="text-accent-blue-ink ml-auto text-xs font-medium">테스트 모드: 마감 전이지만 확정 가능</span>
+          ) : (
+            <span className="text-brand ml-auto text-xs font-medium">아직 마감 전인 달입니다(확정 불가).</span>
+          ))}
       </div>
 
       {/* 센터별 목록 */}

@@ -55,10 +55,13 @@ export default async function AdminSettlementsPage() {
     };
   }
 
+  // 테스트용: 마감 전(당월) 확정 허용 플래그(서버 전용 env). 서버 액션도 동일 변수로 가드.
+  const allowEarly = process.env.ALLOW_EARLY_SETTLEMENT_CONFIRM === "true";
+
   return (
     <>
       <SettlementsManager rows={rows} rates={rates} />
-      <MonthlySettlementSection centers={centers} rows={rows} rates={rates} records={records} />
+      <MonthlySettlementSection centers={centers} rows={rows} rates={rates} records={records} allowEarly={allowEarly} />
     </>
   );
 }

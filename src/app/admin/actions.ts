@@ -301,7 +301,9 @@ export async function confirmCenterSettlement(
   if (!adminId) return { ok: false, error: "권한이 없습니다." };
   if (!centerId || !PERIOD_MONTH_RE.test(periodMonth)) return { ok: false, error: "잘못된 요청입니다." };
   const { end } = monthBounds(periodMonth);
-  if (!(end < todayKst())) return { ok: false, error: "마감된 지난 달만 확정할 수 있습니다." };
+  // 테스트용: ALLOW_EARLY_SETTLEMENT_CONFIRM=true면 마감 전(당월) 확정 허용(기본 off → 운영은 마감 후만).
+  const allowEarly = process.env.ALLOW_EARLY_SETTLEMENT_CONFIRM === "true";
+  if (!allowEarly && !(end < todayKst())) return { ok: false, error: "마감된 지난 달만 확정할 수 있습니다." };
 
   const admin = createAdminClient();
   const { data: center } = await admin.from("centers").select("name").eq("id", centerId).maybeSingle();
