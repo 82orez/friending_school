@@ -48,7 +48,39 @@ const settlementKrw = (s: SettlementRow): number => s.krwPerSession ?? 0;
 type TrendBucket = { key: string; revenue: number; settlement: number; tooltip: string; xLabel: string; highlight?: boolean };
 type ProfitGroup = { key: string; label: string; revenueKrw: number; settlementKrw: number; unpriced: number };
 
-export default function ProfitManager({ revenueRows, settlementRows, rates }: { revenueRows: RevenueRow[]; settlementRows: SettlementRow[]; rates: Rates }) {
+export default function ProfitManager({
+  revenueRows,
+  settlementRows,
+  rates,
+  settlementRecords = {},
+}: {
+  revenueRows: RevenueRow[];
+  settlementRows: SettlementRow[];
+  rates: Rates;
+  settlementRecords?: Record<string, { totalKrw: number }>; // 키 `centerId|YYYY-MM` — 확정 실지급액
+}) {
+  // 정산 블렌딩: (센터,월) 버킷별로 확정 레코드 있으면 실지급액(total_krw), 없으면 추정치(Σ krwPerSession) 합산.
+  // confirmed = 활동 버킷이 모두 확정 && 센터 미지정 수업 없음. hasActivity = 정산 활동 존재.
+  const settlementAgg = (rows: SettlementRow[]): { krw: number; confirmed: boolean; hasActivity: boolean } => {
+    const byBucket = new Map<string, number>(); // `centerId|month` (또는 `__none__|month`) → 추정치 합
+    for (const s of rows) {
+      const month = s.sessionDate.slice(0, 7);
+      const key = `${s.centerId ?? "__none__"}|${month}`;
+      byBucket.set(key, (byBucket.get(key) ?? 0) + settlementKrw(s));
+    }
+    let krw = 0;
+    let confirmed = true;
+    for (const [key, est] of Array.from(byBucket)) {
+      const rec = key.startsWith("__none__|") ? undefined : settlementRecords[key];
+      if (rec) {
+        krw += rec.totalKrw;
+      } else {
+        krw += est;
+        confirmed = false; // 미확정 또는 센터 미지정
+      }
+    }
+    return { krw, confirmed, hasActivity: byBucket.size > 0 };
+  };
   const [period, setPeriod] = useState<Period>("월간");
   const [anchor, setAnchor] = useState<string>(() => todayKst());
   const [grouping, setGrouping] = useState<Grouping>("센터별");
@@ -69,34 +101,44 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
   const kpi = useMemo(() => {
     let revenue = 0;
     for (const r of inRev) revenue += revenueNetKrw(r);
-    let settlement = 0;
     let unpriced = 0;
-    for (const s of inSet) {
-      settlement += settlementKrw(s);
-      if (s.pricePerSession == null || !s.currency) unpriced += 1;
-    }
+    for (const s of inSet) if (s.pricePerSession == null || !s.currency) unpriced += 1;
+    const agg = settlementAgg(inSet); // 확정 우선 블렌딩
+    const settlement = agg.krw;
     const profit = revenue - settlement;
-    return { revenue, settlement, profit, margin: revenue > 0 ? (profit / revenue) * 100 : null, unpriced };
-  }, [inRev, inSet, rates]);
+    return {
+      revenue,
+      settlement,
+      profit,
+      margin: revenue > 0 ? (profit / revenue) * 100 : null,
+      unpriced,
+      settled: agg.hasActivity && agg.confirmed,
+      hasSettlement: agg.hasActivity,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inRev, inSet, rates, settlementRecords]);
 
   // 추이 차트 버킷(매출·정산 2계열) — 월간=앵커 연도 12개월, 년간=연도 범위(선택 구간 강조).
   const trend = useMemo<TrendBucket[]>(() => {
     if (period === "년간") {
       const rev = new Map<number, number>();
-      const set = new Map<number, number>();
+      const setRows = new Map<number, SettlementRow[]>(); // 연도별 정산 rows(블렌딩용)
       for (const r of baseRev) rev.set(Number(r.kstDate.slice(0, 4)), (rev.get(Number(r.kstDate.slice(0, 4))) ?? 0) + revenueNetKrw(r));
-      for (const s of baseSet) set.set(Number(s.sessionDate.slice(0, 4)), (set.get(Number(s.sessionDate.slice(0, 4))) ?? 0) + settlementKrw(s));
+      for (const s of baseSet) {
+        const yr = Number(s.sessionDate.slice(0, 4));
+        (setRows.get(yr) ?? setRows.set(yr, []).get(yr)!).push(s);
+      }
       const anchorY = Number(anchor.slice(0, 4));
       let minY = anchorY;
       let maxY = anchorY;
-      for (const yr of [...Array.from(rev.keys()), ...Array.from(set.keys())]) {
+      for (const yr of [...Array.from(rev.keys()), ...Array.from(setRows.keys())]) {
         if (yr < minY) minY = yr;
         if (yr > maxY) maxY = yr;
       }
       const out: TrendBucket[] = [];
       for (let yr = minY; yr <= maxY; yr++) {
         const revenue = rev.get(yr) ?? 0;
-        const settlement = set.get(yr) ?? 0;
+        const settlement = settlementAgg(setRows.get(yr) ?? []).krw;
         out.push({ key: String(yr), revenue, settlement, tooltip: tooltipOf(`${yr}년`, revenue, settlement), xLabel: `${yr}`, highlight: yr === anchorY });
       }
       return out;
@@ -104,17 +146,22 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
     // 월간: 앵커 연도 12개월(선택 월 강조).
     const y = anchor.slice(0, 4);
     const rev = new Map<number, number>();
-    const set = new Map<number, number>();
+    const setRows = new Map<number, SettlementRow[]>(); // 월별 정산 rows(블렌딩용)
     for (const r of baseRev) if (r.kstDate.slice(0, 4) === y) rev.set(Number(r.kstDate.slice(5, 7)), (rev.get(Number(r.kstDate.slice(5, 7))) ?? 0) + revenueNetKrw(r));
-    for (const s of baseSet) if (s.sessionDate.slice(0, 4) === y) set.set(Number(s.sessionDate.slice(5, 7)), (set.get(Number(s.sessionDate.slice(5, 7))) ?? 0) + settlementKrw(s));
+    for (const s of baseSet)
+      if (s.sessionDate.slice(0, 4) === y) {
+        const mo = Number(s.sessionDate.slice(5, 7));
+        (setRows.get(mo) ?? setRows.set(mo, []).get(mo)!).push(s);
+      }
     const selMonth = Number(anchor.slice(5, 7));
     return Array.from({ length: 12 }, (_, i) => {
       const m = i + 1;
       const revenue = rev.get(m) ?? 0;
-      const settlement = set.get(m) ?? 0;
+      const settlement = settlementAgg(setRows.get(m) ?? []).krw;
       return { key: `${y}-${m}`, revenue, settlement, tooltip: tooltipOf(`${y}년 ${m}월`, revenue, settlement), xLabel: `${m}월`, highlight: m === selMonth };
     });
-  }, [inRev, inSet, baseRev, baseSet, start, end, rates, period, anchor]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inRev, inSet, baseRev, baseSet, start, end, rates, period, anchor, settlementRecords]);
 
   // 분류별 매출이익(매출·정산을 각 key로 집계 후 키 합집합 병합).
   const groups = useMemo(() => {
@@ -164,13 +211,21 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
     return list;
   }, [inRev, inSet, grouping, sort, rates]);
 
+  // 분류 표 합계 — 표 행은 추정 원가라 합계도 추정 기준(상단 KPI 정산=확정 실지급액과 다를 수 있음).
+  const tableTotals = useMemo(() => {
+    const revenue = groups.reduce((s, g) => s + g.revenueKrw, 0);
+    const settlement = groups.reduce((s, g) => s + g.settlementKrw, 0);
+    const profit = revenue - settlement;
+    return { revenue, settlement, profit, margin: revenue > 0 ? (profit / revenue) * 100 : null };
+  }, [groups]);
+
   const groupColLabel = grouping.replace("별", "");
 
   return (
     <div>
       <h1 className="text-ink text-2xl font-extrabold">매출이익</h1>
       <p className="text-muted-fg mt-1 text-sm">
-        매출이익 = 매출(순매출) − 정산(강사 지급 예정액). 매출은 결제일, 정산은 수업 진행일 기준이라 기간 이익은 운영 참고용이며 실패·테스트 결제는 제외됩니다.
+        매출이익 = 매출(순매출) − 정산. 매출은 결제일, 정산은 수업 진행일 기준이라 기간 이익은 운영 참고용이며 실패·테스트 결제는 제외됩니다. 정산이 확정되기 전에는 추정치(예상치)로 표시되고, 센터 월 정산이 확정되면 실지급액으로 반영됩니다.
       </p>
 
       {/* 기간 토글 */}
@@ -219,13 +274,33 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
         </button>
       </div>
 
-      {/* KPI 카드 */}
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard label="매출" value={formatPrice(kpi.revenue, "KRW")} hint="순매출(환불 차감)" />
-        <KpiCard label="정산" value={formatPrice(kpi.settlement, "KRW")} hint="강사 지급 예정액" tone="settlement" />
-        <KpiCard label="매출이익" value={formatPrice(kpi.profit, "KRW")} hint="매출 − 정산" tone={kpi.profit >= 0 ? "profit" : "loss"} />
-        <KpiCard label="이익률" value={kpi.margin == null ? "—" : `${kpi.margin.toFixed(1)}%`} hint="매출이익 ÷ 매출" tone={kpi.margin == null ? undefined : kpi.margin >= 0 ? "profit" : "loss"} />
-      </div>
+      {/* KPI 카드 — 정산 미확정 월은 '예상치', 확정 월은 '확정' 배지 */}
+      {(() => {
+        const badge: { label: string; tone: "estimate" | "confirmed" } | undefined = kpi.hasSettlement
+          ? kpi.settled
+            ? { label: "확정", tone: "confirmed" }
+            : { label: "예상치", tone: "estimate" }
+          : undefined;
+        return (
+          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <KpiCard label="매출" value={formatPrice(kpi.revenue, "KRW")} hint="순매출(환불 차감)" />
+            <KpiCard
+              label="정산"
+              value={formatPrice(kpi.settlement, "KRW")}
+              hint={kpi.settled ? "확정 실지급액(수수료 포함)" : "강사 지급 예정액(추정)"}
+              tone="settlement"
+              badge={badge}
+            />
+            <KpiCard label="매출이익" value={formatPrice(kpi.profit, "KRW")} hint="매출 − 정산" tone={kpi.profit >= 0 ? "profit" : "loss"} badge={badge} />
+            <KpiCard
+              label="이익률"
+              value={kpi.margin == null ? "—" : `${kpi.margin.toFixed(1)}%`}
+              hint="매출이익 ÷ 매출"
+              tone={kpi.margin == null ? undefined : kpi.margin >= 0 ? "profit" : "loss"}
+            />
+          </div>
+        );
+      })()}
 
       {kpi.unpriced > 0 && (
         <p className="bg-brand/5 border-brand/30 text-brand mt-3 rounded-lg border px-3 py-2 text-xs">
@@ -288,15 +363,20 @@ export default function ProfitManager({ revenueRows, settlementRows, rates }: { 
             <tfoot>
               <tr className="border-rule bg-surface border-t-2 font-bold">
                 <td className="text-ink px-4 py-3 align-middle md:px-6">합계</td>
-                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(kpi.revenue, "KRW")}</td>
-                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(kpi.settlement, "KRW")}</td>
-                <td className={cn("px-4 py-3 align-middle whitespace-nowrap md:px-6", kpi.profit >= 0 ? "text-accent-blue-ink" : "text-brand")}>{formatPrice(kpi.profit, "KRW")}</td>
-                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{kpi.margin == null ? "—" : `${kpi.margin.toFixed(1)}%`}</td>
+                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.revenue, "KRW")}</td>
+                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.settlement, "KRW")}</td>
+                <td className={cn("px-4 py-3 align-middle whitespace-nowrap md:px-6", tableTotals.profit >= 0 ? "text-accent-blue-ink" : "text-brand")}>
+                  {formatPrice(tableTotals.profit, "KRW")}
+                </td>
+                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{tableTotals.margin == null ? "—" : `${tableTotals.margin.toFixed(1)}%`}</td>
               </tr>
             </tfoot>
           )}
         </table>
       </div>
+      <p className="text-muted-fg-faint mt-2 text-xs">
+        표의 정산은 진행 수업 기준 추정 원가입니다. 상단 KPI는 정산이 확정된 월은 실지급액(송금 수수료 등 포함)을 반영해 표 합계와 다를 수 있습니다.
+      </p>
     </div>
   );
 }
@@ -305,10 +385,34 @@ function tooltipOf(label: string, revenue: number, settlement: number): string {
   return `${label} · 매출 ${formatPrice(revenue, "KRW")} · 정산 ${formatPrice(settlement, "KRW")} · 이익 ${formatPrice(revenue - settlement, "KRW")}`;
 }
 
-function KpiCard({ label, value, hint, tone }: { label: string; value: string; hint: string; tone?: "settlement" | "profit" | "loss" }) {
+function KpiCard({
+  label,
+  value,
+  hint,
+  tone,
+  badge,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  tone?: "settlement" | "profit" | "loss";
+  badge?: { label: string; tone: "estimate" | "confirmed" };
+}) {
   return (
     <div className="border-rule rounded-xl border bg-white p-5">
-      <p className="text-muted-fg-faint text-xs font-semibold">{label}</p>
+      <div className="flex items-center justify-between gap-1">
+        <p className="text-muted-fg-faint text-xs font-semibold">{label}</p>
+        {badge && (
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
+              badge.tone === "confirmed" ? "bg-[#E6F4EA] text-[#1E7E34]" : "bg-[#FFF4E5] text-[#B45309]",
+            )}
+          >
+            {badge.label}
+          </span>
+        )}
+      </div>
       <p
         className={cn(
           "mt-1 text-2xl font-extrabold",

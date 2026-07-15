@@ -9,5 +9,14 @@ import { loadSettlementRows } from "@/lib/settlements";
 export default async function AdminProfitPage() {
   const admin = createAdminClient();
   const [{ rows: revenueRows, rates }, { rows: settlementRows }] = await Promise.all([loadRevenueRows(admin), loadSettlementRows(admin)]);
-  return <ProfitManager revenueRows={revenueRows} settlementRows={settlementRows} rates={rates} />;
+
+  // 센터별 월간 정산 확정 원장 — 확정된 (센터,월)은 KPI 정산을 실지급액으로 교체·'확정' 표시.
+  const { data: recData } = await admin.from("center_settlements").select("center_id, period_month, total_krw");
+  const settlementRecords: Record<string, { totalKrw: number }> = {};
+  for (const r of (recData ?? []) as { center_id: string | null; period_month: string; total_krw: number | string }[]) {
+    if (!r.center_id) continue;
+    settlementRecords[`${r.center_id}|${r.period_month}`] = { totalKrw: Number(r.total_krw) };
+  }
+
+  return <ProfitManager revenueRows={revenueRows} settlementRows={settlementRows} rates={rates} settlementRecords={settlementRecords} />;
 }
