@@ -35,7 +35,6 @@ const shiftMonth = (ym: string, delta: number): string => {
   const [y, m] = ym.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 10).slice(0, 7);
 };
-const prevMonth = (ym: string): string => shiftMonth(ym, -1);
 const monthBounds = (ym: string): { start: string; end: string } => {
   const [y, m] = ym.split("-").map(Number);
   return { start: `${ym}-01`, end: new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10) };
@@ -61,7 +60,7 @@ export default function MonthlySettlementSection({
   records: Record<string, CenterSettlementRecord>;
   allowEarly?: boolean; // 테스트용: 마감 전(당월) 확정 허용(서버 env 기반)
 }) {
-  const [anchorMonth, setAnchorMonth] = useState<string>(() => prevMonth(thisMonth())); // 기본 = 지난 달
+  const [anchorMonth, setAnchorMonth] = useState<string>(() => thisMonth()); // 기본 = 이번 달
   const [finalizeCenter, setFinalizeCenter] = useState<{ id: string; name: string } | null>(null);
 
   const { start, end } = monthBounds(anchorMonth);
@@ -138,10 +137,10 @@ export default function MonthlySettlementSection({
         </button>
         <button
           type="button"
-          onClick={() => setAnchorMonth(prevMonth(thisMonth()))}
+          onClick={() => setAnchorMonth(thisMonth())}
           className="border-rule text-muted-fg hover:text-ink rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
         >
-          지난 달
+          이번 달
         </button>
         {!rawClosed &&
           (allowEarly ? (
