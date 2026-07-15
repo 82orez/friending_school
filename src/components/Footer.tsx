@@ -48,17 +48,17 @@ export default function Footer() {
             <h3 className="mb-4 text-lg font-bold text-white">Other INFO</h3>
             <ul className="space-y-2 text-sm text-[#888]">
               <li>
-                <Link href="#" className="transition-colors hover:text-white">
+                <Link href="/terms" className="transition-colors hover:text-white">
                   회원이용약관
                 </Link>
               </li>
               <li>
-                <Link href="#" className="transition-colors hover:text-white">
+                <Link href="/privacy" className="transition-colors hover:text-white">
                   개인정보처리방침
                 </Link>
               </li>
               <li>
-                <Link href="#" className="transition-colors hover:text-white">
+                <Link href="/refund" className="transition-colors hover:text-white">
                   환불 정책
                 </Link>
               </li>
