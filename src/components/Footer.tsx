@@ -1,8 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Mail, Phone, Play } from "lucide-react";
-
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Mail, Phone, Play } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -39,15 +36,7 @@ export default function Footer() {
           {/* 공지사항 */}
           <div>
             <h3 className="mb-5 text-lg font-bold text-white">공지사항</h3>
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-start gap-2 text-[#888]">
-                <span aria-hidden className="mt-0.5">
-                  •
-                </span>
-                <span>프렌딩 공지사항 입니다.</span>
-              </li>
-              <li className="pl-4 text-[13px] italic text-[#777]">November 2, 2025</li>
-            </ul>
+            <p className="text-sm text-[#888]">등록된 공지 사항이 없습니다.</p>
           </div>
 
           {/* Other INFO */}
@@ -56,29 +45,20 @@ export default function Footer() {
             <ul className="space-y-3 text-sm text-[#888]">
               <li>
                 <Link href="#" className="transition-colors hover:text-white">
-                  회원가입약관
+                  회원이용약관
                 </Link>
               </li>
               <li>
                 <Link href="#" className="transition-colors hover:text-white">
-                  개인정보수집및이용
+                  개인정보처리방침
                 </Link>
               </li>
               <li>
                 <Link href="#" className="transition-colors hover:text-white">
-                  수강료환불약관
+                  환불 정책
                 </Link>
               </li>
             </ul>
-            <div className="mt-6 flex flex-wrap items-center gap-2 text-sm text-[#888]">
-              <span className="flex items-start gap-2">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                <span>회원이 발급받은 증명서의 발급 사실을 확인하세요.</span>
-              </span>
-              <a href="#" className={cn(buttonVariants({ variant: "brand-blue", size: "xs" }))}>
-                발급사실조회
-              </a>
-            </div>
           </div>
         </div>
 
