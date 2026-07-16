@@ -197,14 +197,14 @@ function CreatorModal({
                   {c.title}
                 </option>
               ))}
-              <option value="__custom__">직접 입력…</option>
+              <option value="__custom__">강좌명 직접 입력</option>
             </select>
           </label>
 
           {course === "__custom__" && (
             <div className="space-y-3">
               <label className="block">
-                <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">과정명 (한글) — 학생 화면</span>
+                <span className="text-ink-soft mb-1 block text-xs font-semibold">과정명 (한글) — 학생 화면</span>
                 <input
                   type="text"
                   value={customTitle}
@@ -215,7 +215,7 @@ function CreatorModal({
                 />
               </label>
               <label className="block">
-                <span className="text-muted-fg-faint mb-1 block text-xs font-semibold">과정명 (영문) — 강사 화면</span>
+                <span className="text-ink-soft mb-1 block text-xs font-semibold">과정명 (영문) — 강사 화면</span>
                 <input
                   type="text"
                   value={customEnglishTitle}
