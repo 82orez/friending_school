@@ -169,7 +169,10 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
     setPayError(null);
     startTransition(async () => {
       const PortOne = (await import("@portone/browser-sdk/v2")).default;
-      const paymentId = `enroll-${row.id}-${Date.now()}`;
+      // KPN 등 일부 PG 제약: paymentId는 영문·숫자만(하이픈 불가) + 최대 32byte.
+      // → enrollment id 앞 12hex(추적용) + base36 타임스탬프 + 랜덤 3자 = ~24자, 영숫자만, 재시도마다 고유.
+      const uid = row.id.replace(/-/g, "");
+      const paymentId = `e${uid.slice(0, 12)}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
       const resp = await PortOne.requestPayment({
         storeId,
         channelKey,
