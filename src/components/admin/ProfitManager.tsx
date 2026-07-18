@@ -40,13 +40,17 @@ function shiftAnchor(anchor: string, period: Period, delta: number): string {
   return shiftMonth(anchor, delta);
 }
 
-// 매출 1건 순액(KRW) — 로더가 결제일 환율로 사전 환산.
+// 매출 1건 순액(KRW, 부가세 포함) — 로더가 결제일 환율로 사전 환산. 참고 표시용.
 const revenueNetKrw = (r: RevenueRow): number => r.krwAmount - r.krwCancelledAmount;
-// 정산 1건 원가(KRW) — 로더가 수업 진행일 환율로 사전 환산, 단가 미설정이면 0.
+// 매출 1건 공급가액(부가세 제외) — 이익 계산의 매출 베이스(징수 부가세는 납부 대상이라 수익 아님).
+const revenueSupplyKrw = (r: RevenueRow): number => r.krwSupply - r.krwCancelledSupply;
+// 매출 1건 부가세(10%) — 납부분(참고 표시).
+const revenueVatKrw = (r: RevenueRow): number => r.krwVat - r.krwCancelledVat;
+// 정산 1건 원가(KRW) — 로더가 수업 진행일 환율로 사전 환산, 단가 미설정이면 0. 강사 인건비라 부가세 없음.
 const settlementKrw = (s: SettlementRow): number => s.krwPerSession ?? 0;
 
 type TrendBucket = { key: string; revenue: number; settlement: number; tooltip: string; xLabel: string; highlight?: boolean };
-type ProfitGroup = { key: string; label: string; revenueKrw: number; settlementKrw: number; unpriced: number };
+type ProfitGroup = { key: string; label: string; supplyKrw: number; vatKrw: number; settlementKrw: number; unpriced: number };
 
 export default function ProfitManager({
   revenueRows,
@@ -99,18 +103,26 @@ export default function ProfitManager({
 
   // KPI(기간 내). 매출=결제일 기준 순매출, 정산=수업 진행일 기준 지급 예정액, 이익=매출−정산.
   const kpi = useMemo(() => {
-    let revenue = 0;
-    for (const r of inRev) revenue += revenueNetKrw(r);
+    let gross = 0; // 부가세 포함 순매출(참고)
+    let supply = 0; // 공급가액(이익 베이스)
+    let vat = 0; // 부가세(납부분)
+    for (const r of inRev) {
+      gross += revenueNetKrw(r);
+      supply += revenueSupplyKrw(r);
+      vat += revenueVatKrw(r);
+    }
     let unpriced = 0;
     for (const s of inSet) if (s.pricePerSession == null || !s.currency) unpriced += 1;
     const agg = settlementAgg(inSet); // 확정 우선 블렌딩
     const settlement = agg.krw;
-    const profit = revenue - settlement;
+    const profit = supply - settlement; // 매출이익 = 공급가액 − 정산(부가세는 이익 제외)
     return {
-      revenue,
+      gross,
+      supply,
+      vat,
       settlement,
       profit,
-      margin: revenue > 0 ? (profit / revenue) * 100 : null,
+      margin: supply > 0 ? (profit / supply) * 100 : null,
       unpriced,
       settled: agg.hasActivity && agg.confirmed,
       hasSettlement: agg.hasActivity,
@@ -121,9 +133,9 @@ export default function ProfitManager({
   // 추이 차트 버킷(매출·정산 2계열) — 월간=앵커 연도 12개월, 년간=연도 범위(선택 구간 강조).
   const trend = useMemo<TrendBucket[]>(() => {
     if (period === "년간") {
-      const rev = new Map<number, number>();
+      const rev = new Map<number, number>(); // 공급가액 기준(이익 베이스)
       const setRows = new Map<number, SettlementRow[]>(); // 연도별 정산 rows(블렌딩용)
-      for (const r of baseRev) rev.set(Number(r.kstDate.slice(0, 4)), (rev.get(Number(r.kstDate.slice(0, 4))) ?? 0) + revenueNetKrw(r));
+      for (const r of baseRev) rev.set(Number(r.kstDate.slice(0, 4)), (rev.get(Number(r.kstDate.slice(0, 4))) ?? 0) + revenueSupplyKrw(r));
       for (const s of baseSet) {
         const yr = Number(s.sessionDate.slice(0, 4));
         (setRows.get(yr) ?? setRows.set(yr, []).get(yr)!).push(s);
@@ -145,9 +157,9 @@ export default function ProfitManager({
     }
     // 월간: 앵커 연도 12개월(선택 월 강조).
     const y = anchor.slice(0, 4);
-    const rev = new Map<number, number>();
+    const rev = new Map<number, number>(); // 공급가액 기준(이익 베이스)
     const setRows = new Map<number, SettlementRow[]>(); // 월별 정산 rows(블렌딩용)
-    for (const r of baseRev) if (r.kstDate.slice(0, 4) === y) rev.set(Number(r.kstDate.slice(5, 7)), (rev.get(Number(r.kstDate.slice(5, 7))) ?? 0) + revenueNetKrw(r));
+    for (const r of baseRev) if (r.kstDate.slice(0, 4) === y) rev.set(Number(r.kstDate.slice(5, 7)), (rev.get(Number(r.kstDate.slice(5, 7))) ?? 0) + revenueSupplyKrw(r));
     for (const s of baseSet)
       if (s.sessionDate.slice(0, 4) === y) {
         const mo = Number(s.sessionDate.slice(5, 7));
@@ -179,7 +191,7 @@ export default function ProfitManager({
     const ensure = (key: string, label: string): ProfitGroup => {
       let g = map.get(key);
       if (!g) {
-        g = { key, label, revenueKrw: 0, settlementKrw: 0, unpriced: 0 };
+        g = { key, label, supplyKrw: 0, vatKrw: 0, settlementKrw: 0, unpriced: 0 };
         map.set(key, g);
       } else if (g.label.startsWith("미지정") && !label.startsWith("미지정")) {
         g.label = label; // 한쪽이 스냅샷 라벨을 갖고 있으면 채택
@@ -188,7 +200,9 @@ export default function ProfitManager({
     };
     for (const r of inRev) {
       const { key, label } = revKeyOf(r);
-      ensure(key, label).revenueKrw += revenueNetKrw(r);
+      const g = ensure(key, label);
+      g.supplyKrw += revenueSupplyKrw(r);
+      g.vatKrw += revenueVatKrw(r);
     }
     for (const s of inSet) {
       const { key, label } = setKeyOf(s);
@@ -198,12 +212,12 @@ export default function ProfitManager({
     }
     const list = Array.from(map.values());
     list.sort((a, b) => {
-      const pa = a.revenueKrw - a.settlementKrw;
-      const pb = b.revenueKrw - b.settlementKrw;
+      const pa = a.supplyKrw - a.settlementKrw;
+      const pb = b.supplyKrw - b.settlementKrw;
       if (!sort) return pb - pa; // 기본: 매출이익 내림차순
       let cmp: number;
       if (sort.key === "name") cmp = a.label.localeCompare(b.label, "ko");
-      else if (sort.key === "revenue") cmp = a.revenueKrw - b.revenueKrw;
+      else if (sort.key === "revenue") cmp = a.supplyKrw - b.supplyKrw;
       else if (sort.key === "settlement") cmp = a.settlementKrw - b.settlementKrw;
       else cmp = pa - pb;
       return sort.dir === "asc" ? cmp : -cmp;
@@ -213,10 +227,11 @@ export default function ProfitManager({
 
   // 분류 표 합계 — 표 행은 추정 원가라 합계도 추정 기준(상단 KPI 정산=확정 실지급액과 다를 수 있음).
   const tableTotals = useMemo(() => {
-    const revenue = groups.reduce((s, g) => s + g.revenueKrw, 0);
+    const supply = groups.reduce((s, g) => s + g.supplyKrw, 0);
+    const vat = groups.reduce((s, g) => s + g.vatKrw, 0);
     const settlement = groups.reduce((s, g) => s + g.settlementKrw, 0);
-    const profit = revenue - settlement;
-    return { revenue, settlement, profit, margin: revenue > 0 ? (profit / revenue) * 100 : null };
+    const profit = supply - settlement;
+    return { supply, vat, settlement, profit, margin: supply > 0 ? (profit / supply) * 100 : null };
   }, [groups]);
 
   const groupColLabel = grouping.replace("별", "");
@@ -225,7 +240,7 @@ export default function ProfitManager({
     <div>
       <h1 className="text-ink text-2xl font-extrabold">매출이익</h1>
       <p className="text-muted-fg mt-1 text-sm">
-        매출이익 = 매출(순매출) − 정산. 매출은 결제일, 정산은 수업 진행일 기준이라 기간 이익은 운영 참고용이며 실패·테스트 결제는 제외됩니다. 정산이 확정되기 전에는 추정치(예상치)로 표시되고, 센터 월 정산이 확정되면 실지급액으로 반영됩니다.
+        매출이익 = 공급가액(매출 ÷ 1.1) − 정산이며, 부가세는 납부 대상이라 이익에서 제외됩니다(이익률 = 매출이익 ÷ 공급가액). 매출은 결제일, 정산은 수업 진행일 기준이라 기간 이익은 운영 참고용이며 실패·테스트 결제는 제외됩니다. 정산이 확정되기 전에는 추정치(예상치)로 표시되고, 센터 월 정산이 확정되면 실지급액으로 반영됩니다.
       </p>
 
       {/* 기간 토글 */}
@@ -282,8 +297,10 @@ export default function ProfitManager({
             : { label: "예상치", tone: "estimate" }
           : undefined;
         return (
-          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <KpiCard label="매출" value={formatPrice(kpi.revenue, "KRW")} hint="순매출(환불 차감)" />
+          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
+            <KpiCard label="매출" value={formatPrice(kpi.gross, "KRW")} hint="순매출(부가세 포함)" />
+            <KpiCard label="공급가액" value={formatPrice(kpi.supply, "KRW")} hint="매출 ÷ 1.1 (이익 베이스)" />
+            <KpiCard label="부가세" value={formatPrice(kpi.vat, "KRW")} hint="납부 대상(이익 제외)" />
             <KpiCard
               label="정산"
               value={formatPrice(kpi.settlement, "KRW")}
@@ -291,11 +308,11 @@ export default function ProfitManager({
               tone="settlement"
               badge={badge}
             />
-            <KpiCard label="매출이익" value={formatPrice(kpi.profit, "KRW")} hint="매출 − 정산" tone={kpi.profit >= 0 ? "profit" : "loss"} badge={badge} />
+            <KpiCard label="매출이익" value={formatPrice(kpi.profit, "KRW")} hint="공급가액 − 정산" tone={kpi.profit >= 0 ? "profit" : "loss"} badge={badge} />
             <KpiCard
               label="이익률"
               value={kpi.margin == null ? "—" : `${kpi.margin.toFixed(1)}%`}
-              hint="매출이익 ÷ 매출"
+              hint="매출이익 ÷ 공급가액"
               tone={kpi.margin == null ? undefined : kpi.margin >= 0 ? "profit" : "loss"}
             />
           </div>
@@ -309,7 +326,7 @@ export default function ProfitManager({
       )}
 
       {/* 추이 차트(매출 vs 정산) */}
-      <ProfitTrendChart data={trend} title={period === "년간" ? "년도별 매출·정산" : "월별 매출·정산"} />
+      <ProfitTrendChart data={trend} title={period === "년간" ? "년도별 공급가액·정산" : "월별 공급가액·정산"} />
 
       {/* 분류별 매출이익 */}
       <div className="mt-6 flex items-center gap-2">
@@ -325,7 +342,8 @@ export default function ProfitManager({
           <thead>
             <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
               <SortHeader label={groupColLabel} sortKey="name" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
-              <SortHeader label="매출" sortKey="revenue" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+              <SortHeader label="공급가액" sortKey="revenue" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+              <th className="px-4 py-2.5">부가세</th>
               <SortHeader label="정산" sortKey="settlement" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <SortHeader label="매출이익" sortKey="profit" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
               <th className="px-4 py-2.5">이익률</th>
@@ -334,21 +352,22 @@ export default function ProfitManager({
           <tbody>
             {groups.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-muted-fg px-6 py-12 text-center text-sm">
+                <td colSpan={6} className="text-muted-fg px-6 py-12 text-center text-sm">
                   이 기간에 매출·정산 내역이 없습니다.
                 </td>
               </tr>
             ) : (
               groups.map((g) => {
-                const profit = g.revenueKrw - g.settlementKrw;
-                const margin = g.revenueKrw > 0 ? (profit / g.revenueKrw) * 100 : null;
+                const profit = g.supplyKrw - g.settlementKrw;
+                const margin = g.supplyKrw > 0 ? (profit / g.supplyKrw) * 100 : null;
                 return (
                   <tr key={g.key} className="border-rule border-b last:border-b-0">
                     <td className="text-ink px-4 py-3 align-middle font-semibold md:px-6">
                       {g.label}
                       {g.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">단가 미설정 {g.unpriced}</span>}
                     </td>
-                    <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(g.revenueKrw, "KRW")}</td>
+                    <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(g.supplyKrw, "KRW")}</td>
+                    <td className="text-muted-fg px-4 py-3 align-middle whitespace-nowrap">{formatPrice(g.vatKrw, "KRW")}</td>
                     <td className="text-muted-fg px-4 py-3 align-middle whitespace-nowrap">{formatPrice(g.settlementKrw, "KRW")}</td>
                     <td className={cn("px-4 py-3 align-middle font-semibold whitespace-nowrap md:px-6", profit >= 0 ? "text-accent-blue-ink" : "text-brand")}>
                       {formatPrice(profit, "KRW")}
@@ -363,7 +382,8 @@ export default function ProfitManager({
             <tfoot>
               <tr className="border-rule bg-surface border-t-2 font-bold">
                 <td className="text-ink px-4 py-3 align-middle md:px-6">합계</td>
-                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.revenue, "KRW")}</td>
+                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.supply, "KRW")}</td>
+                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.vat, "KRW")}</td>
                 <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.settlement, "KRW")}</td>
                 <td className={cn("px-4 py-3 align-middle whitespace-nowrap md:px-6", tableTotals.profit >= 0 ? "text-accent-blue-ink" : "text-brand")}>
                   {formatPrice(tableTotals.profit, "KRW")}
@@ -381,8 +401,8 @@ export default function ProfitManager({
   );
 }
 
-function tooltipOf(label: string, revenue: number, settlement: number): string {
-  return `${label} · 매출 ${formatPrice(revenue, "KRW")} · 정산 ${formatPrice(settlement, "KRW")} · 이익 ${formatPrice(revenue - settlement, "KRW")}`;
+function tooltipOf(label: string, supply: number, settlement: number): string {
+  return `${label} · 공급가액 ${formatPrice(supply, "KRW")} · 정산 ${formatPrice(settlement, "KRW")} · 이익 ${formatPrice(supply - settlement, "KRW")}`;
 }
 
 function KpiCard({
@@ -438,7 +458,7 @@ function ProfitTrendChart({ data, title }: { data: TrendBucket[]; title: string 
         <p className="text-ink text-sm font-bold">{title}</p>
         <div className="flex items-center gap-3 text-xs">
           <span className="text-muted-fg inline-flex items-center gap-1.5">
-            <span className="bg-accent-blue size-2.5 rounded-sm" /> 매출
+            <span className="bg-accent-blue size-2.5 rounded-sm" /> 공급가액
           </span>
           <span className="text-muted-fg inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-sm bg-[#F5A623]" /> 정산
