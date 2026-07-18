@@ -192,5 +192,6 @@ export async function reassignClassCore(
   revalidatePath("/teacher", "layout");
   revalidatePath("/mypage", "layout");
   revalidatePath("/center");
+  revalidatePath("/admin/teacher-requests"); // 「수업 보기」 모달의 대체 회차 목록 최신화
   return { ok: true };
 }

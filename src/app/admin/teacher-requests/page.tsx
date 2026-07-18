@@ -3,7 +3,9 @@ import TeacherRequestsManager, {
   type TeacherApplication,
   type CurrentTeacher,
   type TeacherClassItem,
+  type TeacherCoverItem,
 } from "@/components/admin/TeacherRequestsManager";
+import { buildCoverSessions, teacherClassesOrFilter, TEACHER_CLASS_SELECT, type TeacherClassRow } from "@/lib/teacher-directory";
 import { deriveBookedSlots, lessonEndMin, TOTAL_SESSIONS, type BookedSlot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
@@ -67,6 +69,7 @@ export default async function AdminTeacherRequestsPage() {
   // 현재 강사별 예약(가용 그리드 오버레이용) + 진행 중인 수업 목록 — 승인 후 전부(승인/결제대기/결제완료) 조회 후 강사별 파생.
   const bookedByTeacher = new Map<string, BookedSlot[]>();
   const classesByTeacher = new Map<string, TeacherClassItem[]>();
+  const coverByTeacher = new Map<string, TeacherCoverItem[]>();
   if (teacherIds.length > 0) {
     const { data: enrollRows } = await admin
       .from("enrollments")
@@ -85,13 +88,11 @@ export default async function AdminTeacherRequestsPage() {
     rowsByTeacher.forEach((rows, tid) => bookedByTeacher.set(tid, deriveBookedSlots(rows)));
 
     // 강사별 classes 집계(진행률·다음 수업일). 승인/결제대기 enrollment는 아직 classes 없음.
-    const { data: clsRows } = await admin
-      .from("classes")
-      .select("enrollment_id, session_date, start_min, end_min, status, is_makeup")
-      .in("teacher_id", teacherIds);
+    const { data: clsRows } = await admin.from("classes").select(TEACHER_CLASS_SELECT).or(teacherClassesOrFilter(teacherIds));
+    const classRows = (clsRows ?? []) as TeacherClassRow[];
     const now = Date.now();
     const aggByEnrollment = new Map<string, { total: number; done: number; nextDate: string | null; nextMin: number | null }>();
-    for (const c of clsRows ?? []) {
+    for (const c of classRows) {
       const a = aggByEnrollment.get(c.enrollment_id) ?? { total: 0, done: 0, nextDate: null, nextMin: null };
       if (c.status !== "취소") {
         if (!c.is_makeup) a.total += 1; // 계획 회차(보강 제외)
@@ -105,6 +106,15 @@ export default async function AdminTeacherRequestsPage() {
       }
       aggByEnrollment.set(c.enrollment_id, a);
     }
+
+    // 대체 회차(대타/넘긴 회차) — 전체 강사가 스코프라 이름은 프로필 맵으로 충분.
+    const nameById = new Map(
+      ((teacherProfiles ?? []) as { id: string; first_name: string | null; last_name: string | null }[]).map((p) => [
+        p.id,
+        [p.first_name, p.last_name].filter(Boolean).join(" ").trim(),
+      ]),
+    );
+    buildCoverSessions(classRows, teacherIds, nameById).forEach((v, k) => coverByTeacher.set(k, v));
 
     rowsByTeacher.forEach((rows, tid) => {
       const items: TeacherClassItem[] = rows.map((r) => {
@@ -170,6 +180,7 @@ export default async function AdminTeacherRequestsPage() {
     slots: slotsByTeacher.get(p.id) ?? [],
     bookedSlots: bookedByTeacher.get(p.id) ?? [],
     classes: classesByTeacher.get(p.id) ?? [],
+    coverSessions: coverByTeacher.get(p.id) ?? [],
   }));
 
   // 강사별 단가 적용일 이력(TeacherInfoModal 편집기용) + 외화 환율.

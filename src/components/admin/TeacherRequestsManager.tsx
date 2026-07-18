@@ -63,6 +63,24 @@ export type TeacherClassItem = {
   nextMin: number | null;
 };
 
+// 1회성 강사 대체로 얽힌 개별 회차 — 「수업 보기」 모달의 '대체 수업' 섹션용(앞으로의 회차만).
+export type TeacherCoverItem = {
+  classId: string;
+  enrollmentId: string;
+  kind: "covering" | "away"; // covering=내가 대타로 맡음 / away=내 회차가 다른 강사에게 넘어감
+  course: string;
+  courseTitle: string;
+  courseEnglishTitle?: string | null;
+  studentName: string;
+  studentEnglishName: string | null;
+  sessionNo: number;
+  sessionDate: string; // YYYY-MM-DD
+  startMin: number;
+  endMin: number;
+  isMakeup: boolean;
+  counterpartName: string | null; // covering=원 강사명 / away=대타 강사명
+};
+
 export type CurrentTeacher = {
   id: string;
   email: string;
@@ -81,6 +99,7 @@ export type CurrentTeacher = {
   slots: { day: number; min: number }[];
   bookedSlots: BookedSlot[];
   classes: TeacherClassItem[];
+  coverSessions: TeacherCoverItem[];
 };
 
 const STATUSES = ["신청", "승인", "거절"] as const;
@@ -334,6 +353,7 @@ function ApplicationRow({
           slots: [],
           bookedSlots: [],
           classes: [],
+          coverSessions: [],
         });
         toast.success("강사로 승인했습니다.");
       } else {

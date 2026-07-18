@@ -4,9 +4,79 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { deriveBookedSlots, lessonEndMin, summarizeWeekdays, scheduleDateRange, isValidSlot, dowOf, TOTAL_SESSIONS, type BookedSlot, type Slot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
-import type { CurrentTeacher, TeacherClassItem } from "@/components/admin/TeacherRequestsManager";
+import type { CurrentTeacher, TeacherClassItem, TeacherCoverItem } from "@/components/admin/TeacherRequestsManager";
 import type { AdminSession } from "@/components/admin/ClassWeekGrid";
 import type { CenterTeacher } from "@/components/center/ReassignModal";
+
+// 「수업 보기」 모달의 과정 집계 + 대체 회차 파생에 필요한 classes 컬럼(admin·center 공용).
+export const TEACHER_CLASS_SELECT =
+  "id, enrollment_id, teacher_id, original_teacher_id, course, course_title, course_english_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup";
+
+export type TeacherClassRow = {
+  id: string;
+  enrollment_id: string;
+  teacher_id: string;
+  original_teacher_id: string | null;
+  course: string;
+  course_title: string;
+  course_english_title: string | null;
+  teacher_name: string | null;
+  student_name: string | null;
+  student_english_name: string | null;
+  session_no: number;
+  session_date: string;
+  start_min: number;
+  end_min: number;
+  status: string;
+  is_makeup: boolean;
+};
+
+// classes를 teacher_id 또는 original_teacher_id로 조회하기 위한 PostgREST or 필터(1회성 대체로 넘어간 회차까지 포함).
+export function teacherClassesOrFilter(teacherIds: string[]): string {
+  const ids = teacherIds.join(",");
+  return `teacher_id.in.(${ids}),original_teacher_id.in.(${ids})`;
+}
+
+// 1회성 강사 대체로 얽힌 앞으로의 회차를 강사별로 파생 — 대타(covering) + 넘긴 회차(away).
+// classroom.ts mapClassRows의 coveringForOther/reassignedAway 판정과 동일 규칙.
+export function buildCoverSessions(rows: TeacherClassRow[], teacherIds: string[], nameById: Map<string, string>): Map<string, TeacherCoverItem[]> {
+  const scope = new Set(teacherIds);
+  const byTeacher = new Map<string, TeacherCoverItem[]>();
+  const now = Date.now();
+
+  const push = (tid: string, item: TeacherCoverItem) => {
+    const list = byTeacher.get(tid) ?? [];
+    list.push(item);
+    byTeacher.set(tid, list);
+  };
+
+  for (const c of rows) {
+    if (c.status === "취소") continue;
+    if (!c.original_teacher_id || c.original_teacher_id === c.teacher_id) continue;
+    // 앞으로의 회차만(레슨 종료 시각 기준 — 내 강의실 예정/지난 전환과 동일).
+    if (kstDateMinToMs(c.session_date, lessonEndMin(c.end_min)) < now) continue;
+
+    const base = {
+      classId: c.id,
+      enrollmentId: c.enrollment_id,
+      course: c.course,
+      courseTitle: c.course_title,
+      courseEnglishTitle: c.course_english_title,
+      studentName: c.student_name ?? "-",
+      studentEnglishName: c.student_english_name,
+      sessionNo: c.session_no,
+      sessionDate: c.session_date,
+      startMin: c.start_min,
+      endMin: c.end_min,
+      isMakeup: c.is_makeup,
+    };
+    if (scope.has(c.teacher_id)) push(c.teacher_id, { ...base, kind: "covering", counterpartName: nameById.get(c.original_teacher_id) ?? null });
+    if (scope.has(c.original_teacher_id)) push(c.original_teacher_id, { ...base, kind: "away", counterpartName: c.teacher_name });
+  }
+
+  byTeacher.forEach((list) => list.sort((a, b) => (a.sessionDate !== b.sessionDate ? a.sessionDate.localeCompare(b.sessionDate) : a.startMin - b.startMin)));
+  return byTeacher;
+}
 
 // 센터 스코프 강사 디렉토리 — admin teacher-requests 페이지의 CurrentTeacher 조립을 재사용(센터 소속 강사만).
 // 프로필·주간 가용·진행 중 강좌(승인/결제대기/결제완료, 종료분 제외) 집계 포함. 가드(requireCenterManager) 후 service_role로 호출.
@@ -67,13 +137,12 @@ export async function loadCenterTeachers(admin: ReturnType<typeof createAdminCli
   }
   rowsByTeacher.forEach((rs, tid) => bookedByTeacher.set(tid, deriveBookedSlots(rs)));
 
-  const { data: clsRows } = await admin
-    .from("classes")
-    .select("enrollment_id, session_date, start_min, end_min, status, is_makeup")
-    .in("teacher_id", teacherIds);
+  // 대체로 스코프 밖 강사에게 넘어간 회차도 포함(집계 누락 방지 + 대체 회차 파생).
+  const { data: clsRows } = await admin.from("classes").select(TEACHER_CLASS_SELECT).or(teacherClassesOrFilter(teacherIds));
+  const classRows = (clsRows ?? []) as TeacherClassRow[];
   const now = Date.now();
   const aggByEnrollment = new Map<string, { total: number; done: number; nextDate: string | null; nextMin: number | null }>();
-  for (const c of clsRows ?? []) {
+  for (const c of classRows) {
     const a = aggByEnrollment.get(c.enrollment_id) ?? { total: 0, done: 0, nextDate: null, nextMin: null };
     if (c.status !== "취소") {
       if (!c.is_makeup) a.total += 1;
@@ -87,6 +156,19 @@ export async function loadCenterTeachers(admin: ReturnType<typeof createAdminCli
     }
     aggByEnrollment.set(c.enrollment_id, a);
   }
+
+  // 대체 회차(대타/넘긴 회차) — 원 강사가 센터 밖일 수 있어 이름은 누락분만 보강 조회.
+  const nameById = new Map(rows.map((p) => [p.id, [p.first_name, p.last_name].filter(Boolean).join(" ").trim()]));
+  const missingIds = Array.from(
+    new Set(classRows.map((c) => c.original_teacher_id).filter((id): id is string => !!id && !nameById.has(id))),
+  );
+  if (missingIds.length > 0) {
+    const { data: extra } = await admin.from("profiles").select("id, first_name, last_name").in("id", missingIds);
+    for (const p of (extra ?? []) as { id: string; first_name: string | null; last_name: string | null }[]) {
+      nameById.set(p.id, [p.first_name, p.last_name].filter(Boolean).join(" ").trim());
+    }
+  }
+  const coverByTeacher = buildCoverSessions(classRows, teacherIds, nameById);
 
   rowsByTeacher.forEach((rs, tid) => {
     const items: TeacherClassItem[] = rs.map((r) => {
@@ -136,6 +218,7 @@ export async function loadCenterTeachers(admin: ReturnType<typeof createAdminCli
       slots: slotsByTeacher.get(p.id) ?? [],
       bookedSlots: bookedByTeacher.get(p.id) ?? [],
       classes: classesByTeacher.get(p.id) ?? [],
+      coverSessions: coverByTeacher.get(p.id) ?? [],
     }))
     .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }
