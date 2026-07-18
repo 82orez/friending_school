@@ -3,6 +3,7 @@ import CentersManager, { type AdminCenter } from "@/components/admin/CentersMana
 import { FOREIGN_CURRENCIES, ratesFromSettings } from "@/data/currencies";
 import type { RateRow } from "@/lib/rates";
 import type { FxRow } from "@/lib/fx";
+import type { PgFeeRow } from "@/lib/pgfee";
 
 export default async function AdminCentersPage() {
   const admin = createAdminClient();
@@ -69,6 +70,12 @@ export default async function AdminCentersPage() {
     });
   }
 
+  // PG 수수료율 적용일 이력(수수료 설정 카드 편집기용).
+  const { data: feeData } = await admin.from("pg_fee_schedules").select("id, rate_percent, effective_from, note").order("effective_from", { ascending: false });
+  const pgFeeSchedules: PgFeeRow[] = ((feeData ?? []) as { id: string; rate_percent: number | string; effective_from: string; note: string | null }[]).map(
+    (r) => ({ id: r.id, ratePercent: Number(r.rate_percent), effectiveFrom: r.effective_from, note: r.note }),
+  );
+
   // 매니저 계정 후보 — 가입 회원(이메일 인증 완료) 목록. 회원 관리와 동일 listUsers+profiles 병합 패턴.
   const { data: usersData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   const { data: profs } = await admin.from("profiles").select("id, first_name, last_name");
@@ -83,6 +90,13 @@ export default async function AdminCentersPage() {
     .sort((a, b) => a.label.localeCompare(b.label, "ko"));
 
   return (
-    <CentersManager centers={centers} rates={rates} schedulesByCenter={schedulesByCenter} fxSchedulesByCurrency={fxSchedulesByCurrency} users={users} />
+    <CentersManager
+      centers={centers}
+      rates={rates}
+      schedulesByCenter={schedulesByCenter}
+      fxSchedulesByCurrency={fxSchedulesByCurrency}
+      pgFeeSchedules={pgFeeSchedules}
+      users={users}
+    />
   );
 }

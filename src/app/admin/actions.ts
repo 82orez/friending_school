@@ -227,6 +227,69 @@ export async function deleteExchangeRateSchedule(id: string): Promise<ActionResu
   return { ok: true };
 }
 
+/* ===== PG 결제 수수료율 적용일 이력(pg_fee_schedules) ===== */
+
+// 수수료율 정규화: 빈 값/비숫자/음수/100 이상 → null. numeric(6,3) → 소수 셋째자리까지 반올림.
+function normalizePgFeeRate(raw: number | string | null | undefined): number | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n >= 100) return null;
+  return Math.round(n * 1000) / 1000;
+}
+
+// 수수료율 변경은 매출 현황·매출이익·설정 화면에 영향(정산은 무관 — 강사 인건비).
+function revalidatePgFeeConsumers() {
+  revalidatePath("/admin/centers");
+  revalidatePath("/admin/revenue");
+  revalidatePath("/admin/profit");
+}
+
+// 수수료율 이력 행 추가.
+export async function addPgFeeSchedule(rateRaw: string, effectiveFrom: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!EFFECTIVE_DATE_RE.test(effectiveFrom)) return { ok: false, error: "잘못된 요청입니다." };
+  const rate = normalizePgFeeRate(rateRaw);
+  if (rate == null) return { ok: false, error: "유효한 수수료율을 입력하세요." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("pg_fee_schedules").upsert(
+    { rate_percent: rate, effective_from: effectiveFrom },
+    { onConflict: "effective_from" }, // 같은 적용일이면 덮어쓰기
+  );
+  if (error) return { ok: false, error: "수수료율 추가 중 오류가 발생했습니다." };
+
+  revalidatePgFeeConsumers();
+  return { ok: true };
+}
+
+// 수수료율 이력 행 수정(율·적용일).
+export async function updatePgFeeSchedule(id: string, rateRaw: string, effectiveFrom: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id || !EFFECTIVE_DATE_RE.test(effectiveFrom)) return { ok: false, error: "잘못된 요청입니다." };
+  const rate = normalizePgFeeRate(rateRaw);
+  if (rate == null) return { ok: false, error: "유효한 수수료율을 입력하세요." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("pg_fee_schedules").update({ rate_percent: rate, effective_from: effectiveFrom }).eq("id", id);
+  if (error) return { ok: false, error: "수수료율 수정 중 오류가 발생했습니다." };
+
+  revalidatePgFeeConsumers();
+  return { ok: true };
+}
+
+// 수수료율 이력 행 삭제.
+export async function deletePgFeeSchedule(id: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("pg_fee_schedules").delete().eq("id", id);
+  if (error) return { ok: false, error: "수수료율 삭제 중 오류가 발생했습니다." };
+
+  revalidatePgFeeConsumers();
+  return { ok: true };
+}
+
 /* ===== 월간 센터 정산 확정(center_settlements) ===== */
 // 정산은 센터 단위(각 센터가 선 정산받은 뒤 소속 강사에게 지급). 확정 대상 = 센터 × 월.
 

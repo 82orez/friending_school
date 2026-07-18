@@ -437,6 +437,33 @@ export type Database = {
           },
         ]
       }
+      pg_fee_schedules: {
+        Row: {
+          created_at: string
+          effective_from: string
+          id: string
+          note: string | null
+          rate_percent: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          effective_from: string
+          id?: string
+          note?: string | null
+          rate_percent: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string
+          id?: string
+          note?: string | null
+          rate_percent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       phone_verifications: {
         Row: {
           attempts: number

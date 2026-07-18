@@ -5,6 +5,7 @@ import type { RevenueRow } from "@/components/admin/RevenueManager";
 import { FOREIGN_CURRENCIES, normalizeCurrency, ratesFromSettings, type Rates } from "@/data/currencies";
 import { toKrwAt, type FxRow } from "@/lib/fx";
 import { vatSupply } from "@/lib/vat";
+import { isPgPayment, pgFeeOf, pgFeeRateAt, type PgFeeRow } from "@/lib/pgfee";
 
 // 매출 row 조립 공유 로더 — 매출 현황·매출이익 대시보드 공용(loadSettlementRows 미러).
 // payments를 소스로 순매출(amount − cancelled_amount)을 결제일(KST) 기준으로 집계 가능한 row로 변환.
@@ -103,6 +104,15 @@ export async function loadRevenueRows(admin: ReturnType<typeof createAdminClient
     (r) => ({ id: r.id, currency: r.currency, rate: Number(r.rate_to_krw), effectiveFrom: r.effective_from, note: r.note }),
   );
 
+  // PG 수수료율 적용일 이력 전량(결제일 기준 유효 율 소스). 비면 율 0 = 수수료 미반영.
+  const { data: feeData } = await admin.from("pg_fee_schedules").select("id, rate_percent, effective_from, note");
+  const feeRows: PgFeeRow[] = ((feeData ?? []) as { id: string; rate_percent: number | string; effective_from: string; note: string | null }[]).map((r) => ({
+    id: r.id,
+    ratePercent: Number(r.rate_percent),
+    effectiveFrom: r.effective_from,
+    note: r.note,
+  }));
+
   const rows: RevenueRow[] = payments
     .map((p) => {
       const enr = p.enrollment_id ? enrById.get(p.enrollment_id) : undefined;
@@ -118,6 +128,8 @@ export async function loadRevenueRows(admin: ReturnType<typeof createAdminClient
       // 부가세 포함 합계 → 공급가액/부가세 역산(행별 반올림 후 합산해 감사 정합).
       const krwSupply = vatSupply(krwAmount);
       const krwCancelledSupply = vatSupply(krwCancelledAmount);
+      // PG 수수료: 결제일 유효 율 × 순결제액(결제액 − 환불액). 무통장 입금은 0.
+      const pgFeeRate = isPgPayment(p.method) ? pgFeeRateAt(feeRows, kstDate) : 0;
       return {
         paymentId: p.payment_id,
         createdAt: p.created_at,
@@ -130,6 +142,8 @@ export async function loadRevenueRows(admin: ReturnType<typeof createAdminClient
         krwVat: krwAmount - krwSupply,
         krwCancelledSupply,
         krwCancelledVat: krwCancelledAmount - krwCancelledSupply,
+        pgFeeRate,
+        krwPgFee: pgFeeOf(krwAmount - krwCancelledAmount, pgFeeRate),
         status: p.status,
         method: p.method,
         currency,

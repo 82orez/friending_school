@@ -7,9 +7,11 @@ import { toast } from "sonner";
 import { addCenter, deleteCenter, updateCenter } from "@/app/admin/actions";
 import CenterDetailModal from "@/components/admin/CenterDetailModal";
 import ExchangeRateHistoryEditor from "@/components/admin/ExchangeRateHistoryEditor";
+import PgFeeHistoryEditor from "@/components/admin/PgFeeHistoryEditor";
 import { CURRENCIES, DEFAULT_CURRENCY, FOREIGN_CURRENCIES, formatPrice, krwEquivalent, type Rates } from "@/data/currencies";
 import type { RateRow } from "@/lib/rates";
 import type { FxRow } from "@/lib/fx";
+import type { PgFeeRow } from "@/lib/pgfee";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,12 +42,14 @@ export default function CentersManager({
   rates,
   schedulesByCenter,
   fxSchedulesByCurrency,
+  pgFeeSchedules,
   users,
 }: {
   centers: AdminCenter[];
   rates: Rates;
   schedulesByCenter: Record<string, RateRow[]>;
   fxSchedulesByCurrency: Record<string, FxRow[]>;
+  pgFeeSchedules: PgFeeRow[];
   users: CenterUserOption[];
 }) {
   const router = useRouter();
@@ -87,6 +91,17 @@ export default function CentersManager({
           {FOREIGN_CURRENCIES.map((f) => (
             <ExchangeRateHistoryEditor key={f.code} currency={f.code} symbol={f.symbol} rateLabel={f.rateLabel} rows={fxSchedulesByCurrency[f.code] ?? []} />
           ))}
+        </div>
+      </div>
+
+      {/* PG 결제 수수료 설정 (적용일 이력) */}
+      <div className="mt-5">
+        <p className="text-ink mb-1 text-base font-bold">PG 수수료 설정</p>
+        <p className="text-muted-fg-faint mb-3 text-xs">
+          카드 등 PG 경유 결제에서 차감되는 수수료율을 적용일별로 관리합니다. 매출 현황에는 지표로 표시되고, 매출이익에서는 비용으로 차감됩니다.
+        </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <PgFeeHistoryEditor rows={pgFeeSchedules} />
         </div>
       </div>
 

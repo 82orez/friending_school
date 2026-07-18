@@ -46,11 +46,12 @@ const revenueNetKrw = (r: RevenueRow): number => r.krwAmount - r.krwCancelledAmo
 const revenueSupplyKrw = (r: RevenueRow): number => r.krwSupply - r.krwCancelledSupply;
 // 매출 1건 부가세(10%) — 납부분(참고 표시).
 const revenueVatKrw = (r: RevenueRow): number => r.krwVat - r.krwCancelledVat;
+// 매출 1건 PG 수수료(KRW) — 로더가 결제일 기준 율로 사전 계산(무통장=0). 실제 비용이라 이익에서 차감.
+const revenuePgFeeKrw = (r: RevenueRow): number => r.krwPgFee;
 // 정산 1건 원가(KRW) — 로더가 수업 진행일 환율로 사전 환산, 단가 미설정이면 0. 강사 인건비라 부가세 없음.
 const settlementKrw = (s: SettlementRow): number => s.krwPerSession ?? 0;
 
-type TrendBucket = { key: string; revenue: number; settlement: number; tooltip: string; xLabel: string; highlight?: boolean };
-type ProfitGroup = { key: string; label: string; supplyKrw: number; vatKrw: number; settlementKrw: number; unpriced: number };
+type TrendBucket = { key: string; revenue: number; settlement: number; tooltip: string; xLabel: string; highlight?: boolean };type ProfitGroup = { key: string; label: string; supplyKrw: number; vatKrw: number; pgFeeKrw: number; settlementKrw: number; unpriced: number };
 
 export default function ProfitManager({
   revenueRows,
@@ -106,20 +107,23 @@ export default function ProfitManager({
     let gross = 0; // 부가세 포함 순매출(참고)
     let supply = 0; // 공급가액(이익 베이스)
     let vat = 0; // 부가세(납부분)
+    let pgFee = 0; // PG 수수료(실비용)
     for (const r of inRev) {
       gross += revenueNetKrw(r);
       supply += revenueSupplyKrw(r);
       vat += revenueVatKrw(r);
+      pgFee += revenuePgFeeKrw(r);
     }
     let unpriced = 0;
     for (const s of inSet) if (s.pricePerSession == null || !s.currency) unpriced += 1;
     const agg = settlementAgg(inSet); // 확정 우선 블렌딩
     const settlement = agg.krw;
-    const profit = supply - settlement; // 매출이익 = 공급가액 − 정산(부가세는 이익 제외)
+    const profit = supply - settlement - pgFee; // 매출이익 = 공급가액 − 정산 − PG 수수료(부가세는 이익 제외)
     return {
       gross,
       supply,
       vat,
+      pgFee,
       settlement,
       profit,
       margin: supply > 0 ? (profit / supply) * 100 : null,
@@ -134,8 +138,13 @@ export default function ProfitManager({
   const trend = useMemo<TrendBucket[]>(() => {
     if (period === "년간") {
       const rev = new Map<number, number>(); // 공급가액 기준(이익 베이스)
+      const fee = new Map<number, number>(); // PG 수수료(툴팁 이익 계산용)
       const setRows = new Map<number, SettlementRow[]>(); // 연도별 정산 rows(블렌딩용)
-      for (const r of baseRev) rev.set(Number(r.kstDate.slice(0, 4)), (rev.get(Number(r.kstDate.slice(0, 4))) ?? 0) + revenueSupplyKrw(r));
+      for (const r of baseRev) {
+        const yr = Number(r.kstDate.slice(0, 4));
+        rev.set(yr, (rev.get(yr) ?? 0) + revenueSupplyKrw(r));
+        fee.set(yr, (fee.get(yr) ?? 0) + revenuePgFeeKrw(r));
+      }
       for (const s of baseSet) {
         const yr = Number(s.sessionDate.slice(0, 4));
         (setRows.get(yr) ?? setRows.set(yr, []).get(yr)!).push(s);
@@ -151,15 +160,28 @@ export default function ProfitManager({
       for (let yr = minY; yr <= maxY; yr++) {
         const revenue = rev.get(yr) ?? 0;
         const settlement = settlementAgg(setRows.get(yr) ?? []).krw;
-        out.push({ key: String(yr), revenue, settlement, tooltip: tooltipOf(`${yr}년`, revenue, settlement), xLabel: `${yr}`, highlight: yr === anchorY });
+        out.push({
+          key: String(yr),
+          revenue,
+          settlement,
+          tooltip: tooltipOf(`${yr}년`, revenue, settlement, fee.get(yr) ?? 0),
+          xLabel: `${yr}`,
+          highlight: yr === anchorY,
+        });
       }
       return out;
     }
     // 월간: 앵커 연도 12개월(선택 월 강조).
     const y = anchor.slice(0, 4);
     const rev = new Map<number, number>(); // 공급가액 기준(이익 베이스)
+    const fee = new Map<number, number>(); // PG 수수료(툴팁 이익 계산용)
     const setRows = new Map<number, SettlementRow[]>(); // 월별 정산 rows(블렌딩용)
-    for (const r of baseRev) if (r.kstDate.slice(0, 4) === y) rev.set(Number(r.kstDate.slice(5, 7)), (rev.get(Number(r.kstDate.slice(5, 7))) ?? 0) + revenueSupplyKrw(r));
+    for (const r of baseRev)
+      if (r.kstDate.slice(0, 4) === y) {
+        const mo = Number(r.kstDate.slice(5, 7));
+        rev.set(mo, (rev.get(mo) ?? 0) + revenueSupplyKrw(r));
+        fee.set(mo, (fee.get(mo) ?? 0) + revenuePgFeeKrw(r));
+      }
     for (const s of baseSet)
       if (s.sessionDate.slice(0, 4) === y) {
         const mo = Number(s.sessionDate.slice(5, 7));
@@ -170,7 +192,14 @@ export default function ProfitManager({
       const m = i + 1;
       const revenue = rev.get(m) ?? 0;
       const settlement = settlementAgg(setRows.get(m) ?? []).krw;
-      return { key: `${y}-${m}`, revenue, settlement, tooltip: tooltipOf(`${y}년 ${m}월`, revenue, settlement), xLabel: `${m}월`, highlight: m === selMonth };
+      return {
+        key: `${y}-${m}`,
+        revenue,
+        settlement,
+        tooltip: tooltipOf(`${y}년 ${m}월`, revenue, settlement, fee.get(m) ?? 0),
+        xLabel: `${m}월`,
+        highlight: m === selMonth,
+      };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inRev, inSet, baseRev, baseSet, start, end, rates, period, anchor, settlementRecords]);
@@ -191,7 +220,7 @@ export default function ProfitManager({
     const ensure = (key: string, label: string): ProfitGroup => {
       let g = map.get(key);
       if (!g) {
-        g = { key, label, supplyKrw: 0, vatKrw: 0, settlementKrw: 0, unpriced: 0 };
+        g = { key, label, supplyKrw: 0, vatKrw: 0, pgFeeKrw: 0, settlementKrw: 0, unpriced: 0 };
         map.set(key, g);
       } else if (g.label.startsWith("미지정") && !label.startsWith("미지정")) {
         g.label = label; // 한쪽이 스냅샷 라벨을 갖고 있으면 채택
@@ -203,6 +232,7 @@ export default function ProfitManager({
       const g = ensure(key, label);
       g.supplyKrw += revenueSupplyKrw(r);
       g.vatKrw += revenueVatKrw(r);
+      g.pgFeeKrw += revenuePgFeeKrw(r);
     }
     for (const s of inSet) {
       const { key, label } = setKeyOf(s);
@@ -212,8 +242,8 @@ export default function ProfitManager({
     }
     const list = Array.from(map.values());
     list.sort((a, b) => {
-      const pa = a.supplyKrw - a.settlementKrw;
-      const pb = b.supplyKrw - b.settlementKrw;
+      const pa = a.supplyKrw - a.settlementKrw - a.pgFeeKrw;
+      const pb = b.supplyKrw - b.settlementKrw - b.pgFeeKrw;
       if (!sort) return pb - pa; // 기본: 매출이익 내림차순
       let cmp: number;
       if (sort.key === "name") cmp = a.label.localeCompare(b.label, "ko");
@@ -229,9 +259,10 @@ export default function ProfitManager({
   const tableTotals = useMemo(() => {
     const supply = groups.reduce((s, g) => s + g.supplyKrw, 0);
     const vat = groups.reduce((s, g) => s + g.vatKrw, 0);
+    const pgFee = groups.reduce((s, g) => s + g.pgFeeKrw, 0);
     const settlement = groups.reduce((s, g) => s + g.settlementKrw, 0);
-    const profit = supply - settlement;
-    return { supply, vat, settlement, profit, margin: supply > 0 ? (profit / supply) * 100 : null };
+    const profit = supply - settlement - pgFee;
+    return { supply, vat, pgFee, settlement, profit, margin: supply > 0 ? (profit / supply) * 100 : null };
   }, [groups]);
 
   const groupColLabel = grouping.replace("별", "");
@@ -240,7 +271,7 @@ export default function ProfitManager({
     <div>
       <h1 className="text-ink text-2xl font-extrabold">매출이익</h1>
       <p className="text-muted-fg mt-1 text-sm">
-        매출이익 = 공급가액(매출 ÷ 1.1) − 정산이며, 부가세는 납부 대상이라 이익에서 제외됩니다(이익률 = 매출이익 ÷ 공급가액). 매출은 결제일, 정산은 수업 진행일 기준이라 기간 이익은 운영 참고용이며 실패·테스트 결제는 제외됩니다. 정산이 확정되기 전에는 추정치(예상치)로 표시되고, 센터 월 정산이 확정되면 실지급액으로 반영됩니다.
+        매출이익 = 공급가액(매출 ÷ 1.1) − 정산 − PG 수수료이며, 부가세는 납부 대상이라 이익에서 제외됩니다(이익률 = 매출이익 ÷ 공급가액). 매출은 결제일, 정산은 수업 진행일 기준이라 기간 이익은 운영 참고용이며 실패·테스트 결제는 제외됩니다. 정산이 확정되기 전에는 추정치(예상치)로 표시되고, 센터 월 정산이 확정되면 실지급액으로 반영됩니다.
       </p>
 
       {/* 기간 토글 */}
@@ -301,6 +332,7 @@ export default function ProfitManager({
             <KpiCard label="매출" value={formatPrice(kpi.gross, "KRW")} hint="순매출(부가세 포함)" />
             <KpiCard label="공급가액" value={formatPrice(kpi.supply, "KRW")} hint="매출 ÷ 1.1 (이익 베이스)" />
             <KpiCard label="부가세" value={formatPrice(kpi.vat, "KRW")} hint="납부 대상(이익 제외)" />
+            <KpiCard label="PG 수수료" value={formatPrice(kpi.pgFee, "KRW")} hint="카드 등 PG 경유 결제 비용" tone="settlement" />
             <KpiCard
               label="정산"
               value={formatPrice(kpi.settlement, "KRW")}
@@ -308,7 +340,13 @@ export default function ProfitManager({
               tone="settlement"
               badge={badge}
             />
-            <KpiCard label="매출이익" value={formatPrice(kpi.profit, "KRW")} hint="공급가액 − 정산" tone={kpi.profit >= 0 ? "profit" : "loss"} badge={badge} />
+            <KpiCard
+              label="매출이익"
+              value={formatPrice(kpi.profit, "KRW")}
+              hint="공급가액 − 정산 − PG 수수료"
+              tone={kpi.profit >= 0 ? "profit" : "loss"}
+              badge={badge}
+            />
             <KpiCard
               label="이익률"
               value={kpi.margin == null ? "—" : `${kpi.margin.toFixed(1)}%`}
@@ -344,6 +382,7 @@ export default function ProfitManager({
               <SortHeader label={groupColLabel} sortKey="name" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
               <SortHeader label="공급가액" sortKey="revenue" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <th className="px-4 py-2.5">부가세</th>
+              <th className="px-4 py-2.5">PG 수수료</th>
               <SortHeader label="정산" sortKey="settlement" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <SortHeader label="매출이익" sortKey="profit" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
               <th className="px-4 py-2.5">이익률</th>
@@ -352,13 +391,13 @@ export default function ProfitManager({
           <tbody>
             {groups.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-muted-fg px-6 py-12 text-center text-sm">
+                <td colSpan={7} className="text-muted-fg px-6 py-12 text-center text-sm">
                   이 기간에 매출·정산 내역이 없습니다.
                 </td>
               </tr>
             ) : (
               groups.map((g) => {
-                const profit = g.supplyKrw - g.settlementKrw;
+                const profit = g.supplyKrw - g.settlementKrw - g.pgFeeKrw;
                 const margin = g.supplyKrw > 0 ? (profit / g.supplyKrw) * 100 : null;
                 return (
                   <tr key={g.key} className="border-rule border-b last:border-b-0">
@@ -368,6 +407,9 @@ export default function ProfitManager({
                     </td>
                     <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(g.supplyKrw, "KRW")}</td>
                     <td className="text-muted-fg px-4 py-3 align-middle whitespace-nowrap">{formatPrice(g.vatKrw, "KRW")}</td>
+                    <td className="text-muted-fg px-4 py-3 align-middle whitespace-nowrap">
+                      {g.pgFeeKrw > 0 ? formatPrice(g.pgFeeKrw, "KRW") : <span className="text-muted-fg-faint">—</span>}
+                    </td>
                     <td className="text-muted-fg px-4 py-3 align-middle whitespace-nowrap">{formatPrice(g.settlementKrw, "KRW")}</td>
                     <td className={cn("px-4 py-3 align-middle font-semibold whitespace-nowrap md:px-6", profit >= 0 ? "text-accent-blue-ink" : "text-brand")}>
                       {formatPrice(profit, "KRW")}
@@ -384,6 +426,7 @@ export default function ProfitManager({
                 <td className="text-ink px-4 py-3 align-middle md:px-6">합계</td>
                 <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.supply, "KRW")}</td>
                 <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.vat, "KRW")}</td>
+                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.pgFee, "KRW")}</td>
                 <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.settlement, "KRW")}</td>
                 <td className={cn("px-4 py-3 align-middle whitespace-nowrap md:px-6", tableTotals.profit >= 0 ? "text-accent-blue-ink" : "text-brand")}>
                   {formatPrice(tableTotals.profit, "KRW")}
@@ -401,8 +444,9 @@ export default function ProfitManager({
   );
 }
 
-function tooltipOf(label: string, supply: number, settlement: number): string {
-  return `${label} · 공급가액 ${formatPrice(supply, "KRW")} · 정산 ${formatPrice(settlement, "KRW")} · 이익 ${formatPrice(supply - settlement, "KRW")}`;
+function tooltipOf(label: string, supply: number, settlement: number, pgFee = 0): string {
+  const fee = pgFee > 0 ? ` · PG 수수료 ${formatPrice(pgFee, "KRW")}` : "";
+  return `${label} · 공급가액 ${formatPrice(supply, "KRW")} · 정산 ${formatPrice(settlement, "KRW")}${fee} · 이익 ${formatPrice(supply - settlement - pgFee, "KRW")}`;
 }
 
 function KpiCard({
