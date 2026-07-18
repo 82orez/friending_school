@@ -4,6 +4,7 @@ import type { createAdminClient } from "@/utils/supabase/admin";
 import type { RevenueRow } from "@/components/admin/RevenueManager";
 import { FOREIGN_CURRENCIES, normalizeCurrency, ratesFromSettings, type Rates } from "@/data/currencies";
 import { toKrwAt, type FxRow } from "@/lib/fx";
+import { vatSupply } from "@/lib/vat";
 
 // 매출 row 조립 공유 로더 — 매출 현황·매출이익 대시보드 공용(loadSettlementRows 미러).
 // payments를 소스로 순매출(amount − cancelled_amount)을 결제일(KST) 기준으로 집계 가능한 row로 변환.
@@ -111,15 +112,24 @@ export async function loadRevenueRows(admin: ReturnType<typeof createAdminClient
       const amount = Number(p.amount) || 0;
       const cancelledAmount = Number(p.cancelled_amount) || 0;
       const currency = normalizeCurrency(p.currency);
+      // 결제일 기준 환율로 원화 환산(집계는 이 값 합산). KRW 결제는 passthrough.
+      const krwAmount = toKrwAt(amount, currency, fxRows, kstDate);
+      const krwCancelledAmount = toKrwAt(cancelledAmount, currency, fxRows, kstDate);
+      // 부가세 포함 합계 → 공급가액/부가세 역산(행별 반올림 후 합산해 감사 정합).
+      const krwSupply = vatSupply(krwAmount);
+      const krwCancelledSupply = vatSupply(krwCancelledAmount);
       return {
         paymentId: p.payment_id,
         createdAt: p.created_at,
         kstDate,
         amount,
         cancelledAmount,
-        // 결제일 기준 환율로 원화 환산(집계는 이 값 합산). KRW 결제는 passthrough.
-        krwAmount: toKrwAt(amount, currency, fxRows, kstDate),
-        krwCancelledAmount: toKrwAt(cancelledAmount, currency, fxRows, kstDate),
+        krwAmount,
+        krwCancelledAmount,
+        krwSupply,
+        krwVat: krwAmount - krwSupply,
+        krwCancelledSupply,
+        krwCancelledVat: krwCancelledAmount - krwCancelledSupply,
         status: p.status,
         method: p.method,
         currency,

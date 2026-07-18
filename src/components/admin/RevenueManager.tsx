@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, Download, ExternalLink, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice, type Rates } from "@/data/currencies";
+import { vatBreakdown } from "@/lib/vat";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +25,10 @@ export type RevenueRow = {
   cancelledAmount: number;
   krwAmount: number; // amount를 결제일(kstDate) 기준 환율로 원화 환산(로더 계산). KRW=그대로.
   krwCancelledAmount: number; // cancelledAmount의 원화 환산
+  krwSupply: number; // krwAmount의 공급가액(부가세 제외) — 로더에서 행별 역산
+  krwVat: number; // krwAmount의 부가세(10%)
+  krwCancelledSupply: number; // krwCancelledAmount의 공급가액
+  krwCancelledVat: number; // krwCancelledAmount의 부가세
   status: string; // paid | cancelled | partial_cancelled
   method: string | null;
   currency: string;
@@ -109,7 +114,17 @@ function payMethodLabel(method: string | null): string {
 }
 
 // 원화 환산은 로더가 결제일 환율로 사전 계산(r.krwAmount/r.krwCancelledAmount) → 여기선 합산만.
-type Group = { key: string; label: string; count: number; grossKrw: number; refundKrw: number; netKrw: number };
+// 순공급가액 = grossSupplyKrw − refundSupplyKrw, 순부가세 = grossVatKrw − refundVatKrw (표시 시 파생).
+type Group = {
+  key: string;
+  label: string;
+  count: number;
+  grossKrw: number;
+  refundKrw: number;
+  netKrw: number;
+  netSupplyKrw: number;
+  netVatKrw: number;
+};
 type TrendBucket = { key: string; net: number; tooltip: string; xLabel: string; highlight?: boolean; dow?: number };
 
 function aggregate(rows: RevenueRow[], keyOf: (r: RevenueRow) => { key: string; label: string }): Group[] {
@@ -118,13 +133,15 @@ function aggregate(rows: RevenueRow[], keyOf: (r: RevenueRow) => { key: string; 
     const { key, label } = keyOf(r);
     let g = map.get(key);
     if (!g) {
-      g = { key, label, count: 0, grossKrw: 0, refundKrw: 0, netKrw: 0 };
+      g = { key, label, count: 0, grossKrw: 0, refundKrw: 0, netKrw: 0, netSupplyKrw: 0, netVatKrw: 0 };
       map.set(key, g);
     }
     g.count += 1;
     g.grossKrw += r.krwAmount;
     g.refundKrw += r.krwCancelledAmount;
     g.netKrw += r.krwAmount - r.krwCancelledAmount;
+    g.netSupplyKrw += r.krwSupply - r.krwCancelledSupply;
+    g.netVatKrw += r.krwVat - r.krwCancelledVat;
   }
   return Array.from(map.values());
 }
@@ -152,13 +169,17 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
   const kpi = useMemo(() => {
     let gross = 0;
     let refund = 0;
+    let netSupply = 0; // 순공급가액(부가세 제외)
+    let netVat = 0; // 순부가세
     let refundCount = 0;
     for (const r of inRangeRows) {
       gross += r.krwAmount;
       refund += r.krwCancelledAmount;
+      netSupply += r.krwSupply - r.krwCancelledSupply;
+      netVat += r.krwVat - r.krwCancelledVat;
       if (r.cancelledAmount > 0) refundCount += 1;
     }
-    return { gross, refund, net: gross - refund, count: inRangeRows.length, refundCount };
+    return { gross, refund, net: gross - refund, netSupply, netVat, count: inRangeRows.length, refundCount };
   }, [inRangeRows]);
 
   // 추이 차트 버킷 — 주간=일별(7개), 월간·년간=앵커 연도의 월별 12개(월간은 선택 월 강조).
@@ -248,21 +269,27 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
   }, [inRangeRows, txQuery, txStatus]);
 
   const exportCsv = () => {
-    const header = ["결제일", "학생", "영문명", "과정", "결제수단", "통화", "결제금액", "환불금액", "순액", "상태", "메모", "결제ID"];
-    const body = txRows.map((r) => [
-      r.kstDate,
-      r.studentName ?? "",
-      r.studentEnglishName ?? "",
-      r.courseTitle ?? "",
-      payMethodLabel(r.method),
-      r.currency,
-      String(r.amount),
-      String(r.cancelledAmount),
-      String(r.amount - r.cancelledAmount),
-      statusLabel(r.status),
-      r.note ?? "",
-      r.paymentId,
-    ]);
+    const header = ["결제일", "학생", "영문명", "과정", "결제수단", "통화", "결제금액", "환불금액", "순액", "공급가액", "부가세", "상태", "메모", "결제ID"];
+    const body = txRows.map((r) => {
+      const net = r.amount - r.cancelledAmount;
+      const { supply, vat } = vatBreakdown(net);
+      return [
+        r.kstDate,
+        r.studentName ?? "",
+        r.studentEnglishName ?? "",
+        r.courseTitle ?? "",
+        payMethodLabel(r.method),
+        r.currency,
+        String(r.amount),
+        String(r.cancelledAmount),
+        String(net),
+        String(supply),
+        String(vat),
+        statusLabel(r.status),
+        r.note ?? "",
+        r.paymentId,
+      ];
+    });
     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
     const csv = [header, ...body].map((row) => row.map(escape).join(",")).join("\r\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }); // BOM=엑셀 한글 대응
@@ -277,7 +304,9 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
   return (
     <div>
       <h1 className="text-ink text-2xl font-extrabold">매출 현황</h1>
-      <p className="text-muted-fg mt-1 text-sm">카드·무통장 결제 기준 매출입니다. 순매출 = 결제금액 − 환불금액이며, 실패·테스트 결제는 제외됩니다.</p>
+      <p className="text-muted-fg mt-1 text-sm">
+        카드·무통장 결제 기준 매출입니다. 순매출 = 결제금액 − 환불금액 = 공급가액 + 부가세(부가세 10% 포함가 기준)이며, 실패·테스트 결제는 제외됩니다.
+      </p>
 
       {/* 기간 토글 */}
       <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -326,11 +355,13 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
         <span className="text-muted-fg-faint ml-auto text-xs">주 시작: 월요일</span>
       </div>
 
-      {/* KPI 카드 */}
-      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* KPI 카드 — 순매출 = 공급가액 + 부가세(부가세 10% 포함가 역산) */}
+      <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-3">
         <KpiCard label="총매출" value={formatPrice(kpi.gross, "KRW")} hint="환불 전 결제 합계" />
         <KpiCard label="환불" value={formatPrice(kpi.refund, "KRW")} hint={`환불 ${kpi.refundCount}건`} tone="refund" />
         <KpiCard label="순매출" value={formatPrice(kpi.net, "KRW")} hint="총매출 − 환불" tone="net" />
+        <KpiCard label="공급가액" value={formatPrice(kpi.netSupply, "KRW")} hint="순매출 ÷ 1.1 (부가세 제외)" />
+        <KpiCard label="부가세" value={formatPrice(kpi.netVat, "KRW")} hint="순매출 − 공급가액 (10%)" />
         <KpiCard label="결제 건수" value={String(kpi.count)} hint="기간 내 결제" />
       </div>
 
@@ -353,13 +384,15 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
               <SortHeader label={grouping.replace("별", "")} sortKey="name" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
               <SortHeader label="건수" sortKey="count" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
               <th className="px-4 py-2.5">환불</th>
+              <th className="px-4 py-2.5">공급가액</th>
+              <th className="px-4 py-2.5">부가세</th>
               <SortHeader label="순매출" sortKey="amount" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
             </tr>
           </thead>
           <tbody>
             {groups.length === 0 ? (
               <tr>
-                <td colSpan={4} className="text-muted-fg px-6 py-12 text-center text-sm">
+                <td colSpan={6} className="text-muted-fg px-6 py-12 text-center text-sm">
                   이 기간에 결제 내역이 없습니다.
                 </td>
               </tr>
@@ -375,6 +408,8 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
                       <span className="text-muted-fg-faint">—</span>
                     )}
                   </td>
+                  <td className="text-muted-fg px-4 py-3 whitespace-nowrap">{formatPrice(g.netSupplyKrw, "KRW")}</td>
+                  <td className="text-muted-fg px-4 py-3 whitespace-nowrap">{formatPrice(g.netVatKrw, "KRW")}</td>
                   <td className="text-ink px-4 py-3 font-bold whitespace-nowrap md:px-6">{formatPrice(g.netKrw, "KRW")}</td>
                 </tr>
               ))
@@ -386,6 +421,8 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
                 <td className="px-4 py-3 md:px-6">합계</td>
                 <td className="px-4 py-3 whitespace-nowrap">{kpi.count}건</td>
                 <td className="px-4 py-3 whitespace-nowrap text-[#B45309]">{kpi.refund > 0 ? formatPrice(kpi.refund, "KRW") : "—"}</td>
+                <td className="px-4 py-3 whitespace-nowrap">{formatPrice(kpi.netSupply, "KRW")}</td>
+                <td className="px-4 py-3 whitespace-nowrap">{formatPrice(kpi.netVat, "KRW")}</td>
                 <td className="text-ink px-4 py-3 whitespace-nowrap md:px-6">{formatPrice(kpi.net, "KRW")}</td>
               </tr>
             </tfoot>
@@ -433,6 +470,8 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
               <th className="px-4 py-2.5">수단</th>
               <th className="px-4 py-2.5 text-right">결제금액</th>
               <th className="px-4 py-2.5 text-right">순액</th>
+              <th className="px-4 py-2.5 text-right">공급가액</th>
+              <th className="px-4 py-2.5 text-right">부가세</th>
               <th className="px-4 py-2.5">상태</th>
               <th className="px-4 py-2.5 md:px-6">영수증</th>
             </tr>
@@ -440,13 +479,14 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
           <tbody>
             {txRows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-muted-fg px-6 py-12 text-center text-sm">
+                <td colSpan={10} className="text-muted-fg px-6 py-12 text-center text-sm">
                   결제 내역이 없습니다.
                 </td>
               </tr>
             ) : (
               txRows.map((r) => {
                 const net = r.amount - r.cancelledAmount;
+                const { supply, vat } = vatBreakdown(net); // 원통화 순액 기준 부가세 역산
                 return (
                   <tr key={r.paymentId} className="border-rule border-b last:border-b-0">
                     <td className="text-muted-fg px-4 py-3 whitespace-nowrap md:px-6">{r.kstDate}</td>
@@ -467,6 +507,8 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
                         <span className="text-ink">{formatPrice(net, r.currency)}</span>
                       )}
                     </td>
+                    <td className="text-muted-fg px-4 py-3 text-right whitespace-nowrap">{formatPrice(supply, r.currency)}</td>
+                    <td className="text-muted-fg px-4 py-3 text-right whitespace-nowrap">{formatPrice(vat, r.currency)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[r.status] ?? "bg-rule text-muted-fg")}>
                         {statusLabel(r.status)}

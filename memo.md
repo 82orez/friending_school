@@ -22,7 +22,9 @@
 
 # LMS 관련 추가해야 할 기능
 - 카드 결제 기능(portone)
+  * 한국결제네트웍스 - https://www.kpn.co.kr/main.do
   * 테스트: 결제/(전체)환불 완료 - 환불 정책(남은 수업 일괄 취소)
+- 수업 30분 전 수강생에게 알림 문자 발송
 - 강사 관리 강사 강좌 목록에 대체 강좌가 표시되지 않음 ??
 - 강사 관리 강사 강좌 목록에서 해당 강좌 클릭하면 해당 강좌로 이동 ??
 - enrollments 삭제 시 enrollment_events는 보존되고 enrollment_id만 null이 됩니다 (audit trail 목적).
