@@ -52,8 +52,8 @@ export default async function Footer() {
             </ul>
           </div>
 
-          {/* 공지 사항 */}
-          <div>
+          {/* 공지 사항 — min-w-0: 그리드 아이템 기본 min-width:auto를 풀어야 긴 제목의 truncate가 동작(없으면 칼럼이 늘어나 레이아웃이 넘침) */}
+          <div className="min-w-0">
             <h3 className="mb-4 text-lg font-bold text-white">공지 사항</h3>
             {/* 목록의 pr-*: 날짜가 오른쪽 'Other INFO' 칼럼에 붙어 보이지 않도록 여백 확보 */}
             {notices.length === 0 ? (
