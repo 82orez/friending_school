@@ -55,10 +55,11 @@ export default async function Footer() {
           {/* 공지 사항 */}
           <div>
             <h3 className="mb-4 text-lg font-bold text-white">공지 사항</h3>
+            {/* 목록의 pr-*: 날짜가 오른쪽 'Other INFO' 칼럼에 붙어 보이지 않도록 여백 확보 */}
             {notices.length === 0 ? (
               <p className="text-sm text-[#888]">등록된 공지 사항이 없습니다.</p>
             ) : (
-              <ul className="space-y-2 text-sm text-[#888]">
+              <ul className="space-y-2 pr-6 text-sm text-[#888] md:pr-12">
                 {notices.map((n) => (
                   <li key={n.id} className="flex items-baseline gap-2">
                     <Link href={`/notices/${n.id}`} className="min-w-0 flex-1 truncate transition-colors hover:text-white">
