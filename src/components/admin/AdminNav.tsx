@@ -14,6 +14,7 @@ const ITEMS = [
   { href: "/admin/profit", label: "📊 매출이익" },
   { href: "/admin/settlements", label: "💰 강사 정산" },
   { href: "/admin/youtube", label: "🎬 유튜브 관리" },
+  { href: "/admin/notices", label: "📢 공지 사항" },
 ];
 
 export default function AdminNav() {

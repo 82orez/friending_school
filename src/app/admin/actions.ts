@@ -124,6 +124,102 @@ export async function deleteYoutubeVideo(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+/* ===== 공지 사항 관리 ===== */
+
+export type NoticeInput = { title: string; body: string; publishedAt?: string; isPinned?: boolean; isVisible?: boolean };
+
+// 공지 변경은 Footer(루트 layout에 있어 전 페이지 노출)·목록·상세에 영향.
+function revalidateNoticeConsumers() {
+  revalidatePath("/admin/notices");
+  revalidatePath("/notices");
+  revalidatePath("/", "layout");
+}
+
+// 게시일 정규화 — datetime-local(로컬 시각) 문자열 파싱, 비었거나 잘못되면 현재 시각.
+function normalizePublishedAt(raw: string | undefined): string {
+  const t = raw?.trim();
+  if (!t) return new Date().toISOString();
+  const d = new Date(t);
+  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
+const NOTICE_BODY_MAX = 20000;
+
+export async function addNotice(input: NoticeInput): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const title = input.title?.trim();
+  if (!title) return { ok: false, error: "제목은 필수입니다." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("notices").insert({
+    title,
+    body: (input.body ?? "").trim().slice(0, NOTICE_BODY_MAX),
+    published_at: normalizePublishedAt(input.publishedAt),
+    is_pinned: !!input.isPinned,
+    is_visible: input.isVisible !== false,
+  });
+  if (error) return { ok: false, error: "등록 중 오류가 발생했습니다." };
+
+  revalidateNoticeConsumers();
+  return { ok: true };
+}
+
+export async function updateNotice(id: string, input: NoticeInput): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  const title = input.title?.trim();
+  if (!id || !title) return { ok: false, error: "제목은 필수입니다." };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("notices")
+    .update({
+      title,
+      body: (input.body ?? "").trim().slice(0, NOTICE_BODY_MAX),
+      published_at: normalizePublishedAt(input.publishedAt),
+    })
+    .eq("id", id);
+  if (error) return { ok: false, error: "수정 중 오류가 발생했습니다." };
+
+  revalidateNoticeConsumers();
+  return { ok: true };
+}
+
+export async function setNoticeVisibility(id: string, isVisible: boolean): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("notices").update({ is_visible: isVisible }).eq("id", id);
+  if (error) return { ok: false, error: "변경 중 오류가 발생했습니다." };
+
+  revalidateNoticeConsumers();
+  return { ok: true };
+}
+
+export async function setNoticePinned(id: string, isPinned: boolean): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("notices").update({ is_pinned: isPinned }).eq("id", id);
+  if (error) return { ok: false, error: "변경 중 오류가 발생했습니다." };
+
+  revalidateNoticeConsumers();
+  return { ok: true };
+}
+
+export async function deleteNotice(id: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("notices").delete().eq("id", id);
+  if (error) return { ok: false, error: "삭제 중 오류가 발생했습니다." };
+
+  revalidateNoticeConsumers();
+  return { ok: true };
+}
+
 /* ===== 센터 관리 ===== */
 
 // 센터 추가/수정/삭제 시 드롭다운·표시가 쓰이는 경로를 함께 갱신.

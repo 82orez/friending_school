@@ -375,6 +375,42 @@ export type Database = {
         }
         Relationships: []
       }
+      notices: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_pinned: boolean
+          is_visible: boolean
+          published_at: string
+          title: string
+          updated_at: string
+          view_count: number
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          is_visible?: boolean
+          published_at?: string
+          title: string
+          updated_at?: string
+          view_count?: number
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          is_visible?: boolean
+          published_at?: string
+          title?: string
+          updated_at?: string
+          view_count?: number
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -792,6 +828,7 @@ export type Database = {
         Args: { p_app_id: string }
         Returns: string
       }
+      increment_notice_view: { Args: { p_id: string }; Returns: undefined }
     }
     Enums: {
       enrollment_status:

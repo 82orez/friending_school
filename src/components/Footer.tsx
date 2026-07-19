@@ -1,7 +1,22 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { Mail, MapPin, Phone, Play } from "lucide-react";
+import { createClient } from "@/utils/supabase/server";
+import { kstShortDate } from "@/lib/kst";
 
-export default function Footer() {
+type FooterNotice = { id: string; title: string; published_at: string; is_pinned: boolean };
+
+export default async function Footer() {
+  // 공지 최근 3건 — RLS(notices_select_public)가 노출·게시일 필터를 강제하므로 세션 client로 조회.
+  const supabase = createClient(await cookies());
+  const { data } = await supabase
+    .from("notices")
+    .select("id, title, published_at, is_pinned")
+    .order("is_pinned", { ascending: false })
+    .order("published_at", { ascending: false })
+    .limit(3);
+  const notices = (data ?? []) as FooterNotice[];
+
   return (
     <footer id="contact" className="bg-ink text-white">
       <div className="mx-auto max-w-[1200px] px-5 py-8 md:px-10">
@@ -37,10 +52,27 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* 공지사항 */}
+          {/* 공지 사항 */}
           <div>
-            <h3 className="mb-4 text-lg font-bold text-white">공지사항</h3>
-            <p className="text-sm text-[#888]">등록된 공지 사항이 없습니다.</p>
+            <h3 className="mb-4 text-lg font-bold text-white">공지 사항</h3>
+            {notices.length === 0 ? (
+              <p className="text-sm text-[#888]">등록된 공지 사항이 없습니다.</p>
+            ) : (
+              <ul className="space-y-2 text-sm text-[#888]">
+                {notices.map((n) => (
+                  <li key={n.id} className="flex items-baseline gap-2">
+                    <Link href={`/notices/${n.id}`} className="min-w-0 flex-1 truncate transition-colors hover:text-white">
+                      {n.is_pinned && <span className="mr-1 text-[#bbb]">[공지]</span>}
+                      {n.title}
+                    </Link>
+                    <span className="shrink-0 text-xs text-[#666]">{kstShortDate(n.published_at)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link href="/notices" className="mt-3 inline-block text-[13px] text-[#888] transition-colors hover:text-white">
+              전체 보기 →
+            </Link>
           </div>
 
           {/* Other INFO */}
