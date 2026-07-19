@@ -135,14 +135,16 @@ export async function cancelPortonePayment(paymentId: string, opts: { reason: st
     if (!res.ok) {
       const raw = await res.text().catch(() => "");
       console.error("[cancelPortonePayment] PortOne 취소 실패:", res.status, raw);
+      // admin 전용 화면이라 PG 원문 사유를 그대로 노출(pgMessage가 가장 구체적 — 예 "취소가능 금액을 초과했습니다.(P568)").
       let detail = "";
       try {
         const j = JSON.parse(raw);
-        detail = j?.type ?? j?.message ?? "";
+        const msg = j?.pgMessage ?? j?.message ?? j?.type ?? "";
+        detail = msg ? `${msg}${j?.pgCode ? ` (${j.pgCode})` : ""}` : "";
       } catch {
         detail = "";
       }
-      return { ok: false, error: `환불 실패(PortOne ${res.status}${detail ? ` · ${detail}` : ""}).`, transient: res.status >= 500 };
+      return { ok: false, error: detail ? `환불 실패: ${detail}` : `환불 실패(PortOne ${res.status}).`, transient: res.status >= 500 };
     }
     const json = await res.json().catch(() => ({}));
     // 응답 형태: { cancellation: { totalAmount, ... } } — 취소 금액 파싱(실패해도 성공 처리).
