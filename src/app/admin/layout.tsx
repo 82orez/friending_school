@@ -17,13 +17,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="bg-surface min-h-screen">
-      <div className="mx-auto max-w-[1100px] px-4 py-8 md:py-10">
+      <div className="mx-auto max-w-[1400px] px-4 py-8 md:py-10">
         <div className="mb-6 flex items-center gap-2">
           <span className="bg-brand-gradient inline-block rounded-full px-4 py-1 text-sm font-bold text-white">관리자</span>
           <span className="text-muted-fg-faint text-sm">{user.email}</span>
         </div>
-        <AdminNav />
-        <main className="mt-6">{children}</main>
+        <div className="md:grid md:grid-cols-[200px_minmax(0,1fr)] md:gap-8">
+          <AdminNav />
+          <main className="mt-6 md:mt-0">{children}</main>
+        </div>
       </div>
     </div>
   );
