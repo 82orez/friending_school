@@ -12,6 +12,7 @@ const ITEMS: { href: string; label: string }[] = [
   { href: "/admin/centers", label: "🏫 센터 관리" },
   { href: "/admin/revenue", label: "📈 매출 현황" },
   { href: "/admin/profit", label: "📊 매출이익" },
+  { href: "/admin/simulation", label: "🎯 목표 시뮬레이션" },
   { href: "/admin/settlements", label: "💰 강사 정산" },
   { href: "/admin/youtube", label: "🎬 유튜브 관리" },
   { href: "/admin/notices", label: "📢 공지 사항" },
