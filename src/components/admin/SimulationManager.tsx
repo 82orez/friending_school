@@ -4,9 +4,11 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CURRENCIES, formatPrice } from "@/data/currencies";
 import { simulate, sensitivity, type SimInputs, type SensitivityAxis } from "@/lib/simulation";
+import { settlementSpread, projectCohorts, convergenceMonth, buildArrivals } from "@/lib/cohort";
 
 // 목표 시뮬레이터 — "월 매출이익 목표 → 필요 월 신청 건수" 역산(읽기 전용, 서버 호출 없음).
 // 이익 정의·반올림은 /admin/profit과 동일(공급가액 − 정산 − PG 수수료). 고정비는 미반영(공헌이익).
+// 두 뷰: 정상상태(유입이 일정할 때의 균형점) · 월별 전개(선수취/후지급 시점차로 생기는 과도구간).
 
 export type CenterPreset = { id: string; name: string; price: number | null; currency: string; fxRate: number };
 
@@ -16,6 +18,13 @@ const LABEL = "text-muted-fg-faint mb-1 block text-xs font-semibold";
 
 const AXIS_LABEL: Record<SensitivityAxis, string> = { rate: "회당 단가", fx: "환율", tuition: "수강료" };
 const AXES: SensitivityAxis[] = ["rate", "fx", "tuition"];
+
+type View = "steady" | "monthly";
+const VIEWS: { key: View; label: string }[] = [
+  { key: "steady", label: "정상상태" },
+  { key: "monthly", label: "월별 전개" },
+];
+const PROJECTION_MONTHS = 12;
 
 // 숫자 입력은 빈 문자열을 허용해야 지우고 다시 칠 수 있어 문자열 state로 두고 계산 시점에만 Number().
 const n = (s: string): number => {
@@ -45,6 +54,11 @@ export default function SimulationManager({
   const [perWeek, setPerWeek] = useState("3");
   const [slotsPerTeacher, setSlotsPerTeacher] = useState("30");
   const [axis, setAxis] = useState<SensitivityAxis>("rate");
+  const [view, setView] = useState<View>("steady");
+  // 월별 전개 — 램프 시나리오(시작 건수 · 목표 도달까지 개월 수 · 이후 중단 여부).
+  const [rampStart, setRampStart] = useState("8");
+  const [rampMonths, setRampMonths] = useState("4");
+  const [stopAfter, setStopAfter] = useState("0"); // 0 = 중단 없음, N = N개월차 이후 신규 0
 
   const inputs: SimInputs = useMemo(
     () => ({
@@ -94,6 +108,18 @@ export default function SimulationManager({
   }, [axis, inputs, rate, fx, tuition, isKrw]);
 
   const krw = (v: number | null) => (v == null ? "—" : formatPrice(Math.round(v), "KRW"));
+
+  // ── 월별 전개 ──
+  const spread = useMemo(() => settlementSpread(n(sessions), n(perWeek)), [sessions, perWeek]);
+  const arrivals = useMemo(() => {
+    const target = r.requiredEnrollments ?? 0;
+    const base = buildArrivals(target, PROJECTION_MONTHS, n(rampStart), n(rampMonths));
+    const stop = Math.round(n(stopAfter));
+    return stop > 0 ? base.map((v, i) => (i >= stop ? 0 : v)) : base;
+  }, [r.requiredEnrollments, rampStart, rampMonths, stopAfter]);
+  const cohorts = useMemo(() => projectCohorts(r, inputs, arrivals), [r, inputs, arrivals]);
+  const converge = useMemo(() => convergenceMonth(cohorts), [cohorts]);
+  const peakDeferred = useMemo(() => Math.max(0, ...cohorts.map((c) => c.deferredRevenue)), [cohorts]);
 
   return (
     <div>
@@ -260,8 +286,22 @@ export default function SimulationManager({
         </p>
       )}
 
+      {/* ── 뷰 토글 ── */}
+      <div className="border-rule mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-b pb-3">
+        <div className="flex gap-1.5">
+          {VIEWS.map((v) => (
+            <ToggleChip key={v.key} active={view === v.key} onClick={() => setView(v.key)} label={v.label} />
+          ))}
+        </div>
+        <span className="text-muted-fg-faint text-xs">
+          {view === "steady"
+            ? "유입이 일정할 때의 균형점입니다."
+            : "수강료는 결제일에 전액, 정산은 수업 진행일에 나뉘어 인식됩니다. 그 시점차가 만드는 과도구간을 봅니다."}
+        </span>
+      </div>
+
       {/* ── 운영 부하 ── */}
-      {r.requiredEnrollments != null && (
+      {view === "steady" && r.requiredEnrollments != null && (
         <>
           <p className="text-ink mt-6 text-base font-bold">
             운영 부하 <span className="text-muted-fg-faint text-xs font-normal">주 {n(perWeek)}회 · 목표 건수 기준 정상상태</span>
@@ -319,6 +359,170 @@ export default function SimulationManager({
         </>
       )}
 
+      {/* ── 월별 전개(코호트) ── */}
+      {view === "monthly" && r.requiredEnrollments != null && (
+        <>
+          {/* 램프 시나리오 */}
+          <div className="border-rule mt-6 rounded-xl border bg-white p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-ink text-base font-bold">유입 시나리오</p>
+              <div className="flex flex-wrap gap-1.5">
+                <PresetChip
+                  label="즉시 목표 달성"
+                  active={n(rampMonths) <= 1 && n(stopAfter) === 0}
+                  onClick={() => {
+                    setRampStart(String(r.requiredEnrollments ?? 0));
+                    setRampMonths("1");
+                    setStopAfter("0");
+                  }}
+                />
+                <PresetChip
+                  label="점진 램프"
+                  active={n(rampMonths) > 1 && n(stopAfter) === 0}
+                  onClick={() => {
+                    setRampStart("8");
+                    setRampMonths("4");
+                    setStopAfter("0");
+                  }}
+                />
+                <PresetChip
+                  label="3개월 후 신규 0"
+                  active={n(stopAfter) > 0}
+                  onClick={() => {
+                    setRampStart(String(r.requiredEnrollments ?? 0));
+                    setRampMonths("1");
+                    setStopAfter("3");
+                  }}
+                />
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div>
+                <label className={LABEL}>1개월차 신규 건수</label>
+                <input type="number" min={0} step={1} value={rampStart} onChange={(e) => setRampStart(e.target.value)} className={INPUT} />
+              </div>
+              <div>
+                <label className={LABEL}>목표 도달까지 (개월)</label>
+                <input type="number" min={1} max={12} step={1} value={rampMonths} onChange={(e) => setRampMonths(e.target.value)} className={INPUT} />
+              </div>
+              <div>
+                <label className={LABEL}>신규 중단 시점 (0=없음)</label>
+                <input type="number" min={0} max={12} step={1} value={stopAfter} onChange={(e) => setStopAfter(e.target.value)} className={INPUT} />
+              </div>
+              <div>
+                <label className={LABEL}>목표 건수</label>
+                <input type="number" value={r.requiredEnrollments} readOnly className={cn(INPUT, "bg-surface text-muted-fg")} />
+              </div>
+            </div>
+          </div>
+
+          {/* 정산 분산 */}
+          <p className="text-ink mt-6 text-base font-bold">
+            정산 원가가 흩어지는 모양{" "}
+            <span className="text-muted-fg-faint text-xs font-normal">신청 1건({krw(r.settlementPerEnrollment)})이 어느 달에 나가는가</span>
+          </p>
+          <div className="border-rule mt-3 rounded-xl border bg-white p-5">
+            <div className="border-rule flex h-11 overflow-hidden rounded-lg border">
+              {spread.map((s, i) => (
+                <div
+                  key={i}
+                  style={{ width: `${s * 100}%` }}
+                  className={cn(
+                    "flex items-center justify-center overflow-hidden text-xs font-bold whitespace-nowrap",
+                    i === 0 ? "bg-[#B45309] text-white" : i === 1 ? "bg-[#d98c12] text-white" : "bg-[#F5A623] text-white",
+                  )}
+                >
+                  {s >= 0.08 ? `${(s * 100).toFixed(0)}%` : ""}
+                </div>
+              ))}
+            </div>
+            <div className="text-muted-fg mt-3 flex flex-wrap gap-x-6 gap-y-1.5 text-xs">
+              {spread.map((s, i) => (
+                <span key={i}>
+                  <b className="text-ink">신청월{i === 0 ? "" : ` +${i}`}</b> {(s * 100).toFixed(1)}% · {krw(r.settlementPerEnrollment * s)}
+                </span>
+              ))}
+            </div>
+            <p className="text-muted-fg-faint mt-3 text-xs">
+              수강료는 결제일에 전액 들어오지만 정산은 {spread.length}개월에 걸쳐 나갑니다. 이 때문에 유입이 늘거나 줄 때 매출이익 대시보드가 실제와
+              어긋납니다.
+            </p>
+          </div>
+
+          {/* 월별 표 */}
+          <p className="text-ink mt-6 text-base font-bold">월별 전개</p>
+          <div className="border-rule mt-3 overflow-x-auto rounded-xl border bg-white">
+            <table className="w-full min-w-[720px] border-collapse text-sm">
+              <thead>
+                <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
+                  <th className="px-4 py-2.5 md:px-6">월</th>
+                  <th className="px-4 py-2.5 text-right">신규</th>
+                  <th className="px-4 py-2.5 text-right">공급가액</th>
+                  <th className="px-4 py-2.5 text-right">정산</th>
+                  <th className="px-4 py-2.5 text-right">대시보드 이익</th>
+                  <th className="px-4 py-2.5 text-right">실제 이익</th>
+                  <th className="px-4 py-2.5 text-right md:px-6">선수금 잔고</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cohorts.map((c) => {
+                  const overstated = c.gap > 1;
+                  return (
+                    <tr
+                      key={c.month}
+                      className={cn("border-rule border-b last:border-b-0", converge != null && c.month === converge && "bg-accent-blue-soft")}
+                    >
+                      <td className="text-ink px-4 py-2.5 font-medium md:px-6">
+                        {c.month}개월차
+                        {converge != null && c.month === converge && (
+                          <span className="text-accent-blue-ink ml-1.5 text-[11px] font-semibold">수렴</span>
+                        )}
+                      </td>
+                      <td className="text-muted-fg px-4 py-2.5 text-right">{c.arrivals}건</td>
+                      <td className="text-muted-fg px-4 py-2.5 text-right">{krw(c.supply)}</td>
+                      <td className="px-4 py-2.5 text-right text-[#B45309]">{krw(c.settlement)}</td>
+                      <td
+                        className={cn(
+                          "px-4 py-2.5 text-right font-bold",
+                          c.dashboardProfit < 0 ? "text-brand" : overstated ? "text-[#B45309]" : "text-ink",
+                        )}
+                      >
+                        {krw(c.dashboardProfit)}
+                        {overstated && <span className="ml-1 text-[11px] font-semibold">▲</span>}
+                      </td>
+                      <td className="text-accent-blue-ink px-4 py-2.5 text-right font-bold">{krw(c.economicProfit)}</td>
+                      <td className="text-muted-fg px-4 py-2.5 text-right md:px-6">{krw(c.deferredRevenue)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-muted-fg-faint mt-2 text-xs">
+            <b className="text-[#B45309]">▲</b> = 대시보드가 실제보다 크게 보이는 달. <b>대시보드 이익</b>은 매출이익 페이지가 그 달에 보여줄
+            값(결제일 매출 − 그 달 진행 수업 정산), <b>실제 이익</b>은 그 달 신청 건을 끝까지 매칭한 값입니다.
+          </p>
+
+          <div className="border-cta/30 bg-cta/5 mt-4 rounded-xl border p-5">
+            <p className="text-ink text-sm font-bold">
+              {converge == null
+                ? "이 시나리오에서는 대시보드와 실제가 수렴하지 않습니다."
+                : `${converge}개월차부터 대시보드와 실제 이익이 일치합니다.`}
+            </p>
+            <p className="text-muted-fg mt-1.5 text-xs">
+              그 전까지는 정산이 아직 다 발생하지 않아 대시보드가 이익을 부풀려 보여줍니다. 오픈 직후 숫자를 성과로 오해하지 마세요.
+              {peakDeferred > 0 && (
+                <>
+                  {" "}
+                  또한 이 기간 최대 <b className="text-ink">{krw(peakDeferred)}</b>이 선수금(아직 제공하지 않은 수업의 대가)으로 잡힙니다 — 통장에
+                  있어도 이익이 아니라 <b className="text-ink">환불 시 반환 의무가 있는 부채</b>입니다.
+                </>
+              )}
+            </p>
+          </div>
+        </>
+      )}
+
       {/* ── 민감도 ── */}
       <div className="mt-6 flex flex-wrap items-center gap-2">
         <span className="text-muted-fg-faint text-xs font-semibold">민감도</span>
@@ -364,8 +568,8 @@ export default function SimulationManager({
             <b>목표 + 월 고정비</b>로 다시 계산하세요.
           </li>
           <li>
-            <b>정상상태 가정</b> — 매출은 결제일(현금주의), 정산은 수업 진행일(발생주의) 기준이라 신규 유입이 급변하는 국면에서는 월별 이익이
-            흔들립니다.
+            <b>정상상태 기준</b> — 위 필요 건수는 유입이 일정할 때의 균형점입니다. 매출은 결제일(현금주의), 정산은 수업 진행일(발생주의) 기준이라 오픈
+            직후나 유입이 급변하는 구간에서는 대시보드 이익이 실제와 어긋납니다 — <b>「월별 전개」 뷰</b>에서 확인하세요.
           </li>
           <li>
             <b>단가 미설정 주의</b> — 소속 센터가 없는 강사의 수업은 실적 집계에서 원가 0으로 잡혀 실제 매출이익이 여기보다 낮을 수 있습니다.
@@ -393,6 +597,23 @@ function KpiCard({ label, value, hint, tone }: { label: string; value: string; h
       </p>
       <p className="text-muted-fg-faint mt-0.5 text-xs">{hint}</p>
     </div>
+  );
+}
+
+// 유입 시나리오 프리셋 — ToggleChip보다 작은 보조 칩(센터 단가 프리셋과 동일 크기).
+function PresetChip({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+        active ? "bg-ink border-ink text-white" : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
+      )}
+    >
+      {label}
+    </button>
   );
 }
 
