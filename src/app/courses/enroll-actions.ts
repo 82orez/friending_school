@@ -10,6 +10,7 @@ import { sendEnrollmentNotificationToTeacher, sendEnrollmentNotificationToAdmin 
 import { getAdminEmails } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
 import { logEnrollmentEvent } from "@/lib/events";
+import { notifyCenterManagerOfEnrollment } from "@/lib/center-notify";
 import {
   TOTAL_SESSIONS,
   isValidSlot,
@@ -279,9 +280,7 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
   const endDate = (() => {
     const [sy, sm, sd] = startDate.split("-").map(Number);
     const endObj = lessonEndDate(new Date(sy, sm - 1, sd), slots, TOTAL_SESSIONS);
-    return endObj
-      ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}`
-      : "";
+    return endObj ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}` : "";
   })();
 
   // 강사 알림 메일(best-effort) — 실패해도 신청 성공과 분리.
@@ -306,8 +305,9 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
   }
 
   // 관리자 알림 메일(best-effort) — 강사 알림과 독립. 학생 이름·과정명 한글/영문 병기.
+  let adminEmails: string[] = []; // 센터 매니저 알림에서 중복 수신 제외용으로 재사용.
   try {
-    const adminEmails = await getAdminEmails();
+    adminEmails = await getAdminEmails();
     await sendEnrollmentNotificationToAdmin(adminEmails, {
       studentName,
       studentEnglishName: profile.english_name ?? "",
@@ -323,6 +323,24 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
   } catch (err) {
     console.error("[submitEnrollment] 관리자 알림 발송 실패:", err);
   }
+
+  // 담당 센터 매니저 알림(best-effort, 자체 try/catch) — 앞서 강사·관리자 2통을 보냈으므로 Resend 초당 2건 제한 회피 지연.
+  await notifyCenterManagerOfEnrollment(admin, {
+    event: "created",
+    teacherId,
+    teacherName,
+    studentName,
+    studentEnglishName: profile.english_name ?? "",
+    courseTitle: course.title,
+    courseEnglishTitle: course.englishTitle,
+    schedule: summarizeSlots(slots, false, " / "),
+    startDate,
+    endDate,
+    totalSessions: TOTAL_SESSIONS,
+    origin,
+    excludeEmails: adminEmails,
+    delayMs: 1100,
+  });
 
   revalidatePath("/mypage", "layout");
   return { success: true };

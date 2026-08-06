@@ -26,6 +26,7 @@ import {
   lessonEndMin,
   SLOT_MIN,
   LESSON_MIN,
+  TOTAL_SESSIONS,
   type Slot,
 } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
@@ -33,6 +34,7 @@ import { todayKst } from "@/lib/booking";
 import { createMakeupClass, weekdayOf, addDaysStr, type ClassForMakeup } from "@/lib/makeup";
 import { resolveCenterId } from "@/lib/center";
 import { logEnrollmentEvent } from "@/lib/events";
+import { notifyCenterManagerOfEnrollment } from "@/lib/center-notify";
 import { finalizeEnrollmentPayment, refundEnrollmentPayment } from "@/lib/payment";
 import { cancelPortonePayment } from "@/lib/portone";
 import { reassignClassCore } from "@/lib/reassign";
@@ -858,7 +860,9 @@ export async function adminCancelEnrollment(id: string, note: string): Promise<A
   const admin = createAdminClient();
   const { data: enr } = await admin
     .from("enrollments")
-    .select("status, student_phone, course, course_title, student_name, teacher_name")
+    .select(
+      "status, student_phone, course, course_title, course_english_title, student_name, student_english_name, teacher_id, teacher_name, slots, start_date, total_sessions",
+    )
     .eq("id", enrollmentId)
     .maybeSingle();
   if (!enr) return { ok: false, error: "신청을 찾을 수 없습니다." };
@@ -881,6 +885,23 @@ export async function adminCancelEnrollment(id: string, note: string): Promise<A
       console.error("[adminCancelEnrollment] SMS 발송 실패:", err);
     }
   }
+
+  // 담당 센터 매니저 알림(best-effort, 자체 try/catch) — 강사 슬롯이 풀리므로 센터도 알아야 한다.
+  await notifyCenterManagerOfEnrollment(admin, {
+    event: "cancelled",
+    cancelledBy: "admin",
+    teacherId: enr.teacher_id,
+    teacherName: enr.teacher_name ?? "",
+    studentName: enr.student_name ?? "",
+    studentEnglishName: enr.student_english_name ?? "",
+    courseTitle: enr.course_title,
+    courseEnglishTitle: getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? "",
+    schedule: summarizeSlots((Array.isArray(enr.slots) ? enr.slots : []) as Slot[], false, " / "),
+    startDate: enr.start_date,
+    totalSessions: enr.total_sessions ?? TOTAL_SESSIONS,
+    reason,
+    origin: getOrigin(await headers()),
+  });
 
   await logEnrollmentEvent(admin, {
     enrollmentId,
@@ -1280,7 +1301,9 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
   const admin = createAdminClient();
   const { data: enr } = await admin
     .from("enrollments")
-    .select("id, teacher_id, teacher_name, student_id, student_phone, course, course_title, course_english_title, student_name, student_english_name, slots")
+    .select(
+      "id, teacher_id, teacher_name, student_id, student_phone, course, course_title, course_english_title, student_name, student_english_name, slots",
+    )
     .eq("id", id)
     .maybeSingle();
   if (!enr) return { ok: false, error: "수강신청을 찾을 수 없습니다." };
@@ -1530,7 +1553,8 @@ export async function createTestEnrollment(input: {
   let priceKrw: number | null = null;
   if (input.priceKrw != null && String(input.priceKrw) !== "") {
     priceKrw = Math.floor(Number(input.priceKrw));
-    if (!Number.isFinite(priceKrw) || priceKrw < 1 || priceKrw > 100_000_000) return { ok: false, error: "수강료는 1~100,000,000원 사이여야 합니다." };
+    if (!Number.isFinite(priceKrw) || priceKrw < 1 || priceKrw > 100_000_000)
+      return { ok: false, error: "수강료는 1~100,000,000원 사이여야 합니다." };
   }
 
   const admin = createAdminClient();

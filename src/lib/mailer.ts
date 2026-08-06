@@ -835,6 +835,113 @@ export async function sendClassPostponedToAdmin(to: string[], data: ClassPostpon
   await sendResultEmail(to, `[Class postponed] ${courseLabel} · ${studentLabel}`, html, text);
 }
 
+/* ===== 센터 매니저 대상 수강신청 라이프사이클 알림 ===== */
+
+// 소속 강사의 수강신청이 접수/승인/거절/확정/취소/환불될 때 담당 센터 매니저에게 알린다.
+// 관리자용처럼 이벤트별 함수를 복제하지 않고, 제목·헤딩·리드 문단만 EVENT_META로 분기하는 단일 함수로 처리.
+export type CenterEnrollmentEvent = "created" | "approved" | "declined" | "paid" | "cancelled" | "refunded";
+
+export type CenterEnrollmentEmailData = {
+  event: CenterEnrollmentEvent;
+  centerName?: string;
+  teacherName: string;
+  studentName: string;
+  studentEnglishName?: string;
+  courseTitle: string;
+  courseEnglishTitle?: string;
+  schedule?: string; // 주간 일정 요약(영문 요일)
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  totalSessions?: number;
+  reason?: string; // 거절/취소/환불 사유
+  cancelledBy?: "student" | "admin"; // event=cancelled일 때 취소 주체
+  centerUrl: string; // 센터 매니저 페이지 링크(admin 링크 금지 — 매니저는 접근 불가)
+};
+
+// 이벤트별 제목 라벨 · 헤딩 · 리드 문단.
+const CENTER_EVENT_META: Record<CenterEnrollmentEvent, { tag: string; heading: string; lead: string }> = {
+  created: {
+    tag: "New enrollment request",
+    heading: "A new enrollment request for your center",
+    lead: "A student requested this course with one of your teachers. The teacher needs to approve or decline it.",
+  },
+  approved: {
+    tag: "Enrollment approved",
+    heading: "An enrollment was approved by the teacher",
+    lead: "The teacher approved this request. It is now awaiting payment and is not confirmed yet.",
+  },
+  declined: {
+    tag: "Enrollment declined",
+    heading: "An enrollment was declined by the teacher",
+    lead: "The teacher declined this request, so the requested time slot stays open.",
+  },
+  paid: {
+    tag: "Class confirmed",
+    heading: "A course has been confirmed",
+    lead: "Payment is complete and the sessions have been scheduled. You can review them on the weekly schedule.",
+  },
+  cancelled: {
+    tag: "Enrollment cancelled",
+    heading: "An enrollment was cancelled",
+    lead: "The enrollment was cancelled before payment, so the reserved time slot has been released.",
+  },
+  refunded: {
+    tag: "Course refunded",
+    heading: "A confirmed course was refunded and cancelled",
+    lead: "The payment was refunded, so the course and its upcoming sessions have been cancelled.",
+  },
+};
+
+/**
+ * 담당 센터 매니저에게 수강신청 라이프사이클 알림. best-effort — 호출 측(center-notify)에서 감싼다.
+ * 영문 본문(센터 매니저 UI 정책과 동일). 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않는다.
+ */
+export async function sendEnrollmentEventToCenterManager(to: string[], data: CenterEnrollmentEmailData): Promise<void> {
+  const meta = CENTER_EVENT_META[data.event];
+  const studentLabel = data.studentEnglishName ? `${data.studentName} (${data.studentEnglishName})` : data.studentName;
+  const courseLabel = data.courseEnglishTitle ? `${data.courseEnglishTitle} (${data.courseTitle})` : data.courseTitle;
+  const rows: [string, string][] = [
+    ...(data.centerName ? ([["Center", data.centerName]] as [string, string][]) : []),
+    ["Teacher", data.teacherName || "-"],
+    ["Student", studentLabel || "-"],
+    ["Course", courseLabel],
+    ...(data.schedule ? ([["Weekly schedule", data.schedule]] as [string, string][]) : []),
+    ...(data.startDate ? ([["Start date", data.startDate]] as [string, string][]) : []),
+    ...(data.endDate ? ([["End date", data.endDate]] as [string, string][]) : []),
+    ...(data.totalSessions ? ([["Total sessions", String(data.totalSessions)]] as [string, string][]) : []),
+    ...(data.cancelledBy ? ([["Cancelled by", data.cancelledBy === "admin" ? "Administrator" : "Student"]] as [string, string][]) : []),
+    ...(data.reason ? ([["Reason", data.reason]] as [string, string][]) : []),
+  ];
+  const ctaLabel = data.event === "paid" ? "Go to weekly schedule" : "Go to center management";
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">${escapeHtml(meta.heading)}</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(courseLabel)} · ${escapeHtml(studentLabel)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">${escapeHtml(meta.lead)}</p>
+    <a href="${escapeHtml(data.centerUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">${escapeHtml(ctaLabel)}</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School center notification</p>
+  </div>`;
+  const text = [
+    `${meta.heading}.`,
+    "",
+    ...(data.centerName ? [`Center: ${data.centerName}`] : []),
+    `Teacher: ${data.teacherName || "-"}`,
+    `Student: ${studentLabel || "-"}`,
+    `Course: ${courseLabel}`,
+    ...(data.schedule ? [`Weekly schedule: ${data.schedule}`] : []),
+    ...(data.startDate ? [`Start date: ${data.startDate}`] : []),
+    ...(data.endDate ? [`End date: ${data.endDate}`] : []),
+    ...(data.totalSessions ? [`Total sessions: ${data.totalSessions}`] : []),
+    ...(data.cancelledBy ? [`Cancelled by: ${data.cancelledBy === "admin" ? "Administrator" : "Student"}`] : []),
+    ...(data.reason ? [`Reason: ${data.reason}`] : []),
+    "",
+    meta.lead,
+    `Center page: ${data.centerUrl}`,
+  ].join("\n");
+  const subjectPrefix = data.centerName ? `[${data.centerName}] ` : "";
+  await sendResultEmail(to, `${subjectPrefix}${meta.tag} · ${courseLabel} · ${studentLabel}`, html, text);
+}
+
 /* ===== 지원자 대상 강사 심사 결과 알림 ===== */
 
 function buildResultHtml(title: string, bodyHtml: string): string {

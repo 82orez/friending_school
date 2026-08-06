@@ -9,6 +9,7 @@ import { sendEnrollmentPaidToAdmin, sendEnrollmentPaymentConfirmedToTeacher, sen
 import { getCourse } from "@/data/courses";
 import { COURSE_PRICE_KRW } from "@/data/pricing";
 import { logEnrollmentEvent } from "@/lib/events";
+import { notifyCenterManagerOfEnrollment } from "@/lib/center-notify";
 import { TOTAL_SESSIONS, enumerateLessonSessions, isValidSlot, summarizeSlots, lessonEndDate, lessonEndMin, type Slot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { getVerifiedPortonePayment, cancelPortonePayment } from "@/lib/portone";
@@ -87,12 +88,7 @@ export async function finalizeEnrollmentPayment(
   if (actor.role === "student" && enr.student_id !== actor.id) return { ok: false, error: "본인 신청만 결제할 수 있습니다." };
   if (enr.status !== "결제대기") return { ok: false, error: "결제 대기 상태에서만 결제할 수 있습니다." };
 
-  const { data, error } = await admin
-    .from("enrollments")
-    .update({ status: "결제완료" })
-    .eq("id", enrollmentId)
-    .eq("status", "결제대기")
-    .select("id");
+  const { data, error } = await admin.from("enrollments").update({ status: "결제완료" }).eq("id", enrollmentId).eq("status", "결제대기").select("id");
   if (error) return { ok: false, error: "결제 처리 중 오류가 발생했습니다." };
   if (!data || data.length === 0) return { ok: false, error: "이미 처리된 신청입니다." };
 
@@ -137,12 +133,12 @@ export async function finalizeEnrollmentPayment(
   const schedule = summarizeSlots((enr.slots as Slot[]) ?? [], false, " / ");
   const courseEnglishTitle = getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? "";
   const endDate = (() => {
-    const [sy, sm, sd] = String(enr.start_date ?? "").split("-").map(Number);
+    const [sy, sm, sd] = String(enr.start_date ?? "")
+      .split("-")
+      .map(Number);
     if (!sy || !sm || !sd) return "";
     const endObj = lessonEndDate(new Date(sy, sm - 1, sd), (enr.slots as Slot[]) ?? [], sessions);
-    return endObj
-      ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}`
-      : "";
+    return endObj ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}` : "";
   })();
 
   // 강사 결제 확정 알림 메일(best-effort) — 수업이 생성되어 My Classroom에 잡히므로 강사에게 통보.
@@ -167,9 +163,10 @@ export async function finalizeEnrollmentPayment(
   }
 
   // 관리자 결제 완료 알림 메일(best-effort) — 카드 결제(student/system)만; 무통장(admin 확인)은 본인이 처리하므로 제외.
+  let adminEmails: string[] = []; // 센터 매니저 알림에서 중복 수신 제외용으로 재사용.
   if (actor.role !== "admin") {
     try {
-      const adminEmails = await getAdminEmails();
+      adminEmails = await getAdminEmails();
       if (adminEmails.length > 0) {
         await sendEnrollmentPaidToAdmin(adminEmails, {
           studentName: enr.student_name,
@@ -188,6 +185,25 @@ export async function finalizeEnrollmentPayment(
       console.error("[finalizeEnrollmentPayment] 관리자 결제완료 알림 발송 실패:", err);
     }
   }
+
+  // 담당 센터 매니저 알림(best-effort, 자체 try/catch) — 관리자 알림과 달리 결제 수단 무관(무통장·카드·웹훅 모두).
+  // 카드/웹훅 경로는 앞서 강사+관리자 2통을 보냈으므로 Resend 초당 2건 제한 회피 지연.
+  await notifyCenterManagerOfEnrollment(admin, {
+    event: "paid",
+    teacherId: enr.teacher_id,
+    teacherName: enr.teacher_name,
+    studentName: enr.student_name,
+    studentEnglishName: enr.student_english_name ?? "",
+    courseTitle: enr.course_title,
+    courseEnglishTitle,
+    schedule,
+    startDate: enr.start_date,
+    endDate,
+    totalSessions: sessions,
+    origin,
+    excludeEmails: adminEmails,
+    delayMs: actor.role === "admin" ? 0 : 1100,
+  });
 
   await logEnrollmentEvent(admin, {
     enrollmentId,
@@ -262,12 +278,24 @@ async function attemptAutoRefund(
   const { paymentId, amount, enrollmentId, actorRole, reason } = input;
   const cancel = await cancelPortonePayment(paymentId, { reason });
   if (cancel.ok) {
-    await admin.from("payments").update({ status: "cancelled", cancelled_amount: amount ?? 0 }).eq("payment_id", paymentId);
-    await logEnrollmentEvent(admin, { enrollmentId, eventType: "payment_refunded", actorId: null, actorRole, detail: { auto: true, reason, refundAmount: amount } });
+    await admin
+      .from("payments")
+      .update({ status: "cancelled", cancelled_amount: amount ?? 0 })
+      .eq("payment_id", paymentId);
+    await logEnrollmentEvent(admin, {
+      enrollmentId,
+      eventType: "payment_refunded",
+      actorId: null,
+      actorRole,
+      detail: { auto: true, reason, refundAmount: amount },
+    });
     return true;
   }
   console.error("[settlePortonePayment] 자동환불 실패:", paymentId, cancel.error);
-  await admin.from("payments").update({ note: `[자동환불실패] ${reason} — ${cancel.error ?? "PG 취소 실패"}`.slice(0, 500) }).eq("payment_id", paymentId);
+  await admin
+    .from("payments")
+    .update({ note: `[자동환불실패] ${reason} — ${cancel.error ?? "PG 취소 실패"}`.slice(0, 500) })
+    .eq("payment_id", paymentId);
   await logEnrollmentEvent(admin, {
     enrollmentId,
     eventType: "payment_refund_failed",
@@ -330,7 +358,13 @@ export async function settlePortonePayment(paymentId: string, actor: { id: strin
 
   // 취소·거절된(또는 삭제된) 신청에 결제가 캡처됨 → 서비스 불가라 자동 환불(금전 손실 방지).
   if (!cur || cur.status === "취소" || cur.status === "거절") {
-    await attemptAutoRefund(admin, { paymentId, amount: v.amount, enrollmentId, actorRole: actor.role, reason: "취소/종료된 신청에 대한 결제 자동 환불" });
+    await attemptAutoRefund(admin, {
+      paymentId,
+      amount: v.amount,
+      enrollmentId,
+      actorRole: actor.role,
+      reason: "취소/종료된 신청에 대한 결제 자동 환불",
+    });
     return { ok: false, error: "신청이 취소되어 결제가 자동 환불됩니다. 자세한 내용은 관리자에게 문의해 주세요." };
   }
 
@@ -385,26 +419,42 @@ export async function refundEnrollmentPayment(admin: ReturnType<typeof createAdm
 
     if (enr?.student_phone) {
       try {
-        await sendSms(enr.student_phone, `[프렌딩 스쿨] 환불이 처리되어 수강이 취소되었습니다. ${enr.course_title}. 문의는 고객센터로 연락해 주세요.`);
+        await sendSms(
+          enr.student_phone,
+          `[프렌딩 스쿨] 환불이 처리되어 수강이 취소되었습니다. ${enr.course_title}. 문의는 고객센터로 연락해 주세요.`,
+        );
       } catch (err) {
         console.error("[refundEnrollmentPayment] SMS 실패:", err);
       }
     }
+    const origin = getOrigin(await headers());
+    const courseEnglishTitle = getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? undefined;
     try {
-      const origin = getOrigin(await headers());
       const { data: teacherUser } = await admin.auth.admin.getUserById(enr.teacher_id);
       const teacherEmail = teacherUser?.user?.email;
       if (teacherEmail) {
         await sendEnrollmentRefundToTeacher([teacherEmail], {
           studentName: enr.student_name,
           courseTitle: enr.course_title,
-          courseEnglishTitle: getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? undefined,
+          courseEnglishTitle,
           teacherUrl: `${origin}/teacher`,
         });
       }
     } catch (err) {
       console.error("[refundEnrollmentPayment] 강사 메일 실패:", err);
     }
+
+    // 담당 센터 매니저 알림(best-effort, 자체 try/catch) — 확정됐던 과정이 사라지므로 센터 일정에 직접 영향.
+    await notifyCenterManagerOfEnrollment(admin, {
+      event: "refunded",
+      teacherId: enr.teacher_id,
+      teacherName: enr.teacher_name,
+      studentName: enr.student_name,
+      courseTitle: enr.course_title,
+      courseEnglishTitle,
+      reason,
+      origin,
+    });
 
     await logEnrollmentEvent(admin, {
       enrollmentId,

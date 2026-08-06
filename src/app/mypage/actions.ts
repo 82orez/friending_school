@@ -13,6 +13,7 @@ import { getCourse } from "@/data/courses";
 import { getOrigin } from "@/lib/origin";
 import { sendEnrollmentCancellationToTeacher, sendEnrollmentCancelledToAdmin } from "@/lib/mailer";
 import { logEnrollmentEvent } from "@/lib/events";
+import { notifyCenterManagerOfEnrollment } from "@/lib/center-notify";
 import { settlePortonePayment } from "@/lib/payment";
 
 export type StudentActionState = { ok?: boolean; error?: string; transient?: boolean };
@@ -103,13 +104,15 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
   if (error) return { error: "취소 처리 중 문제가 발생했어요." };
   if (!data || data.length === 0) return { error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
 
+  // 알림 메일 공유 값(강사·관리자·센터 매니저 블록 공유).
+  const origin = getOrigin(await headers());
+  const slots = (Array.isArray(enr.slots) ? enr.slots : []) as Slot[];
+
   // 강사 취소 알림 이메일(best-effort) — 실패해도 취소 성공과 분리.
   try {
     const { data: teacherUser } = await admin.auth.admin.getUserById(enr.teacher_id);
     const teacherEmail = teacherUser?.user?.email;
     if (teacherEmail) {
-      const origin = getOrigin(await headers());
-      const slots = (Array.isArray(enr.slots) ? enr.slots : []) as Slot[];
       await sendEnrollmentCancellationToTeacher([teacherEmail], {
         studentName: enr.student_name ?? "회원",
         courseTitle: enr.course_title,
@@ -123,11 +126,10 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
   }
 
   // 관리자 알림 이메일(best-effort) — 강사 알림과 독립. 결제 전 취소라 환불 대상은 아니지만 슬롯 해제·현황 파악용.
+  let adminEmails: string[] = []; // 센터 매니저 알림에서 중복 수신 제외용으로 재사용.
   try {
-    const adminEmails = await getAdminEmails();
+    adminEmails = await getAdminEmails();
     if (adminEmails.length > 0) {
-      const origin = getOrigin(await headers());
-      const slots = (Array.isArray(enr.slots) ? enr.slots : []) as Slot[];
       await sendEnrollmentCancelledToAdmin(adminEmails, {
         studentName: enr.student_name ?? "",
         studentEnglishName: enr.student_english_name ?? "",
@@ -144,6 +146,24 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
   } catch (err) {
     console.error("[cancelEnrollment] 관리자 알림 발송 실패:", err);
   }
+
+  // 담당 센터 매니저 알림(best-effort, 자체 try/catch) — 앞서 강사·관리자 2통을 보냈으므로 Resend 초당 2건 제한 회피 지연.
+  await notifyCenterManagerOfEnrollment(admin, {
+    event: "cancelled",
+    cancelledBy: "student",
+    teacherId: enr.teacher_id,
+    teacherName: enr.teacher_name ?? "",
+    studentName: enr.student_name ?? "",
+    studentEnglishName: enr.student_english_name ?? "",
+    courseTitle: enr.course_title,
+    courseEnglishTitle: getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? "",
+    schedule: summarizeSlots(slots, false, " / "),
+    startDate: enr.start_date,
+    totalSessions: enr.total_sessions ?? TOTAL_SESSIONS,
+    origin,
+    excludeEmails: adminEmails,
+    delayMs: 1100,
+  });
 
   await logEnrollmentEvent(admin, {
     enrollmentId: id,

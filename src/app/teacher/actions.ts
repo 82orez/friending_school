@@ -13,6 +13,7 @@ import { sendEnrollmentApprovedToAdmin, sendEnrollmentRejectedToAdmin } from "@/
 import { isValidSlot, slotsOverlap, summarizeSlots, lessonEndDate, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
 import { logEnrollmentEvent } from "@/lib/events";
+import { notifyCenterManagerOfEnrollment } from "@/lib/center-notify";
 
 export type TeacherActionState = { ok?: boolean; error?: string };
 
@@ -151,7 +152,9 @@ function buildAdminEnrollmentEmail(
   const totalSessions = enr.total_sessions ?? TOTAL_SESSIONS;
   const endDate = (() => {
     if (!opts.withEnd) return "";
-    const [sy, sm, sd] = String(enr.start_date ?? "").split("-").map(Number);
+    const [sy, sm, sd] = String(enr.start_date ?? "")
+      .split("-")
+      .map(Number);
     if (!sy || !sm || !sd) return "";
     const endObj = lessonEndDate(new Date(sy, sm - 1, sd), slots, totalSessions);
     return endObj ? `${endObj.getFullYear()}-${String(endObj.getMonth() + 1).padStart(2, "0")}-${String(endObj.getDate()).padStart(2, "0")}` : "";
@@ -220,13 +223,32 @@ export async function approveEnrollment(enrollmentId: string): Promise<TeacherAc
   }
 
   // 관리자 알림 메일 (best-effort) — 승인=결제대기라 입금 확인 유도. SMS와 독립.
+  const origin = getOrigin(await headers());
+  const mail = buildAdminEnrollmentEmail(enr, origin, { withEnd: true });
+  let adminEmails: string[] = []; // 센터 매니저 알림에서 중복 수신 제외용으로 재사용.
   try {
-    const origin = getOrigin(await headers());
-    const adminEmails = await getAdminEmails();
-    await sendEnrollmentApprovedToAdmin(adminEmails, buildAdminEnrollmentEmail(enr, origin, { withEnd: true }));
+    adminEmails = await getAdminEmails();
+    await sendEnrollmentApprovedToAdmin(adminEmails, mail);
   } catch (err) {
     console.error("[approveEnrollment] 관리자 알림 발송 실패:", err);
   }
+
+  // 담당 센터 매니저 알림(best-effort, 자체 try/catch) — 승인=아직 미확정(결제대기)임을 본문에 명시.
+  await notifyCenterManagerOfEnrollment(admin, {
+    event: "approved",
+    teacherId: userId,
+    teacherName: mail.teacherName,
+    studentName: mail.studentName,
+    studentEnglishName: mail.studentEnglishName,
+    courseTitle: mail.courseTitle,
+    courseEnglishTitle: mail.courseEnglishTitle,
+    schedule: mail.schedule,
+    startDate: mail.startDate,
+    endDate: mail.endDate,
+    totalSessions: mail.totalSessions,
+    origin,
+    excludeEmails: adminEmails,
+  });
 
   await logEnrollmentEvent(admin, {
     enrollmentId,
@@ -275,13 +297,32 @@ export async function rejectEnrollment(enrollmentId: string, note: string): Prom
   }
 
   // 관리자 알림 메일 (best-effort) — 거절 사유 포함. SMS와 독립.
+  const origin = getOrigin(await headers());
+  const mail = buildAdminEnrollmentEmail(enr, origin, { reason });
+  let adminEmails: string[] = []; // 센터 매니저 알림에서 중복 수신 제외용으로 재사용.
   try {
-    const origin = getOrigin(await headers());
-    const adminEmails = await getAdminEmails();
-    await sendEnrollmentRejectedToAdmin(adminEmails, buildAdminEnrollmentEmail(enr, origin, { reason }));
+    adminEmails = await getAdminEmails();
+    await sendEnrollmentRejectedToAdmin(adminEmails, mail);
   } catch (err) {
     console.error("[rejectEnrollment] 관리자 알림 발송 실패:", err);
   }
+
+  // 담당 센터 매니저 알림(best-effort, 자체 try/catch) — 거절 사유 포함(슬롯이 다시 열림).
+  await notifyCenterManagerOfEnrollment(admin, {
+    event: "declined",
+    teacherId: userId,
+    teacherName: mail.teacherName,
+    studentName: mail.studentName,
+    studentEnglishName: mail.studentEnglishName,
+    courseTitle: mail.courseTitle,
+    courseEnglishTitle: mail.courseEnglishTitle,
+    schedule: mail.schedule,
+    startDate: mail.startDate,
+    totalSessions: mail.totalSessions,
+    reason,
+    origin,
+    excludeEmails: adminEmails,
+  });
 
   await logEnrollmentEvent(admin, {
     enrollmentId,
