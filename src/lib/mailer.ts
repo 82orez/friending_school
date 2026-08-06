@@ -306,7 +306,9 @@ export async function sendClassCancellationToTeacher(to: string[], data: ClassCa
     <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(data.studentName)} · ${escapeHtml(data.courseTitle)}</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
     <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 0">${
-      data.makeupDate ? "A makeup class has been automatically scheduled (same weekday and time). You can review it on your teacher page." : "You can review your classes on your teacher page."
+      data.makeupDate
+        ? "A makeup class has been automatically scheduled (same weekday and time). You can review it on your teacher page."
+        : "You can review your classes on your teacher page."
     }</p>
     <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
   </div>`;
@@ -539,10 +541,11 @@ export type EnrollmentAdminEmailData = {
   teacherName: string; // 강사명
   schedule: string; // 주간 일정 요약(한국어 요일)
   startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD, 마지막(N회째) 수업일
-  totalSessions: number; // 총 수업 횟수
+  endDate?: string; // YYYY-MM-DD, 마지막(N회째) 수업일(취소 알림 등 무의미한 경우 생략)
+  totalSessions?: number; // 총 수업 횟수
   adminUrl: string; // 관리자 수강신청 관리 링크
   reason?: string; // 거절 사유(거절 알림에만 사용)
+  fromStatus?: string; // 취소 직전 상태(학생 취소 알림에만 사용: 신청/승인/결제대기)
 };
 
 /**
@@ -726,6 +729,110 @@ export async function sendEnrollmentRejectedToAdmin(to: string[], data: Enrollme
     `Enrollment management: ${data.adminUrl}`,
   ].join("\n");
   await sendResultEmail(to, `[Enrollment declined] ${courseLabel} · ${studentLabel}`, html, text);
+}
+
+// 취소 직전 상태(enrollment_status)를 관리자 메일용 영문 라벨로. 미매핑 값은 원문 유지.
+function statusLabelEn(status: string): string {
+  return { 신청: "Pending approval (신청)", 승인: "Approved (승인)", 결제대기: "Awaiting payment (결제대기)" }[status] ?? status;
+}
+
+// 수강생이 본인 수강신청을 취소했을 때 관리자에 알림(결제 전 상태에서만 발생). best-effort.
+export async function sendEnrollmentCancelledToAdmin(to: string[], data: EnrollmentAdminEmailData): Promise<void> {
+  const studentLabel = data.studentEnglishName ? `${data.studentName} (${data.studentEnglishName})` : data.studentName;
+  const courseLabel = data.courseEnglishTitle ? `${data.courseTitle} (${data.courseEnglishTitle})` : data.courseTitle;
+  const rows: [string, string][] = [
+    ["Student", studentLabel || "-"],
+    ["Course", courseLabel],
+    ["Teacher", data.teacherName || "-"],
+    ["Weekly schedule", data.schedule || "-"],
+    ["Start date", data.startDate || "-"],
+    ...(data.totalSessions ? ([["Total sessions", String(data.totalSessions)]] as [string, string][]) : []),
+    ...(data.fromStatus ? ([["Status before cancellation", statusLabelEn(data.fromStatus)]] as [string, string][]) : []),
+  ];
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">An enrollment was cancelled by the student</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(courseLabel)} · ${escapeHtml(studentLabel)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">The student cancelled before payment was completed, so the reserved time slot has been released. No refund is required.</p>
+    <a href="${escapeHtml(data.adminUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to enrollment management</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School admin notification</p>
+  </div>`;
+  const text = [
+    "An enrollment was cancelled by the student.",
+    "",
+    `Student: ${studentLabel || "-"}`,
+    `Course: ${courseLabel}`,
+    `Teacher: ${data.teacherName || "-"}`,
+    `Weekly schedule: ${data.schedule || "-"}`,
+    `Start date: ${data.startDate || "-"}`,
+    ...(data.totalSessions ? [`Total sessions: ${data.totalSessions}`] : []),
+    ...(data.fromStatus ? [`Status before cancellation: ${statusLabelEn(data.fromStatus)}`] : []),
+    "",
+    "The student cancelled before payment, so no refund is required.",
+    `Enrollment management: ${data.adminUrl}`,
+  ].join("\n");
+  await sendResultEmail(to, `[Enrollment cancelled] ${courseLabel} · ${studentLabel}`, html, text);
+}
+
+/* ===== 관리자 대상 개별 수업 연기 알림(수강생 요청) ===== */
+
+export type ClassPostponeAdminEmailData = {
+  studentName: string; // 학생 한글 이름
+  studentEnglishName?: string; // 학생 영문 이름
+  courseTitle: string; // 과정 한글명
+  courseEnglishTitle?: string; // 과정 영문명
+  teacherName: string;
+  sessionDate: string; // YYYY-MM-DD (연기된 회차)
+  sessionTime: string; // "09:00~09:25"
+  sessionNo?: number; // 회차 번호
+  makeupDate?: string; // YYYY-MM-DD (자동 보강 예정일, 생성 실패 시 없음)
+  remaining?: number; // 이번 연기 반영 후 남은 연기 횟수
+  maxCancellations?: number; // 과정당 연기 한도
+  adminUrl: string; // 관리자 화상수업 상세 링크
+};
+
+/**
+ * 관리자에게 수강생의 개별 수업 연기 알림. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ * 영문 본문(관리자 알림 통일). 보강 자동 생성 실패 시 수동 조치가 필요하므로 그 사실을 본문에 명시한다.
+ */
+export async function sendClassPostponedToAdmin(to: string[], data: ClassPostponeAdminEmailData): Promise<void> {
+  const studentLabel = data.studentEnglishName ? `${data.studentName} (${data.studentEnglishName})` : data.studentName;
+  const courseLabel = data.courseEnglishTitle ? `${data.courseTitle} (${data.courseEnglishTitle})` : data.courseTitle;
+  const rows: [string, string][] = [
+    ["Student", studentLabel || "-"],
+    ["Course", courseLabel],
+    ["Teacher", data.teacherName || "-"],
+    ["Postponed session", `${data.sessionDate} ${data.sessionTime}${data.sessionNo ? ` (#${data.sessionNo})` : ""}`],
+    ["Makeup scheduled", data.makeupDate ? `${data.makeupDate} ${data.sessionTime}` : "Not created — manual action required"],
+    ...(data.remaining != null && data.maxCancellations
+      ? ([["Remaining postpones", `${data.remaining} / ${data.maxCancellations}`]] as [string, string][])
+      : []),
+  ];
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">A class was postponed by the student</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(courseLabel)} · ${escapeHtml(studentLabel)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">${
+      data.makeupDate
+        ? "A makeup session has been added automatically at the end of the course. You can review it on the admin page."
+        : "The makeup session could not be created automatically. Please add it manually on the admin page."
+    }</p>
+    <a href="${escapeHtml(data.adminUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to class management</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School admin notification</p>
+  </div>`;
+  const text = [
+    "A class was postponed by the student.",
+    "",
+    `Student: ${studentLabel || "-"}`,
+    `Course: ${courseLabel}`,
+    `Teacher: ${data.teacherName || "-"}`,
+    `Postponed session: ${data.sessionDate} ${data.sessionTime}${data.sessionNo ? ` (#${data.sessionNo})` : ""}`,
+    `Makeup scheduled: ${data.makeupDate ? `${data.makeupDate} ${data.sessionTime}` : "Not created — manual action required"}`,
+    ...(data.remaining != null && data.maxCancellations ? [`Remaining postpones: ${data.remaining} / ${data.maxCancellations}`] : []),
+    "",
+    `Class management: ${data.adminUrl}`,
+  ].join("\n");
+  await sendResultEmail(to, `[Class postponed] ${courseLabel} · ${studentLabel}`, html, text);
 }
 
 /* ===== 지원자 대상 강사 심사 결과 알림 ===== */

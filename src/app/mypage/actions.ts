@@ -4,13 +4,14 @@ import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createHash, randomInt } from "crypto";
 import { createClient } from "@/utils/supabase/server";
-import { createAdminClient } from "@/utils/supabase/admin";
+import { createAdminClient, getAdminEmails } from "@/utils/supabase/admin";
 import { rateLimit, getClientIp, formatRetryAfter } from "@/lib/rate-limit";
 import { normalizePhone, isValidKoreanMobile } from "@/lib/phone";
 import { sendSms } from "@/lib/sms";
-import { summarizeSlots, type Slot } from "@/lib/availability";
+import { summarizeSlots, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
+import { getCourse } from "@/data/courses";
 import { getOrigin } from "@/lib/origin";
-import { sendEnrollmentCancellationToTeacher } from "@/lib/mailer";
+import { sendEnrollmentCancellationToTeacher, sendEnrollmentCancelledToAdmin } from "@/lib/mailer";
 import { logEnrollmentEvent } from "@/lib/events";
 import { settlePortonePayment } from "@/lib/payment";
 
@@ -82,7 +83,9 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
   const admin = createAdminClient();
   const { data: enr } = await admin
     .from("enrollments")
-    .select("id, student_id, teacher_id, status, course, course_title, start_date, slots, student_name, teacher_name")
+    .select(
+      "id, student_id, teacher_id, status, course, course_title, course_english_title, start_date, slots, total_sessions, student_name, student_english_name, teacher_name",
+    )
     .eq("id", id)
     .maybeSingle();
   if (!enr || enr.student_id !== user.id) return { error: "신청을 찾을 수 없어요. 목록을 새로고침해 주세요." };
@@ -117,6 +120,29 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
     }
   } catch (err) {
     console.error("[cancelEnrollment] 강사 알림 발송 실패:", err);
+  }
+
+  // 관리자 알림 이메일(best-effort) — 강사 알림과 독립. 결제 전 취소라 환불 대상은 아니지만 슬롯 해제·현황 파악용.
+  try {
+    const adminEmails = await getAdminEmails();
+    if (adminEmails.length > 0) {
+      const origin = getOrigin(await headers());
+      const slots = (Array.isArray(enr.slots) ? enr.slots : []) as Slot[];
+      await sendEnrollmentCancelledToAdmin(adminEmails, {
+        studentName: enr.student_name ?? "",
+        studentEnglishName: enr.student_english_name ?? "",
+        courseTitle: enr.course_title,
+        courseEnglishTitle: getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? "",
+        teacherName: enr.teacher_name ?? "",
+        schedule: summarizeSlots(slots, false, " / "),
+        startDate: enr.start_date,
+        totalSessions: enr.total_sessions ?? TOTAL_SESSIONS,
+        fromStatus: enr.status,
+        adminUrl: `${origin}/admin/enrollments`,
+      });
+    }
+  } catch (err) {
+    console.error("[cancelEnrollment] 관리자 알림 발송 실패:", err);
   }
 
   await logEnrollmentEvent(admin, {

@@ -1,13 +1,15 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
-import { createAdminClient } from "@/utils/supabase/admin";
+import { createAdminClient, getAdminEmails } from "@/utils/supabase/admin";
 import { canCancelClass, canEnterClass, kstDateMinToMs, MAX_CANCELLATIONS } from "@/lib/classtime";
 import { fmtTime, lessonEndMin } from "@/lib/availability";
 import { isValidZoomUrl } from "@/lib/url";
-import { sendClassCancellationToTeacher } from "@/lib/mailer";
+import { getOrigin } from "@/lib/origin";
+import { getCourse } from "@/data/courses";
+import { sendClassCancellationToTeacher, sendClassPostponedToAdmin } from "@/lib/mailer";
 import { createMakeupClass } from "@/lib/makeup";
 import { logEnrollmentEvent } from "@/lib/events";
 
@@ -31,11 +33,7 @@ export async function enterClass(classId: string): Promise<EnterResult> {
   if (!id) return { error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
-  const { data: cls } = await admin
-    .from("classes")
-    .select("id, student_id, teacher_id, session_date, start_min, end_min")
-    .eq("id", id)
-    .maybeSingle();
+  const { data: cls } = await admin.from("classes").select("id, student_id, teacher_id, session_date, start_min, end_min").eq("id", id).maybeSingle();
   if (!cls) return { error: "수업을 찾을 수 없어요." };
   // 소유 검증 — 본인(학생 또는 강사)의 수업만.
   if (cls.student_id !== user.id && cls.teacher_id !== user.id) return { error: "권한이 없습니다." };
@@ -81,7 +79,9 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
   const admin = createAdminClient();
   const { data: cls } = await admin
     .from("classes")
-    .select("id, student_id, teacher_id, enrollment_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status")
+    .select(
+      "id, student_id, teacher_id, enrollment_id, course, course_title, course_english_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status",
+    )
     .eq("id", id)
     .maybeSingle();
   if (!cls) return { error: "수업을 찾을 수 없어요." };
@@ -160,6 +160,30 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
     console.error("[cancelClass] 강사 알림 발송 실패:", err);
   }
 
+  // 관리자 알림 이메일(best-effort) — 강사 알림과 독립. 보강 자동 생성 실패(makeupDate 없음)는 수동 조치가 필요해 특히 중요.
+  try {
+    const adminEmails = await getAdminEmails();
+    if (adminEmails.length > 0) {
+      const origin = getOrigin(await headers());
+      await sendClassPostponedToAdmin(adminEmails, {
+        studentName: cls.student_name ?? "",
+        studentEnglishName: cls.student_english_name ?? "",
+        courseTitle: cls.course_title,
+        courseEnglishTitle: getCourse(cls.course)?.englishTitle ?? cls.course_english_title ?? "",
+        teacherName: cls.teacher_name ?? "",
+        sessionDate: cls.session_date,
+        sessionTime: `${fmtTime(cls.start_min)}~${fmtTime(lessonEndMin(cls.end_min))}`,
+        sessionNo: cls.session_no,
+        makeupDate,
+        remaining,
+        maxCancellations: MAX_CANCELLATIONS,
+        adminUrl: `${origin}/admin/classes/${cls.enrollment_id}`,
+      });
+    }
+  } catch (err) {
+    console.error("[cancelClass] 관리자 알림 발송 실패:", err);
+  }
+
   await logEnrollmentEvent(admin, {
     enrollmentId: cls.enrollment_id,
     classId: cls.id,
@@ -206,7 +230,9 @@ export async function saveClassFeedback(classId: string, feedback: string): Prom
   const endMs = kstDateMinToMs(cls.session_date, lessonEndMin(cls.end_min));
   if (Date.now() < endMs) return { error: "수업이 끝난 뒤에 작성할 수 있어요." };
 
-  const text = String(feedback ?? "").trim().slice(0, MAX_FEEDBACK_LEN);
+  const text = String(feedback ?? "")
+    .trim()
+    .slice(0, MAX_FEEDBACK_LEN);
   const now = new Date().toISOString();
   // 수업 진행 인정(sticky): 비어있지 않은 피드백 + 강사 입장 기록 있음 + 아직 미인정 → conducted_at 박음.
   const conduct = Boolean(text) && Boolean(cls.teacher_entered_at) && !cls.conducted_at;
