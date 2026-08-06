@@ -977,9 +977,10 @@ const CENTER_CLASS_META: Record<CenterClassEvent, { tag: string; heading: string
     lead: "An administrator assigned this single session to a different teacher. The date, time and student stay the same.",
   },
   class_postponed: {
+    // 학생 본인 연기(cancelClass)·admin 연기(adminCancelClass) 공용이라 리드는 주체 중립 — 주체는 Reason 행으로 구분.
     tag: "Session postponed",
     heading: "A session was postponed",
-    lead: "An administrator postponed this session. A makeup session is added at the end of the course.",
+    lead: "This session was postponed and a makeup session is added at the end of the course.",
   },
   class_cancelled: {
     tag: "Session cancelled",

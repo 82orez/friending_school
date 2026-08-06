@@ -12,6 +12,7 @@ import { getCourse } from "@/data/courses";
 import { sendClassCancellationToTeacher, sendClassPostponedToAdmin } from "@/lib/mailer";
 import { createMakeupClass } from "@/lib/makeup";
 import { logEnrollmentEvent } from "@/lib/events";
+import { notifyCenterManagerOfClass } from "@/lib/center-notify";
 
 export type EnterResult = { url?: string; error?: string };
 export type CancelResult = { ok?: boolean; error?: string; makeupDate?: string; remaining?: number };
@@ -160,19 +161,23 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
     console.error("[cancelClass] 강사 알림 발송 실패:", err);
   }
 
+  // 알림 공용 값(관리자·센터 매니저 블록 공유).
+  const origin = getOrigin(await headers());
+  const sessionTime = `${fmtTime(cls.start_min)}~${fmtTime(lessonEndMin(cls.end_min))}`;
+  const courseEnglishTitle = getCourse(cls.course)?.englishTitle ?? cls.course_english_title ?? "";
+
   // 관리자 알림 이메일(best-effort) — 강사 알림과 독립. 보강 자동 생성 실패(makeupDate 없음)는 수동 조치가 필요해 특히 중요.
   try {
     const adminEmails = await getAdminEmails();
     if (adminEmails.length > 0) {
-      const origin = getOrigin(await headers());
       await sendClassPostponedToAdmin(adminEmails, {
         studentName: cls.student_name ?? "",
         studentEnglishName: cls.student_english_name ?? "",
         courseTitle: cls.course_title,
-        courseEnglishTitle: getCourse(cls.course)?.englishTitle ?? cls.course_english_title ?? "",
+        courseEnglishTitle,
         teacherName: cls.teacher_name ?? "",
         sessionDate: cls.session_date,
-        sessionTime: `${fmtTime(cls.start_min)}~${fmtTime(lessonEndMin(cls.end_min))}`,
+        sessionTime,
         sessionNo: cls.session_no,
         makeupDate,
         remaining,
@@ -183,6 +188,24 @@ export async function cancelClass(classId: string): Promise<CancelResult> {
   } catch (err) {
     console.error("[cancelClass] 관리자 알림 발송 실패:", err);
   }
+
+  // 담당 센터 매니저 알림(best-effort, 자체 try/catch) — admin 연기(adminCancelClass)와 동일 이벤트로 통일.
+  // 앞서 강사·관리자 2통을 보냈으므로 Resend 초당 2건 제한 회피 지연.
+  await notifyCenterManagerOfClass(admin, {
+    event: "class_postponed",
+    teacherIds: [cls.teacher_id],
+    teacherName: cls.teacher_name ?? "",
+    studentName: cls.student_name ?? "",
+    studentEnglishName: cls.student_english_name ?? "",
+    courseTitle: cls.course_title,
+    courseEnglishTitle,
+    sessionDate: cls.session_date,
+    sessionTime,
+    makeupDate,
+    postponeReason: "student",
+    origin,
+    delayMs: 1100,
+  });
 
   await logEnrollmentEvent(admin, {
     enrollmentId: cls.enrollment_id,
