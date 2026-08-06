@@ -942,6 +942,162 @@ export async function sendEnrollmentEventToCenterManager(to: string[], data: Cen
   await sendResultEmail(to, `${subjectPrefix}${meta.tag} · ${courseLabel} · ${studentLabel}`, html, text);
 }
 
+/* ===== 센터 매니저 대상 수업(클래스) 변경 알림 ===== */
+
+// admin이 소속 강사의 확정 수업을 대체/연기/취소하거나 남은 일정을 일괄 변경했을 때.
+// 수강신청 알림과 동일하게 이벤트별 메타만 분기하는 단일 함수.
+export type CenterClassEvent = "class_reassigned" | "class_postponed" | "class_cancelled" | "remaining_rescheduled" | "remaining_reassigned";
+
+export type CenterClassEmailData = {
+  event: CenterClassEvent;
+  centerName?: string;
+  teacherName?: string; // 담당 강사(연기·취소·일정변경)
+  oldTeacherName?: string;
+  newTeacherName?: string;
+  studentName: string;
+  studentEnglishName?: string;
+  courseTitle: string;
+  courseEnglishTitle?: string;
+  sessionDate?: string; // YYYY-MM-DD
+  sessionTime?: string; // "09:00~09:25"
+  makeupDate?: string;
+  postponeReason?: "student" | "company";
+  oldSchedule?: string; // 변경 전 주간 일정 요약
+  newSchedule?: string; // 변경 후 주간 일정 요약
+  effectiveDate?: string; // 적용 시작일
+  nextDate?: string; // 재배치 후 첫 수업일
+  affectedCount?: number; // 영향받은 남은 회차 수
+  centerUrl: string;
+};
+
+const CENTER_CLASS_META: Record<CenterClassEvent, { tag: string; heading: string; lead: string }> = {
+  class_reassigned: {
+    tag: "Session teacher changed",
+    heading: "A session was reassigned to another teacher",
+    lead: "An administrator assigned this single session to a different teacher. The date, time and student stay the same.",
+  },
+  class_postponed: {
+    tag: "Session postponed",
+    heading: "A session was postponed",
+    lead: "An administrator postponed this session. A makeup session is added at the end of the course.",
+  },
+  class_cancelled: {
+    tag: "Session cancelled",
+    heading: "A session was cancelled",
+    lead: "An administrator cancelled this session. No makeup session was created for it.",
+  },
+  remaining_rescheduled: {
+    tag: "Schedule changed",
+    heading: "The remaining sessions were rescheduled",
+    lead: "An administrator moved the remaining sessions of this course to a new weekly schedule. The teacher stays the same.",
+  },
+  remaining_reassigned: {
+    tag: "Course teacher changed",
+    heading: "The remaining sessions were reassigned to another teacher",
+    lead: "An administrator handed the remaining sessions of this course to a different teacher.",
+  },
+};
+
+/**
+ * 담당 센터 매니저에게 수업 변경 알림. best-effort — 호출 측(center-notify)에서 감싼다.
+ * 영문 본문(센터 매니저 UI 정책과 동일). 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않는다.
+ */
+export async function sendClassEventToCenterManager(to: string[], data: CenterClassEmailData): Promise<void> {
+  const meta = CENTER_CLASS_META[data.event];
+  const studentLabel = data.studentEnglishName ? `${data.studentName} (${data.studentEnglishName})` : data.studentName;
+  const courseLabel = data.courseEnglishTitle ? `${data.courseEnglishTitle} (${data.courseTitle})` : data.courseTitle;
+  const session = data.sessionDate ? `${data.sessionDate}${data.sessionTime ? ` ${data.sessionTime}` : ""}` : "";
+  const rows: [string, string][] = [
+    ...(data.centerName ? ([["Center", data.centerName]] as [string, string][]) : []),
+    ["Course", courseLabel],
+    ["Student", studentLabel || "-"],
+    ...(data.teacherName ? ([["Teacher", data.teacherName]] as [string, string][]) : []),
+    ...(data.oldTeacherName ? ([["Previous teacher", data.oldTeacherName]] as [string, string][]) : []),
+    ...(data.newTeacherName ? ([["New teacher", data.newTeacherName]] as [string, string][]) : []),
+    ...(session ? ([[data.event === "class_reassigned" ? "Session" : "Affected session", session]] as [string, string][]) : []),
+    ...(data.event === "class_postponed"
+      ? ([
+          [
+            "Makeup scheduled",
+            data.makeupDate ? `${data.makeupDate}${data.sessionTime ? ` ${data.sessionTime}` : ""}` : "Not created — manual action required",
+          ],
+        ] as [string, string][])
+      : []),
+    ...(data.postponeReason
+      ? ([["Reason", data.postponeReason === "company" ? "Company (teacher/school side)" : "Student request"]] as [string, string][])
+      : []),
+    ...(data.oldSchedule && data.newSchedule
+      ? ([["Weekly schedule", `${data.oldSchedule} → ${data.newSchedule}`]] as [string, string][])
+      : data.newSchedule
+        ? ([["Weekly schedule", data.newSchedule]] as [string, string][])
+        : []),
+    ...(data.effectiveDate ? ([["Effective from", data.effectiveDate]] as [string, string][]) : []),
+    ...(data.nextDate ? ([["Next session", data.nextDate]] as [string, string][]) : []),
+    ...(data.affectedCount ? ([["Affected sessions", String(data.affectedCount)]] as [string, string][]) : []),
+  ];
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">${escapeHtml(meta.heading)}</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(courseLabel)} · ${escapeHtml(studentLabel)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 12px">${escapeHtml(meta.lead)}</p>
+    <a href="${escapeHtml(data.centerUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">Go to weekly schedule</a>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School center notification</p>
+  </div>`;
+  const text = [`${meta.heading}.`, "", ...rows.map(([k, v]) => `${k}: ${v}`), "", meta.lead, `Weekly schedule: ${data.centerUrl}`].join("\n");
+  const subjectPrefix = data.centerName ? `[${data.centerName}] ` : "";
+  await sendResultEmail(to, `${subjectPrefix}${meta.tag} · ${courseLabel} · ${studentLabel}`, html, text);
+}
+
+/* ===== 강사 대상 남은 일정 일괄 변경 알림 ===== */
+
+export type RemainingRescheduleEmailData = {
+  studentName: string;
+  courseTitle: string;
+  oldSchedule: string; // 변경 전 주간 일정 요약(영문 요일)
+  newSchedule: string;
+  effectiveDate: string; // YYYY-MM-DD
+  nextDate: string; // 새 일정의 첫 수업일
+  affectedCount: number; // 재배치된 남은 회차 수
+  teacherUrl: string;
+};
+
+/**
+ * 담당 강사에게 남은 수업 일정 일괄 변경 알림(담당은 그대로, 요일·시간만 변경). best-effort.
+ */
+export async function sendRemainingRescheduleToTeacher(to: string[], data: RemainingRescheduleEmailData): Promise<void> {
+  const rows: [string, string][] = [
+    ["Student", data.studentName || "-"],
+    ["Course", data.courseTitle],
+    ["Weekly schedule", `${data.oldSchedule || "-"} → ${data.newSchedule || "-"}`],
+    ["Effective from", data.effectiveDate],
+    ["Next session", data.nextDate],
+    ["Rescheduled sessions", String(data.affectedCount)],
+  ];
+  const html = `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">Your remaining sessions have been rescheduled</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(data.studentName)} · ${escapeHtml(data.courseTitle)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${reassignTableRows(rows)}</table>
+    <p style="font-size:14px;color:#333;line-height:1.6;margin:16px 0 0">You are still the teacher for this course — only the weekday and time changed. Please check the new dates on your <a href="${escapeHtml(
+      data.teacherUrl,
+    )}" style="color:#1a4fa0">teacher page</a>.</p>
+    <p style="font-size:12px;color:#999;margin:20px 0 0">Friending School</p>
+  </div>`;
+  const text = [
+    "Your remaining sessions have been rescheduled.",
+    "",
+    `Student: ${data.studentName || "-"}`,
+    `Course: ${data.courseTitle}`,
+    `Weekly schedule: ${data.oldSchedule || "-"} → ${data.newSchedule || "-"}`,
+    `Effective from: ${data.effectiveDate}`,
+    `Next session: ${data.nextDate}`,
+    `Rescheduled sessions: ${data.affectedCount}`,
+    "",
+    "You are still the teacher for this course — only the weekday and time changed.",
+    `Teacher page: ${data.teacherUrl}`,
+  ].join("\n");
+  await sendResultEmail(to, `[Friending School] Schedule changed · ${data.studentName}`, html, text);
+}
+
 /* ===== 지원자 대상 강사 심사 결과 알림 ===== */
 
 function buildResultHtml(title: string, bodyHtml: string): string {

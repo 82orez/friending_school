@@ -12,6 +12,7 @@ import {
   sendClassCancellationToTeacher,
   sendCourseReassignToNewTeacher,
   sendCourseReassignToOldTeacher,
+  sendRemainingRescheduleToTeacher,
 } from "@/lib/mailer";
 import { FOREIGN_CURRENCIES, normalizeCurrency } from "@/data/currencies";
 import { getCourse } from "@/data/courses";
@@ -34,7 +35,7 @@ import { todayKst } from "@/lib/booking";
 import { createMakeupClass, weekdayOf, addDaysStr, type ClassForMakeup } from "@/lib/makeup";
 import { resolveCenterId } from "@/lib/center";
 import { logEnrollmentEvent } from "@/lib/events";
-import { notifyCenterManagerOfEnrollment } from "@/lib/center-notify";
+import { notifyCenterManagerOfClass, notifyCenterManagerOfEnrollment } from "@/lib/center-notify";
 import { finalizeEnrollmentPayment, refundEnrollmentPayment } from "@/lib/payment";
 import { cancelPortonePayment } from "@/lib/portone";
 import { reassignClassCore } from "@/lib/reassign";
@@ -1048,7 +1049,7 @@ export async function refundPayment(enrollmentId: string, opts: { reason: string
 
 // admin이 조회·관리하는 클래스 행에 필요한 필드(액션 내부 로드용).
 const CLASS_MANAGE_SELECT =
-  "id, enrollment_id, student_id, teacher_id, original_teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override";
+  "id, enrollment_id, student_id, teacher_id, original_teacher_id, course, course_title, course_english_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override";
 
 // 수업 진행 여부 수동 보정(admin) — 종료된 수업만. override: true=강제 진행됨 / false=강제 미진행 / null=자동 판정 복귀.
 // conducted_at(자동 신호)은 건드리지 않고 conducted_override로 위에 얹는다. 유효값=override ?? (conducted_at!=null).
@@ -1144,6 +1145,23 @@ export async function adminCancelClass(classId: string, reason: "student" | "com
     console.error("[adminCancelClass] 강사 알림 발송 실패:", err);
   }
 
+  // 담당 센터 매니저 알림(best-effort, 자체 try/catch) — 연기(보강 O)/취소(보강 X) 구분.
+  await notifyCenterManagerOfClass(admin, {
+    event: reason === "cancel" ? "class_cancelled" : "class_postponed",
+    teacherIds: [cls.teacher_id],
+    teacherName: cls.teacher_name ?? "",
+    studentName: cls.student_name ?? "",
+    studentEnglishName: cls.student_english_name ?? "",
+    courseTitle: cls.course_title,
+    courseEnglishTitle: getCourse(cls.course)?.englishTitle ?? cls.course_english_title ?? "",
+    sessionDate: cls.session_date,
+    sessionTime: `${fmtTime(cls.start_min)}~${fmtTime(lessonEndMin(cls.end_min))}`,
+    makeupDate,
+    postponeReason: reason === "cancel" ? undefined : reason,
+    origin: getOrigin(await headers()),
+    actorId: adminId,
+  });
+
   await logEnrollmentEvent(admin, {
     enrollmentId: cls.enrollment_id,
     classId: cls.id,
@@ -1205,7 +1223,9 @@ export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot
   const admin = createAdminClient();
   const { data: enr } = await admin
     .from("enrollments")
-    .select("id, teacher_id, student_id, status, course, course_title, student_name, teacher_name, slots")
+    .select(
+      "id, teacher_id, student_id, student_phone, status, course, course_title, course_english_title, student_name, student_english_name, teacher_name, slots",
+    )
     .eq("id", id)
     .maybeSingle();
   if (!enr) return { ok: false, error: "수강신청을 찾을 수 없습니다." };
@@ -1266,6 +1286,62 @@ export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot
 
   // 향후 주간 패턴 반영(가용 차감·요약·종료일 폴백).
   await admin.from("enrollments").update({ slots: newSlots }).eq("id", id);
+
+  // 알림 공용 값 — 학생 SMS·강사 메일·센터 매니저 알림 공유.
+  const oldScheduleEn = summarizeSlots((Array.isArray(oldSlots) ? oldSlots : []) as Slot[], false, " / ");
+  const newScheduleEn = summarizeSlots(newSlots, false, " / ");
+  const nextDateStr = toDateStr(sessions[0].date);
+
+  // 학생 결과 SMS (best-effort).
+  if (enr.student_phone) {
+    try {
+      await sendSms(
+        enr.student_phone,
+        `[프렌딩 스쿨] ${enr.course_title} 과정의 남은 ${remaining.length}회 수업 일정이 ${effective}부터 변경되었습니다. 새 일정: ${summarizeSlots(newSlots, true, " / ")}. 자세한 내용은 마이페이지(내 강의실)에서 확인하세요.`,
+      );
+    } catch (err) {
+      console.error("[adminRescheduleRemaining] 학생 SMS 발송 실패:", err);
+    }
+  }
+
+  // 담당 강사 알림 메일 (best-effort) — 담당은 그대로, 요일·시간만 변경됨을 통보.
+  const origin = getOrigin(await headers());
+  try {
+    const { data: teacherUser } = await admin.auth.admin.getUserById(enr.teacher_id);
+    const teacherEmail = teacherUser?.user?.email;
+    if (teacherEmail) {
+      await sendRemainingRescheduleToTeacher([teacherEmail], {
+        studentName: enr.student_english_name || enr.student_name || "Student",
+        courseTitle: getCourse(enr.course)?.englishTitle || enr.course_english_title || enr.course_title,
+        oldSchedule: oldScheduleEn,
+        newSchedule: newScheduleEn,
+        effectiveDate: effective,
+        nextDate: nextDateStr,
+        affectedCount: remaining.length,
+        teacherUrl: `${origin}/teacher`,
+      });
+    }
+  } catch (err) {
+    console.error("[adminRescheduleRemaining] 강사 알림 발송 실패:", err);
+  }
+
+  // 담당 센터 매니저 알림(best-effort, 자체 try/catch).
+  await notifyCenterManagerOfClass(admin, {
+    event: "remaining_rescheduled",
+    teacherIds: [enr.teacher_id],
+    teacherName: enr.teacher_name ?? "",
+    studentName: enr.student_name ?? "",
+    studentEnglishName: enr.student_english_name ?? "",
+    courseTitle: enr.course_title,
+    courseEnglishTitle: getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? "",
+    oldSchedule: oldScheduleEn,
+    newSchedule: newScheduleEn,
+    effectiveDate: effective,
+    nextDate: nextDateStr,
+    affectedCount: remaining.length,
+    origin,
+    actorId: adminId,
+  });
 
   await logEnrollmentEvent(admin, {
     enrollmentId: id,
@@ -1459,6 +1535,26 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
   } catch (err) {
     console.error("[adminReassignRemaining] 강사 알림 발송 실패:", err);
   }
+
+  // 센터 매니저 알림(best-effort, 자체 try/catch) — 기존·새 강사 센터가 다르면 두 매니저 모두 수신.
+  // 위 강사 2건 직후라 Resend 초당 2건 제한 회피 지연.
+  await notifyCenterManagerOfClass(admin, {
+    event: "remaining_reassigned",
+    teacherIds: [oldTeacherId, teacherId],
+    oldTeacherName: enr.teacher_name ?? undefined,
+    newTeacherName: newName,
+    studentName: enr.student_name ?? "",
+    studentEnglishName: enr.student_english_name ?? "",
+    courseTitle: enr.course_title,
+    courseEnglishTitle: getCourse(enr.course)?.englishTitle ?? enr.course_english_title ?? "",
+    newSchedule: schedule,
+    effectiveDate: effective,
+    nextDate,
+    affectedCount: remaining.length,
+    origin: getOrigin(await headers()),
+    actorId: adminId,
+    delayMs: 1100,
+  });
 
   await logEnrollmentEvent(admin, {
     enrollmentId: id,

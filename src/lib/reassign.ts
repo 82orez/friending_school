@@ -10,12 +10,14 @@ import { teacherHasAllSlots, fmtTime, SLOT_MIN, LESSON_MIN, type Slot } from "@/
 import { kstDateMinToMs } from "@/lib/classtime";
 import { weekdayOf } from "@/lib/makeup";
 import { logEnrollmentEvent } from "@/lib/events";
+import { notifyCenterManagerOfClass } from "@/lib/center-notify";
+import { getCourse } from "@/data/courses";
 
 // 개별 회차 강사 대체 공유 코어 — admin(adminReassignClass)·센터 매니저(centerReassignClass) 공용.
 // 상태 '예정'·시작 전 회차만, 새 강사 주간 가용 + 같은 날 시간충돌 검증 후 teacher_id/name만 교체(시간·학생 불변).
 // constrainCenterIds 지정 시(센터 매니저): 현재 강사·새 강사가 모두 그 센터 집합 소속이어야 통과.
 const CLASS_MANAGE_SELECT =
-  "id, enrollment_id, student_id, teacher_id, original_teacher_id, course, course_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override";
+  "id, enrollment_id, student_id, teacher_id, original_teacher_id, course, course_title, course_english_title, teacher_name, student_name, student_english_name, session_no, session_date, start_min, end_min, status, is_makeup, conducted_at, conducted_override";
 
 export async function reassignClassCore(
   admin: ReturnType<typeof createAdminClient>,
@@ -167,6 +169,26 @@ export async function reassignClassCore(
     } catch (err) {
       console.error("[reassignClassCore] 관리자 알림 발송 실패:", err);
     }
+  }
+
+  // 센터 매니저 알림 (admin이 대체할 때만, best-effort) — 센터 매니저 본인 대체는 위 관리자 알림으로 갈음.
+  // 기존·새 강사의 센터가 다르면 두 매니저 모두 각자 센터명으로 수신. 위 강사 2건 직후라 rate limit 회피 지연.
+  if (input.actor.role === "admin") {
+    await notifyCenterManagerOfClass(admin, {
+      event: "class_reassigned",
+      teacherIds: [oldTeacherId, teacherId],
+      oldTeacherName: oldTeacherName ?? undefined,
+      newTeacherName: newName,
+      studentName: cls.student_name ?? "",
+      studentEnglishName: cls.student_english_name ?? "",
+      courseTitle: cls.course_title,
+      courseEnglishTitle: getCourse(cls.course)?.englishTitle ?? cls.course_english_title ?? "",
+      sessionDate: cls.session_date,
+      sessionTime,
+      origin: getOrigin(await headers()),
+      actorId: input.actor.id,
+      delayMs: 1100,
+    });
   }
 
   await logEnrollmentEvent(admin, {
