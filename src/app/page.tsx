@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { Calendar } from "lucide-react";
 import SuccessBanner from "@/components/SuccessBanner";
 import SelfDevelop from "@/components/landing/SelfDevelop";
-import { CoursePriceLine, DiscountRibbon } from "@/components/CoursePrice";
+import { CoursePriceLine } from "@/components/CoursePrice";
 import { createClient } from "@/utils/supabase/server";
 import { ACTIVITIES, COURSE_CARDS, VIDEOS, getYoutubeId, type Video } from "@/data/landing";
 import { cn } from "@/lib/utils";
@@ -161,7 +161,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
                   <div className="relative h-[100px]">
                     <Image src={c.image} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover" />
                     <div className="absolute inset-0 bg-black/20" />
-                    <DiscountRibbon />
                   </div>
                   <div className="flex flex-1 flex-col p-4">
                     <p className="text-ink mb-1.5 text-base font-bold">{c.name}</p>

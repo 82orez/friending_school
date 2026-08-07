@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { COURSE_SLUGS, NOTICE_STEPS, getCourse, getCurriculumGroups } from "@/data/courses";
-import { CoursePriceLine, DiscountRibbon } from "@/components/CoursePrice";
+import { CoursePriceLine } from "@/components/CoursePrice";
 
 export function generateStaticParams() {
   return COURSE_SLUGS.map((slug) => ({ slug }));
@@ -33,7 +33,6 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
       <div className="mx-auto max-w-[1200px] px-5 pb-5 md:px-0">
         <div className="relative flex h-[200px] items-center justify-center overflow-hidden rounded-2xl bg-[#1a1a1a] md:h-[250px]">
           <Image src={course.heroImage} alt="" fill priority sizes="(max-width: 1200px) 100vw, 1200px" className="object-cover" />
-          <DiscountRibbon size="lg" />
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 px-6 text-center">
             <h1 className="text-2xl leading-snug font-bold tracking-tight text-white md:text-[40px]">{course.title}</h1>
             <p className="mt-1.5 text-sm font-medium tracking-wide text-white/70 md:text-base">{course.englishTitle}</p>
