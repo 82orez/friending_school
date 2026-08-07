@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { Calendar } from "lucide-react";
 import SuccessBanner from "@/components/SuccessBanner";
 import SelfDevelop from "@/components/landing/SelfDevelop";
+import { CoursePriceLine, DiscountRibbon } from "@/components/CoursePrice";
 import { createClient } from "@/utils/supabase/server";
 import { ACTIVITIES, COURSE_CARDS, VIDEOS, getYoutubeId, type Video } from "@/data/landing";
 import { cn } from "@/lib/utils";
@@ -93,7 +94,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
               준이 호주에서 직접 마주친 상황들, 영상으로 함께 확인해보세요.{" "}
               <Link
                 href="/youtube"
-                className="bg-progress ml-1 inline-block rounded-full px-3 py-1 align-middle text-[13px] font-bold text-white transition-opacity hover:opacity-85">
+                className="bg-progress ml-1 inline-block rounded-full px-3 py-1 align-middle text-[13px] font-bold text-white transition-opacity hover:opacity-85"
+              >
                 전체보기
               </Link>
             </>
@@ -109,10 +111,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
                   href={v.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="border-rule block w-full shrink-0 overflow-hidden rounded-2xl border bg-white transition-transform hover:-translate-y-0.5 sm:w-[calc(50%-0.4375rem)] md:w-[calc(25%-0.65625rem)]">
+                  className="border-rule block w-full shrink-0 overflow-hidden rounded-2xl border bg-white transition-transform hover:-translate-y-0.5 sm:w-[calc(50%-0.4375rem)] md:w-[calc(25%-0.65625rem)]"
+                >
                   <div
                     className="relative flex aspect-[9/16] items-center justify-center bg-[#222] bg-cover bg-center"
-                    style={id ? { backgroundImage: `url('https://img.youtube.com/vi/${id}/maxresdefault.jpg')` } : undefined}>
+                    style={id ? { backgroundImage: `url('https://img.youtube.com/vi/${id}/maxresdefault.jpg')` } : undefined}
+                  >
                     <div className="flex size-10 items-center justify-center rounded-full border-[1.5px] border-white/50 bg-white/20">
                       <svg viewBox="0 0 24 24" className="ml-0.5 size-4 fill-white" aria-hidden>
                         <path d="M8 5v14l11-7z" />
@@ -123,7 +127,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
                     )}
                   </div>
                   <div className="p-3.5">
-                    {v.tag && <span className="bg-accent-blue-soft text-accent-blue-ink mb-1.5 inline-block rounded-full px-2 py-0.5 text-sm">{v.tag}</span>}
+                    {v.tag && (
+                      <span className="bg-accent-blue-soft text-accent-blue-ink mb-1.5 inline-block rounded-full px-2 py-0.5 text-sm">{v.tag}</span>
+                    )}
                     <p className="text-ink mb-1 text-[15px] leading-snug font-medium">{v.title}</p>
                     <p className="text-muted-fg-faint text-sm leading-relaxed">{v.description ?? v.desc}</p>
                   </div>
@@ -150,26 +156,28 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
               {COURSE_CARDS.map((c) => (
                 <div
                   key={c.slug}
-                  className="border-rule bg-surface flex flex-col overflow-hidden rounded-2xl border transition-transform hover:-translate-y-0.5">
+                  className="border-rule bg-surface flex flex-col overflow-hidden rounded-2xl border transition-transform hover:-translate-y-0.5"
+                >
                   <div className="relative h-[100px]">
                     <Image src={c.image} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover" />
                     <div className="absolute inset-0 bg-black/20" />
+                    <DiscountRibbon />
                   </div>
                   <div className="flex flex-1 flex-col p-4">
                     <p className="text-ink mb-1.5 text-base font-bold">{c.name}</p>
                     <p className="text-muted-fg mb-2.5 text-[15px] leading-relaxed">{c.desc}</p>
-                    <p className="text-ink mt-auto mb-3 text-lg font-bold">
-                      {c.price} <span className="text-muted-fg-faint text-xs font-normal">{c.per}</span>
-                    </p>
+                    <CoursePriceLine className="mt-auto mb-3" />
                     <div className="flex gap-2">
                       <Link
                         href={`/courses/${c.slug}`}
-                        className="border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink flex-1 rounded-full border py-2 text-center text-[13px] transition-colors">
+                        className="border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink flex-1 rounded-full border py-2 text-center text-[13px] transition-colors"
+                      >
                         상세보기
                       </Link>
                       <Link
                         href={`/courses/${c.slug}#apply-form`}
-                        className="bg-cta flex-1 rounded-full py-2 text-center text-[13px] font-bold text-white transition-opacity hover:opacity-90">
+                        className="bg-cta flex-1 rounded-full py-2 text-center text-[13px] font-bold text-white transition-opacity hover:opacity-90"
+                      >
                         신청하기
                       </Link>
                     </div>
@@ -194,7 +202,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
                 <div className="relative h-[110px]">
                   <Image src={a.image} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover" />
                   <div className="absolute inset-0 bg-black/30" />
-                  <span className={cn("absolute top-2.5 left-2.5 z-[1] rounded-full px-2.5 py-0.5 text-[11px] font-medium", ACTIVITY_BADGE[a.badgeVariant])}>
+                  <span
+                    className={cn(
+                      "absolute top-2.5 left-2.5 z-[1] rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+                      ACTIVITY_BADGE[a.badgeVariant],
+                    )}
+                  >
                     {a.badge}
                   </span>
                 </div>

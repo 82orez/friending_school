@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { COURSE_SLUGS, NOTICE_STEPS, getCourse, getCurriculumGroups } from "@/data/courses";
+import { CoursePriceLine, DiscountRibbon } from "@/components/CoursePrice";
 
 export function generateStaticParams() {
   return COURSE_SLUGS.map((slug) => ({ slug }));
@@ -32,6 +33,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
       <div className="mx-auto max-w-[1200px] px-5 pb-5 md:px-0">
         <div className="relative flex h-[200px] items-center justify-center overflow-hidden rounded-2xl bg-[#1a1a1a] md:h-[250px]">
           <Image src={course.heroImage} alt="" fill priority sizes="(max-width: 1200px) 100vw, 1200px" className="object-cover" />
+          <DiscountRibbon size="lg" />
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 px-6 text-center">
             <h1 className="text-2xl leading-snug font-bold tracking-tight text-white md:text-[40px]">{course.title}</h1>
             <p className="mt-1.5 text-sm font-medium tracking-wide text-white/70 md:text-base">{course.englishTitle}</p>
@@ -71,12 +73,11 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
               <span className="text-ink font-medium">{course.englishTitle}</span>
             </li>
           </ul>
-          <p className="text-ink mb-4 text-2xl font-bold tracking-tight">
-            {course.price} <span className="text-muted-fg-faint text-base font-normal">{course.per}</span>
-          </p>
+          <CoursePriceLine size="lg" className="mb-4" />
           <Link
             href={`/courses/${course.slug}/enroll`}
-            className="bg-brand-gradient block w-full rounded-full py-3.5 text-center text-base font-bold tracking-wide text-white transition-opacity hover:opacity-90">
+            className="bg-brand-gradient block w-full rounded-full py-3.5 text-center text-base font-bold tracking-wide text-white transition-opacity hover:opacity-90"
+          >
             수강 신청하기
           </Link>
         </div>
@@ -135,7 +136,9 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <div className="flex flex-col gap-8">
             {course.diff.map((d, i) => (
               <div key={i} className="flex items-start gap-5 md:gap-6">
-                <span className="text-brand-gradient w-10 shrink-0 text-[40px] leading-none font-bold md:w-[52px]">{String(i + 1).padStart(2, "0")}</span>
+                <span className="text-brand-gradient w-10 shrink-0 text-[40px] leading-none font-bold md:w-[52px]">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
                 <div>
                   <p className="mb-2 text-lg leading-snug font-bold text-white">{d.title}</p>
                   <p className="text-base leading-relaxed text-[#aaa]">{d.desc}</p>
@@ -174,14 +177,13 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <h2 className="text-ink mb-12 text-center text-2xl leading-snug font-bold tracking-tight md:text-[32px]">커리큘럼</h2>
           {curriculumGroups.map((group, gi) => (
             <div key={gi} className={gi > 0 ? "mt-10" : undefined}>
-              {group.title && (
-                <p className="border-progress text-ink mb-4 inline-block border-b-2 pb-2.5 text-lg font-bold">{group.title}</p>
-              )}
+              {group.title && <p className="border-progress text-ink mb-4 inline-block border-b-2 pb-2.5 text-lg font-bold">{group.title}</p>}
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-4">
                 {group.units.map((u) => (
                   <div
                     key={u.n}
-                    className="border-rule bg-surface hover:border-progress rounded-md border p-5 text-center transition-[border-color,transform] duration-150 hover:-translate-y-0.5">
+                    className="border-rule bg-surface hover:border-progress rounded-md border p-5 text-center transition-[border-color,transform] duration-150 hover:-translate-y-0.5"
+                  >
                     <p className="text-progress mb-2 text-base font-bold">{u.n.replace(/^Unit 0?/, "Unit ")}</p>
                     <p className="text-ink text-base leading-snug font-medium">{u.t}</p>
                     {u.sub && <p className="text-muted-fg-faint mt-1 text-sm leading-snug">{u.sub}</p>}
@@ -207,7 +209,8 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <p className="mb-8 text-base text-white/85">원하는 요일·시간과 강사를 직접 선택해 바로 신청하세요.</p>
           <Link
             href={`/courses/${course.slug}/enroll`}
-            className="text-ink inline-block rounded-full bg-white px-8 py-3.5 text-base font-bold tracking-wide transition-opacity hover:opacity-90">
+            className="text-ink inline-block rounded-full bg-white px-8 py-3.5 text-base font-bold tracking-wide transition-opacity hover:opacity-90"
+          >
             수강 신청하기
           </Link>
         </div>
