@@ -91,8 +91,7 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
           type="button"
           onClick={handleReset}
           disabled={isDefault}
-          className="border-rule text-muted-fg hover:bg-surface inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-50"
-        >
+          className="border-rule text-muted-fg hover:bg-surface inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-50">
           <RotateCcw className="size-3.5" aria-hidden />
           초기화
         </button>
@@ -116,8 +115,7 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
                 className={cn(
                   "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
                   on ? "bg-ink border-ink text-white" : "border-rule text-muted-fg bg-white",
-                )}
-              >
+                )}>
                 {DAY_LABELS[i]}
               </button>
             );
@@ -132,8 +130,7 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
           <select
             value={count}
             onChange={(e) => handleCountChange(Number(e.target.value))}
-            className="border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none"
-          >
+            className="border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none">
             {COUNT_OPTIONS.map((n) => (
               <option key={n} value={n}>
                 {n}회 ({formatDuration(n * SLOT_MIN)})
@@ -146,8 +143,7 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
           <select
             value={startMin}
             onChange={(e) => setStartMin(Number(e.target.value))}
-            className="border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none"
-          >
+            className="border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none">
             {validStartOptions.map((m) => (
               <option key={m} value={m}>
                 {fmtTime(m)}

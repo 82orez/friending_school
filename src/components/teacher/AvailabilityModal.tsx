@@ -71,7 +71,7 @@ export default function AvailabilityModal({ initialSlots, bookedSlots }: { initi
             {initialSlots.length > 0
               ? `${initialSlots.length} time slot${initialSlots.length === 1 ? "" : "s"} marked.`
               : "No availability set yet. Add the times you can teach."}
-            {!!bookedSlots?.length && <span className="text-[#1E7E34] font-medium"> · {bookedSlots.length} booked</span>}
+            {!!bookedSlots?.length && <span className="font-medium text-[#1E7E34]"> · {bookedSlots.length} booked</span>}
           </p>
         </div>
         <Button ref={triggerRef} type="button" variant="brand" onClick={() => setOpen(true)}>

@@ -42,19 +42,26 @@ export default function TestEnrollmentCreator({
           <FlaskConical className="text-accent-blue-ink size-4" aria-hidden />
           <div>
             <p className="text-ink text-sm font-bold">테스트 수강신청 생성</p>
-            <p className="text-muted-fg-faint text-xs">개발용 — 시작일·수업 횟수 자유. 생성 후 승인 → 결제확인으로 실제 흐름과 동일하게 진행됩니다.</p>
+            <p className="text-muted-fg-faint text-xs">
+              개발용 — 시작일·수업 횟수 자유. 생성 후 승인 → 결제확인으로 실제 흐름과 동일하게 진행됩니다.
+            </p>
           </div>
         </div>
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90"
-        >
+          className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90">
           ＋ 생성
         </button>
       </div>
       {open && (
-        <CreatorModal teachers={teachers} courses={courses} students={students} defaultStudentEmail={defaultStudentEmail} onClose={() => setOpen(false)} />
+        <CreatorModal
+          teachers={teachers}
+          courses={courses}
+          students={students}
+          defaultStudentEmail={defaultStudentEmail}
+          onClose={() => setOpen(false)}
+        />
       )}
     </div>
   );
@@ -153,8 +160,7 @@ function CreatorModal({
         role="dialog"
         aria-modal="true"
         aria-label="테스트 수강신청 생성"
-        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-      >
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-center justify-between gap-3 border-b px-6 py-4">
           <h2 className="text-ink text-lg font-bold">테스트 수강신청 생성</h2>
           <button
@@ -162,8 +168,7 @@ function CreatorModal({
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-1 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-1 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             <X className="size-5" />
           </button>
         </div>
@@ -174,8 +179,7 @@ function CreatorModal({
             <select
               value={studentEmail}
               onChange={(e) => setStudentEmail(e.target.value)}
-              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-            >
+              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none">
               {students.length === 0 && <option value="">선택 가능한 회원이 없습니다</option>}
               {students.map((s) => (
                 <option key={s.email} value={s.email}>
@@ -190,8 +194,7 @@ function CreatorModal({
             <select
               value={course}
               onChange={(e) => setCourse(e.target.value)}
-              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-            >
+              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none">
               {courses.map((c) => (
                 <option key={c.slug} value={c.slug}>
                   {c.title}
@@ -257,8 +260,7 @@ function CreatorModal({
                           className={cn(
                             "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
                             on ? "border-progress bg-progress/5" : "border-rule hover:border-rule-faint bg-white",
-                          )}
-                        >
+                          )}>
                           {t.avatarUrl ? (
                             <Image src={t.avatarUrl} alt="" width={40} height={40} className="size-10 shrink-0 rounded-lg object-cover" />
                           ) : (
@@ -323,16 +325,14 @@ function CreatorModal({
           <button
             type="button"
             onClick={onClose}
-            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
-          >
+            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors">
             닫기
           </button>
           <button
             type="button"
             onClick={submit}
             disabled={pending}
-            className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
+            className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
             {pending && <Loader2 className="size-3.5 animate-spin" />}
             생성
           </button>

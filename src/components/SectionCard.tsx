@@ -10,10 +10,6 @@ const variantClasses: Record<SectionCardVariant, string> = {
   plain: "bg-surface",
 };
 
-export function SectionCard({
-  variant = "outline",
-  className,
-  ...props
-}: React.ComponentProps<"div"> & { variant?: SectionCardVariant }) {
+export function SectionCard({ variant = "outline", className, ...props }: React.ComponentProps<"div"> & { variant?: SectionCardVariant }) {
   return <div className={cn(variantClasses[variant], className)} {...props} />;
 }

@@ -51,7 +51,8 @@ const revenuePgFeeKrw = (r: RevenueRow): number => r.krwPgFee;
 // 정산 1건 원가(KRW) — 로더가 수업 진행일 환율로 사전 환산, 단가 미설정이면 0. 강사 인건비라 부가세 없음.
 const settlementKrw = (s: SettlementRow): number => s.krwPerSession ?? 0;
 
-type TrendBucket = { key: string; revenue: number; settlement: number; tooltip: string; xLabel: string; highlight?: boolean };type ProfitGroup = { key: string; label: string; supplyKrw: number; vatKrw: number; pgFeeKrw: number; settlementKrw: number; unpriced: number };
+type TrendBucket = { key: string; revenue: number; settlement: number; tooltip: string; xLabel: string; highlight?: boolean };
+type ProfitGroup = { key: string; label: string; supplyKrw: number; vatKrw: number; pgFeeKrw: number; settlementKrw: number; unpriced: number };
 
 export default function ProfitManager({
   revenueRows,
@@ -93,7 +94,8 @@ export default function ProfitManager({
   const [includeTest, setIncludeTest] = useState(false);
 
   const hasTest = useMemo(() => revenueRows.some((r) => r.isTest) || settlementRows.some((s) => s.isTest), [revenueRows, settlementRows]);
-  const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const { start, end } = useMemo(() => interval(anchor, period), [anchor, period]);
   // 테스트 결제·수강(is_test)은 기본 제외(운영 정확도), 토글 시 포함 — 매출·정산 양쪽 동일 적용.
@@ -271,7 +273,9 @@ export default function ProfitManager({
     <div>
       <h1 className="text-ink text-2xl font-extrabold">매출이익</h1>
       <p className="text-muted-fg mt-1 text-sm">
-        매출이익 = 공급가액(매출 ÷ 1.1) − 정산 − PG 수수료이며, 부가세는 납부 대상이라 이익에서 제외됩니다(이익률 = 매출이익 ÷ 공급가액). 매출은 결제일, 정산은 수업 진행일 기준이라 기간 이익은 운영 참고용이며 실패·테스트 결제는 제외됩니다. 정산이 확정되기 전에는 추정치(예상치)로 표시되고, 센터 월 정산이 확정되면 실지급액으로 반영됩니다.
+        매출이익 = 공급가액(매출 ÷ 1.1) − 정산 − PG 수수료이며, 부가세는 납부 대상이라 이익에서 제외됩니다(이익률 = 매출이익 ÷ 공급가액). 매출은
+        결제일, 정산은 수업 진행일 기준이라 기간 이익은 운영 참고용이며 실패·테스트 결제는 제외됩니다. 정산이 확정되기 전에는 추정치(예상치)로
+        표시되고, 센터 월 정산이 확정되면 실지급액으로 반영됩니다.
       </p>
 
       {/* 기간 토글 */}
@@ -298,8 +302,7 @@ export default function ProfitManager({
           type="button"
           onClick={() => setAnchor((a) => shiftAnchor(a, period, -1))}
           className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-8 items-center justify-center rounded-md border transition-colors"
-          aria-label="이전 기간"
-        >
+          aria-label="이전 기간">
           <ChevronLeft className="size-4" aria-hidden />
         </button>
         <span className="text-ink min-w-[9rem] text-center text-sm font-bold whitespace-nowrap">{periodLabel(anchor, period)}</span>
@@ -307,15 +310,13 @@ export default function ProfitManager({
           type="button"
           onClick={() => setAnchor((a) => shiftAnchor(a, period, 1))}
           className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-8 items-center justify-center rounded-md border transition-colors"
-          aria-label="다음 기간"
-        >
+          aria-label="다음 기간">
           <ChevronRight className="size-4" aria-hidden />
         </button>
         <button
           type="button"
           onClick={() => setAnchor(todayKst())}
-          className="border-rule text-muted-fg hover:text-ink rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-        >
+          className="border-rule text-muted-fg hover:text-ink rounded-md border px-3 py-1.5 text-xs font-medium transition-colors">
           오늘
         </button>
       </div>
@@ -411,7 +412,11 @@ export default function ProfitManager({
                       {g.pgFeeKrw > 0 ? formatPrice(g.pgFeeKrw, "KRW") : <span className="text-muted-fg-faint">—</span>}
                     </td>
                     <td className="text-muted-fg px-4 py-3 align-middle whitespace-nowrap">{formatPrice(g.settlementKrw, "KRW")}</td>
-                    <td className={cn("px-4 py-3 align-middle font-semibold whitespace-nowrap md:px-6", profit >= 0 ? "text-accent-blue-ink" : "text-brand")}>
+                    <td
+                      className={cn(
+                        "px-4 py-3 align-middle font-semibold whitespace-nowrap md:px-6",
+                        profit >= 0 ? "text-accent-blue-ink" : "text-brand",
+                      )}>
                       {formatPrice(profit, "KRW")}
                     </td>
                     <td className="text-muted-fg px-4 py-3 align-middle whitespace-nowrap">{margin == null ? "—" : `${margin.toFixed(1)}%`}</td>
@@ -428,10 +433,13 @@ export default function ProfitManager({
                 <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.vat, "KRW")}</td>
                 <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.pgFee, "KRW")}</td>
                 <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{formatPrice(tableTotals.settlement, "KRW")}</td>
-                <td className={cn("px-4 py-3 align-middle whitespace-nowrap md:px-6", tableTotals.profit >= 0 ? "text-accent-blue-ink" : "text-brand")}>
+                <td
+                  className={cn("px-4 py-3 align-middle whitespace-nowrap md:px-6", tableTotals.profit >= 0 ? "text-accent-blue-ink" : "text-brand")}>
                   {formatPrice(tableTotals.profit, "KRW")}
                 </td>
-                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">{tableTotals.margin == null ? "—" : `${tableTotals.margin.toFixed(1)}%`}</td>
+                <td className="text-ink px-4 py-3 align-middle whitespace-nowrap">
+                  {tableTotals.margin == null ? "—" : `${tableTotals.margin.toFixed(1)}%`}
+                </td>
               </tr>
             </tfoot>
           )}
@@ -471,8 +479,7 @@ function KpiCard({
             className={cn(
               "rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
               badge.tone === "confirmed" ? "bg-[#E6F4EA] text-[#1E7E34]" : "bg-[#FFF4E5] text-[#B45309]",
-            )}
-          >
+            )}>
             {badge.label}
           </span>
         )}
@@ -481,8 +488,7 @@ function KpiCard({
         className={cn(
           "mt-1 text-2xl font-extrabold",
           tone === "settlement" ? "text-[#B45309]" : tone === "profit" ? "text-accent-blue-ink" : tone === "loss" ? "text-brand" : "text-ink",
-        )}
-      >
+        )}>
         {value}
       </p>
       <p className="text-muted-fg-faint mt-0.5 text-xs">{hint}</p>
@@ -513,7 +519,10 @@ function ProfitTrendChart({ data, title }: { data: TrendBucket[]; title: string 
         {data.map((d) => (
           <div key={d.key} className={cn("group relative flex items-end justify-center gap-[2px]", colClass)}>
             <div
-              className={cn("flex-1 rounded-t-[3px] transition-colors", d.highlight ? "bg-accent-blue-ink" : "bg-accent-blue group-hover:bg-accent-blue-ink")}
+              className={cn(
+                "flex-1 rounded-t-[3px] transition-colors",
+                d.highlight ? "bg-accent-blue-ink" : "bg-accent-blue group-hover:bg-accent-blue-ink",
+              )}
               style={{ height: Math.max(d.revenue > 0 ? 3 : 1, Math.round((d.revenue / max) * 140)) }}
             />
             <div
@@ -530,10 +539,7 @@ function ProfitTrendChart({ data, title }: { data: TrendBucket[]; title: string 
       {/* x축 라벨 */}
       <div className="mt-1.5 flex justify-center gap-[3px]">
         {data.map((d, i) => (
-          <div
-            key={d.key}
-            className={cn("text-muted-fg-faint text-center text-[10px]", colClass)}
-          >
+          <div key={d.key} className={cn("text-muted-fg-faint text-center text-[10px]", colClass)}>
             {i % showLabelEvery === 0 ? d.xLabel : ""}
           </div>
         ))}
@@ -551,8 +557,7 @@ function ToggleChip({ active, onClick, label }: { active: boolean; onClick: () =
       className={cn(
         "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
         active ? "bg-ink border-ink text-white" : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-      )}
-    >
+      )}>
       {label}
     </button>
   );

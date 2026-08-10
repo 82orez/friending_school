@@ -1,7 +1,17 @@
 import "server-only";
 
 import { createAdminClient } from "@/utils/supabase/admin";
-import { deriveBookedSlots, lessonEndMin, summarizeWeekdays, scheduleDateRange, isValidSlot, dowOf, TOTAL_SESSIONS, type BookedSlot, type Slot } from "@/lib/availability";
+import {
+  deriveBookedSlots,
+  lessonEndMin,
+  summarizeWeekdays,
+  scheduleDateRange,
+  isValidSlot,
+  dowOf,
+  TOTAL_SESSIONS,
+  type BookedSlot,
+  type Slot,
+} from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { loadEndedEnrollmentIds } from "@/lib/booking";
 import type { CurrentTeacher, TeacherClassItem, TeacherCoverItem } from "@/components/admin/TeacherRequestsManager";
@@ -74,7 +84,9 @@ export function buildCoverSessions(rows: TeacherClassRow[], teacherIds: string[]
     if (scope.has(c.original_teacher_id)) push(c.original_teacher_id, { ...base, kind: "away", counterpartName: c.teacher_name });
   }
 
-  byTeacher.forEach((list) => list.sort((a, b) => (a.sessionDate !== b.sessionDate ? a.sessionDate.localeCompare(b.sessionDate) : a.startMin - b.startMin)));
+  byTeacher.forEach((list) =>
+    list.sort((a, b) => (a.sessionDate !== b.sessionDate ? a.sessionDate.localeCompare(b.sessionDate) : a.startMin - b.startMin)),
+  );
   return byTeacher;
 }
 
@@ -124,7 +136,9 @@ export async function loadCenterTeachers(admin: ReturnType<typeof createAdminCli
   const classesByTeacher = new Map<string, TeacherClassItem[]>();
   const { data: enrollRows } = await admin
     .from("enrollments")
-    .select("id, teacher_id, course, course_title, course_english_title, slots, status, start_date, total_sessions, student_name, student_english_name")
+    .select(
+      "id, teacher_id, course, course_title, course_english_title, slots, status, start_date, total_sessions, student_name, student_english_name",
+    )
     .in("teacher_id", teacherIds)
     .in("status", ["승인", "결제대기", "결제완료"]);
   const ended = await loadEndedEnrollmentIds(admin, teacherIds);
@@ -159,9 +173,7 @@ export async function loadCenterTeachers(admin: ReturnType<typeof createAdminCli
 
   // 대체 회차(대타/넘긴 회차) — 원 강사가 센터 밖일 수 있어 이름은 누락분만 보강 조회.
   const nameById = new Map(rows.map((p) => [p.id, [p.first_name, p.last_name].filter(Boolean).join(" ").trim()]));
-  const missingIds = Array.from(
-    new Set(classRows.map((c) => c.original_teacher_id).filter((id): id is string => !!id && !nameById.has(id))),
-  );
+  const missingIds = Array.from(new Set(classRows.map((c) => c.original_teacher_id).filter((id): id is string => !!id && !nameById.has(id))));
   if (missingIds.length > 0) {
     const { data: extra } = await admin.from("profiles").select("id, first_name, last_name").in("id", missingIds);
     for (const p of (extra ?? []) as { id: string; first_name: string | null; last_name: string | null }[]) {

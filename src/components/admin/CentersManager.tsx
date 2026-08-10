@@ -85,11 +85,18 @@ export default function CentersManager({
       <div className="mt-5">
         <p className="text-ink mb-1 text-base font-bold">환율 설정</p>
         <p className="text-muted-fg-faint mb-3 text-xs">
-          외화(₱·$) 단가를 원화로 환산하는 환율을 적용일별로 관리합니다. 정산·매출이익은 수업/결제 날짜의 환율로 환산되어, 환율을 바꿔도 과거 집계는 그대로 유지됩니다.
+          외화(₱·$) 단가를 원화로 환산하는 환율을 적용일별로 관리합니다. 정산·매출이익은 수업/결제 날짜의 환율로 환산되어, 환율을 바꿔도 과거 집계는
+          그대로 유지됩니다.
         </p>
         <div className="grid gap-3 md:grid-cols-2">
           {FOREIGN_CURRENCIES.map((f) => (
-            <ExchangeRateHistoryEditor key={f.code} currency={f.code} symbol={f.symbol} rateLabel={f.rateLabel} rows={fxSchedulesByCurrency[f.code] ?? []} />
+            <ExchangeRateHistoryEditor
+              key={f.code}
+              currency={f.code}
+              symbol={f.symbol}
+              rateLabel={f.rateLabel}
+              rows={fxSchedulesByCurrency[f.code] ?? []}
+            />
           ))}
         </div>
       </div>
@@ -136,8 +143,7 @@ export default function CentersManager({
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="border-rule-faint focus:border-accent-blue h-[42px] w-full rounded-md border bg-white px-3 text-sm outline-none"
-            >
+              className="border-rule-faint focus:border-accent-blue h-[42px] w-full rounded-md border bg-white px-3 text-sm outline-none">
               {CURRENCIES.map((c) => (
                 <option key={c.code} value={c.code}>
                   {c.label}
@@ -171,8 +177,7 @@ export default function CentersManager({
                 },
               )
             }
-            className="bg-ink inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
+            className="bg-ink inline-flex h-10 shrink-0 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
             {pending && <Loader2 className="size-3.5 animate-spin" />}
             추가하기
           </button>
@@ -233,16 +238,14 @@ export default function CentersManager({
                         <button
                           type="button"
                           onClick={() => setEditTarget(c)}
-                          className="border-rule text-muted-fg rounded border px-2.5 py-1 text-xs"
-                        >
+                          className="border-rule text-muted-fg rounded border px-2.5 py-1 text-xs">
                           수정
                         </button>
                         <button
                           type="button"
                           disabled={pending}
                           onClick={() => setDeleteTarget(c)}
-                          className="border-rule text-brand rounded border px-2.5 py-1 text-xs disabled:opacity-60"
-                        >
+                          className="border-rule text-brand rounded border px-2.5 py-1 text-xs disabled:opacity-60">
                           삭제
                         </button>
                       </div>
@@ -295,8 +298,7 @@ export default function CentersManager({
                 setDeleteTarget(null);
                 if (target) run(() => deleteCenter(target.id));
               }}
-              variant="brand"
-            >
+              variant="brand">
               삭제
             </AlertDialogAction>
           </AlertDialogFooter>

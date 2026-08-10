@@ -81,8 +81,7 @@ export default async function AdminClassesPage() {
     if (r.status === "취소") {
       g.cancelled += 1;
       if (r.cancel_reason === "student") g.postponed += 1; // 학생 연기만 '남은 연기' 차감
-    }
-    else if (endMs >= now) g.upcoming += 1;
+    } else if (endMs >= now) g.upcoming += 1;
     else g.done += 1;
     // 라이브 창 — 비취소 회차 중 아직 종료 안 된(endMs>=now) 가장 이른 회차의 입장창(시작 15분 전~레슨 종료).
     if (r.status !== "취소" && endMs >= now) {

@@ -91,7 +91,8 @@ export default function TeacherInfoModal({
 
   // 선택된 센터의 회당 단가(개별 단가 이력의 "센터 단가" 폴백 표시용). 미지정/미설정이면 "미설정".
   const selectedCenter = centers.find((c) => c.id === centerSel);
-  const centerRateLabel = selectedCenter && selectedCenter.price != null ? formatPrice(selectedCenter.price, selectedCenter.currency) : en ? "Not set" : "미설정";
+  const centerRateLabel =
+    selectedCenter && selectedCenter.price != null ? formatPrice(selectedCenter.price, selectedCenter.currency) : en ? "Not set" : "미설정";
 
   const title = teacher.name || teacher.email;
 
@@ -105,8 +106,7 @@ export default function TeacherInfoModal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-      >
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-ink truncate text-lg font-bold">{title}</h2>
           <button
@@ -114,8 +114,7 @@ export default function TeacherInfoModal({
             type="button"
             onClick={onClose}
             aria-label={en ? "Close" : "닫기"}
-            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             <X className="size-5" />
           </button>
         </div>
@@ -133,8 +132,7 @@ export default function TeacherInfoModal({
             ) : (
               <div
                 aria-hidden="true"
-                className="border-rule bg-surface text-muted-fg-faint flex size-20 shrink-0 items-center justify-center rounded-2xl border text-2xl font-bold"
-              >
+                className="border-rule bg-surface text-muted-fg-faint flex size-20 shrink-0 items-center justify-center rounded-2xl border text-2xl font-bold">
                 {initials(teacher.name, teacher.email)}
               </div>
             )}
@@ -173,8 +171,7 @@ export default function TeacherInfoModal({
                     value={centerSel}
                     onChange={(e) => setCenterSel(e.target.value)}
                     disabled={saving}
-                    className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
-                  >
+                    className="border-rule text-ink focus-visible:ring-accent-blue/50 h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50">
                     <option value="none">None</option>
                     {centers.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -189,8 +186,7 @@ export default function TeacherInfoModal({
                       disabled={saving}
                       className={cn(
                         "bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-colors disabled:opacity-60",
-                      )}
-                    >
+                      )}>
                       {saving && <Loader2 className="size-4 animate-spin" />}
                       {saving ? "저장 중" : "저장"}
                     </button>
@@ -228,9 +224,10 @@ export default function TeacherInfoModal({
               <p className="text-ink text-sm font-bold">{en ? "Weekly availability" : "주간 가능 시간"}</p>
               <button
                 type="button"
-                onClick={() => openTimetablePrint({ teacherName: teacher.name || teacher.email, slots: teacher.slots, bookedSlots: teacher.bookedSlots })}
-                className="border-rule text-muted-fg hover:bg-surface inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
-              >
+                onClick={() =>
+                  openTimetablePrint({ teacherName: teacher.name || teacher.email, slots: teacher.slots, bookedSlots: teacher.bookedSlots })
+                }
+                className="border-rule text-muted-fg hover:bg-surface inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
                 <Printer className="size-4" />
                 {en ? "Export PDF" : "PDF로 내보내기"}
               </button>
@@ -243,8 +240,7 @@ export default function TeacherInfoModal({
           <button
             type="button"
             onClick={onClose}
-            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
-          >
+            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors">
             {en ? "Close" : "닫기"}
           </button>
         </div>

@@ -100,18 +100,20 @@ export async function loadRevenueRows(admin: ReturnType<typeof createAdminClient
 
   // 환율 적용일 이력 전량(결제일 기준 원화 환산 소스).
   const { data: fxData } = await admin.from("exchange_rate_schedules").select("id, currency, rate_to_krw, effective_from, note");
-  const fxRows: FxRow[] = ((fxData ?? []) as { id: string; currency: string; rate_to_krw: number | string; effective_from: string; note: string | null }[]).map(
-    (r) => ({ id: r.id, currency: r.currency, rate: Number(r.rate_to_krw), effectiveFrom: r.effective_from, note: r.note }),
-  );
+  const fxRows: FxRow[] = (
+    (fxData ?? []) as { id: string; currency: string; rate_to_krw: number | string; effective_from: string; note: string | null }[]
+  ).map((r) => ({ id: r.id, currency: r.currency, rate: Number(r.rate_to_krw), effectiveFrom: r.effective_from, note: r.note }));
 
   // PG 수수료율 적용일 이력 전량(결제일 기준 유효 율 소스). 비면 율 0 = 수수료 미반영.
   const { data: feeData } = await admin.from("pg_fee_schedules").select("id, rate_percent, effective_from, note");
-  const feeRows: PgFeeRow[] = ((feeData ?? []) as { id: string; rate_percent: number | string; effective_from: string; note: string | null }[]).map((r) => ({
-    id: r.id,
-    ratePercent: Number(r.rate_percent),
-    effectiveFrom: r.effective_from,
-    note: r.note,
-  }));
+  const feeRows: PgFeeRow[] = ((feeData ?? []) as { id: string; rate_percent: number | string; effective_from: string; note: string | null }[]).map(
+    (r) => ({
+      id: r.id,
+      ratePercent: Number(r.rate_percent),
+      effectiveFrom: r.effective_from,
+      note: r.note,
+    }),
+  );
 
   const rows: RevenueRow[] = payments
     .map((p) => {

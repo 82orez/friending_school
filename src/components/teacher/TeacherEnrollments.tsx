@@ -107,7 +107,8 @@ export default function TeacherEnrollments({ enrollments }: { enrollments: Teach
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const pending = useMemo(() => rows.filter((r) => r.status === "신청").length, [rows]);
 
@@ -204,7 +205,11 @@ export default function TeacherEnrollments({ enrollments }: { enrollments: Teach
                     )}>
                     <td className="px-4 py-3.5 align-middle md:px-6">
                       <div className="flex flex-col items-start gap-1.5">
-                        <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", isRefunded(r) ? REFUND_BADGE : STATUS_BADGE[r.status])}>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold",
+                            isRefunded(r) ? REFUND_BADGE : STATUS_BADGE[r.status],
+                          )}>
                           {isRefunded(r) ? "Refunded" : STATUS_LABEL[r.status]}
                         </span>
                         {conflict && (
@@ -346,7 +351,8 @@ function EnrollmentDetailModal({
         <div className="overflow-auto px-6 py-5">
           {conflict && (
             <p className="mb-4 inline-flex items-center gap-1.5 rounded-md bg-[#FFF7E6] px-2.5 py-1.5 text-xs font-semibold text-[#B97400]">
-              <TriangleAlert className="size-3.5 shrink-0" aria-hidden /> This time overlaps with another active enrollment — only one can be approved.
+              <TriangleAlert className="size-3.5 shrink-0" aria-hidden /> This time overlaps with another active enrollment — only one can be
+              approved.
             </p>
           )}
           <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm">

@@ -26,7 +26,9 @@ export default async function AdminClassDetailPage({ params }: { params: Promise
   // 남은 일정 일괄 변경용 — 현재 주간 패턴(enrollment.slots) + 현재 담당 강사 주간 가용.
   // 강사·이름은 enrollments 기준(강사 대체 시 갱신됨) — 과거 회차 스냅샷(first.*)은 옛 강사라 대표값에 부적합.
   const { data: enrRow } = await admin.from("enrollments").select("slots, teacher_id, teacher_name").eq("id", enrollmentId).maybeSingle();
-  const currentSlots: Slot[] = (Array.isArray(enrRow?.slots) ? enrRow!.slots : []).filter(isValidSlot).map((s: Slot) => ({ day: Number(s.day), min: Number(s.min) }));
+  const currentSlots: Slot[] = (Array.isArray(enrRow?.slots) ? enrRow!.slots : [])
+    .filter(isValidSlot)
+    .map((s: Slot) => ({ day: Number(s.day), min: Number(s.min) }));
   const currentTeacherId = enrRow?.teacher_id ?? first.teacher_id;
   const currentTeacherName = enrRow?.teacher_name ?? first.teacher_name;
   const { data: availRows } = await admin.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", currentTeacherId);

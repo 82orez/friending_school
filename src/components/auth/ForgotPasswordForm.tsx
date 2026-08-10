@@ -39,7 +39,7 @@ export default function ForgotPasswordForm() {
           </div>
 
           {state?.error && (
-            <p id="forgot-error" className="text-sm text-destructive" role="alert">
+            <p id="forgot-error" className="text-destructive text-sm" role="alert">
               {state.error}
             </p>
           )}
@@ -54,7 +54,7 @@ export default function ForgotPasswordForm() {
             {pending ? "발송 중" : "재설정 링크 받기"}
           </Button>
 
-          <p className="mt-2 text-center text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-2 text-center text-sm">
             <Link href="/login" className="font-semibold text-[#ff4757] hover:underline">
               로그인 페이지로 돌아가기
             </Link>

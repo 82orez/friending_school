@@ -163,7 +163,9 @@ export default function AvailabilityGrid({
           {ROW_MINS.map((min) => {
             const onHour = min % 60 === 0;
             return (
-              <div key={min} className={cn("flex border-t", onHour ? "border-muted-fg-faint border-t-2 border-solid" : "border-rule-faint border-dotted")}>
+              <div
+                key={min}
+                className={cn("flex border-t", onHour ? "border-muted-fg-faint border-t-2 border-solid" : "border-rule-faint border-dotted")}>
                 <div
                   className={cn(
                     "sticky left-0 z-10 w-14 shrink-0 bg-white pr-1.5 text-right text-[10px] leading-7",
@@ -194,7 +196,7 @@ export default function AvailabilityGrid({
                               ? readOnly
                                 ? "bg-accent-blue/40"
                                 : "bg-progress"
-                              : !readOnly && "bg-white hover:bg-progress/10",
+                              : !readOnly && "hover:bg-progress/10 bg-white",
                       )}
                     />
                   );

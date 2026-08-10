@@ -43,16 +43,16 @@ function CoverRow({ item, en }: { item: TeacherCoverItem; en: boolean }) {
   return (
     <li className={cn("border-rule rounded-lg border bg-white px-3 py-2.5", away && "opacity-60")}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span
-          className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", away ? "bg-surface text-muted-fg" : "bg-cta/10 text-cta")}
-        >
+        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", away ? "bg-surface text-muted-fg" : "bg-cta/10 text-cta")}>
           {away ? (en ? "Reassigned" : "대체됨") : en ? "Covering" : "대타"}
         </span>
         <span className="text-ink text-sm font-bold">
           {formatDate(item.sessionDate, !en)} {fmtTime(item.startMin)}~{fmtTime(lessonEndMin(item.endMin))}
         </span>
         {item.isMakeup && (
-          <span className="bg-accent-blue-soft text-accent-blue-ink shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">{en ? "Makeup" : "보강"}</span>
+          <span className="bg-accent-blue-soft text-accent-blue-ink shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">
+            {en ? "Makeup" : "보강"}
+          </span>
         )}
       </div>
       <p className="text-muted-fg mt-1 text-sm">
@@ -108,8 +108,7 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-      >
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-center justify-between border-b px-6 py-4">
           <div className="flex min-w-0 items-center gap-2">
             <h2 className="text-ink truncate text-lg font-bold">{name}</h2>
@@ -122,8 +121,7 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
             type="button"
             onClick={onClose}
             aria-label={en ? "Close" : "닫기"}
-            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             <X className="size-5" />
           </button>
         </div>
@@ -140,7 +138,11 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
                       <p className="text-ink truncate font-bold">{courseLabel(item, en)}</p>
                       <p className="text-muted-fg mt-0.5 truncate text-sm">{studentLabel(item, en)}</p>
                     </div>
-                    <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[item.status] ?? "bg-surface text-muted-fg")}>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold",
+                        STATUS_BADGE[item.status] ?? "bg-surface text-muted-fg",
+                      )}>
                       {(en ? STATUS_LABEL_EN : STATUS_LABEL)[item.status] ?? item.status}
                     </span>
                   </div>
@@ -201,8 +203,7 @@ export default function TeacherClassesModal({ teacher, onClose }: { teacher: Cur
           <button
             type="button"
             onClick={onClose}
-            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
-          >
+            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors">
             {en ? "Close" : "닫기"}
           </button>
         </div>

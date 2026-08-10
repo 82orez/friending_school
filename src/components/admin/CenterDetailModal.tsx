@@ -66,16 +66,14 @@ export default function CenterDetailModal({
         role="dialog"
         aria-modal="true"
         aria-label="센터 상세"
-        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-      >
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-ink text-lg font-bold">센터 상세</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             <X className="size-5" />
           </button>
         </div>
@@ -107,8 +105,7 @@ export default function CenterDetailModal({
             <select
               value={managerId}
               onChange={(e) => setManagerId(e.target.value)}
-              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
-            >
+              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none">
               <option value={NONE}>지정 안 함</option>
               {users.map((u) => (
                 <option key={u.id} value={u.id}>
@@ -128,16 +125,14 @@ export default function CenterDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
-          >
+            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors">
             취소
           </button>
           <button
             type="button"
             disabled={pending || !name.trim()}
             onClick={() => onSave(name, manager, managerId === NONE ? null : managerId)}
-            className="bg-cta inline-flex items-center gap-1.5 rounded-md px-5 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
+            className="bg-cta inline-flex items-center gap-1.5 rounded-md px-5 py-2 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
             {pending && <Loader2 className="size-3.5 animate-spin" />}
             이름·매니저 저장
           </button>

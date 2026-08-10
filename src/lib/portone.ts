@@ -89,7 +89,12 @@ export async function getVerifiedPortonePayment(paymentId: string): Promise<Veri
 }
 
 // PortOne V2 결제 단건 raw 조회(검증 없음) — 취소 웹훅에서 누적 취소금액(amount.cancelled) 읽기용.
-export type RawPayment = { ok: boolean; raw?: PortonePayment & { amount?: { total?: number; cancelled?: number } }; error?: string; transient?: boolean };
+export type RawPayment = {
+  ok: boolean;
+  raw?: PortonePayment & { amount?: { total?: number; cancelled?: number } };
+  error?: string;
+  transient?: boolean;
+};
 
 export async function fetchPortonePaymentRaw(paymentId: string): Promise<RawPayment> {
   const pid = String(paymentId ?? "").trim();

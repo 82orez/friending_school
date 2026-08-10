@@ -124,8 +124,7 @@ export default function ExchangeRateHistoryEditor({
                   onClick={() => startEdit(r)}
                   disabled={pending}
                   aria-label="수정"
-                  className="text-muted-fg-faint hover:text-ink shrink-0 rounded p-1 transition-colors disabled:opacity-50"
-                >
+                  className="text-muted-fg-faint hover:text-ink shrink-0 rounded p-1 transition-colors disabled:opacity-50">
                   <Pencil className="size-4" />
                 </button>
                 <button
@@ -133,8 +132,7 @@ export default function ExchangeRateHistoryEditor({
                   onClick={() => setDeleteId(r.id)}
                   disabled={pending}
                   aria-label="삭제"
-                  className="text-muted-fg-faint hover:text-brand shrink-0 rounded p-1 transition-colors disabled:opacity-50"
-                >
+                  className="text-muted-fg-faint hover:text-brand shrink-0 rounded p-1 transition-colors disabled:opacity-50">
                   <Trash2 className="size-4" />
                 </button>
               </li>
@@ -158,9 +156,7 @@ export default function ExchangeRateHistoryEditor({
             />
           </div>
           <div className="min-w-[8rem] flex-1">
-            <label className="text-muted-fg-faint mb-1 block text-[11px] font-semibold">
-              1{symbol} 당 원(₩)
-            </label>
+            <label className="text-muted-fg-faint mb-1 block text-[11px] font-semibold">1{symbol} 당 원(₩)</label>
             <input
               type="number"
               min={0}
@@ -176,8 +172,7 @@ export default function ExchangeRateHistoryEditor({
             type="button"
             onClick={submit}
             disabled={pending}
-            className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
+            className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
             {pending ? <Loader2 className="size-4 animate-spin" /> : editingId ? null : <Plus className="size-4" />}
             {editingId ? "저장" : "추가"}
           </button>
@@ -186,8 +181,7 @@ export default function ExchangeRateHistoryEditor({
               type="button"
               onClick={resetForm}
               disabled={pending}
-              className="border-rule text-muted-fg hover:text-ink inline-flex h-9 shrink-0 items-center gap-1 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60"
-            >
+              className="border-rule text-muted-fg hover:text-ink inline-flex h-9 shrink-0 items-center gap-1 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60">
               <X className="size-4" />
               취소
             </button>

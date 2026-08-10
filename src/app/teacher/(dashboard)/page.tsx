@@ -42,7 +42,10 @@ export default async function TeacherProfilePage() {
 
   // 가용 그리드 오버레이용 예약 슬롯 — 확정(승인/결제완료)·결제대기(pending; confirmed 우선).
   // 종료된 '결제완료'(남은 예정 수업 없음)는 제외 — 마지막 수업 다음날부터 슬롯 해제.
-  const { data: enrollRows } = await supabase.from("enrollments").select("id, slots, status, student_name, student_english_name").eq("teacher_id", user.id);
+  const { data: enrollRows } = await supabase
+    .from("enrollments")
+    .select("id, slots, status, student_name, student_english_name")
+    .eq("teacher_id", user.id);
   const ended = await loadEndedEnrollmentIds(supabase, [user.id]);
   const bookedSlots = deriveBookedSlots((enrollRows ?? []).filter((r) => !(r.status === "결제완료" && ended.has(r.id))));
 

@@ -4,14 +4,28 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Eye, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { fmtTime, lessonEndMin, DAY_LABELS, DAY_LABELS_KO, DAY_LABELS_EN, DISPLAY_DAYS, ROW_MINS, SLOT_MIN, GRID_START_HOUR } from "@/lib/availability";
+import {
+  fmtTime,
+  lessonEndMin,
+  DAY_LABELS,
+  DAY_LABELS_KO,
+  DAY_LABELS_EN,
+  DISPLAY_DAYS,
+  ROW_MINS,
+  SLOT_MIN,
+  GRID_START_HOUR,
+} from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { getCourse } from "@/data/courses";
 import { useLang } from "@/components/LangProvider";
 
 // 한국어 요일 요약("월/수/금")을 영어("Mon/Wed/Fri")로 변환 — AdminSession.weekdays는 한국어 사전계산값.
 const KO_TO_EN_DOW: Record<string, string> = { 일: "Sun", 월: "Mon", 화: "Tue", 수: "Wed", 목: "Thu", 금: "Fri", 토: "Sat" };
-const weekdaysEn = (s: string) => s.split("/").map((x) => KO_TO_EN_DOW[x] ?? x).join("/");
+const weekdaysEn = (s: string) =>
+  s
+    .split("/")
+    .map((x) => KO_TO_EN_DOW[x] ?? x)
+    .join("/");
 const mdEn = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
 export type AdminSession = {
@@ -155,7 +169,8 @@ export default function ClassWeekGrid({
                     <div className={cn("text-xs font-bold", weekendColor ?? (today ? "text-accent-blue-ink" : "text-muted-fg"))}>
                       {en ? DAY_LABELS[i] : DAY_LABELS_KO_MON[i]}
                     </div>
-                    <div className={cn("text-[11px]", today && "font-bold", weekendColor ?? (today ? "text-accent-blue-ink" : "text-muted-fg-faint"))}>
+                    <div
+                      className={cn("text-[11px]", today && "font-bold", weekendColor ?? (today ? "text-accent-blue-ink" : "text-muted-fg-faint"))}>
                       {d.getMonth() + 1}/{d.getDate()}
                     </div>
                   </div>
@@ -171,7 +186,9 @@ export default function ClassWeekGrid({
                     key={min}
                     className={cn(
                       "border-t pr-1.5 text-right text-[10px]",
-                      min % 60 === 0 ? "border-muted-fg-faint text-muted-fg border-t-2 font-semibold" : "border-rule-faint text-muted-fg-faint border-dotted",
+                      min % 60 === 0
+                        ? "border-muted-fg-faint text-muted-fg border-t-2 font-semibold"
+                        : "border-rule-faint text-muted-fg-faint border-dotted",
                     )}
                     style={{ height: ROW_H }}>
                     {fmtTime(min)}
@@ -192,7 +209,10 @@ export default function ClassWeekGrid({
                       const past = now >= kstDateMinToMs(dStr, min + SLOT_MIN);
                       // 종료됐는데 미진행(강사 미입장/피드백 없음)인 수업이 하나라도 있으면 붉은색 강조.
                       const hasUnconducted =
-                        past && !!list?.some((s) => now >= kstDateMinToMs(s.sessionDate, lessonEndMin(s.endMin)) && !(s.conductedOverride ?? !!s.conductedAt));
+                        past &&
+                        !!list?.some(
+                          (s) => now >= kstDateMinToMs(s.sessionDate, lessonEndMin(s.endMin)) && !(s.conductedOverride ?? !!s.conductedAt),
+                        );
                       return (
                         <div
                           key={min}
@@ -208,7 +228,7 @@ export default function ClassWeekGrid({
                               onClick={() => setSlot({ date: d, min, list })}
                               title={en ? `${fmtTime(min)} · ${count} ${count === 1 ? "class" : "classes"}` : `${fmtTime(min)} · ${count}개 수업`}
                               className={cn(
-                                "focus-visible:ring-cta/50 flex size-[calc(100%-4px)] m-0.5 items-center justify-center rounded-md text-xs font-bold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:outline-none",
+                                "focus-visible:ring-cta/50 m-0.5 flex size-[calc(100%-4px)] items-center justify-center rounded-md text-xs font-bold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:outline-none",
                                 past
                                   ? hasUnconducted
                                     ? "bg-brand/15 text-brand"
@@ -306,16 +326,22 @@ function SlotModal({
             const inner = (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-ink text-sm font-bold">{fmtTime(s.startMin)}~{fmtTime(lessonEndMin(s.endMin))}</span>
+                  <span className="text-ink text-sm font-bold">
+                    {fmtTime(s.startMin)}~{fmtTime(lessonEndMin(s.endMin))}
+                  </span>
                   {s.isMakeup && (
-                    <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 text-xs font-bold">{en ? "Makeup" : "보강"}</span>
+                    <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 text-xs font-bold">
+                      {en ? "Makeup" : "보강"}
+                    </span>
                   )}
                   {s.teacherReassignedAt && (
                     <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5 text-xs font-bold">{en ? "Reassigned" : "대체"}</span>
                   )}
                   {now >= kstDateMinToMs(s.sessionDate, lessonEndMin(s.endMin)) &&
                     ((s.conductedOverride ?? !!s.conductedAt) ? (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">{en ? "Conducted" : "진행됨"}</span>
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                        {en ? "Conducted" : "진행됨"}
+                      </span>
                     ) : (
                       <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 text-xs font-bold">{en ? "Not conducted" : "미진행"}</span>
                     ))}
@@ -373,7 +399,7 @@ function SlotModal({
                   <button
                     type="button"
                     onClick={() => router.push(`/admin/classes/${s.enrollmentId}`)}
-                    className="hover:bg-surface focus-visible:ring-accent-blue/50 flex w-full flex-col gap-1 px-6 py-3.5 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none focus-visible:-outline-offset-2">
+                    className="hover:bg-surface focus-visible:ring-accent-blue/50 flex w-full flex-col gap-1 px-6 py-3.5 text-left transition-colors focus-visible:ring-2 focus-visible:-outline-offset-2 focus-visible:outline-none">
                     {inner}
                   </button>
                 )}

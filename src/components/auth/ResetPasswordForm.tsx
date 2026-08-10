@@ -51,11 +51,11 @@ export default function ResetPasswordForm() {
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:outline-none">
+                className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex items-center rounded pr-3 focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:outline-none">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p id="reset-password-hint" className="text-xs text-muted-foreground">
+            <p id="reset-password-hint" className="text-muted-foreground text-xs">
               8자 이상 입력해 주세요.
             </p>
             {passwordCaps.capsLockOn && (
@@ -89,7 +89,7 @@ export default function ResetPasswordForm() {
                 type="button"
                 onClick={() => setShowPasswordConfirm((prev) => !prev)}
                 aria-label={showPasswordConfirm ? "비밀번호 숨기기" : "비밀번호 보기"}
-                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:outline-none">
+                className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex items-center rounded pr-3 focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:outline-none">
                 {showPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
@@ -102,7 +102,7 @@ export default function ResetPasswordForm() {
           </div>
 
           {state?.error && (
-            <p id="reset-error" className="text-sm text-destructive" role="alert">
+            <p id="reset-error" className="text-destructive text-sm" role="alert">
               {state.error}
             </p>
           )}

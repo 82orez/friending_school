@@ -23,14 +23,7 @@ export default function CenterTeachers({ teachers, centers }: { teachers: Curren
         <CurrentTeacherTable teachers={teachers} onView={setInfoTarget} onViewClasses={setClassesTarget} />
       )}
 
-      <TeacherInfoModal
-        teacher={infoTarget}
-        centers={centerOpts}
-        rows={[]}
-        rates={{}}
-        readOnly
-        onClose={() => setInfoTarget(null)}
-      />
+      <TeacherInfoModal teacher={infoTarget} centers={centerOpts} rows={[]} rates={{}} readOnly onClose={() => setInfoTarget(null)} />
       <TeacherClassesModal teacher={classesTarget} onClose={() => setClassesTarget(null)} />
     </div>
   );

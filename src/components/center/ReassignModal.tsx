@@ -88,8 +88,7 @@ export default function ReassignModal({ cls, teachers, onClose }: { cls: CenterC
         role="dialog"
         aria-modal="true"
         aria-label="Reassign teacher"
-        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-      >
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-center justify-between gap-3 border-b px-5 py-3.5">
           <h2 className="text-ink text-base font-bold">Reassign teacher</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="text-muted-fg-faint hover:text-ink rounded transition-colors">
@@ -124,8 +123,7 @@ export default function ReassignModal({ cls, teachers, onClose }: { cls: CenterC
                         className={cn(
                           "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors",
                           on ? "border-cta bg-cta/5" : "border-rule hover:border-rule-faint bg-white",
-                        )}
-                      >
+                        )}>
                         {t.avatarUrl ? (
                           <Image src={t.avatarUrl} alt="" width={36} height={36} className="size-9 shrink-0 rounded-lg object-cover" />
                         ) : (
@@ -150,15 +148,17 @@ export default function ReassignModal({ cls, teachers, onClose }: { cls: CenterC
         </div>
 
         <div className="border-rule flex justify-end gap-2 border-t px-5 py-3.5">
-          <button type="button" onClick={onClose} className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors">
+          <button
+            type="button"
+            onClick={onClose}
+            className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors">
             Close
           </button>
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}
             disabled={!picked || pending}
-            className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
+            className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
             {pending && <Loader2 className="size-3.5 animate-spin" />}
             Reassign
           </button>

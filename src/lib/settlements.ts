@@ -103,9 +103,9 @@ export async function loadSettlementRows(
 
   // 환율 적용일 이력 전량(수업 날짜 기준 원화 환산 소스).
   const { data: fxData } = await admin.from("exchange_rate_schedules").select("id, currency, rate_to_krw, effective_from, note");
-  const fxRows: FxRow[] = ((fxData ?? []) as { id: string; currency: string; rate_to_krw: number | string; effective_from: string; note: string | null }[]).map(
-    (r) => ({ id: r.id, currency: r.currency, rate: Number(r.rate_to_krw), effectiveFrom: r.effective_from, note: r.note }),
-  );
+  const fxRows: FxRow[] = (
+    (fxData ?? []) as { id: string; currency: string; rate_to_krw: number | string; effective_from: string; note: string | null }[]
+  ).map((r) => ({ id: r.id, currency: r.currency, rate: Number(r.rate_to_krw), effectiveFrom: r.effective_from, note: r.note }));
 
   const rows: SettlementRow[] = classes.map((c) => {
     const prof = profileById.get(c.teacher_id);

@@ -218,8 +218,7 @@ export default function TeacherRequestsManager({
               className={cn(
                 "shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
                 filter === s ? "bg-ink border-ink text-white" : "border-rule text-muted-fg bg-white",
-              )}
-            >
+              )}>
               {s === "all" ? "전체" : s}
             </button>
           ))}
@@ -449,8 +448,7 @@ function ApplicationRow({
                   type="button"
                   onClick={() => setConfirmApprove(true)}
                   disabled={pending}
-                  className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                >
+                  className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
                   {busyAction === "approve" && <Loader2 className="size-3.5 animate-spin" />}
                   승인 (강사 전환)
                 </button>
@@ -458,8 +456,7 @@ function ApplicationRow({
                   type="button"
                   onClick={askReject}
                   disabled={pending}
-                  className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50"
-                >
+                  className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50">
                   {busyAction === "reject" && <Loader2 className="size-3.5 animate-spin" />}
                   거절
                 </button>

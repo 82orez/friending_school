@@ -18,17 +18,7 @@ type Props = {
   nextHref: string | null;
 };
 
-export default function TextbookViewer({
-  html,
-  course,
-  unit,
-  totalUnits,
-  initialCompleted,
-  isAuthenticated,
-  listHref,
-  prevHref,
-  nextHref,
-}: Props) {
+export default function TextbookViewer({ html, course, unit, totalUnits, initialCompleted, isAuthenticated, listHref, prevHref, nextHref }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [completed, setCompleted] = useState(initialCompleted);
   const [isSaving, startSaving] = useTransition();
@@ -115,16 +105,16 @@ export default function TextbookViewer({
     <div
       className={cn(
         "mx-auto flex w-full max-w-[900px] items-center justify-between gap-3 px-4 py-3",
-        position === "top" && "sticky top-[72px] z-40 border-b border-rule bg-white/95 backdrop-blur",
+        position === "top" && "border-rule sticky top-[72px] z-40 border-b bg-white/95 backdrop-blur",
       )}>
       <Link
         href={listHref}
-        className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-ink-soft transition-colors hover:bg-surface focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:outline-none">
+        className="text-ink-soft hover:bg-surface focus-visible:ring-brand/50 inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none">
         <List className="size-4" aria-hidden />
         <span>목록</span>
       </Link>
 
-      <div className="text-sm font-medium text-muted-fg" aria-label={`Unit ${unit}, 전체 ${totalUnits}개 중`}>
+      <div className="text-muted-fg text-sm font-medium" aria-label={`Unit ${unit}, 전체 ${totalUnits}개 중`}>
         Unit {unit} / {totalUnits}
       </div>
 
@@ -152,7 +142,7 @@ export default function TextbookViewer({
             <ChevronRight className="size-4" aria-hidden />
           </Link>
         ) : (
-          <span className="inline-flex items-center gap-1 px-3 py-2 text-sm text-muted-fg-faint">
+          <span className="text-muted-fg-faint inline-flex items-center gap-1 px-3 py-2 text-sm">
             <span className="hidden sm:inline">다음</span>
             <ChevronRight className="size-4" aria-hidden />
           </span>

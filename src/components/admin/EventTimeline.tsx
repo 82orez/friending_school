@@ -148,7 +148,7 @@ export default function EventTimeline({ events }: { events: AdminEvent[] }) {
       {events.length === 0 ? (
         <p className="text-muted-fg mt-4 text-sm">기록된 이벤트가 없습니다.</p>
       ) : (
-        <ul className="border-rule mt-4 divide-y divide-rule overflow-hidden rounded-xl border bg-white">
+        <ul className="border-rule divide-rule mt-4 divide-y overflow-hidden rounded-xl border bg-white">
           {events.map((e) => {
             const meta = EVENT_META[e.event_type] ?? { label: e.event_type, cls: "bg-rule/60 text-muted-fg" };
             const detail = summarize(e);

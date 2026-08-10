@@ -6,7 +6,18 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Circle, Eye, Info, Loader2, Messa
 import { ko as koLocale, enUS } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { fmtTime, DAY_LABELS, DAY_LABELS_KO, DISPLAY_DAYS, ROW_MINS, GRID_START_HOUR, SLOT_MIN, lessonEndMin, summarizeWeekdays, type Slot } from "@/lib/availability";
+import {
+  fmtTime,
+  DAY_LABELS,
+  DAY_LABELS_KO,
+  DISPLAY_DAYS,
+  ROW_MINS,
+  GRID_START_HOUR,
+  SLOT_MIN,
+  lessonEndMin,
+  summarizeWeekdays,
+  type Slot,
+} from "@/lib/availability";
 import { canEnterClass, canCancelClass, MAX_CANCELLATIONS } from "@/lib/classtime";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -178,9 +189,7 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
     return (
       <section className="border-rule overflow-hidden rounded-2xl border bg-white">
         <div className="px-6 py-12 text-center">
-          <p className="text-muted-fg text-sm">
-            {ko ? "아직 예정된 수업이 없어요. 결제가 확인되면 수업이 생성돼요." : "No classes scheduled yet."}
-          </p>
+          <p className="text-muted-fg text-sm">{ko ? "아직 예정된 수업이 없어요. 결제가 확인되면 수업이 생성돼요." : "No classes scheduled yet."}</p>
         </div>
       </section>
     );
@@ -229,7 +238,19 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
 }
 
 // 과정 상세 — 달력 기본 + 목록 토글(해당 과정 수업만).
-function CourseDetail({ group, isTeacher, now, ko, onBack }: { group: CourseGroup; isTeacher: boolean; now: number; ko: boolean; onBack: () => void }) {
+function CourseDetail({
+  group,
+  isTeacher,
+  now,
+  ko,
+  onBack,
+}: {
+  group: CourseGroup;
+  isTeacher: boolean;
+  now: number;
+  ko: boolean;
+  onBack: () => void;
+}) {
   const [view, setView] = useState<View>("calendar");
   // 학생만 취소 가능 + 과정당 6회 한도.
   const cancelledCount = group.cancelledCount;
@@ -421,7 +442,8 @@ function ClassroomCalendar({
       const mine = dItems.filter((c) => isActive(c) && !c.reassignedAway);
       if (mine.some((c) => c.endMs >= now)) upcoming.push(date);
       else if (mine.length > 0) past.push(date);
-      else if (dItems.some((c) => c.reassignedAway)) reassignedAway.push(date); // 그날 내 수업은 없고 대체된 회차만
+      else if (dItems.some((c) => c.reassignedAway))
+        reassignedAway.push(date); // 그날 내 수업은 없고 대체된 회차만
       else cancelled.push(date);
       // 강사 진행 마커 — 한 날짜에 여러 수업이면 conducted 우선. 대체됨(원 강사 미담당)은 제외.
       if (isTeacher) {
@@ -464,7 +486,7 @@ function ClassroomCalendar({
             classNames={{
               today: "bg-[#FFF3CD] text-ink font-bold ring-1 ring-[#F5A623] ring-inset rounded-(--cell-radius) !opacity-100",
             }}
-            className="text-base [--cell-size:--spacing(10)] [&_.rdp-weekday:first-child]:!text-brand [&_.rdp-weekday:last-child]:!text-accent-blue-ink"
+            className="[&_.rdp-weekday:first-child]:!text-brand [&_.rdp-weekday:last-child]:!text-accent-blue-ink text-base [--cell-size:--spacing(10)]"
           />
         </div>
       </div>
@@ -535,11 +557,7 @@ function CourseCard({ group, isTeacher, now, onSelect }: { group: CourseGroup; i
       </div>
 
       <p className="text-muted-fg mt-3 text-sm">
-        {next
-          ? `${ko ? "다음" : "Next"} ${formatSessionDate(next.sessionDate, ko)} ${fmtTime(next.startMin)}`
-          : ko
-            ? "수업 종료"
-            : "Completed"}
+        {next ? `${ko ? "다음" : "Next"} ${formatSessionDate(next.sessionDate, ko)} ${fmtTime(next.startMin)}` : ko ? "수업 종료" : "Completed"}
       </p>
 
       <dl className="border-rule mt-3 space-y-1 border-t pt-3 text-xs">
@@ -561,9 +579,7 @@ function CourseCard({ group, isTeacher, now, onSelect }: { group: CourseGroup; i
         <div className="bg-rule h-1.5 w-full overflow-hidden rounded-full">
           <div className="bg-brand-gradient h-full rounded-full" style={{ width: `${pct}%` }} />
         </div>
-        <p className="text-muted-fg-faint mt-1.5 text-xs">
-          {ko ? `${total}회 중 ${done}회 완료` : `${done}/${total} sessions`}
-        </p>
+        <p className="text-muted-fg-faint mt-1.5 text-xs">{ko ? `${total}회 중 ${done}회 완료` : `${done}/${total} sessions`}</p>
       </div>
     </button>
   );
@@ -623,54 +639,54 @@ function ClassRow({
     <li className="border-rule flex flex-col gap-3 border-b px-6 py-4 last:border-b-0">
       <div className={cn("flex items-center gap-3", (isPast || cancelled || reassignedAway) && "opacity-60")}>
         <div className="min-w-0 flex-1">
-        <p className={cn("text-ink truncate text-[15px] font-bold", cancelled && "line-through")}>
-          {formatSessionDate(item.sessionDate, ko)} · {timeRange}
-        </p>
-        <p className="text-muted-fg-faint mt-0.5 flex items-center gap-1.5 text-xs">
-          <span>{ko ? `${item.sessionNo}/${total}회차` : `Session ${item.sessionNo}/${total}`}</span>
-          {cancelled &&
-            (item.cancelReason === "cancel" ? (
-              <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "취소" : "Cancelled"}</span>
-            ) : (
-              <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "연기" : "Postponed"}</span>
-            ))}
-          {item.isMakeup && !cancelled && (
-            <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{ko ? "보강" : "Makeup"}</span>
-          )}
-          {reassigned && <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5 font-bold">강사 변경</span>}
-          {reassignedAway && <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5 font-bold">Reassigned</span>}
-          {isTeacher &&
-            !reassignedAway &&
-            (() => {
-              const mark = conductMark(item, now);
-              if (mark === "conducted")
-                return (
-                  <span className="bg-cta/10 text-cta inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold">
-                    <Circle className="size-3 fill-current" aria-hidden /> Conducted
-                  </span>
-                );
-              if (mark === "pending")
-                return (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF7E6] px-2 py-0.5 font-bold text-[#B97400]">
-                    <Triangle className="size-3 fill-current" aria-hidden /> Feedback pending
-                  </span>
-                );
-              return null;
-            })()}
-        </p>
-        {reassigned && <p className="text-cta mt-1 text-xs font-semibold">담당 강사가 {item.counterpart} 강사로 변경되었어요.</p>}
-        {reassignedAway && <p className="text-cta mt-1 text-xs font-semibold">Covered by {item.coveredByName ?? "another teacher"} · read-only</p>}
-      </div>
+          <p className={cn("text-ink truncate text-[15px] font-bold", cancelled && "line-through")}>
+            {formatSessionDate(item.sessionDate, ko)} · {timeRange}
+          </p>
+          <p className="text-muted-fg-faint mt-0.5 flex items-center gap-1.5 text-xs">
+            <span>{ko ? `${item.sessionNo}/${total}회차` : `Session ${item.sessionNo}/${total}`}</span>
+            {cancelled &&
+              (item.cancelReason === "cancel" ? (
+                <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "취소" : "Cancelled"}</span>
+              ) : (
+                <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{ko ? "연기" : "Postponed"}</span>
+              ))}
+            {item.isMakeup && !cancelled && (
+              <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{ko ? "보강" : "Makeup"}</span>
+            )}
+            {reassigned && <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5 font-bold">강사 변경</span>}
+            {reassignedAway && <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5 font-bold">Reassigned</span>}
+            {isTeacher &&
+              !reassignedAway &&
+              (() => {
+                const mark = conductMark(item, now);
+                if (mark === "conducted")
+                  return (
+                    <span className="bg-cta/10 text-cta inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold">
+                      <Circle className="size-3 fill-current" aria-hidden /> Conducted
+                    </span>
+                  );
+                if (mark === "pending")
+                  return (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF7E6] px-2 py-0.5 font-bold text-[#B97400]">
+                      <Triangle className="size-3 fill-current" aria-hidden /> Feedback pending
+                    </span>
+                  );
+                return null;
+              })()}
+          </p>
+          {reassigned && <p className="text-cta mt-1 text-xs font-semibold">담당 강사가 {item.counterpart} 강사로 변경되었어요.</p>}
+          {reassignedAway && <p className="text-cta mt-1 text-xs font-semibold">Covered by {item.coveredByName ?? "another teacher"} · read-only</p>}
+        </div>
 
-      {/* 대체됨(reassignedAway) 회차는 원 강사가 입장·연기 불가(대타 소관). */}
-      {!reassignedAway &&
-        (enterable ? (
-          <EnterClassButton item={item} ko={ko} />
-        ) : cancellable ? (
-          <PostponeButton item={item} cancelledCount={cancelledCount} ko={ko} onDone={() => router.refresh()} />
-        ) : !cancelled && !isPast ? (
-          <span className="text-muted-fg-faint shrink-0 text-xs">{ko ? "시작 15분 전 입장" : "Opens 15 min before"}</span>
-        ) : null)}
+        {/* 대체됨(reassignedAway) 회차는 원 강사가 입장·연기 불가(대타 소관). */}
+        {!reassignedAway &&
+          (enterable ? (
+            <EnterClassButton item={item} ko={ko} />
+          ) : cancellable ? (
+            <PostponeButton item={item} cancelledCount={cancelledCount} ko={ko} onDone={() => router.refresh()} />
+          ) : !cancelled && !isPast ? (
+            <span className="text-muted-fg-faint shrink-0 text-xs">{ko ? "시작 15분 전 입장" : "Opens 15 min before"}</span>
+          ) : null)}
       </div>
 
       {/* 수업 종료 후 강사 피드백 — 행에는 버튼만, 내용/편집은 모달에서(긴 피드백 UX). 대체됨 회차는 원 강사=열람만. */}
@@ -696,7 +712,17 @@ function ClassRow({
 }
 
 // 입장 버튼 — 팝업 차단 회피(빈 탭 먼저 열고 액션 URL로 이동). ClassRow·주간 아젠다·모달 공용.
-function EnterClassButton({ item, ko, compact = false, fullWidth = false }: { item: ClassItem; ko: boolean; compact?: boolean; fullWidth?: boolean }) {
+function EnterClassButton({
+  item,
+  ko,
+  compact = false,
+  fullWidth = false,
+}: {
+  item: ClassItem;
+  ko: boolean;
+  compact?: boolean;
+  fullWidth?: boolean;
+}) {
   const [pending, startTransition] = useTransition();
   function handleEnter() {
     const w = window.open("", "_blank");
@@ -786,7 +812,8 @@ function PostponeButton({
                 {formatSessionDate(item.sessionDate, true)} {timeRange}
               </span>{" "}
               수업이 연기되고, 보강이 자동 배정돼요. 이번에 연기하면{" "}
-              <span className="text-brand font-semibold">{Math.max(0, MAX_CANCELLATIONS - cancelledCount - 1)}회</span> 남습니다. (과정당 {MAX_CANCELLATIONS}
+              <span className="text-brand font-semibold">{Math.max(0, MAX_CANCELLATIONS - cancelledCount - 1)}회</span> 남습니다. (과정당{" "}
+              {MAX_CANCELLATIONS}
               회까지)
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -937,7 +964,8 @@ function WeekSchedule({
                     <div className={cn("text-xs font-bold", weekendColor ?? (today ? "text-accent-blue-ink" : "text-muted-fg"))}>
                       {(ko ? DAY_LABELS_KO_MON : DAY_LABELS)[i]}
                     </div>
-                    <div className={cn("text-[11px]", today && "font-bold", weekendColor ?? (today ? "text-accent-blue-ink" : "text-muted-fg-faint"))}>
+                    <div
+                      className={cn("text-[11px]", today && "font-bold", weekendColor ?? (today ? "text-accent-blue-ink" : "text-muted-fg-faint"))}>
                       {d.getMonth() + 1}/{d.getDate()}
                     </div>
                   </div>
@@ -953,7 +981,9 @@ function WeekSchedule({
                     key={min}
                     className={cn(
                       "border-t pr-1.5 text-right text-[10px]",
-                      min % 60 === 0 ? "border-muted-fg-faint text-muted-fg border-t-2 font-semibold" : "border-rule-faint text-muted-fg-faint border-dotted",
+                      min % 60 === 0
+                        ? "border-muted-fg-faint text-muted-fg border-t-2 font-semibold"
+                        : "border-rule-faint text-muted-fg-faint border-dotted",
                     )}
                     style={{ height: ROW_H }}>
                     {fmtTime(min)}
@@ -1000,7 +1030,7 @@ function WeekSchedule({
                                 ? "bg-rule/40 text-muted-fg-faint line-through"
                                 : ended
                                   ? "bg-rule/40 text-muted-fg-faint"
-                                  : cn(color.grid, live && "ring-2 ring-cta"),
+                                  : cn(color.grid, live && "ring-cta ring-2"),
                           )}
                           style={{ top, height }}>
                           {mark === "conducted" && <Circle className="text-cta absolute top-1 right-1 size-2.5 fill-current" aria-hidden />}
@@ -1084,7 +1114,12 @@ function WeekSchedule({
       )}
 
       {feedbackItem && (
-        <ClassFeedbackModal item={feedbackItem} isTeacher={isTeacher} readOnly={isTeacher && !!feedbackItem.reassignedAway} onClose={() => setFeedbackItem(null)} />
+        <ClassFeedbackModal
+          item={feedbackItem}
+          isTeacher={isTeacher}
+          readOnly={isTeacher && !!feedbackItem.reassignedAway}
+          onClose={() => setFeedbackItem(null)}
+        />
       )}
     </div>
   );
@@ -1315,7 +1350,17 @@ function WeekAgendaRow({
 
 // 수업 피드백 모달 — 강사=보기+작성/수정, 수강생=읽기 전용. 행에는 버튼만 두고 내용/편집은 여기서(긴 피드백 UX).
 // readOnly: 강사여도 편집 불가(1회성 대체로 넘어간 원 강사가 대타 피드백을 열람만).
-function ClassFeedbackModal({ item, isTeacher, onClose, readOnly = false }: { item: ClassItem; isTeacher: boolean; onClose: () => void; readOnly?: boolean }) {
+function ClassFeedbackModal({
+  item,
+  isTeacher,
+  onClose,
+  readOnly = false,
+}: {
+  item: ClassItem;
+  isTeacher: boolean;
+  onClose: () => void;
+  readOnly?: boolean;
+}) {
   const ko = !isTeacher;
   const canEdit = isTeacher && !readOnly;
   const router = useRouter();
@@ -1385,7 +1430,8 @@ function ClassFeedbackModal({ item, isTeacher, onClose, readOnly = false }: { it
                 maxLength={2000}
                 rows={8}
                 placeholder="Write feedback for this class…"
-                className="border-rule focus:border-accent-blue-ink w-full resize-y rounded-md border bg-white px-3 py-2 text-sm outline-none" />
+                className="border-rule focus:border-accent-blue-ink w-full resize-y rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              />
               <p className="text-muted-fg-faint mt-1 text-right text-xs">{draft.length}/2000</p>
             </>
           ) : (

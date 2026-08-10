@@ -27,12 +27,10 @@ export default function ApplyForm() {
 
   if (submitted) {
     return (
-      <div
-        role="status"
-        className="mx-auto w-full max-w-xl rounded-lg bg-white p-6 text-center text-ink shadow-sm md:p-8">
-        <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-brand-blue" />
+      <div role="status" className="text-ink mx-auto w-full max-w-xl rounded-lg bg-white p-6 text-center shadow-sm md:p-8">
+        <CheckCircle2 className="text-brand-blue mx-auto mb-3 h-10 w-10" />
         <p className="text-base font-extrabold md:text-lg">신청해 주셔서 감사합니다.</p>
-        <p className="mt-1 text-sm text-muted-fg">입력하신 번호 {phone}로 곧 연락드릴게요.</p>
+        <p className="text-muted-fg mt-1 text-sm">입력하신 번호 {phone}로 곧 연락드릴게요.</p>
       </div>
     );
   }
@@ -41,7 +39,7 @@ export default function ApplyForm() {
     <form
       onSubmit={handleSubmit}
       aria-labelledby="apply-heading"
-      className="mx-auto w-full max-w-xl rounded-lg bg-white p-5 text-left text-ink shadow-sm md:p-6">
+      className="text-ink mx-auto w-full max-w-xl rounded-lg bg-white p-5 text-left shadow-sm md:p-6">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="apply-name">이름</Label>
@@ -75,7 +73,7 @@ export default function ApplyForm() {
         </div>
         <div className="flex flex-col gap-1.5 md:col-span-2">
           <Label htmlFor="apply-email">
-            이메일 <span className="text-xs font-normal text-muted-fg">(선택)</span>
+            이메일 <span className="text-muted-fg text-xs font-normal">(선택)</span>
           </Label>
           <Input
             id="apply-email"

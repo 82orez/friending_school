@@ -147,8 +147,7 @@ export default function SimulationManager({
                   type="button"
                   disabled={c.price == null}
                   onClick={() => applyPreset(c)}
-                  className="border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink rounded-full border bg-white px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40"
-                >
+                  className="border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink rounded-full border bg-white px-3 py-1 text-xs font-medium transition-colors disabled:opacity-40">
                   {c.name} {c.price == null ? "(미설정)" : formatPrice(c.price, c.currency)}
                 </button>
               ))}
@@ -348,8 +347,7 @@ export default function SimulationManager({
                     className={cn(
                       "px-4 py-3 text-right text-base font-extrabold md:px-6",
                       (r.monthlyProfit ?? 0) >= 0 ? "text-accent-blue-ink" : "text-brand",
-                    )}
-                  >
+                    )}>
                     {krw(r.monthlyProfit)}
                   </td>
                 </tr>
@@ -430,8 +428,7 @@ export default function SimulationManager({
                   className={cn(
                     "flex items-center justify-center overflow-hidden text-xs font-bold whitespace-nowrap",
                     i === 0 ? "bg-[#B45309] text-white" : i === 1 ? "bg-[#d98c12] text-white" : "bg-[#F5A623] text-white",
-                  )}
-                >
+                  )}>
                   {s >= 0.08 ? `${(s * 100).toFixed(0)}%` : ""}
                 </div>
               ))}
@@ -470,8 +467,7 @@ export default function SimulationManager({
                   return (
                     <tr
                       key={c.month}
-                      className={cn("border-rule border-b last:border-b-0", converge != null && c.month === converge && "bg-accent-blue-soft")}
-                    >
+                      className={cn("border-rule border-b last:border-b-0", converge != null && c.month === converge && "bg-accent-blue-soft")}>
                       <td className="text-ink px-4 py-2.5 font-medium md:px-6">
                         {c.month}개월차
                         {converge != null && c.month === converge && (
@@ -485,8 +481,7 @@ export default function SimulationManager({
                         className={cn(
                           "px-4 py-2.5 text-right font-bold",
                           c.dashboardProfit < 0 ? "text-brand" : overstated ? "text-[#B45309]" : "text-ink",
-                        )}
-                      >
+                        )}>
                         {krw(c.dashboardProfit)}
                         {overstated && <span className="ml-1 text-[11px] font-semibold">▲</span>}
                       </td>
@@ -591,8 +586,7 @@ function KpiCard({ label, value, hint, tone }: { label: string; value: string; h
         className={cn(
           "mt-1 text-2xl font-extrabold",
           tone === "settlement" ? "text-[#B45309]" : tone === "profit" ? "text-accent-blue-ink" : tone === "loss" ? "text-brand" : "text-ink",
-        )}
-      >
+        )}>
         {value}
       </p>
       <p className="text-muted-fg-faint mt-0.5 text-xs">{hint}</p>
@@ -610,8 +604,7 @@ function PresetChip({ active, onClick, label }: { active: boolean; onClick: () =
       className={cn(
         "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
         active ? "bg-ink border-ink text-white" : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-      )}
-    >
+      )}>
       {label}
     </button>
   );
@@ -626,8 +619,7 @@ function ToggleChip({ active, onClick, label }: { active: boolean; onClick: () =
       className={cn(
         "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
         active ? "bg-ink border-ink text-white" : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-      )}
-    >
+      )}>
       {label}
     </button>
   );

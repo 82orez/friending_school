@@ -125,8 +125,7 @@ export default function SettlementFinalizeModal({
         role="dialog"
         aria-modal="true"
         aria-label="월간 정산 확정"
-        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(94vw,600px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-      >
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(94vw,600px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-start justify-between border-b px-6 py-4">
           <div className="min-w-0">
             <h2 className="text-ink truncate text-lg font-bold">{center.name}</h2>
@@ -134,8 +133,7 @@ export default function SettlementFinalizeModal({
               {monthLabel} 정산
               {confirmed && (
                 <span
-                  className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${paid ? "bg-[#E6F4EA] text-[#1E7E34]" : "bg-accent-blue-soft text-accent-blue-ink"}`}
-                >
+                  className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${paid ? "bg-[#E6F4EA] text-[#1E7E34]" : "bg-accent-blue-soft text-accent-blue-ink"}`}>
                   {record!.status}
                 </span>
               )}
@@ -145,8 +143,7 @@ export default function SettlementFinalizeModal({
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="text-muted-fg-faint hover:text-ink ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:outline-none"
-          >
+            className="text-muted-fg-faint hover:text-ink ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:outline-none">
             <X className="size-5" />
           </button>
         </div>
@@ -177,8 +174,7 @@ export default function SettlementFinalizeModal({
                 <button
                   type="button"
                   onClick={() => setAdjustments((p) => [...p, { label: "", amount: "", currency: DEFAULT_CURRENCY }])}
-                  className="text-accent-blue-ink hover:text-accent-blue inline-flex items-center gap-1 text-xs font-semibold"
-                >
+                  className="text-accent-blue-ink hover:text-accent-blue inline-flex items-center gap-1 text-xs font-semibold">
                   <Plus className="size-3.5" /> 항목 추가
                 </button>
               )}
@@ -211,8 +207,7 @@ export default function SettlementFinalizeModal({
                         value={a.currency}
                         disabled={readOnly}
                         onChange={(e) => setAdjustments((p) => p.map((x, j) => (j === i ? { ...x, currency: e.target.value } : x)))}
-                        className="border-rule-faint focus:border-accent-blue h-9 rounded-md border bg-white px-1.5 text-sm outline-none disabled:opacity-60"
-                      >
+                        className="border-rule-faint focus:border-accent-blue h-9 rounded-md border bg-white px-1.5 text-sm outline-none disabled:opacity-60">
                         {CURRENCIES.map((c) => (
                           <option key={c.code} value={c.code}>
                             {c.symbol} {c.code}
@@ -225,8 +220,7 @@ export default function SettlementFinalizeModal({
                           type="button"
                           onClick={() => setAdjustments((p) => p.filter((_, j) => j !== i))}
                           aria-label="항목 삭제"
-                          className="text-muted-fg-faint hover:text-brand shrink-0 rounded p-1 transition-colors"
-                        >
+                          className="text-muted-fg-faint hover:text-brand shrink-0 rounded p-1 transition-colors">
                           <Trash2 className="size-4" />
                         </button>
                       )}
@@ -290,8 +284,7 @@ export default function SettlementFinalizeModal({
                 type="button"
                 onClick={() => setConfirmOpen(true)}
                 disabled={pending || base.sessionsCount === 0 || !monthClosed}
-                className="bg-cta inline-flex h-10 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-              >
+                className="bg-cta inline-flex h-10 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
                 {pending && <Loader2 className="size-4 animate-spin" />}
                 정산 확정
               </button>
@@ -302,8 +295,7 @@ export default function SettlementFinalizeModal({
                   type="button"
                   onClick={doSave}
                   disabled={pending}
-                  className="bg-ink inline-flex h-10 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-                >
+                  className="bg-ink inline-flex h-10 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
                   {pending && <Loader2 className="size-4 animate-spin" />}
                   저장
                 </button>
@@ -318,8 +310,7 @@ export default function SettlementFinalizeModal({
                     type="button"
                     onClick={doPaid}
                     disabled={pending}
-                    className="inline-flex h-10 items-center gap-1.5 rounded-md bg-[#1E7E34] px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-                  >
+                    className="inline-flex h-10 items-center gap-1.5 rounded-md bg-[#1E7E34] px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
                     지급 완료
                   </button>
                 </div>
@@ -327,8 +318,7 @@ export default function SettlementFinalizeModal({
                   type="button"
                   onClick={() => setCancelOpen(true)}
                   disabled={pending}
-                  className="border-rule text-muted-fg hover:text-brand inline-flex h-10 items-center rounded-md border px-3 text-xs font-medium transition-colors disabled:opacity-60"
-                >
+                  className="border-rule text-muted-fg hover:text-brand inline-flex h-10 items-center rounded-md border px-3 text-xs font-medium transition-colors disabled:opacity-60">
                   확정 취소
                 </button>
               </>
@@ -338,8 +328,7 @@ export default function SettlementFinalizeModal({
                 type="button"
                 onClick={doReopen}
                 disabled={pending}
-                className="border-rule text-muted-fg hover:text-ink inline-flex h-10 items-center gap-1.5 rounded-md border px-4 text-sm font-medium transition-colors disabled:opacity-60"
-              >
+                className="border-rule text-muted-fg hover:text-ink inline-flex h-10 items-center gap-1.5 rounded-md border px-4 text-sm font-medium transition-colors disabled:opacity-60">
                 {pending && <Loader2 className="size-4 animate-spin" />}
                 지급완료 되돌리기
               </button>
@@ -354,8 +343,8 @@ export default function SettlementFinalizeModal({
           <AlertDialogHeader>
             <AlertDialogTitle>{monthLabel} 정산을 확정할까요?</AlertDialogTitle>
             <AlertDialogDescription>
-              실지급액 <span className="text-ink font-bold">{formatPrice(effectiveTotal, "KRW")}</span>로 확정됩니다. 확정 시 금액이 현재 시점 기준으로
-              스냅샷되어 잠깁니다(이후 수업·단가·환율 변경 영향 없음).
+              실지급액 <span className="text-ink font-bold">{formatPrice(effectiveTotal, "KRW")}</span>로 확정됩니다. 확정 시 금액이 현재 시점
+              기준으로 스냅샷되어 잠깁니다(이후 수업·단가·환율 변경 영향 없음).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -365,8 +354,7 @@ export default function SettlementFinalizeModal({
                 setConfirmOpen(false);
                 doConfirm();
               }}
-              className="bg-cta hover:bg-cta/90 border-transparent text-white"
-            >
+              className="bg-cta hover:bg-cta/90 border-transparent text-white">
               확정
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -387,8 +375,7 @@ export default function SettlementFinalizeModal({
                 setCancelOpen(false);
                 doCancel();
               }}
-              variant="brand"
-            >
+              variant="brand">
               확정 취소
             </AlertDialogAction>
           </AlertDialogFooter>

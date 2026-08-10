@@ -330,8 +330,8 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
     <div>
       <h1 className="text-ink text-2xl font-extrabold">매출 현황</h1>
       <p className="text-muted-fg mt-1 text-sm">
-        카드·무통장 결제 기준 매출입니다. 순매출 = 결제금액 − 환불금액 = 공급가액 + 부가세(부가세 10% 포함가 기준)이며, 실패·테스트 결제는 제외됩니다. PG 수수료는
-        순결제액 × 결제일 기준 수수료율(무통장 입금 제외)로, 매출이익에서 차감됩니다.
+        카드·무통장 결제 기준 매출입니다. 순매출 = 결제금액 − 환불금액 = 공급가액 + 부가세(부가세 10% 포함가 기준)이며, 실패·테스트 결제는 제외됩니다.
+        PG 수수료는 순결제액 × 결제일 기준 수수료율(무통장 입금 제외)로, 매출이익에서 차감됩니다.
       </p>
 
       {/* 기간 토글 */}
@@ -358,8 +358,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
           type="button"
           onClick={() => setAnchor((a) => shiftAnchor(a, period, -1))}
           className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-8 items-center justify-center rounded-md border transition-colors"
-          aria-label="이전 기간"
-        >
+          aria-label="이전 기간">
           <ChevronLeft className="size-4" aria-hidden />
         </button>
         <span className="text-ink min-w-[9rem] text-center text-sm font-bold whitespace-nowrap">{periodLabel(anchor, period)}</span>
@@ -367,15 +366,13 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
           type="button"
           onClick={() => setAnchor((a) => shiftAnchor(a, period, 1))}
           className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-8 items-center justify-center rounded-md border transition-colors"
-          aria-label="다음 기간"
-        >
+          aria-label="다음 기간">
           <ChevronRight className="size-4" aria-hidden />
         </button>
         <button
           type="button"
           onClick={() => setAnchor(todayKst())}
-          className="border-rule text-muted-fg hover:text-ink rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-        >
+          className="border-rule text-muted-fg hover:text-ink rounded-md border px-3 py-1.5 text-xs font-medium transition-colors">
           오늘
         </button>
         <span className="text-muted-fg-faint ml-auto text-xs">주 시작: 월요일</span>
@@ -473,8 +470,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
           type="button"
           onClick={() => setCsvConfirmOpen(true)}
           disabled={txRows.length === 0}
-          className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex items-center gap-1.5 rounded-md border bg-white px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50"
-        >
+          className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex items-center gap-1.5 rounded-md border bg-white px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50">
           <Download className="size-4" aria-hidden />
           CSV 내보내기
         </button>
@@ -548,7 +544,11 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
                     <td className="text-muted-fg px-4 py-3 text-right whitespace-nowrap">{formatPrice(supply, r.currency)}</td>
                     <td className="text-muted-fg px-4 py-3 text-right whitespace-nowrap">{formatPrice(vat, r.currency)}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {fee > 0 ? <span className="text-[#B45309]">{formatPrice(fee, r.currency)}</span> : <span className="text-muted-fg-faint">—</span>}
+                      {fee > 0 ? (
+                        <span className="text-[#B45309]">{formatPrice(fee, r.currency)}</span>
+                      ) : (
+                        <span className="text-muted-fg-faint">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[r.status] ?? "bg-rule text-muted-fg")}>
@@ -561,8 +561,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
                           href={r.receiptUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-accent-blue-ink hover:text-accent-blue inline-flex items-center gap-1 font-semibold"
-                        >
+                          className="text-accent-blue-ink hover:text-accent-blue inline-flex items-center gap-1 font-semibold">
                           <ExternalLink className="size-3.5" aria-hidden />
                           보기
                         </a>
@@ -593,8 +592,7 @@ export default function RevenueManager({ rows, rates }: { rows: RevenueRow[]; ra
                 exportCsv();
                 setCsvConfirmOpen(false);
               }}
-              className="bg-cta hover:bg-cta/90 border-transparent text-white"
-            >
+              className="bg-cta hover:bg-cta/90 border-transparent text-white">
               내보내기
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -673,8 +671,7 @@ function RevenueTrendChart({ data, title }: { data: TrendBucket[]; title: string
               "text-center text-[10px]",
               colClass,
               d.dow === 0 ? "text-brand" : d.dow === 6 ? "text-accent-blue-ink" : "text-muted-fg-faint",
-            )}
-          >
+            )}>
             {i % showLabelEvery === 0 ? d.xLabel : ""}
           </div>
         ))}
@@ -692,8 +689,7 @@ function ToggleChip({ active, onClick, label }: { active: boolean; onClick: () =
       className={cn(
         "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
         active ? "bg-ink border-ink text-white" : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-      )}
-    >
+      )}>
       {label}
     </button>
   );

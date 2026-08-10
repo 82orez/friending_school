@@ -121,8 +121,7 @@ export default function StudentEnrollments({ enrollments }: { enrollments: Stude
           <p className="text-muted-fg text-sm">아직 수강신청 내역이 없어요.</p>
           <Link
             href="/#courses"
-            className="bg-cta mt-4 inline-block rounded-full px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
-          >
+            className="bg-cta mt-4 inline-block rounded-full px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90">
             과정 둘러보기
           </Link>
         </div>
@@ -258,7 +257,9 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
                 ).map(([label, value]) => (
                   <div key={label} className="flex justify-between gap-4">
                     <dt className="text-muted-fg shrink-0">{label}</dt>
-                    <dd className={cn("text-ink text-right break-words", label === "환불 금액" ? "text-[#B45309] font-bold" : "font-medium")}>{value}</dd>
+                    <dd className={cn("text-ink text-right break-words", label === "환불 금액" ? "font-bold text-[#B45309]" : "font-medium")}>
+                      {value}
+                    </dd>
                   </div>
                 ))}
               </dl>
@@ -267,8 +268,7 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
                   href={row.payment.receiptUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-accent-blue-ink hover:text-accent-blue mt-2.5 inline-flex items-center gap-1.5 text-sm font-semibold"
-                >
+                  className="text-accent-blue-ink hover:text-accent-blue mt-2.5 inline-flex items-center gap-1.5 text-sm font-semibold">
                   <ExternalLink className="size-3.5" aria-hidden />
                   영수증 보기
                 </a>
@@ -298,8 +298,7 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
                         active
                           ? "border-accent-blue bg-accent-blue-soft text-accent-blue-ink"
                           : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-                      )}
-                    >
+                      )}>
                       <span aria-hidden>{m.icon}</span>
                       {m.label}
                     </button>
@@ -348,8 +347,7 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
                     type="button"
                     onClick={payWithCard}
                     disabled={pending}
-                    className="bg-cta mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                  >
+                    className="bg-cta mt-3 inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-md px-4 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50">
                     {pending ? <Loader2 className="size-4 animate-spin" /> : <CreditCard className="size-4" aria-hidden />}
                     {payError ? "다시 결제하기" : "카드로 결제하기"}
                   </button>
@@ -367,8 +365,7 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
                 type="button"
                 onClick={() => setConfirmOpen(true)}
                 disabled={pending}
-                className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50"
-              >
+                className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50">
                 {pending && <Loader2 className="size-3.5 animate-spin" />}
                 신청 취소
               </button>
@@ -394,7 +391,6 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </li>
   );
 }

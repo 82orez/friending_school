@@ -86,7 +86,8 @@ export default function PgFeeHistoryEditor({ rows }: { rows: PgFeeRow[] }) {
     <div className="border-rule flex flex-col gap-3 rounded-xl border bg-white p-4">
       <p className="text-ink text-sm font-bold">PG 결제 수수료율</p>
       <p className="text-muted-fg-faint text-xs">
-        카드 등 PG 경유 결제에 적용되는 부가세 포함 총 청구율입니다(예: 3.3%). 무통장 입금은 수수료가 적용되지 않으며, 각 결제는 결제일 기준 율로 계산됩니다.
+        카드 등 PG 경유 결제에 적용되는 부가세 포함 총 청구율입니다(예: 3.3%). 무통장 입금은 수수료가 적용되지 않으며, 각 결제는 결제일 기준 율로
+        계산됩니다.
       </p>
 
       {/* 현재 적용 요약 */}
@@ -114,8 +115,7 @@ export default function PgFeeHistoryEditor({ rows }: { rows: PgFeeRow[] }) {
                   onClick={() => startEdit(r)}
                   disabled={pending}
                   aria-label="수정"
-                  className="text-muted-fg-faint hover:text-ink shrink-0 rounded p-1 transition-colors disabled:opacity-50"
-                >
+                  className="text-muted-fg-faint hover:text-ink shrink-0 rounded p-1 transition-colors disabled:opacity-50">
                   <Pencil className="size-4" />
                 </button>
                 <button
@@ -123,8 +123,7 @@ export default function PgFeeHistoryEditor({ rows }: { rows: PgFeeRow[] }) {
                   onClick={() => setDeleteId(r.id)}
                   disabled={pending}
                   aria-label="삭제"
-                  className="text-muted-fg-faint hover:text-brand shrink-0 rounded p-1 transition-colors disabled:opacity-50"
-                >
+                  className="text-muted-fg-faint hover:text-brand shrink-0 rounded p-1 transition-colors disabled:opacity-50">
                   <Trash2 className="size-4" />
                 </button>
               </li>
@@ -165,8 +164,7 @@ export default function PgFeeHistoryEditor({ rows }: { rows: PgFeeRow[] }) {
             type="button"
             onClick={submit}
             disabled={pending}
-            className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
+            className="bg-cta inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
             {pending ? <Loader2 className="size-4 animate-spin" /> : editingId ? null : <Plus className="size-4" />}
             {editingId ? "저장" : "추가"}
           </button>
@@ -175,8 +173,7 @@ export default function PgFeeHistoryEditor({ rows }: { rows: PgFeeRow[] }) {
               type="button"
               onClick={resetForm}
               disabled={pending}
-              className="border-rule text-muted-fg hover:text-ink inline-flex h-9 shrink-0 items-center gap-1 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60"
-            >
+              className="border-rule text-muted-fg hover:text-ink inline-flex h-9 shrink-0 items-center gap-1 rounded-md border px-3 text-sm font-medium transition-colors disabled:opacity-60">
               <X className="size-4" />
               취소
             </button>
@@ -189,7 +186,9 @@ export default function PgFeeHistoryEditor({ rows }: { rows: PgFeeRow[] }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>수수료율 이력을 삭제하시겠습니까?</AlertDialogTitle>
-            <AlertDialogDescription>해당 시점의 수수료율이 삭제되며, 그 이후 매출·매출이익의 수수료는 이전 이력으로 재계산됩니다.</AlertDialogDescription>
+            <AlertDialogDescription>
+              해당 시점의 수수료율이 삭제되며, 그 이후 매출·매출이익의 수수료는 이전 이력으로 재계산됩니다.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>

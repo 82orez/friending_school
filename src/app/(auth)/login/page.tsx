@@ -31,9 +31,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
       <div className="w-full max-w-md">
         <AuthBannerSlot>
           {showAuthCodeError && (
-            <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
+            <div className="border-destructive/30 bg-destructive/10 text-destructive mb-4 rounded-md border px-4 py-3 text-sm" role="alert">
               <p>인증 링크가 유효하지 않거나 만료되었습니다.</p>
-              <p className="mt-1.5 text-xs text-destructive/80">
+              <p className="text-destructive/80 mt-1.5 text-xs">
                 아래에서 로그인을 시도하시거나, 계정이 없으시면{" "}
                 <Link href="/signup" className="font-semibold underline hover:no-underline">
                   회원가입

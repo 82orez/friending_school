@@ -18,7 +18,9 @@ export default async function AdminSettlementsPage() {
 
   const { data: recData } = await admin
     .from("center_settlements")
-    .select("id, center_id, period_month, sessions_count, currency, base_amount, base_krw, base_native, adjustments, total_krw, status, note, paid_at, confirmed_at");
+    .select(
+      "id, center_id, period_month, sessions_count, currency, base_amount, base_krw, base_native, adjustments, total_krw, status, note, paid_at, confirmed_at",
+    );
   const records: Record<string, CenterSettlementRecord> = {};
   for (const r of (recData ?? []) as {
     id: string;

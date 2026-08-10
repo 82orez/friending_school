@@ -36,7 +36,16 @@ export type AdminEnrollment = {
   is_test?: boolean;
   priceLabel: string; // 수강료 표시(유효가격, 예 "₩240,000")
   priceKrw: number; // 유효가격(숫자) = per-건 수강료 ?? 전역 고정가 — 입금액 캡·기본값용
-  payment?: { paymentId: string; status: string; amount: number; cancelledAmount: number; method?: string | null; receiptUrl?: string | null; createdAt?: string; note?: string | null } | null; // 결제 기록(카드/무통장, 환불용)
+  payment?: {
+    paymentId: string;
+    status: string;
+    amount: number;
+    cancelledAmount: number;
+    method?: string | null;
+    receiptUrl?: string | null;
+    createdAt?: string;
+    note?: string | null;
+  } | null; // 결제 기록(카드/무통장, 환불용)
 };
 
 type StatusKey = AdminEnrollment["status"];
@@ -112,7 +121,8 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { 전체: rows.length, 신청: 0, 결제대기: 0, 결제완료: 0, 승인: 0, 거절: 0, 취소: 0, 환불: 0 };
@@ -177,8 +187,7 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
               className={cn(
                 "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
                 active ? "bg-ink border-ink text-white" : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-              )}
-            >
+              )}>
               {f.label} <span className={cn("ml-0.5", active ? "text-white/70" : "text-muted-fg-faint")}>{counts[f.key] ?? 0}</span>
             </button>
           );
@@ -233,19 +242,23 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
                     className={cn(
                       "border-rule hover:bg-surface/60 focus-visible:bg-surface/60 cursor-pointer border-b transition-colors outline-none last:border-b-0",
                       conflict && "border-l-2 border-l-[#F5A623]",
-                    )}
-                  >
+                    )}>
                     <td className="px-4 py-3.5 align-middle md:px-6">
                       <div className="flex flex-col items-start gap-1.5">
-                        <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", isRefunded(r) ? REFUND_BADGE : STATUS_BADGE[r.status])}>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold",
+                            isRefunded(r) ? REFUND_BADGE : STATUS_BADGE[r.status],
+                          )}>
                           {isRefunded(r) ? "환불" : r.status}
                         </span>
-                        {r.is_test && <span className="bg-accent-blue-soft text-accent-blue-ink shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">테스트</span>}
+                        {r.is_test && (
+                          <span className="bg-accent-blue-soft text-accent-blue-ink shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">테스트</span>
+                        )}
                         {conflict && (
                           <span
                             className="bg-brand inline-flex w-fit shrink-0 animate-pulse items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold text-white"
-                            title="같은 강사의 다른 진행중 신청과 시간이 겹칩니다."
-                          >
+                            title="같은 강사의 다른 진행중 신청과 시간이 겹칩니다.">
                             <TriangleAlert className="size-3" aria-hidden /> 시간 겹침
                           </span>
                         )}
@@ -257,7 +270,9 @@ export default function EnrollmentsManager({ enrollments }: { enrollments: Admin
                     <td className="text-muted-fg max-w-[12rem] truncate px-4 py-3.5 align-middle">{r.course_title}</td>
                     <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">
                       <span className="block">{r.start_date}</span>
-                      {r.slots.length > 0 && <span className="text-muted-fg-faint mt-0.5 block text-xs font-medium">{summarizeSlots(r.slots, true)}</span>}
+                      {r.slots.length > 0 && (
+                        <span className="text-muted-fg-faint mt-0.5 block text-xs font-medium">{summarizeSlots(r.slots, true)}</span>
+                      )}
                     </td>
                     <td className="text-muted-fg-faint px-4 py-3.5 align-middle whitespace-nowrap md:px-6">{formatDate(r.created_at)}</td>
                   </tr>
@@ -429,7 +444,9 @@ function EnrollmentDetailModal({
         onUpdated({
           ...row,
           status: "취소",
-          payment: pay ? { ...pay, status: partial ? "partial_cancelled" : "cancelled", cancelledAmount: (pay.cancelledAmount ?? 0) + refunded } : pay,
+          payment: pay
+            ? { ...pay, status: partial ? "partial_cancelled" : "cancelled", cancelledAmount: (pay.cancelledAmount ?? 0) + refunded }
+            : pay,
         });
         toast.success("환불 처리했어요. 학생에게 안내 문자가 발송됩니다.");
         onClose();
@@ -474,8 +491,7 @@ function EnrollmentDetailModal({
         role="dialog"
         aria-modal="true"
         aria-label={`${studentLabel} · ${row.course_title}`}
-        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-      >
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-center justify-between gap-3 border-b px-6 py-4">
           <div className="flex min-w-0 items-center gap-2">
             <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", isRefunded(row) ? REFUND_BADGE : STATUS_BADGE[row.status])}>
@@ -491,8 +507,7 @@ function EnrollmentDetailModal({
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-1 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-1 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             <X className="size-5" />
           </button>
         </div>
@@ -534,8 +549,7 @@ function EnrollmentDetailModal({
                     href={pay.receiptUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-accent-blue-ink hover:text-accent-blue inline-flex items-center gap-1 font-semibold"
-                  >
+                    className="text-accent-blue-ink hover:text-accent-blue inline-flex items-center gap-1 font-semibold">
                     <ExternalLink className="size-3.5" aria-hidden />
                     영수증 보기
                   </a>
@@ -549,8 +563,7 @@ function EnrollmentDetailModal({
               <button
                 type="button"
                 onClick={openAdjust}
-                className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex items-center gap-1.5 rounded-md border bg-white px-3 py-1.5 text-xs font-medium transition-colors"
-              >
+                className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex items-center gap-1.5 rounded-md border bg-white px-3 py-1.5 text-xs font-medium transition-colors">
                 실입금액·메모 수정
               </button>
             </div>
@@ -577,7 +590,9 @@ function EnrollmentDetailModal({
                 placeholder="환불 사유를 입력하세요..."
                 className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
               />
-              <label className="text-muted-fg-faint mt-3 mb-1 block text-xs font-semibold">환불 금액 (비우면 전액 ₩{paidRemaining.toLocaleString()})</label>
+              <label className="text-muted-fg-faint mt-3 mb-1 block text-xs font-semibold">
+                환불 금액 (비우면 전액 ₩{paidRemaining.toLocaleString()})
+              </label>
               <input
                 type="number"
                 value={refundAmountStr}
@@ -589,7 +604,7 @@ function EnrollmentDetailModal({
               />
               <p className="text-muted-fg-faint mt-1.5 text-xs">환불 시 수강이 취소되고 남은(예정) 수업이 모두 취소됩니다.</p>
               {isBankPay && (
-                <p className="text-brand mt-2 rounded-md bg-brand/5 px-3 py-2 text-xs font-semibold">
+                <p className="text-brand bg-brand/5 mt-2 rounded-md px-3 py-2 text-xs font-semibold">
                   무통장 입금 건입니다. 실제 환불 금액은 학생 계좌로 직접 송금해 주세요(시스템은 수강 취소·기록만 처리합니다).
                 </p>
               )}
@@ -614,66 +629,60 @@ function EnrollmentDetailModal({
                 type="button"
                 onClick={() => setDeleteOpen(true)}
                 disabled={pending}
-                className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50"
-              >
+                className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50">
                 {pending && <Loader2 className="size-3.5 animate-spin" />}
                 테스트 삭제
               </button>
             )}
           </div>
           <div className="flex gap-2">
-          {cancellable ? (
-            <>
-              <button
-                type="button"
-                onClick={onClose}
-                className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
-              >
-                닫기
-              </button>
-              {payable && (
+            {cancellable ? (
+              <>
                 <button
                   type="button"
-                  onClick={() => setPayConfirmOpen(true)}
-                  disabled={pending}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-md border border-transparent bg-[#1E7E34] px-4 text-sm font-bold text-white transition-colors hover:bg-[#1A6E2E] disabled:opacity-50"
-                >
-                  {pending && <Loader2 className="size-3.5 animate-spin" />}
-                  결제 확인
+                  onClick={onClose}
+                  className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors">
+                  닫기
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={askCancel}
-                disabled={pending}
-                className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50"
-              >
-                {pending && <Loader2 className="size-3.5 animate-spin" />}
-                취소 처리
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={onClose}
-                className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors"
-              >
-                닫기
-              </button>
-              {refundable && (
+                {payable && (
+                  <button
+                    type="button"
+                    onClick={() => setPayConfirmOpen(true)}
+                    disabled={pending}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-md border border-transparent bg-[#1E7E34] px-4 text-sm font-bold text-white transition-colors hover:bg-[#1A6E2E] disabled:opacity-50">
+                    {pending && <Loader2 className="size-3.5 animate-spin" />}
+                    결제 확인
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={askRefund}
+                  onClick={askCancel}
                   disabled={pending}
-                  className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50"
-                >
+                  className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50">
                   {pending && <Loader2 className="size-3.5 animate-spin" />}
-                  환불
+                  취소 처리
                 </button>
-              )}
-            </>
-          )}
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="border-rule text-muted-fg hover:bg-surface rounded-md border px-4 py-2 text-sm font-bold transition-colors">
+                  닫기
+                </button>
+                {refundable && (
+                  <button
+                    type="button"
+                    onClick={askRefund}
+                    disabled={pending}
+                    className="border-brand/40 text-brand hover:bg-brand/5 inline-flex h-9 items-center gap-1.5 rounded-md border px-4 text-sm font-bold transition-colors disabled:opacity-50">
+                    {pending && <Loader2 className="size-3.5 animate-spin" />}
+                    환불
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -745,7 +754,11 @@ function EnrollmentDetailModal({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3">
-            {row.priceLabel && <p className="text-muted-fg text-sm">정상 수강료: <span className="text-ink font-semibold">{row.priceLabel}</span></p>}
+            {row.priceLabel && (
+              <p className="text-muted-fg text-sm">
+                정상 수강료: <span className="text-ink font-semibold">{row.priceLabel}</span>
+              </p>
+            )}
             <div>
               <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">실입금액 (할인 시 정가보다 낮게 입력)</label>
               <div className="flex items-center gap-2">
@@ -760,7 +773,7 @@ function EnrollmentDetailModal({
                 <span className="text-muted-fg-faint text-sm">원</span>
               </div>
               {Number(payAmountStr) > 0 && Number(payAmountStr) < row.priceKrw && (
-                <p className="text-[#B45309] mt-1 text-xs font-semibold">
+                <p className="mt-1 text-xs font-semibold text-[#B45309]">
                   할인 적용: 정가보다 {(row.priceKrw - Math.floor(Number(payAmountStr))).toLocaleString()}원 낮게 매출에 기록됩니다.
                 </p>
               )}
@@ -790,12 +803,14 @@ function EnrollmentDetailModal({
         <AlertDialogContent className="z-[130]">
           <AlertDialogHeader>
             <AlertDialogTitle>실입금액·메모를 수정할까요?</AlertDialogTitle>
-            <AlertDialogDescription>
-              무통장 입금 결제의 실입금액과 메모를 정정합니다. 변경 즉시 매출에 반영됩니다.
-            </AlertDialogDescription>
+            <AlertDialogDescription>무통장 입금 결제의 실입금액과 메모를 정정합니다. 변경 즉시 매출에 반영됩니다.</AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-3">
-            {row.priceLabel && <p className="text-muted-fg text-sm">정상 수강료: <span className="text-ink font-semibold">{row.priceLabel}</span></p>}
+            {row.priceLabel && (
+              <p className="text-muted-fg text-sm">
+                정상 수강료: <span className="text-ink font-semibold">{row.priceLabel}</span>
+              </p>
+            )}
             <div>
               <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">실입금액</label>
               <div className="flex items-center gap-2">
@@ -810,7 +825,7 @@ function EnrollmentDetailModal({
                 <span className="text-muted-fg-faint text-sm">원</span>
               </div>
               {Number(adjustAmountStr) > 0 && Number(adjustAmountStr) < row.priceKrw && (
-                <p className="text-[#B45309] mt-1 text-xs font-semibold">
+                <p className="mt-1 text-xs font-semibold text-[#B45309]">
                   할인 적용: 정가보다 {(row.priceKrw - Math.floor(Number(adjustAmountStr))).toLocaleString()}원 낮게 매출에 기록됩니다.
                 </p>
               )}

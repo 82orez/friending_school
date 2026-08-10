@@ -30,9 +30,9 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
       <div className="w-full max-w-md">
         <AuthBannerSlot>
           {showLinkExpired && (
-            <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">
+            <div className="border-destructive/30 bg-destructive/10 text-destructive mb-4 rounded-md border px-4 py-3 text-sm" role="alert">
               <p>비밀번호 재설정 링크가 유효하지 않거나 만료되었습니다.</p>
-              <p className="mt-1.5 text-xs text-destructive/80">
+              <p className="text-destructive/80 mt-1.5 text-xs">
                 아래에서 새 링크를 요청하시거나, 비밀번호를 기억하셨다면{" "}
                 <Link href="/login" className="font-semibold underline hover:no-underline">
                   로그인

@@ -256,21 +256,23 @@ export default function EnrollWizard({
             <h2 className="text-ink mt-3 text-lg font-bold">신청 내용을 확인하세요</h2>
 
             <dl className="bg-surface border-rule mt-4 rounded-xl border px-4 py-2">
-              {([
+              {(
                 [
-                  "과정",
-                  <>
-                    {courseTitle}
-                    <span className="text-muted-fg-faint mt-0.5 block text-xs font-normal">{courseEnglishTitle}</span>
-                  </>,
-                ],
-                ["강사", selectedTeacher?.name ?? "-"],
-                ["수업 일정", summarizeSlots(slots)],
-                ["시작일", startDate],
-                ["종료일", endDate],
-                ["수업 횟수", `총 ${TOTAL_SESSIONS}회`],
-                ["결제 금액", coursePrice],
-              ] as [string, ReactNode][]).map(([label, value]) => (
+                  [
+                    "과정",
+                    <>
+                      {courseTitle}
+                      <span className="text-muted-fg-faint mt-0.5 block text-xs font-normal">{courseEnglishTitle}</span>
+                    </>,
+                  ],
+                  ["강사", selectedTeacher?.name ?? "-"],
+                  ["수업 일정", summarizeSlots(slots)],
+                  ["시작일", startDate],
+                  ["종료일", endDate],
+                  ["수업 횟수", `총 ${TOTAL_SESSIONS}회`],
+                  ["결제 금액", coursePrice],
+                ] as [string, ReactNode][]
+              ).map(([label, value]) => (
                 <div key={label} className="border-rule flex justify-between gap-4 border-b py-3 last:border-b-0">
                   <dt className="text-muted-fg shrink-0 text-sm">{label}</dt>
                   <dd className="text-ink text-right text-sm font-medium break-words">{value}</dd>

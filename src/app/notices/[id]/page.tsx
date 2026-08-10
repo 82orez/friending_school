@@ -45,7 +45,9 @@ export default async function NoticeDetailPage({ params }: { params: Promise<{ i
         </article>
 
         <div className="mt-6 flex justify-center">
-          <Link href="/notices" className="border-rule text-muted-fg hover:text-ink rounded-md border bg-white px-5 py-2.5 text-sm font-medium transition-colors">
+          <Link
+            href="/notices"
+            className="border-rule text-muted-fg hover:text-ink rounded-md border bg-white px-5 py-2.5 text-sm font-medium transition-colors">
             목록으로
           </Link>
         </div>

@@ -14,7 +14,8 @@ export const WORKHOL_UNITS: WorkholUnit[] = [
     unit: 1,
     title: "Jun Buys a SIM Card",
     titleKr: "준, 유심을 개통하다",
-    situation: "준은 호주에 도착한 다음 날, 통신사 매장에 갔다. 데이터 요금제를 고르고 새 번호를 개통해야 한다. 직원에게 자신의 상황을 설명하고 적절한 요금제를 추천받는다.",
+    situation:
+      "준은 호주에 도착한 다음 날, 통신사 매장에 갔다. 데이터 요금제를 고르고 새 번호를 개통해야 한다. 직원에게 자신의 상황을 설명하고 적절한 요금제를 추천받는다.",
     htmlFile: "unit-01.html",
   },
   {

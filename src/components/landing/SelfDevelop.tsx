@@ -17,7 +17,13 @@ const TAB_LABELS: Record<string, string> = {
 };
 
 // landing book.key → 전자책 course(레지스트리). 현재 BOOKS 5종 전부 연동 — 새 교재 추가 시 여기에도 등록 필수(누락 시 카드가 링크되지 않음).
-const LINKED_COURSE: Record<string, string> = { workhol: "workhol", kitchen: "kitchen", basic1: "grammar1", basic2: "grammar2", cosmetic: "cosmetic" };
+const LINKED_COURSE: Record<string, string> = {
+  workhol: "workhol",
+  kitchen: "kitchen",
+  basic1: "grammar1",
+  basic2: "grammar2",
+  cosmetic: "cosmetic",
+};
 
 // "Unit 01" → 1, "Unit 25" → 25
 function unitNum(u: BookUnit): number {
@@ -185,7 +191,8 @@ function BookPanel({
       <div className="mb-2.5 grid grid-cols-2 gap-2.5 md:grid-cols-4">{book.units.map(renderUnit)}</div>
 
       {/* 확장 유닛 */}
-      <div className={cn("grid overflow-hidden transition-[grid-template-rows] duration-300 ease-in-out", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+      <div
+        className={cn("grid overflow-hidden transition-[grid-template-rows] duration-300 ease-in-out", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
         <div className="min-h-0">
           <div className="mb-2.5 grid grid-cols-2 gap-2.5 md:grid-cols-4">{book.extra.map(renderUnit)}</div>
         </div>
@@ -217,7 +224,7 @@ export default function SelfDevelop({
     <>
       {/* 탭 */}
       <div className="mx-auto flex max-w-[1200px] justify-center overflow-hidden px-5 py-4 md:px-10">
-        <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex [scrollbar-width:none] gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {BOOKS.map((b) => {
             const active = b.key === curKey;
             return (

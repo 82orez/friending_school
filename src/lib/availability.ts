@@ -37,8 +37,7 @@ export const dowOf = (dateStr: string): number => {
 export const formatDateKo = (dateStr: string): string => `${dateStr} (${DAY_LABELS_KO[dowOf(dateStr)]})`;
 
 // 로케일 대응 날짜 라벨 — ko="2026-07-04 (토)" / en="2026-07-04 (Sat)". formatDateKo의 이중언어 버전.
-export const formatDate = (dateStr: string, ko = true): string =>
-  `${dateStr} (${(ko ? DAY_LABELS_KO : DAY_LABELS_EN)[dowOf(dateStr)]})`;
+export const formatDate = (dateStr: string, ko = true): string => `${dateStr} (${(ko ? DAY_LABELS_KO : DAY_LABELS_EN)[dowOf(dateStr)]})`;
 
 // 그리드 행(시작 분) 목록: 360(06:00) ~ 1410(23:30).
 export const ROW_MINS: number[] = [];
@@ -134,8 +133,7 @@ export function deriveBookedSlots(
 ): BookedSlot[] {
   const m = new Map<string, BookedSlot>();
   for (const r of rows) {
-    const tier: BookedSlot["tier"] | null =
-      r.status === "승인" || r.status === "결제완료" ? "confirmed" : r.status === "결제대기" ? "pending" : null;
+    const tier: BookedSlot["tier"] | null = r.status === "승인" || r.status === "결제완료" ? "confirmed" : r.status === "결제대기" ? "pending" : null;
     if (!tier) continue;
     const label = r.student_english_name || r.student_name || "Student";
     for (const s of (Array.isArray(r.slots) ? r.slots : []) as { day?: unknown; min?: unknown }[]) {

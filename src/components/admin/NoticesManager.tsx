@@ -108,9 +108,14 @@ export default function NoticesManager({ notices }: { notices: AdminNotice[] }) 
         <button
           type="button"
           disabled={pending}
-          onClick={() => run(() => addNotice(form), "공지를 등록했습니다.", () => setForm(emptyForm()))}
-          className="bg-ink mt-4 inline-flex h-10 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-        >
+          onClick={() =>
+            run(
+              () => addNotice(form),
+              "공지를 등록했습니다.",
+              () => setForm(emptyForm()),
+            )
+          }
+          className="bg-ink mt-4 inline-flex h-10 items-center gap-1.5 rounded-md px-5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60">
           {pending && <Loader2 className="size-3.5 animate-spin" />}
           등록하기
         </button>
@@ -129,7 +134,13 @@ export default function NoticesManager({ notices }: { notices: AdminNotice[] }) 
                   {editingId === n.id ? (
                     <div>
                       <Field label="제목" value={editFields.title} onChange={(v) => setEditFields({ ...editFields, title: v })} />
-                      <Field className="mt-3" label="내용" value={editFields.body} onChange={(v) => setEditFields({ ...editFields, body: v })} textarea />
+                      <Field
+                        className="mt-3"
+                        label="내용"
+                        value={editFields.body}
+                        onChange={(v) => setEditFields({ ...editFields, body: v })}
+                        textarea
+                      />
                       <div className="mt-3">
                         <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">게시일</label>
                         <input
@@ -143,13 +154,21 @@ export default function NoticesManager({ notices }: { notices: AdminNotice[] }) 
                         <button
                           type="button"
                           disabled={pending}
-                          onClick={() => run(() => updateNotice(n.id, editFields), "공지를 수정했습니다.", () => setEditingId(null))}
-                          className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
-                        >
+                          onClick={() =>
+                            run(
+                              () => updateNotice(n.id, editFields),
+                              "공지를 수정했습니다.",
+                              () => setEditingId(null),
+                            )
+                          }
+                          className="bg-cta inline-flex h-9 items-center gap-1.5 rounded-md px-4 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60">
                           {pending && <Loader2 className="size-3.5 animate-spin" />}
                           저장
                         </button>
-                        <button type="button" onClick={() => setEditingId(null)} className="border-rule text-muted-fg h-9 rounded-md border px-4 text-sm font-medium">
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(null)}
+                          className="border-rule text-muted-fg h-9 rounded-md border px-4 text-sm font-medium">
                           취소
                         </button>
                       </div>
@@ -160,34 +179,38 @@ export default function NoticesManager({ notices }: { notices: AdminNotice[] }) 
                         <button
                           type="button"
                           disabled={pending}
-                          onClick={() => run(() => setNoticePinned(n.id, !n.is_pinned), n.is_pinned ? "고정을 해제했습니다." : "상단에 고정했습니다.")}
+                          onClick={() =>
+                            run(() => setNoticePinned(n.id, !n.is_pinned), n.is_pinned ? "고정을 해제했습니다." : "상단에 고정했습니다.")
+                          }
                           aria-label={n.is_pinned ? "고정 해제" : "상단 고정"}
                           aria-pressed={n.is_pinned}
                           className={cn(
                             "border-rule rounded border p-1.5 transition-colors disabled:opacity-60",
                             n.is_pinned ? "border-cta/40 bg-cta/10 text-cta" : "text-muted-fg-faint hover:text-ink",
-                          )}
-                        >
+                          )}>
                           <Pin className="size-3.5" />
                         </button>
                         <button
                           type="button"
                           disabled={pending}
-                          onClick={() => run(() => setNoticeVisibility(n.id, !n.is_visible), n.is_visible ? "비공개로 전환했습니다." : "공개로 전환했습니다.")}
+                          onClick={() =>
+                            run(() => setNoticeVisibility(n.id, !n.is_visible), n.is_visible ? "비공개로 전환했습니다." : "공개로 전환했습니다.")
+                          }
                           aria-label={n.is_visible ? "비공개로 전환" : "공개로 전환"}
                           aria-pressed={n.is_visible}
                           className={cn(
                             "border-rule rounded border p-1.5 transition-colors disabled:opacity-60",
                             n.is_visible ? "border-accent-blue/40 bg-accent-blue-soft text-accent-blue-ink" : "text-muted-fg-faint hover:text-ink",
-                          )}
-                        >
+                          )}>
                           <Eye className="size-3.5" />
                         </button>
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-ink truncate text-sm font-semibold">
                           {n.is_pinned && <span className="bg-cta/10 text-cta mr-1.5 rounded-full px-1.5 py-0.5 text-xs font-bold">고정</span>}
-                          {!n.is_visible && <span className="bg-surface text-muted-fg mr-1.5 rounded-full px-1.5 py-0.5 text-xs font-bold">비공개</span>}
+                          {!n.is_visible && (
+                            <span className="bg-surface text-muted-fg mr-1.5 rounded-full px-1.5 py-0.5 text-xs font-bold">비공개</span>
+                          )}
                           {scheduled && <span className="mr-1.5 rounded-full bg-[#FFF7E6] px-1.5 py-0.5 text-xs font-bold text-[#B97400]">예약</span>}
                           {n.title}
                         </p>
@@ -203,8 +226,7 @@ export default function NoticesManager({ notices }: { notices: AdminNotice[] }) 
                           type="button"
                           disabled={pending}
                           onClick={() => setDeleteTarget(n)}
-                          className="border-rule text-brand rounded border px-2.5 py-1 text-xs disabled:opacity-60"
-                        >
+                          className="border-rule text-brand rounded border px-2.5 py-1 text-xs disabled:opacity-60">
                           삭제
                         </button>
                       </div>

@@ -18,7 +18,9 @@ export default async function CenterLayout({ children }: { children: React.React
   } = await supabase.auth.getUser();
   const { data: profile } = await supabase.from("profiles").select("first_name, last_name").eq("id", mgr.userId).maybeSingle();
   // 원어민 강사/매니저 위주라 영문 이름 순서(first last), 없으면 이메일 앞부분.
-  const displayName = profile ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || user?.email?.split("@")[0] : user?.email?.split("@")[0];
+  const displayName = profile
+    ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || user?.email?.split("@")[0]
+    : user?.email?.split("@")[0];
 
   return (
     <div className="bg-surface min-h-screen">
@@ -30,7 +32,9 @@ export default async function CenterLayout({ children }: { children: React.React
         <div className="bg-brand-gradient mb-5 rounded-2xl px-6 py-7 text-white">
           <p className="text-xs font-bold tracking-[0.1em] opacity-90">FRIENDING SCHOOL · CENTER MANAGER</p>
           <p className="mt-2 text-xl font-bold md:text-2xl">Welcome, {displayName}! 👋</p>
-          <p className="mt-1 text-sm opacity-90">View your center&apos;s teachers and reassign a session&apos;s teacher when a class can&apos;t be held.</p>
+          <p className="mt-1 text-sm opacity-90">
+            View your center&apos;s teachers and reassign a session&apos;s teacher when a class can&apos;t be held.
+          </p>
         </div>
 
         <CenterTabs />

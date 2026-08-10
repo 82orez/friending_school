@@ -84,7 +84,10 @@ export default function EnrollScheduleField({ onChange, initialSlots }: { onChan
 
   // 초기값(프리필 또는 빈값) 기준 — reset은 초기값으로 복원, 이미 초기값이면 비활성.
   const isDefault =
-    selectedDays.size === initial.days.size && Array.from(initial.days).every((d) => selectedDays.has(d)) && count === initial.count && startMin === initial.startMin;
+    selectedDays.size === initial.days.size &&
+    Array.from(initial.days).every((d) => selectedDays.has(d)) &&
+    count === initial.count &&
+    startMin === initial.startMin;
   const handleReset = () => {
     setSelectedDays(new Set(initial.days));
     setCount(initial.count);

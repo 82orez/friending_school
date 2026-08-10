@@ -115,11 +115,11 @@ export default function SignupForm() {
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-brand-blue/50 focus-visible:outline-none">
+                className="text-muted-foreground hover:text-foreground focus-visible:ring-brand-blue/50 absolute inset-y-0 right-0 flex items-center rounded pr-3 focus-visible:ring-2 focus-visible:outline-none">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p id="signup-password-hint" className="text-xs text-muted-foreground">
+            <p id="signup-password-hint" className="text-muted-foreground text-xs">
               8자 이상 입력해 주세요.
             </p>
             {passwordCaps.capsLockOn && (
@@ -153,7 +153,7 @@ export default function SignupForm() {
                 type="button"
                 onClick={() => setShowPasswordConfirm((prev) => !prev)}
                 aria-label={showPasswordConfirm ? "비밀번호 숨기기" : "비밀번호 보기"}
-                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-brand-blue/50 focus-visible:outline-none">
+                className="text-muted-foreground hover:text-foreground focus-visible:ring-brand-blue/50 absolute inset-y-0 right-0 flex items-center rounded pr-3 focus-visible:ring-2 focus-visible:outline-none">
                 {showPasswordConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
@@ -167,9 +167,9 @@ export default function SignupForm() {
 
           {state?.error && (
             <div role="alert" id="signup-error">
-              <p className="text-sm text-destructive">{state.error}</p>
+              <p className="text-destructive text-sm">{state.error}</p>
               {state.canResend && (
-                <p className="mt-2 text-xs text-destructive">
+                <p className="text-destructive mt-2 text-xs">
                   메일이 도착하지 않으셨나요?{" "}
                   <button
                     type="button"
@@ -181,7 +181,7 @@ export default function SignupForm() {
                 </p>
               )}
               {resendResult?.success && <p className="mt-2 text-xs text-green-700">{resendResult.success}</p>}
-              {resendResult?.error && <p className="mt-2 text-xs text-destructive">{resendResult.error}</p>}
+              {resendResult?.error && <p className="text-destructive mt-2 text-xs">{resendResult.error}</p>}
             </div>
           )}
           {state?.success && (
@@ -198,7 +198,7 @@ export default function SignupForm() {
                   {resendContent}
                 </button>
               </p>
-              {resendResult?.error && <p className="mt-2 text-xs text-destructive">{resendResult.error}</p>}
+              {resendResult?.error && <p className="text-destructive mt-2 text-xs">{resendResult.error}</p>}
             </div>
           )}
 
@@ -222,7 +222,7 @@ export default function SignupForm() {
             {pending ? "처리 중" : "회원가입"}
           </Button>
 
-          <div className="my-1 flex items-center gap-3 text-xs text-muted-fg">
+          <div className="text-muted-fg my-1 flex items-center gap-3 text-xs">
             <div className="bg-rule h-px flex-1" />
             <span>또는</span>
             <div className="bg-rule h-px flex-1" />
@@ -230,9 +230,9 @@ export default function SignupForm() {
 
           <KakaoButton />
 
-          <p className="mt-2 text-center text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-2 text-center text-sm">
             이미 계정이 있으신가요?{" "}
-            <Link href="/login" className="font-semibold text-brand-blue hover:underline">
+            <Link href="/login" className="text-brand-blue font-semibold hover:underline">
               로그인
             </Link>
           </p>

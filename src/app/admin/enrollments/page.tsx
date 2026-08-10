@@ -30,7 +30,16 @@ export default async function AdminEnrollmentsPage() {
     .order("created_at", { ascending: false });
   const paymentByEnrollment = new Map<
     string,
-    { paymentId: string; status: string; amount: number; cancelledAmount: number; method: string | null; receiptUrl: string | null; note: string | null; createdAt: string }
+    {
+      paymentId: string;
+      status: string;
+      amount: number;
+      cancelledAmount: number;
+      method: string | null;
+      receiptUrl: string | null;
+      note: string | null;
+      createdAt: string;
+    }
   >();
   for (const p of (payRows ?? []) as {
     enrollment_id: string | null;
@@ -86,7 +95,12 @@ export default async function AdminEnrollmentsPage() {
   // 테스트 수강신청 학생 후보 — 가입 회원 중 강사 제외·이메일 인증 완료만(회원 관리와 동일 merge 패턴).
   const { data: usersData } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   const { data: profs } = await admin.from("profiles").select("id, role, first_name, last_name, english_name");
-  const profById = new Map((profs ?? []).map((p: { id: string; role: string; first_name: string | null; last_name: string | null; english_name: string | null }) => [p.id, p]));
+  const profById = new Map(
+    (profs ?? []).map((p: { id: string; role: string; first_name: string | null; last_name: string | null; english_name: string | null }) => [
+      p.id,
+      p,
+    ]),
+  );
   const students = (usersData?.users ?? [])
     .filter((u) => u.email && u.email_confirmed_at)
     .map((u) => ({ u, p: profById.get(u.id) }))

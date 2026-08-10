@@ -107,7 +107,7 @@ export default function LoginForm() {
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                className="absolute inset-y-0 right-0 flex items-center rounded pr-3 text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:outline-none">
+                className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex items-center rounded pr-3 focus-visible:ring-2 focus-visible:ring-[#ff4757]/50 focus-visible:outline-none">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
@@ -118,7 +118,7 @@ export default function LoginForm() {
               </p>
             )}
             <div className="flex justify-end">
-              <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-[#ff4757] hover:underline">
+              <Link href="/forgot-password" className="text-muted-foreground text-sm hover:text-[#ff4757] hover:underline">
                 비밀번호를 잊으셨나요?
               </Link>
             </div>
@@ -126,7 +126,7 @@ export default function LoginForm() {
 
           {state?.error && (
             <div className="flex flex-col gap-2">
-              <p id="login-error" className="text-sm text-destructive" role="alert">
+              <p id="login-error" className="text-destructive text-sm" role="alert">
                 {state.error}
               </p>
               {state.canResend && (
@@ -141,7 +141,7 @@ export default function LoginForm() {
             </div>
           )}
           {resendResult?.error && (
-            <p className="text-sm text-destructive" role="alert">
+            <p className="text-destructive text-sm" role="alert">
               {resendResult.error}
             </p>
           )}
@@ -169,7 +169,7 @@ export default function LoginForm() {
             {pending ? "로그인 중" : "로그인"}
           </Button>
 
-          <div className="my-1 flex items-center gap-3 text-xs text-muted-fg">
+          <div className="text-muted-fg my-1 flex items-center gap-3 text-xs">
             <div className="bg-rule h-px flex-1" />
             <span>또는</span>
             <div className="bg-rule h-px flex-1" />
@@ -177,7 +177,7 @@ export default function LoginForm() {
 
           <KakaoButton />
 
-          <p className="mt-2 text-center text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-2 text-center text-sm">
             계정이 없으신가요?{" "}
             <Link href="/signup" className="font-semibold text-[#ff4757] hover:underline">
               회원가입

@@ -35,11 +35,7 @@ export default async function TextbookListPage({ params }: { params: Promise<Par
 
   let progressByUnit: Map<number, ProgressRow> = new Map();
   if (user) {
-    const { data } = await supabase
-      .from("reading_progress")
-      .select("unit, completed")
-      .eq("user_id", user.id)
-      .eq("course", course);
+    const { data } = await supabase.from("reading_progress").select("unit, completed").eq("user_id", user.id).eq("course", course);
     if (data) progressByUnit = new Map(data.map((row) => [row.unit, row as ProgressRow]));
   }
 
@@ -75,7 +71,9 @@ export default async function TextbookListPage({ params }: { params: Promise<Par
                   className={cn("flex h-full flex-col gap-3 rounded-xl p-5", isCompleted && "border-progress/40 bg-progress/5")}>
                   <div className="flex items-center justify-between">
                     <span className="inline-flex items-center gap-2">
-                      <span className="bg-brand inline-flex size-7 items-center justify-center rounded-full text-xs font-bold text-white">{u.unit}</span>
+                      <span className="bg-brand inline-flex size-7 items-center justify-center rounded-full text-xs font-bold text-white">
+                        {u.unit}
+                      </span>
                       <span className="text-muted-fg-faint text-xs font-semibold tracking-wider uppercase">Unit {u.unit}</span>
                     </span>
                     {isCompleted ? (

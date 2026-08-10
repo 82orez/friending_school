@@ -136,7 +136,17 @@ function aggregate(
     const { key, label, manager, custom } = keyOf(r);
     let g = map.get(key);
     if (!g) {
-      g = { key, label, manager: manager ?? null, custom: custom ?? false, count: 0, currencyTotals: new Map(), currencyKrwTotals: new Map(), unpriced: 0, krwTotal: 0 };
+      g = {
+        key,
+        label,
+        manager: manager ?? null,
+        custom: custom ?? false,
+        count: 0,
+        currencyTotals: new Map(),
+        currencyKrwTotals: new Map(),
+        unpriced: 0,
+        krwTotal: 0,
+      };
       map.set(key, g);
     }
     g.count += 1;
@@ -189,7 +199,8 @@ export default function SettlementsManager({
   const groups = useMemo(() => {
     // 센터별 모드에서만 매니저 표시(같은 센터=같은 매니저); 그 외 모드에선 미사용.
     const keyOf = (r: SettlementRow): { key: string; label: string; manager?: string | null; custom?: boolean } => {
-      if (grouping === "센터별") return { key: r.centerId ?? "__none__", label: r.centerName ?? (en ? "Unassigned center" : "미지정 센터"), manager: r.centerManager };
+      if (grouping === "센터별")
+        return { key: r.centerId ?? "__none__", label: r.centerName ?? (en ? "Unassigned center" : "미지정 센터"), manager: r.centerManager };
       if (grouping === "강사별") return { key: r.teacherId, label: r.teacherName, custom: r.isCustomRate };
       return { key: r.course, label: en ? (getCourse(r.course)?.englishTitle ?? r.courseEnglishTitle ?? r.courseTitle) : r.courseTitle };
     };
@@ -270,8 +281,7 @@ export default function SettlementsManager({
           type="button"
           onClick={() => setAnchor((a) => shiftAnchor(a, period, -1))}
           className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-8 items-center justify-center rounded-md border transition-colors"
-          aria-label={en ? "Previous period" : "이전 기간"}
-        >
+          aria-label={en ? "Previous period" : "이전 기간"}>
           <ChevronLeft className="size-4" aria-hidden />
         </button>
         <span className="text-ink min-w-[9rem] text-center text-sm font-bold whitespace-nowrap">{periodLabel(anchor, period, en)}</span>
@@ -279,15 +289,13 @@ export default function SettlementsManager({
           type="button"
           onClick={() => setAnchor((a) => shiftAnchor(a, period, 1))}
           className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-8 items-center justify-center rounded-md border transition-colors"
-          aria-label={en ? "Next period" : "다음 기간"}
-        >
+          aria-label={en ? "Next period" : "다음 기간"}>
           <ChevronRight className="size-4" aria-hidden />
         </button>
         <button
           type="button"
           onClick={() => setAnchor(todayKst())}
-          className="border-rule text-muted-fg hover:text-ink rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-        >
+          className="border-rule text-muted-fg hover:text-ink rounded-md border px-3 py-1.5 text-xs font-medium transition-colors">
           {en ? "Today" : "오늘"}
         </button>
         <span className="text-muted-fg-faint ml-auto text-xs">{en ? "Week starts: Monday" : "주 시작: 월요일"}</span>
@@ -355,8 +363,7 @@ export default function SettlementsManager({
                           }
                         : undefined
                     }
-                    tabIndex={clickable ? 0 : undefined}
-                  >
+                    tabIndex={clickable ? 0 : undefined}>
                     <td className="text-ink px-4 py-3.5 align-middle font-semibold md:px-6">
                       <span className="inline-flex items-center gap-1">
                         {g.label}
@@ -542,7 +549,11 @@ function TeacherDetailBody({ detail, rates, showKrwEquivalent = true }: { detail
   const en = useLang() === "en";
   const byDate = detail.mode === "날짜별";
   if (detail.list.length === 0)
-    return <p className="text-muted-fg py-10 text-center text-sm">{en ? "No classes were conducted in this period." : "이 기간에 진행된 수업이 없습니다."}</p>;
+    return (
+      <p className="text-muted-fg py-10 text-center text-sm">
+        {en ? "No classes were conducted in this period." : "이 기간에 진행된 수업이 없습니다."}
+      </p>
+    );
   return (
     <div className="flex flex-col gap-3">
       {detail.list.map((g) => (
@@ -551,7 +562,9 @@ function TeacherDetailBody({ detail, rates, showKrwEquivalent = true }: { detail
             <span className="text-ink text-sm font-bold">
               {byDate ? fmtSessionDate(g.key, en) : courseLabelOf(g.sessions[0], en)}
               <span className="text-muted-fg-faint ml-1.5 font-medium">{en ? g.count : `${g.count}회`}</span>
-              {g.unpriced > 0 && <span className="text-brand ml-1.5 text-xs font-medium">{en ? `No rate ${g.unpriced}` : `단가 미설정 ${g.unpriced}`}</span>}
+              {g.unpriced > 0 && (
+                <span className="text-brand ml-1.5 text-xs font-medium">{en ? `No rate ${g.unpriced}` : `단가 미설정 ${g.unpriced}`}</span>
+              )}
             </span>
             <AmountCell currencyTotals={g.currencyTotals} currencyKrwTotals={g.currencyKrwTotals} showKrwEquivalent={showKrwEquivalent} />
           </div>
@@ -637,16 +650,14 @@ function TeacherSettlementModal({
         role="dialog"
         aria-modal="true"
         aria-label={en ? "Teacher settlement detail" : "강사 정산 상세"}
-        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-      >
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-start justify-between border-b px-6 py-4">
           <h2 className="text-ink min-w-0 truncate text-lg font-bold">{teacher.name}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label={en ? "Close" : "닫기"}
-            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             <X className="size-5" />
           </button>
         </div>
@@ -661,8 +672,7 @@ function TeacherSettlementModal({
                 type="button"
                 onClick={() => setAnchor((a) => shiftAnchor(a, period, -1))}
                 className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-7 items-center justify-center rounded-md border transition-colors"
-                aria-label={en ? "Previous period" : "이전 기간"}
-              >
+                aria-label={en ? "Previous period" : "이전 기간"}>
                 <ChevronLeft className="size-4" aria-hidden />
               </button>
               <span className="text-ink min-w-[7.5rem] text-center text-xs font-bold whitespace-nowrap">{periodLabel(anchor, period, en)}</span>
@@ -670,15 +680,13 @@ function TeacherSettlementModal({
                 type="button"
                 onClick={() => setAnchor((a) => shiftAnchor(a, period, 1))}
                 className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-7 items-center justify-center rounded-md border transition-colors"
-                aria-label={en ? "Next period" : "다음 기간"}
-              >
+                aria-label={en ? "Next period" : "다음 기간"}>
                 <ChevronRight className="size-4" aria-hidden />
               </button>
               <button
                 type="button"
                 onClick={() => setAnchor(todayKst())}
-                className="border-rule text-muted-fg hover:text-ink rounded-md border px-2.5 py-1 text-xs font-medium transition-colors"
-              >
+                className="border-rule text-muted-fg hover:text-ink rounded-md border px-2.5 py-1 text-xs font-medium transition-colors">
                 {en ? "Today" : "오늘"}
               </button>
             </div>
@@ -764,8 +772,7 @@ function SettlementDetailModal({
         role="dialog"
         aria-modal="true"
         aria-label="센터 정산 상세"
-        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-      >
+        className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-start justify-between border-b px-6 py-4">
           <div className="min-w-0">
             {selectedTeacher ? (
@@ -773,8 +780,7 @@ function SettlementDetailModal({
                 <button
                   type="button"
                   onClick={() => setSelectedTeacher(null)}
-                  className="text-muted-fg hover:text-ink focus-visible:ring-accent-blue/50 mb-1 -ml-1 inline-flex items-center gap-1 rounded px-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
-                >
+                  className="text-muted-fg hover:text-ink focus-visible:ring-accent-blue/50 mb-1 -ml-1 inline-flex items-center gap-1 rounded px-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none">
                   <ArrowLeft className="size-3.5" aria-hidden />
                   뒤로
                 </button>
@@ -794,8 +800,7 @@ function SettlementDetailModal({
             type="button"
             onClick={onClose}
             aria-label="닫기"
-            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-          >
+            className="text-muted-fg-faint hover:text-ink focus-visible:ring-accent-blue/50 ml-3 shrink-0 rounded transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             <X className="size-5" />
           </button>
         </div>
@@ -811,8 +816,7 @@ function SettlementDetailModal({
                 type="button"
                 onClick={() => setAnchor((a) => shiftAnchor(a, period, -1))}
                 className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-7 items-center justify-center rounded-md border transition-colors"
-                aria-label="이전 기간"
-              >
+                aria-label="이전 기간">
                 <ChevronLeft className="size-4" aria-hidden />
               </button>
               <span className="text-ink min-w-[7.5rem] text-center text-xs font-bold whitespace-nowrap">{periodLabel(anchor, period)}</span>
@@ -820,15 +824,13 @@ function SettlementDetailModal({
                 type="button"
                 onClick={() => setAnchor((a) => shiftAnchor(a, period, 1))}
                 className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-7 items-center justify-center rounded-md border transition-colors"
-                aria-label="다음 기간"
-              >
+                aria-label="다음 기간">
                 <ChevronRight className="size-4" aria-hidden />
               </button>
               <button
                 type="button"
                 onClick={() => setAnchor(todayKst())}
-                className="border-rule text-muted-fg hover:text-ink rounded-md border px-2.5 py-1 text-xs font-medium transition-colors"
-              >
+                className="border-rule text-muted-fg hover:text-ink rounded-md border px-2.5 py-1 text-xs font-medium transition-colors">
                 오늘
               </button>
             </div>
@@ -872,8 +874,7 @@ function SettlementDetailModal({
                               openTeacher();
                             }
                           }}
-                          tabIndex={0}
-                        >
+                          tabIndex={0}>
                           <td className="text-ink px-4 py-3 align-middle font-semibold">
                             <span className="inline-flex items-center gap-1">
                               {g.label}
@@ -970,8 +971,7 @@ function ToggleChip({ active, onClick, label }: { active: boolean; onClick: () =
       className={cn(
         "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
         active ? "bg-ink border-ink text-white" : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-      )}
-    >
+      )}>
       {label}
     </button>
   );

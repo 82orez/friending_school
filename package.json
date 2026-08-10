@@ -10,7 +10,7 @@
     "db:new": "supabase migration new",
     "db:list": "supabase migration list",
     "db:diff": "supabase db diff --linked",
-    "db:types": "supabase gen types typescript --linked --schema public > src/types/database.types.ts",
+    "db:types": "supabase gen types typescript --linked --schema public > src/types/database.types.ts && prettier --write src/types/database.types.ts",
     "sync:kitchen:audio": "node scripts/sync-kitchen-audio.mjs"
   },
   "dependencies": {

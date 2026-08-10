@@ -56,13 +56,17 @@ export default async function NoticesPage({ searchParams }: { searchParams: Prom
         {(page > 1 || hasNext) && (
           <div className="mt-6 flex items-center justify-center gap-3">
             {page > 1 ? (
-              <Link href={`/notices?page=${page - 1}`} className="border-rule text-muted-fg hover:text-ink rounded-md border bg-white px-4 py-2 text-sm font-medium">
+              <Link
+                href={`/notices?page=${page - 1}`}
+                className="border-rule text-muted-fg hover:text-ink rounded-md border bg-white px-4 py-2 text-sm font-medium">
                 이전
               </Link>
             ) : null}
             <span className="text-muted-fg-faint text-sm">{page}</span>
             {hasNext ? (
-              <Link href={`/notices?page=${page + 1}`} className="border-rule text-muted-fg hover:text-ink rounded-md border bg-white px-4 py-2 text-sm font-medium">
+              <Link
+                href={`/notices?page=${page + 1}`}
+                className="border-rule text-muted-fg hover:text-ink rounded-md border bg-white px-4 py-2 text-sm font-medium">
                 다음
               </Link>
             ) : null}

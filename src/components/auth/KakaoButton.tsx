@@ -14,8 +14,7 @@ export function KakaoButton() {
       variant="kakao"
       disabled={pending}
       onClick={() => startTransition(() => signInWithKakao())}
-      className="h-11 text-base font-bold"
-    >
+      className="h-11 text-base font-bold">
       {pending ? (
         <>
           <Loader2 className="animate-spin" />

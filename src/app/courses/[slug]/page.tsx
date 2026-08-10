@@ -75,8 +75,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <CoursePriceLine size="lg" className="mb-4" />
           <Link
             href={`/courses/${course.slug}/enroll`}
-            className="bg-brand-gradient block w-full rounded-full py-3.5 text-center text-base font-bold tracking-wide text-white transition-opacity hover:opacity-90"
-          >
+            className="bg-brand-gradient block w-full rounded-full py-3.5 text-center text-base font-bold tracking-wide text-white transition-opacity hover:opacity-90">
             수강 신청하기
           </Link>
         </div>
@@ -181,8 +180,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
                 {group.units.map((u) => (
                   <div
                     key={u.n}
-                    className="border-rule bg-surface hover:border-progress rounded-md border p-5 text-center transition-[border-color,transform] duration-150 hover:-translate-y-0.5"
-                  >
+                    className="border-rule bg-surface hover:border-progress rounded-md border p-5 text-center transition-[border-color,transform] duration-150 hover:-translate-y-0.5">
                     <p className="text-progress mb-2 text-base font-bold">{u.n.replace(/^Unit 0?/, "Unit ")}</p>
                     <p className="text-ink text-base leading-snug font-medium">{u.t}</p>
                     {u.sub && <p className="text-muted-fg-faint mt-1 text-sm leading-snug">{u.sub}</p>}
@@ -208,8 +206,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <p className="mb-8 text-base text-white/85">원하는 요일·시간과 강사를 직접 선택해 바로 신청하세요.</p>
           <Link
             href={`/courses/${course.slug}/enroll`}
-            className="text-ink inline-block rounded-full bg-white px-8 py-3.5 text-base font-bold tracking-wide transition-opacity hover:opacity-90"
-          >
+            className="text-ink inline-block rounded-full bg-white px-8 py-3.5 text-base font-bold tracking-wide transition-opacity hover:opacity-90">
             수강 신청하기
           </Link>
         </div>

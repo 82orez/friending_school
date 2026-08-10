@@ -36,7 +36,8 @@ export default function CurrentTeacherTable({
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const en = useLang() === "en";
 
-  const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const sortedTeachers = useMemo(() => {
     if (!sort) return teachers;
@@ -76,15 +77,16 @@ export default function CurrentTeacherTable({
                 {t.name && <p className="text-muted-fg text-xs">{t.email}</p>}
               </td>
               <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{t.centerName ?? "None"}</td>
-              <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{en ? nationalityLabelEn(t.nationality) : nationalityLabel(t.nationality)}</td>
+              <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">
+                {en ? nationalityLabelEn(t.nationality) : nationalityLabel(t.nationality)}
+              </td>
               <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{en ? genderLabelEn(t.gender) : genderLabelKo(t.gender)}</td>
               {onViewClasses && (
                 <td className="px-4 py-3.5 align-middle">
                   <button
                     type="button"
                     onClick={() => onViewClasses(t)}
-                    className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
-                  >
+                    className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
                     {en ? "View classes" : "수업 보기"}
                   </button>
                 </td>
@@ -94,8 +96,7 @@ export default function CurrentTeacherTable({
                   <button
                     type="button"
                     onClick={() => onView(t)}
-                    className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors"
-                  >
+                    className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
                     {en ? "View info" : "정보 보기"}
                   </button>
                   {onDelete && (
@@ -103,8 +104,7 @@ export default function CurrentTeacherTable({
                       type="button"
                       onClick={() => onDelete(t)}
                       disabled={deleting}
-                      className="border-brand/40 text-brand hover:bg-brand/5 shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60"
-                    >
+                      className="border-brand/40 text-brand hover:bg-brand/5 shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60">
                       {en ? "Delete teacher" : "강사 삭제"}
                     </button>
                   )}

@@ -184,7 +184,9 @@ export default function TeacherProfileForm({
         <h2 className="text-ink mb-4 flex items-center gap-2 text-base font-bold">
           <span aria-hidden>👤</span> Teacher Info
         </h2>
-        <p className="text-muted-fg-faint -mt-2 mb-4 text-xs">Name, nationality, gender, and center are set when your application is approved and can only be changed by an admin.</p>
+        <p className="text-muted-fg-faint -mt-2 mb-4 text-xs">
+          Name, nationality, gender, and center are set when your application is approved and can only be changed by an admin.
+        </p>
 
         <div className="space-y-4">
           <div className="grid gap-2">
@@ -194,9 +196,7 @@ export default function TeacherProfileForm({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="first_name">
-                First Name {editing && <span className="text-brand">*</span>}
-              </Label>
+              <Label htmlFor="first_name">First Name {editing && <span className="text-brand">*</span>}</Label>
               <Input
                 id="first_name"
                 name="first_name"
@@ -209,9 +209,7 @@ export default function TeacherProfileForm({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="last_name">
-                Last Name {editing && <span className="text-brand">*</span>}
-              </Label>
+              <Label htmlFor="last_name">Last Name {editing && <span className="text-brand">*</span>}</Label>
               <Input
                 id="last_name"
                 name="last_name"
@@ -226,9 +224,7 @@ export default function TeacherProfileForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="bio">
-              Educational background {editing && <span className="text-brand">*</span>}
-            </Label>
+            <Label htmlFor="bio">Educational background {editing && <span className="text-brand">*</span>}</Label>
             <Textarea
               id="bio"
               name="bio"
@@ -244,9 +240,7 @@ export default function TeacherProfileForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="experience">
-              Teaching &amp; related experience {editing && <span className="text-brand">*</span>}
-            </Label>
+            <Label htmlFor="experience">Teaching &amp; related experience {editing && <span className="text-brand">*</span>}</Label>
             <Textarea
               id="experience"
               name="experience"
@@ -278,9 +272,7 @@ export default function TeacherProfileForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="nationality">
-              Nationality {editing && <span className="text-brand">*</span>}
-            </Label>
+            <Label htmlFor="nationality">Nationality {editing && <span className="text-brand">*</span>}</Label>
             <select
               id="nationality"
               name="nationality"
@@ -303,9 +295,7 @@ export default function TeacherProfileForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="gender">
-              Gender {editing && <span className="text-brand">*</span>}
-            </Label>
+            <Label htmlFor="gender">Gender {editing && <span className="text-brand">*</span>}</Label>
             <select
               id="gender"
               name="gender"
@@ -328,9 +318,7 @@ export default function TeacherProfileForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="center_id">
-              Center {editing && <span className="text-brand">*</span>}
-            </Label>
+            <Label htmlFor="center_id">Center {editing && <span className="text-brand">*</span>}</Label>
             <select
               id="center_id"
               name="center_id"

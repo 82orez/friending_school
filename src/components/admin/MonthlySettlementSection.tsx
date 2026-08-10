@@ -112,8 +112,8 @@ export default function MonthlySettlementSection({
     <div className="mt-10">
       <h2 className="text-ink text-xl font-extrabold">월 정산금액 확정</h2>
       <p className="text-muted-fg mt-1 text-sm">
-        센터별로 월 정산액을 확정하고(각 센터가 선 정산받아 소속 강사에게 지급), 송금 수수료 등 조정 항목을 더한 실지급액을 기록합니다. 마감된 지난 달만 확정할 수
-        있습니다.
+        센터별로 월 정산액을 확정하고(각 센터가 선 정산받아 소속 강사에게 지급), 송금 수수료 등 조정 항목을 더한 실지급액을 기록합니다. 마감된 지난
+        달만 확정할 수 있습니다.
       </p>
 
       {/* 월 네비게이터 */}
@@ -122,8 +122,7 @@ export default function MonthlySettlementSection({
           type="button"
           onClick={() => setAnchorMonth((a) => shiftMonth(a, -1))}
           className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-8 items-center justify-center rounded-md border transition-colors"
-          aria-label="이전 달"
-        >
+          aria-label="이전 달">
           <ChevronLeft className="size-4" aria-hidden />
         </button>
         <span className="text-ink min-w-[7rem] text-center text-sm font-bold whitespace-nowrap">{monthLabel(anchorMonth)}</span>
@@ -131,15 +130,13 @@ export default function MonthlySettlementSection({
           type="button"
           onClick={() => setAnchorMonth((a) => shiftMonth(a, 1))}
           className="border-rule text-muted-fg hover:text-ink hover:border-accent-blue inline-flex size-8 items-center justify-center rounded-md border transition-colors"
-          aria-label="다음 달"
-        >
+          aria-label="다음 달">
           <ChevronRight className="size-4" aria-hidden />
         </button>
         <button
           type="button"
           onClick={() => setAnchorMonth(thisMonth())}
-          className="border-rule text-muted-fg hover:text-ink rounded-md border px-3 py-1.5 text-xs font-medium transition-colors"
-        >
+          className="border-rule text-muted-fg hover:text-ink rounded-md border px-3 py-1.5 text-xs font-medium transition-colors">
           이번 달
         </button>
         {!rawClosed &&
@@ -194,8 +191,7 @@ export default function MonthlySettlementSection({
                             : rec?.status === "확정"
                               ? "bg-[#E6F4EA] text-[#1E7E34] hover:bg-[#d8eecd]"
                               : "bg-brand/10 text-brand hover:bg-brand/15 border-brand/30 border",
-                        )}
-                      >
+                        )}>
                         {rec?.status ?? "미확정"}
                         {rec && <span className="ml-1 font-bold">{formatPrice(rec.totalKrw, "KRW")}</span>}
                       </button>

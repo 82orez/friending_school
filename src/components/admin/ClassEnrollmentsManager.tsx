@@ -58,7 +58,8 @@ export default function ClassEnrollmentsManager({ rows, sessions }: { rows: Clas
     return () => clearInterval(t);
   }, []);
 
-  const toggleSort = (key: SortKey) => setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
 
   const counts = useMemo(() => {
     const c = { 전체: rows.length, 진행중: 0, 완료: 0, 환불: 0 };
@@ -77,7 +78,9 @@ export default function ClassEnrollmentsManager({ rows, sessions }: { rows: Clas
       if (filter === "진행중" && (r.refunded || !isOngoing(r))) return false;
       if (filter === "완료" && (r.refunded || isOngoing(r))) return false;
       if (!q) return true;
-      return `${r.studentName ?? ""} ${r.studentEnglishName ?? ""} ${r.teacherName ?? ""} ${r.centerName ?? ""} ${r.courseTitle}`.toLowerCase().includes(q);
+      return `${r.studentName ?? ""} ${r.studentEnglishName ?? ""} ${r.teacherName ?? ""} ${r.centerName ?? ""} ${r.courseTitle}`
+        .toLowerCase()
+        .includes(q);
     });
     let arr = base;
     if (sort) {
@@ -125,142 +128,140 @@ export default function ClassEnrollmentsManager({ rows, sessions }: { rows: Clas
         </div>
       ) : (
         <>
-      <div className="mt-5 flex flex-wrap gap-2">
-        {FILTERS.map((f) => {
-          const active = filter === f;
-          return (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              aria-pressed={active}
-              className={cn(
-                "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
-                active ? "bg-ink border-ink text-white" : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
-              )}
-            >
-              {f} <span className={cn("ml-0.5", active ? "text-white/70" : "text-muted-fg-faint")}>{counts[f] ?? 0}</span>
-            </button>
-          );
-        })}
-      </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {FILTERS.map((f) => {
+              const active = filter === f;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilter(f)}
+                  aria-pressed={active}
+                  className={cn(
+                    "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-ink border-ink text-white"
+                      : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
+                  )}>
+                  {f} <span className={cn("ml-0.5", active ? "text-white/70" : "text-muted-fg-faint")}>{counts[f] ?? 0}</span>
+                </button>
+              );
+            })}
+          </div>
 
-      <div className="border-rule mt-4 flex items-center gap-2 rounded-lg border bg-white px-3">
-        <Search className="text-muted-fg-faint size-4" aria-hidden />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="학생·강사·과정 검색..."
-          className="h-10 flex-1 bg-transparent text-sm outline-none"
-        />
-      </div>
+          <div className="border-rule mt-4 flex items-center gap-2 rounded-lg border bg-white px-3">
+            <Search className="text-muted-fg-faint size-4" aria-hidden />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="학생·강사·과정 검색..."
+              className="h-10 flex-1 bg-transparent text-sm outline-none"
+            />
+          </div>
 
-      <div className="border-rule mt-4 overflow-x-auto rounded-xl border bg-white">
-        <table className="w-full min-w-[760px] border-collapse text-sm">
-          <thead>
-            <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
-              <th className="px-4 py-2.5 md:px-6">상태</th>
-              <SortHeader label="과정" sortKey="course" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-              <SortHeader label="학생" sortKey="student" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-              <SortHeader label="강사" sortKey="teacher" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-              <SortHeader label="기간" sortKey="start" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
-              <th className="px-4 py-2.5">진행</th>
-              <th className="px-4 py-2.5 md:px-6">남은 연기</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-muted-fg px-6 py-12 text-center text-sm">
-                  표시할 과정이 없습니다.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((r) => {
-                const ongoing = isOngoing(r);
-                const live = isLive(r, now);
-                const active = r.total - r.cancelled;
-                const pct = active > 0 ? Math.round((r.done / active) * 100) : 0;
-                const remaining = Math.max(0, MAX_CANCELLATIONS - r.postponed);
-                return (
-                  <tr
-                    key={r.enrollmentId}
-                    onClick={() => open(r.enrollmentId)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        open(r.enrollmentId);
-                      }
-                    }}
-                    tabIndex={0}
-                    className="border-rule hover:bg-surface/60 focus-visible:bg-surface/60 cursor-pointer border-b transition-colors outline-none last:border-b-0"
-                  >
-                    <td className="px-4 py-3.5 align-middle md:px-6">
-                      <div className="flex flex-col items-start gap-1.5">
-                        {live && (
-                          <span className="bg-cta shrink-0 animate-pulse rounded-full px-2.5 py-0.5 text-xs font-bold text-white">● 수업 중</span>
-                        )}
-                        <span
-                          className={cn(
-                            "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold",
-                            r.refunded ? REFUND_BADGE : ongoing ? "bg-accent-blue-soft text-accent-blue-ink" : "bg-rule text-muted-fg",
-                          )}
-                        >
-                          {r.refunded ? "환불" : ongoing ? "진행중" : "완료"}
-                        </span>
-                        {r.makeup > 0 && <span className="bg-progress/10 text-progress shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">보강 {r.makeup}</span>}
-                      </div>
-                    </td>
-                    <td className="text-ink max-w-[12rem] truncate px-4 py-3.5 align-middle font-bold">{r.courseTitle}</td>
-                    <td className="text-ink max-w-[10rem] truncate px-4 py-3.5 align-middle">
-                      {r.studentName ?? "학생"}
-                      {r.studentEnglishName && <span className="text-muted-fg-faint"> ({r.studentEnglishName})</span>}
-                    </td>
-                    <td className="text-muted-fg max-w-[10rem] px-4 py-3.5 align-middle">
-                      <span className="block truncate">{r.teacherName ?? "강사"}</span>
-                      <span className="text-muted-fg-faint mt-0.5 block truncate text-xs">{r.centerName ?? "미지정"}</span>
-                    </td>
-                    <td className="text-muted-fg px-4 py-3.5 align-middle whitespace-nowrap">
-                      <span className="block">
-                        {r.firstDate}
-                        <span className="text-muted-fg-faint"> ~ {r.lastDate}</span>
-                      </span>
-                      {r.schedule && <span className="text-muted-fg-faint mt-0.5 block text-xs font-medium">{r.schedule}</span>}
-                    </td>
-                    <td className="px-4 py-3.5 align-middle">
-                      <div className="flex flex-col gap-1">
-                        <div className="text-muted-fg-faint flex items-center gap-2 text-xs whitespace-nowrap">
-                          <span className="text-ink font-semibold">
-                            {r.done}/{active}
-                          </span>
-                          완료
-                          <span className="text-accent-blue-ink">예정 {r.upcoming}</span>
-                          {r.cancelled > 0 && <span className="text-brand">취소 {r.cancelled}</span>}
-                        </div>
-                        <div className="bg-rule h-1.5 w-28 overflow-hidden rounded-full">
-                          <div className="bg-progress h-full rounded-full" style={{ width: `${pct}%` }} />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 align-middle whitespace-nowrap md:px-6">
-                      <span
-                        className={cn(
-                          "font-semibold",
-                          remaining === 0 ? "text-brand" : remaining <= 2 ? "text-[#B97400]" : "text-muted-fg",
-                        )}
-                      >
-                        {remaining}
-                      </span>
-                      <span className="text-muted-fg-faint"> / {MAX_CANCELLATIONS}</span>
+          <div className="border-rule mt-4 overflow-x-auto rounded-xl border bg-white">
+            <table className="w-full min-w-[760px] border-collapse text-sm">
+              <thead>
+                <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
+                  <th className="px-4 py-2.5 md:px-6">상태</th>
+                  <SortHeader label="과정" sortKey="course" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+                  <SortHeader label="학생" sortKey="student" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+                  <SortHeader label="강사" sortKey="teacher" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+                  <SortHeader label="기간" sortKey="start" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+                  <th className="px-4 py-2.5">진행</th>
+                  <th className="px-4 py-2.5 md:px-6">남은 연기</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-muted-fg px-6 py-12 text-center text-sm">
+                      표시할 과정이 없습니다.
                     </td>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                ) : (
+                  filtered.map((r) => {
+                    const ongoing = isOngoing(r);
+                    const live = isLive(r, now);
+                    const active = r.total - r.cancelled;
+                    const pct = active > 0 ? Math.round((r.done / active) * 100) : 0;
+                    const remaining = Math.max(0, MAX_CANCELLATIONS - r.postponed);
+                    return (
+                      <tr
+                        key={r.enrollmentId}
+                        onClick={() => open(r.enrollmentId)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            open(r.enrollmentId);
+                          }
+                        }}
+                        tabIndex={0}
+                        className="border-rule hover:bg-surface/60 focus-visible:bg-surface/60 cursor-pointer border-b transition-colors outline-none last:border-b-0">
+                        <td className="px-4 py-3.5 align-middle md:px-6">
+                          <div className="flex flex-col items-start gap-1.5">
+                            {live && (
+                              <span className="bg-cta shrink-0 animate-pulse rounded-full px-2.5 py-0.5 text-xs font-bold text-white">● 수업 중</span>
+                            )}
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold",
+                                r.refunded ? REFUND_BADGE : ongoing ? "bg-accent-blue-soft text-accent-blue-ink" : "bg-rule text-muted-fg",
+                              )}>
+                              {r.refunded ? "환불" : ongoing ? "진행중" : "완료"}
+                            </span>
+                            {r.makeup > 0 && (
+                              <span className="bg-progress/10 text-progress shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">
+                                보강 {r.makeup}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="text-ink max-w-[12rem] truncate px-4 py-3.5 align-middle font-bold">{r.courseTitle}</td>
+                        <td className="text-ink max-w-[10rem] truncate px-4 py-3.5 align-middle">
+                          {r.studentName ?? "학생"}
+                          {r.studentEnglishName && <span className="text-muted-fg-faint"> ({r.studentEnglishName})</span>}
+                        </td>
+                        <td className="text-muted-fg max-w-[10rem] px-4 py-3.5 align-middle">
+                          <span className="block truncate">{r.teacherName ?? "강사"}</span>
+                          <span className="text-muted-fg-faint mt-0.5 block truncate text-xs">{r.centerName ?? "미지정"}</span>
+                        </td>
+                        <td className="text-muted-fg px-4 py-3.5 align-middle whitespace-nowrap">
+                          <span className="block">
+                            {r.firstDate}
+                            <span className="text-muted-fg-faint"> ~ {r.lastDate}</span>
+                          </span>
+                          {r.schedule && <span className="text-muted-fg-faint mt-0.5 block text-xs font-medium">{r.schedule}</span>}
+                        </td>
+                        <td className="px-4 py-3.5 align-middle">
+                          <div className="flex flex-col gap-1">
+                            <div className="text-muted-fg-faint flex items-center gap-2 text-xs whitespace-nowrap">
+                              <span className="text-ink font-semibold">
+                                {r.done}/{active}
+                              </span>
+                              완료
+                              <span className="text-accent-blue-ink">예정 {r.upcoming}</span>
+                              {r.cancelled > 0 && <span className="text-brand">취소 {r.cancelled}</span>}
+                            </div>
+                            <div className="bg-rule h-1.5 w-28 overflow-hidden rounded-full">
+                              <div className="bg-progress h-full rounded-full" style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 align-middle whitespace-nowrap md:px-6">
+                          <span className={cn("font-semibold", remaining === 0 ? "text-brand" : remaining <= 2 ? "text-[#B97400]" : "text-muted-fg")}>
+                            {remaining}
+                          </span>
+                          <span className="text-muted-fg-faint"> / {MAX_CANCELLATIONS}</span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </div>

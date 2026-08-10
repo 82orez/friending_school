@@ -157,8 +157,7 @@ export default function StudentProfileForm({
               form="student-profile-form"
               variant="brand"
               disabled={pending || !phoneVerified}
-              className={cn(pending && "opacity-90")}
-            >
+              className={cn(pending && "opacity-90")}>
               {pending ? (
                 <>
                   <Loader2 className="animate-spin" />
