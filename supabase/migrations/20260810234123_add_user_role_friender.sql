@@ -1,0 +1,12 @@
+-- user_role ENUM에 'friender'(프렌더) 추가
+-- 프렌더 = 강사(teacher)와 유사하지만 별개인 역할. 일반 회원이 신청 → 관리자 승인 시 role 전환.
+--
+-- ⚠️ 이 문장은 반드시 이 파일에 단독으로 둘 것.
+--    Postgres는 ALTER TYPE ... ADD VALUE로 추가한 값을 "같은 트랜잭션 안에서" 사용할 수 없고,
+--    Supabase CLI는 마이그레이션 파일 1개 = 트랜잭션 1개로 실행한다.
+--    friender 값을 쓰는 DDL/DML(예: 승인 RPC)은 반드시 이후 별도 파일에서.
+--
+-- RLS/트리거 변경 불필요:
+--  - prevent_role_self_change 는 role 값에 비의존(현재 값으로 되돌릴 뿐)
+--  - role 값을 참조하는 RLS 정책은 프로젝트에 없음(권한 판정은 전부 앱 레이어 + service_role)
+alter type public.user_role add value if not exists 'friender';

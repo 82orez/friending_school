@@ -56,8 +56,10 @@ export default async function TeacherApplyPage() {
 
   const role = await getUserRole(supabase, user.id);
   // 이미 강사/관리자면 지원 불필요 — 각자 페이지로 리다이렉트.
+  // role은 단일값이라 프렌더도 강사 지원 불가(승인 시 프렌더 권한을 잃게 됨).
   if (role === "teacher") redirect("/teacher");
   if (role === "admin") redirect("/");
+  if (role === "friender") redirect("/");
 
   const { data: profile } = await supabase
     .from("profiles")

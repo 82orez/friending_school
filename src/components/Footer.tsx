@@ -102,9 +102,17 @@ export default async function Footer() {
         {/* 하단 */}
         <div className="mt-8 flex flex-col items-center gap-3 border-t border-white/10 pt-5 text-center md:flex-row md:justify-between md:text-left">
           <p className="text-[13px] text-[#888]">Copyright © 2026 (주)프렌딩, All Rights Reserved.</p>
-          <Link href="/teacher/apply" className="text-[13px] text-[#888] transition-colors hover:text-white">
-            Become a Teacher
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/friender/apply" className="text-[13px] text-[#888] transition-colors hover:text-white">
+              프렌더 지원하기
+            </Link>
+            <span aria-hidden className="text-[13px] text-[#555]">
+              ·
+            </span>
+            <Link href="/teacher/apply" className="text-[13px] text-[#888] transition-colors hover:text-white">
+              Become a Teacher
+            </Link>
+          </div>
         </div>
       </div>
     </footer>
