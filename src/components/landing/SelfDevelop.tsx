@@ -16,7 +16,7 @@ const TAB_LABELS: Record<string, string> = {
   cosmetic: "뷰티 수출영어",
 };
 
-// landing book.key → 전자책 course(레지스트리). 여기 등록된 교재만 전자책 연동(나머지는 mock placeholder).
+// landing book.key → 전자책 course(레지스트리). 현재 BOOKS 5종 전부 연동 — 새 교재 추가 시 여기에도 등록 필수(누락 시 카드가 링크되지 않음).
 const LINKED_COURSE: Record<string, string> = { workhol: "workhol", kitchen: "kitchen", basic1: "grammar1", basic2: "grammar2", cosmetic: "cosmetic" };
 
 // "Unit 01" → 1, "Unit 25" → 25
@@ -131,7 +131,7 @@ function BookPanel({
     const num = unitNum(u);
     const tbUnit = textbook?.units.find((t) => t.unit === num);
     const subtitle = u.sub ?? tbUnit?.titleKr;
-    // situation이 부제와 다를 때만 노출(= 사실상 워홀). 나머지 교재는 situation===sub라 undefined.
+    // situation이 부제와 다를 때만 노출(workhol·kitchen·cosmetic). grammar1/2는 situation이 없어 sub로 폴백되므로 동일 → undefined.
     const situation = tbUnit?.situation && tbUnit.situation !== subtitle ? tbUnit.situation : undefined;
     return (
       <LinkedUnitCard
