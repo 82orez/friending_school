@@ -8,6 +8,9 @@ CLAUDE.md
 # fs.readFile로 읽어 iframe srcDoc에 원문 그대로 주입되므로 포매터가 건드리지 않는다.
 content/
 
+# supabase CLI가 생성하는 파일 — db:types로 재생성될 때마다 포맷이 되돌아가므로 대상에서 제외.
+src/types/database.types.ts
+
 # 락파일·로컬 전용 파일
 package-lock.json
 supabase/.temp/

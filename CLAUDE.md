@@ -10,7 +10,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 
 - `npm run dev` / `npm run build` / `npm start` (Next 16 기본 번들러=Turbopack, 스크립트에 `--turbopack` 플래그 없음)
 - shadcn 추가: `npx shadcn@latest add <component>` (v4.7.0, `components.json` 따름)
-- DB: `db:new <name>`(마이그레이션 파일 생성) · `db:push`(원격 적용, **destructive**) · `db:list`(적용 이력 비교) · `db:diff`(`--linked`) · `db:types`(→ `src/types/database.types.ts`, 첫 실행 전 `mkdir -p src/types`; 생성 직후 `prettier --write`까지 체이닝돼 포맷 drift 없음)
+- DB: `db:new <name>`(마이그레이션 파일 생성) · `db:push`(원격 적용, **destructive**) · `db:list`(적용 이력 비교) · `db:diff`(`--linked`) · `db:types`(→ `src/types/database.types.ts`, 첫 실행 전 `mkdir -p src/types`; 생성 파일이라 `.prettierignore` 등재=포맷 대상 아님)
 - `sync:kitchen:audio`(kitchen 교재 음성 라이브→Storage 동기화, **service_role 필요 → 사용자가 직접 실행**). workhol 음성은 `node scripts/sync-workhol-audio.mjs`·버튼 주입 `scripts/add-workhol-audio-buttons.mjs`(npm script 없음).
 - lint/test 스크립트 없음(테스트 프레임워크 미설치). Supabase CLI는 `devDependencies`에 있어 `npx supabase ...` 사용.
 
