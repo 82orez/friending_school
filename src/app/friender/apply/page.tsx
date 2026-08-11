@@ -17,6 +17,7 @@ type FrienderApplicationRow = {
   name: string;
   first_name: string | null;
   last_name: string | null;
+  nickname: string | null;
   phone: string;
   nationality: string | null;
   gender: string | null;
@@ -64,13 +65,14 @@ export default async function FrienderApplyPage({ searchParams }: { searchParams
 
   const { data: profileData } = await supabase
     .from("profiles")
-    .select("first_name, last_name, phone, phone_verified_at, nationality, gender, avatar_url")
+    .select("first_name, last_name, nickname, phone, phone_verified_at, nationality, gender, avatar_url")
     .eq("id", user.id)
     .maybeSingle();
   const profile =
     (profileData as {
       first_name: string | null;
       last_name: string | null;
+      nickname: string | null;
       phone: string | null;
       phone_verified_at: string | null;
       nationality: string | null;
@@ -81,7 +83,7 @@ export default async function FrienderApplyPage({ searchParams }: { searchParams
   // 본인 최신 지원 1건 조회.
   const { data: faData } = await supabase
     .from("friender_applications")
-    .select("id, name, first_name, last_name, phone, nationality, gender, intro, zoom_url, avatar_url, status, admin_note, created_at")
+    .select("id, name, first_name, last_name, nickname, phone, nationality, gender, intro, zoom_url, avatar_url, status, admin_note, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -124,6 +126,7 @@ export default async function FrienderApplyPage({ searchParams }: { searchParams
                   {[
                     ["성", frienderApp.last_name ?? "-"],
                     ["이름", frienderApp.first_name ?? "-"],
+                    ["닉네임", frienderApp.nickname ?? "-"],
                     ["전화번호", formatPhone(frienderApp.phone)],
                     ["국적", nationalityLabel(frienderApp.nationality)],
                     ["성별", genderLabelKo(frienderApp.gender)],
@@ -156,6 +159,7 @@ export default async function FrienderApplyPage({ searchParams }: { searchParams
                   userId={user.id}
                   initialFirstName={frienderApp?.first_name ?? profile?.first_name ?? ""}
                   initialLastName={frienderApp?.last_name ?? profile?.last_name ?? ""}
+                  initialNickname={frienderApp?.nickname ?? profile?.nickname ?? ""}
                   initialPhone={profile?.phone ?? ""}
                   initialPhoneVerified={!!profile?.phone_verified_at}
                   initialNationality={frienderApp?.nationality ?? profile?.nationality ?? ""}

@@ -23,6 +23,10 @@ export async function submitFrienderApplication(_prev: FrienderApplyState, formD
   const lastName = String(formData.get("last_name") ?? "").trim();
   // 한국 관례상 표시명은 성+이름을 공백 없이 붙임(학생 표시명 규칙과 동일).
   const name = `${lastName}${firstName}`;
+  // 닉네임은 선택 입력 — 빈 값이면 null, 길이는 검증 실패 대신 잘라서 흡수.
+  const nickname = String(formData.get("nickname") ?? "")
+    .trim()
+    .slice(0, 30);
   const nationality = String(formData.get("nationality") ?? "").trim();
   const gender = String(formData.get("gender") ?? "").trim();
   const intro = String(formData.get("intro") ?? "").trim();
@@ -67,6 +71,7 @@ export async function submitFrienderApplication(_prev: FrienderApplyState, formD
     name,
     first_name: firstName,
     last_name: lastName,
+    nickname: nickname || null,
     phone: verifiedPhone.phone,
     nationality,
     gender,
@@ -81,6 +86,7 @@ export async function submitFrienderApplication(_prev: FrienderApplyState, formD
     const adminEmails = await getAdminEmails();
     await sendFrienderApplicationNotification(adminEmails, {
       name,
+      nickname,
       phone: verifiedPhone.phone,
       intro,
       zoomUrl,

@@ -12,7 +12,7 @@ export default async function AdminFrienderRequestsPage() {
 
   const { data: appsData } = await admin
     .from("friender_applications")
-    .select("id, user_id, name, phone, nationality, gender, intro, zoom_url, avatar_url, status, admin_note, created_at")
+    .select("id, user_id, name, nickname, phone, nationality, gender, intro, zoom_url, avatar_url, status, admin_note, created_at")
     .order("created_at", { ascending: false });
 
   const applications: FrienderApplication[] = ((appsData ?? []) as Omit<FrienderApplication, "email">[])
@@ -21,7 +21,7 @@ export default async function AdminFrienderRequestsPage() {
 
   const { data: frienderProfiles } = await admin
     .from("profiles")
-    .select("id, first_name, last_name, avatar_url, zoom_url, bio, phone, nationality, gender")
+    .select("id, first_name, last_name, nickname, avatar_url, zoom_url, bio, phone, nationality, gender")
     .eq("role", "friender");
 
   const currentFrienders: CurrentFriender[] = (
@@ -29,6 +29,7 @@ export default async function AdminFrienderRequestsPage() {
       id: string;
       first_name: string | null;
       last_name: string | null;
+      nickname: string | null;
       avatar_url: string | null;
       zoom_url: string | null;
       bio: string | null;
@@ -41,6 +42,7 @@ export default async function AdminFrienderRequestsPage() {
     email: emailById.get(p.id) ?? "(이메일 없음)",
     // 한국 관례상 성+이름을 공백 없이 붙임(신청 액션의 name 조합과 동일 규칙).
     name: `${p.last_name ?? ""}${p.first_name ?? ""}`,
+    nickname: p.nickname,
     phone: p.phone,
     nationality: p.nationality,
     gender: p.gender,

@@ -32,17 +32,18 @@ export async function updateFrienderProfile(_prev: FrienderActionState, formData
   const userId = await requireFriender();
   if (!userId) return { error: "권한이 없습니다." };
 
+  const nickname = clean(formData.get("nickname"), 30); // 선택 입력 — 빈 값이면 null로 지워짐
   const bio = clean(formData.get("bio"), 2000);
   const zoomUrl = clean(formData.get("zoom_url"), 500);
 
   // 이름·국적·성별·전화번호는 프렌더가 수정 불가(승인 시 확정) — 서버에서 읽지도·갱신하지도 않음.
-  // 둘 다 필수 (clean()이 공백-only를 null로 만들어 우회 차단).
+  // 자기소개·Zoom URL은 필수 (clean()이 공백-only를 null로 만들어 우회 차단). 닉네임은 선택이라 제외.
   if (!bio || !zoomUrl) return { error: "필수 항목을 모두 입력해 주세요." };
   if (!isValidZoomUrl(zoomUrl)) return { error: "올바른 Zoom URL을 입력해 주세요. (http:// 또는 https://로 시작)" };
 
   // service_role로 본인 row의 화이트리스트 컬럼만 갱신 (name/nationality/gender/phone/role 등은 제외).
   const admin = createAdminClient();
-  const { error } = await admin.from("profiles").update({ bio, zoom_url: zoomUrl }).eq("id", userId);
+  const { error } = await admin.from("profiles").update({ nickname, bio, zoom_url: zoomUrl }).eq("id", userId);
   if (error) return { error: "저장 중 문제가 발생했습니다." };
 
   revalidatePath("/friender", "layout");

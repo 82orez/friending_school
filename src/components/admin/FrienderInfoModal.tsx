@@ -93,6 +93,7 @@ export default function FrienderInfoModal({ friender, onClose }: { friender: Cur
             {(
               [
                 ["이메일", friender.email],
+                ["닉네임", friender.nickname || "-"],
                 ["전화", friender.phone ? formatPhone(friender.phone) : "-"],
                 ["국적", nationalityLabel(friender.nationality)],
                 ["성별", genderLabelKo(friender.gender)],

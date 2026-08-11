@@ -98,6 +98,7 @@ export async function sendTeacherApplicationNotification(to: string[], data: Tea
 
 export type FrienderApplicationEmailData = {
   name: string;
+  nickname: string; // 선택 입력 — 빈 문자열이면 "-"로 표시
   phone: string;
   intro: string;
   zoomUrl: string;
@@ -108,6 +109,7 @@ export type FrienderApplicationEmailData = {
 function buildFrienderHtml(d: FrienderApplicationEmailData): string {
   const rows: [string, string][] = [
     ["이름", d.name],
+    ["닉네임", d.nickname || "-"],
     ["전화번호", d.phone || "-"],
     ["자기소개", d.intro || "-"],
     ["Zoom URL", d.zoomUrl || "-"],
@@ -135,6 +137,7 @@ function buildFrienderText(d: FrienderApplicationEmailData): string {
     "새 프렌더 지원이 접수되었습니다.",
     "",
     `이름: ${d.name}`,
+    `닉네임: ${d.nickname || "-"}`,
     `전화번호: ${d.phone || "-"}`,
     `자기소개: ${d.intro || "-"}`,
     `Zoom URL: ${d.zoomUrl || "-"}`,

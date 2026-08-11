@@ -387,6 +387,7 @@ export type Database = {
           last_name: string | null
           name: string
           nationality: string | null
+          nickname: string | null
           phone: string
           status: Database["public"]["Enums"]["friender_application_status"]
           updated_at: string
@@ -404,6 +405,7 @@ export type Database = {
           last_name?: string | null
           name: string
           nationality?: string | null
+          nickname?: string | null
           phone: string
           status?: Database["public"]["Enums"]["friender_application_status"]
           updated_at?: string
@@ -421,6 +423,7 @@ export type Database = {
           last_name?: string | null
           name?: string
           nationality?: string | null
+          nickname?: string | null
           phone?: string
           status?: Database["public"]["Enums"]["friender_application_status"]
           updated_at?: string
@@ -602,6 +605,7 @@ export type Database = {
           id: string
           last_name: string | null
           nationality: string | null
+          nickname: string | null
           phone: string | null
           phone_verified_at: string | null
           postcode: string | null
@@ -626,6 +630,7 @@ export type Database = {
           id: string
           last_name?: string | null
           nationality?: string | null
+          nickname?: string | null
           phone?: string | null
           phone_verified_at?: string | null
           postcode?: string | null
@@ -650,6 +655,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           nationality?: string | null
+          nickname?: string | null
           phone?: string | null
           phone_verified_at?: string | null
           postcode?: string | null

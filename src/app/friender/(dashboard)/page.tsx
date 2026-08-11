@@ -12,7 +12,7 @@ export default async function FrienderProfilePage() {
 
   const { data } = await supabase
     .from("profiles")
-    .select("first_name, last_name, avatar_url, zoom_url, bio, phone, nationality, gender")
+    .select("first_name, last_name, nickname, avatar_url, zoom_url, bio, phone, nationality, gender")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -20,6 +20,7 @@ export default async function FrienderProfilePage() {
   const initial: FrienderProfile = {
     first_name: profile.first_name ?? "",
     last_name: profile.last_name ?? "",
+    nickname: profile.nickname ?? "",
     avatar_url: profile.avatar_url ?? "",
     zoom_url: profile.zoom_url ?? "",
     bio: profile.bio ?? "",

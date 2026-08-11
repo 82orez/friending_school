@@ -39,6 +39,7 @@ export default function FrienderApplicationForm({
   initialPhone,
   initialPhoneVerified,
   initialAvatarUrl,
+  initialNickname = "",
   initialNationality = "",
   initialGender = "",
   initialIntro = "",
@@ -50,6 +51,7 @@ export default function FrienderApplicationForm({
   initialPhone: string;
   initialPhoneVerified: boolean;
   initialAvatarUrl: string;
+  initialNickname?: string;
   initialNationality?: string;
   initialGender?: string;
   initialIntro?: string;
@@ -58,6 +60,7 @@ export default function FrienderApplicationForm({
   const [state, formAction, pending] = useActionState<FrienderApplyState, FormData>(submitFrienderApplication, {});
   const [firstName, setFirstName] = useState(initialFirstName);
   const [lastName, setLastName] = useState(initialLastName);
+  const [nickname, setNickname] = useState(initialNickname);
   const [nationality, setNationality] = useState(initialNationality);
   const [gender, setGender] = useState(initialGender);
   const [intro, setIntro] = useState(initialIntro);
@@ -235,6 +238,20 @@ export default function FrienderApplicationForm({
         </div>
       </div>
 
+      <div className="grid gap-1.5">
+        <Label htmlFor="fa-nickname">
+          닉네임 <span className="text-muted-fg-faint font-normal">(선택)</span>
+        </Label>
+        <Input
+          id="fa-nickname"
+          name="nickname"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          placeholder="회원들에게 보여질 별칭"
+          maxLength={30}
+        />
+      </div>
+
       {/* 전화번호 — SMS 인증 필수. PhoneVerifyField는 name 없는 입력 + type="button"이라 폼 제출에 개입하지 않음. */}
       <div className="border-rule rounded-xl border p-4">
         <PhoneVerifyField initialPhone={initialPhone} initialVerified={initialPhoneVerified} onVerifiedChange={setPhoneVerified} />
@@ -357,6 +374,7 @@ export default function FrienderApplicationForm({
             {[
               ["성", lastName],
               ["이름", firstName],
+              ["닉네임", nickname || "-"],
               ["전화번호", phone ? formatPhone(phone) : "-"],
               ["국적", nationalityLabel(nationality)],
               ["성별", genderLabelKo(gender)],

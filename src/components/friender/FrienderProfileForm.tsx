@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 export type FrienderProfile = {
   first_name: string;
   last_name: string;
+  nickname: string;
   avatar_url: string;
   zoom_url: string;
   bio: string;
@@ -31,28 +32,30 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 // 보기 모드(disabled)에서 값이 흐려지지 않도록 텍스트를 진하게 + 커서는 일반(default) 유지.
 const VIEW_TEXT = "disabled:opacity-100 disabled:text-ink disabled:cursor-default disabled:bg-transparent";
 
-// 영구 잠금 필드(프렌더 수정 불가: 이름·전화·국적·성별·이메일) — **편집 모드에서만** not-allowed 커서로 표시.
+// 영구 잠금 필드(프렌더 수정 불가: 이름·전화·국적·성별·이메일 — 닉네임은 편집 가능) — **편집 모드에서만** not-allowed 커서로 표시.
 // Input 기본의 disabled:pointer-events-none가 hover 자체를 막으므로 auto로 되돌린 뒤 not-allowed 적용.
 const LOCKED = "disabled:pointer-events-auto disabled:cursor-not-allowed";
 
-// 프렌더 프로필 — 편집 가능한 항목은 자기소개(bio)·Zoom URL 2개뿐.
+// 프렌더 프로필 — 편집 가능한 항목은 닉네임(선택)·자기소개(bio)·Zoom URL 3개.
 // 나머지(이름·전화·국적·성별)는 승인 시 확정되며 변경은 관리자만 가능.
 export default function FrienderProfileForm({ userId, email, initial }: { userId: string; email: string; initial: FrienderProfile }) {
   const [state, formAction, pending] = useActionState<FrienderActionState, FormData>(updateFrienderProfile, {});
+  const [nickname, setNickname] = useState(initial.nickname);
   const [bio, setBio] = useState(initial.bio);
   const [zoomUrl, setZoomUrl] = useState(initial.zoom_url);
 
   // 보기/편집 모드 — 편집 모드에서만 수정 가능(실수 저장 방지).
   const [editing, setEditing] = useState(false);
-  const snapshotRef = useRef({ bio, zoomUrl });
+  const snapshotRef = useRef({ nickname, bio, zoomUrl });
 
   const startEditing = () => {
-    snapshotRef.current = { bio, zoomUrl };
+    snapshotRef.current = { nickname, bio, zoomUrl };
     setEditing(true);
   };
 
   const cancelEditing = () => {
     const s = snapshotRef.current;
+    setNickname(s.nickname);
     setBio(s.bio);
     setZoomUrl(s.zoomUrl);
     setEditing(false);
@@ -172,6 +175,22 @@ export default function FrienderProfileForm({ userId, email, initial }: { userId
               <Label htmlFor="fp-first-name">이름</Label>
               <Input id="fp-first-name" value={initial.first_name} readOnly disabled className={cn(VIEW_TEXT, editing && LOCKED)} />
             </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="nickname">
+              닉네임 <span className="text-muted-fg-faint font-normal">(선택)</span>
+            </Label>
+            <Input
+              id="nickname"
+              name="nickname"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="회원들에게 보여질 별칭"
+              maxLength={30}
+              disabled={!editing}
+              className={VIEW_TEXT}
+            />
           </div>
 
           <div className="grid gap-2">

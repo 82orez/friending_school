@@ -25,6 +25,7 @@ export type FrienderApplication = {
   id: string;
   user_id: string;
   name: string;
+  nickname: string | null;
   phone: string;
   nationality: string | null;
   gender: string | null;
@@ -41,6 +42,7 @@ export type CurrentFriender = {
   id: string;
   email: string;
   name: string;
+  nickname: string | null;
   phone: string | null;
   nationality: string | null;
   gender: string | null;
@@ -102,7 +104,9 @@ export default function FrienderRequestsManager({
     return rows.filter((r) => {
       if (filter !== "all" && r.status !== filter) return false;
       if (!q) return true;
-      return r.name.toLowerCase().includes(q) || r.phone.includes(q) || r.email.toLowerCase().includes(q);
+      return (
+        r.name.toLowerCase().includes(q) || (r.nickname ?? "").toLowerCase().includes(q) || r.phone.includes(q) || r.email.toLowerCase().includes(q)
+      );
     });
   }, [rows, query, filter]);
 
@@ -143,7 +147,7 @@ export default function FrienderRequestsManager({
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="이름, 전화번호, 이메일 검색..."
+            placeholder="이름, 닉네임, 전화번호, 이메일 검색..."
             className="h-10 flex-1 bg-transparent text-sm outline-none"
           />
         </div>
@@ -276,6 +280,7 @@ function ApplicationRow({
           id: row.user_id,
           email: row.email,
           name: row.name,
+          nickname: row.nickname,
           phone: row.phone,
           nationality: row.nationality,
           gender: row.gender,
@@ -346,6 +351,7 @@ function ApplicationRow({
           <dl className="mb-3 grid grid-cols-1 gap-x-6 gap-y-2 text-sm">
             {[
               ["이메일", row.email],
+              ["닉네임", row.nickname ?? "-"],
               ["전화", formatPhone(row.phone)],
               ["국적", nationalityLabel(row.nationality)],
               ["성별", genderLabelKo(row.gender)],
@@ -498,7 +504,10 @@ function CurrentFrienderTable({
           {sorted.map((f) => (
             <tr key={f.id} className="border-rule border-b last:border-b-0">
               <td className="px-4 py-3.5 align-middle md:px-6">
-                <p className="text-ink font-bold">{f.name || f.email}</p>
+                <p className="text-ink font-bold">
+                  {f.name || f.email}
+                  {f.nickname && <span className="text-muted-fg font-normal"> ({f.nickname})</span>}
+                </p>
                 {f.name && <p className="text-muted-fg text-xs">{f.email}</p>}
               </td>
               <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{nationalityLabel(f.nationality)}</td>
