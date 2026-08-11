@@ -90,6 +90,13 @@ export default async function FrienderApplyPage({ searchParams }: { searchParams
     .maybeSingle();
   const frienderApp = (faData as FrienderApplicationRow | null) ?? null;
 
+  // role=friender면 위에서 /friender로 리다이렉트되므로, 이 페이지에 도달했는데 최신 신청이 '승인'이면
+  // 승인 후 관리자가 자격을 회수한 상태다(신청서 status는 이력이라 '승인'으로 남는다).
+  // 그대로 두면 "승인됨" 배지가 뜨면서 재신청 폼이 함께 보여 혼란스러우므로 해제 상태로 표시한다.
+  const revoked = frienderApp?.status === "승인";
+  const badgeClass = revoked ? "bg-rule text-muted-fg" : frienderApp ? FRIENDER_STATUS_BADGE[frienderApp.status] : "";
+  const badgeLabel = revoked ? "자격 해제됨" : frienderApp ? FRIENDER_STATUS_LABEL[frienderApp.status] : "";
+
   return (
     <div className="bg-surface min-h-screen">
       {submitted === "1" && <ToastOnMount queryKey="submitted" message="프렌더 신청이 접수되었습니다. 심사 결과는 문자로 안내드립니다." />}
@@ -111,11 +118,7 @@ export default async function FrienderApplyPage({ searchParams }: { searchParams
           <div className="border-rule flex items-center gap-2 border-b px-6 py-5">
             <span aria-hidden>🤝</span>
             <h2 className="text-ink text-base font-bold">프렌더 신청서</h2>
-            {frienderApp && (
-              <span className={cn("ml-auto rounded-full px-2.5 py-0.5 text-xs font-bold", FRIENDER_STATUS_BADGE[frienderApp.status])}>
-                {FRIENDER_STATUS_LABEL[frienderApp.status]}
-              </span>
-            )}
+            {frienderApp && <span className={cn("ml-auto rounded-full px-2.5 py-0.5 text-xs font-bold", badgeClass)}>{badgeLabel}</span>}
           </div>
 
           <div className="px-6 py-6">
@@ -144,6 +147,12 @@ export default async function FrienderApplyPage({ searchParams }: { searchParams
               </div>
             ) : (
               <>
+                {revoked && (
+                  <div className="border-rule bg-surface mb-5 rounded-lg border px-4 py-3">
+                    <p className="text-ink text-sm font-bold">프렌더 자격이 해제되었습니다.</p>
+                    <p className="text-muted-fg mt-1 text-xs">현재는 일반 회원 상태입니다. 원하시면 아래에서 다시 신청하실 수 있습니다.</p>
+                  </div>
+                )}
                 {frienderApp?.status === "거절" && (
                   <div className="border-brand/30 bg-brand/5 mb-5 rounded-lg border px-4 py-3">
                     <p className="text-brand text-sm font-bold">이전 신청이 승인되지 않았습니다.</p>
