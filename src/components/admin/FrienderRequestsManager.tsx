@@ -92,6 +92,7 @@ export default function FrienderRequestsManager({
   const [infoTarget, setInfoTarget] = useState<CurrentFriender | null>(null);
   const closeInfo = useCallback(() => setInfoTarget(null), []);
   const [revokeTarget, setRevokeTarget] = useState<CurrentFriender | null>(null);
+  const [revokeReason, setRevokeReason] = useState(""); // 선택 입력 — 적으면 본인 안내 메일에 사유로 포함
   const [revoking, startRevoke] = useTransition();
 
   const pending = useMemo(() => rows.filter((r) => r.status === "신청").length, [rows]);
@@ -107,10 +108,13 @@ export default function FrienderRequestsManager({
 
   const confirmRevoke = () => {
     if (!revokeTarget) return;
+    // 다이얼로그를 닫으며 state를 비우므로 대상·사유를 먼저 스냅샷.
     const target = revokeTarget;
+    const reason = revokeReason;
     setRevokeTarget(null);
+    setRevokeReason("");
     startRevoke(async () => {
-      const res = await revokeFriender(target.id);
+      const res = await revokeFriender(target.id, reason);
       if (res.ok) {
         setFrienders((prev) => prev.filter((f) => f.id !== target.id));
         toast.success("프렌더 자격을 해제했습니다.");
@@ -196,7 +200,14 @@ export default function FrienderRequestsManager({
       <FrienderInfoModal friender={infoTarget} onClose={closeInfo} />
 
       {/* 자격 해제 확인 */}
-      <AlertDialog open={revokeTarget !== null} onOpenChange={(open) => !open && setRevokeTarget(null)}>
+      <AlertDialog
+        open={revokeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRevokeTarget(null);
+            setRevokeReason(""); // 다음 대상에 이전 사유가 남지 않도록 초기화
+          }
+        }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>프렌더 자격을 해제하시겠습니까?</AlertDialogTitle>
@@ -209,6 +220,19 @@ export default function FrienderRequestsManager({
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/* 사유 입력은 AlertDialogDescription(=p 태그) 바깥에 둔다 — textarea 중첩은 invalid HTML. */}
+          <div className="text-left">
+            <label className="text-muted-fg-faint mb-1 block text-xs font-semibold">해제 사유 (선택) - 입력하면 회원에게 이메일로 전달됩니다.</label>
+            <textarea
+              value={revokeReason}
+              onChange={(e) => setRevokeReason(e.target.value)}
+              rows={2}
+              placeholder="해제 사유를 입력하세요..."
+              className="border-rule-faint focus:border-accent-blue w-full rounded-md border bg-white px-3 py-2 text-sm outline-none"
+            />
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction onClick={confirmRevoke} variant="brand">

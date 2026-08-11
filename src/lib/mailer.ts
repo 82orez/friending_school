@@ -1192,7 +1192,7 @@ function buildResultHtml(title: string, bodyHtml: string): string {
 async function sendResultEmail(to: string[], subject: string, html: string, text: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn("[mailer] RESEND_API_KEY 미설정 — 강사 심사 결과 메일 생략");
+    console.warn("[mailer] RESEND_API_KEY 미설정 — 심사 결과 메일 생략");
     return;
   }
   if (to.length === 0) {
@@ -1240,4 +1240,27 @@ export async function sendTeacherRejectionNotification(to: string[], data: { nam
   );
   const text = `${greeting}unfortunately your teacher application was not approved this time.${data.reason ? `\nReason: ${data.reason}` : ""}\nYou're welcome to revise your details and apply again.\nTeacher application: ${data.applyUrl}`;
   await sendResultEmail(to, "[Friending School] Your teacher application result", html, text);
+}
+
+/**
+ * 프렌더 본인에게 자격 해제 안내. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ * ⚠️ 프렌더 동선은 전면 한국어라 이 메일도 한국어(강사 대상 결과 메일은 영문).
+ * 프렌더 승인/거절은 SMS로 통보하지만 해제는 이메일로 보낸다.
+ * reason은 빈 문자열이면 사유 블록을 렌더하지 않음(강사 거절 메일과 동일 규약).
+ */
+export async function sendFrienderRevokedNotification(to: string[], data: { name: string; reason: string; applyUrl: string }): Promise<void> {
+  const greeting = data.name ? `${data.name}님, ` : "";
+  const reasonHtml = data.reason
+    ? `<p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 8px"><strong>사유</strong></p>
+       <p style="font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap;background:#f8f8f8;border:1px solid #eee;border-radius:8px;padding:12px;margin:0 0 16px">${escapeHtml(data.reason)}</p>`
+    : "";
+  const html = buildResultHtml(
+    "프렌더 자격 해제 안내",
+    `<p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 16px">${escapeHtml(greeting)}프렌더 자격이 해제되어 일반 회원으로 전환되었습니다.</p>
+     ${reasonHtml}
+     <p style="font-size:14px;color:#333;line-height:1.6;margin:0 0 16px">계정과 프로필은 그대로 유지되며, 원하시면 언제든 다시 프렌더로 신청하실 수 있습니다.</p>
+     <a href="${escapeHtml(data.applyUrl)}" style="display:inline-block;background:#1a4fa0;color:#fff;text-decoration:none;font-size:14px;font-weight:bold;padding:10px 20px;border-radius:8px">프렌더 다시 신청하기</a>`,
+  );
+  const text = `${greeting}프렌더 자격이 해제되어 일반 회원으로 전환되었습니다.${data.reason ? `\n사유: ${data.reason}` : ""}\n계정과 프로필은 그대로 유지되며, 원하시면 언제든 다시 프렌더로 신청하실 수 있습니다.\n프렌더 신청: ${data.applyUrl}`;
+  await sendResultEmail(to, "[프렌딩 스쿨] 프렌더 자격 해제 안내", html, text);
 }

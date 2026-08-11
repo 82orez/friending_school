@@ -13,6 +13,7 @@ import {
   sendCourseReassignToNewTeacher,
   sendCourseReassignToOldTeacher,
   sendRemainingRescheduleToTeacher,
+  sendFrienderRevokedNotification,
 } from "@/lib/mailer";
 import { FOREIGN_CURRENCIES, normalizeCurrency } from "@/data/currencies";
 import { getCourse } from "@/data/courses";
@@ -1911,15 +1912,18 @@ export async function rejectFrienderApplication(id: string, adminNote: string): 
 
 // 프렌더 자격 해제 (role → student). 계정·데이터는 유지되며 재신청 가능.
 // 강사와 달리 프렌더는 종속 데이터(수업·정산)가 없어 role 회수가 안전하다.
-export async function revokeFriender(userId: string): Promise<ActionResult> {
+// adminNote(해제 사유)는 선택 — 입력하면 본인 안내 메일에 사유 블록으로 표시된다.
+export async function revokeFriender(userId: string, adminNote?: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   if (!userId) return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
 
   // 현재 role이 friender일 때만 — 오작동으로 강사/관리자를 강등시키지 않도록 방어.
-  const { data: current } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
-  if ((current as { role?: string } | null)?.role !== "friender") {
+  // 이름은 안내 메일 인사말용으로 같은 쿼리에서 함께 읽는다(추가 왕복 없음).
+  const { data: current } = await admin.from("profiles").select("role, first_name, last_name").eq("id", userId).maybeSingle();
+  const profile = current as { role?: string; first_name?: string | null; last_name?: string | null } | null;
+  if (profile?.role !== "friender") {
     return { ok: false, error: "프렌더 계정이 아닙니다. 목록을 새로고침해 주세요." };
   }
 
@@ -1931,6 +1935,24 @@ export async function revokeFriender(userId: string): Promise<ActionResult> {
     await admin.auth.admin.updateUserById(userId, { app_metadata: { role: "student" } });
   } catch (err) {
     console.error("[revokeFriender] app_metadata 동기 실패:", err);
+  }
+
+  // 본인 해제 안내 메일 (best-effort) — 실패해도 해제는 유효.
+  // 승인/거절은 SMS지만 해제는 이메일로 통보(정책). 이메일은 profiles에 없어 auth에서 조회.
+  try {
+    const { data: userRes } = await admin.auth.admin.getUserById(userId);
+    const email = userRes?.user?.email;
+    if (email) {
+      const origin = getOrigin(await headers());
+      await sendFrienderRevokedNotification([email], {
+        // 한국 관례상 성+이름을 공백 없이 붙임(목록 페이지 표시 규칙과 동일).
+        name: `${profile.last_name ?? ""}${profile.first_name ?? ""}`,
+        reason: (adminNote ?? "").trim(),
+        applyUrl: `${origin}/friender/apply`,
+      });
+    }
+  } catch (err) {
+    console.error("[revokeFriender] 해제 안내 발송 실패:", err);
   }
 
   revalidateFrienderConsumers();
