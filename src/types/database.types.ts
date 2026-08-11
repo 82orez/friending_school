@@ -878,6 +878,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_friender_application: {
+        Args: { p_app_id: string }
+        Returns: string
+      }
       approve_teacher_application: {
         Args: { p_app_id: string }
         Returns: string
