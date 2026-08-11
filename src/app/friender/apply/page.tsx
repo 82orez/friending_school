@@ -8,6 +8,7 @@ import { formatPhone } from "@/lib/phone";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 import FrienderApplicationForm from "@/components/friender/FrienderApplicationForm";
+import ToastOnMount from "@/components/ToastOnMount";
 
 export const metadata: Metadata = { title: "프렌더 지원 — 프렌딩 스쿨" };
 
@@ -46,7 +47,9 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
 }
 
-export default async function FrienderApplyPage() {
+export default async function FrienderApplyPage({ searchParams }: { searchParams: Promise<{ submitted?: string }> }) {
+  // 제출 성공 신호 — 액션이 ?submitted=1로 리다이렉트하면 토스트를 띄운다(아래 ToastOnMount).
+  const { submitted } = await searchParams;
   const supabase = createClient(await cookies());
   const {
     data: { user },
@@ -87,6 +90,8 @@ export default async function FrienderApplyPage() {
 
   return (
     <div className="bg-surface min-h-screen">
+      {submitted === "1" && <ToastOnMount queryKey="submitted" message="프렌더 신청이 접수되었습니다. 심사 결과는 문자로 안내드립니다." />}
+
       {/* 라벨 바 */}
       <div className="px-5 py-7 text-center">
         <span className="bg-brand-gradient inline-block rounded-full px-6 py-1.5 text-base font-bold text-white md:text-xl">프렌더 지원</span>

@@ -2,6 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { getUserRole } from "@/lib/auth";
 import { formatRetryAfter, getClientIp, rateLimit } from "@/lib/rate-limit";
@@ -11,7 +12,8 @@ import { isValidZoomUrl } from "@/lib/url";
 import { NATIONALITY_NAMES } from "@/data/nationalities";
 import { GENDER_VALUES } from "@/data/genders";
 
-export type FrienderApplyState = { error?: string; success?: boolean };
+// 성공은 리다이렉트로 알리므로 success 플래그가 없다(아래 제출 성공 처리 주석 참조).
+export type FrienderApplyState = { error?: string };
 
 // 프렌더 지원 저장. 가드 순서: (1) 로그인 (2) role 확인 (3) 필수값 (4) 전화 인증 (5) rateLimit (6) 중복 신청 (7) insert.
 // user_id는 서버에서 getUser()로 주입(클라 위조 차단). RLS insert 정책(user_id=auth.uid())도 이중 보호.
@@ -90,5 +92,8 @@ export async function submitFrienderApplication(_prev: FrienderApplyState, formD
   }
 
   revalidatePath("/friender/apply");
-  return { success: true };
+  // 제출 성공은 리다이렉트로 알린다 — 재검증되면 페이지가 '심사 중' 분기로 바뀌며 폼이 언마운트돼
+  // 폼 내부 useEffect 토스트가 실행되지 못하기 때문(살아남는 페이지가 ToastOnMount로 표시).
+  // ⚠️ redirect()는 NEXT_REDIRECT를 throw하므로 반드시 위 try/catch 바깥에서 호출할 것.
+  redirect("/friender/apply?submitted=1");
 }

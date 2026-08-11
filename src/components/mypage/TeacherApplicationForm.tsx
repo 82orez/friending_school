@@ -77,9 +77,10 @@ export default function TeacherApplicationForm({
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 실패만 여기서 토스트 — 제출 성공 시엔 액션이 리다이렉트하고 이 폼이 언마운트되므로
+  // 성공 토스트는 페이지의 ToastOnMount가 담당한다.
   useEffect(() => {
-    if (state.success) toast.success("Your teacher application has been submitted.");
-    else if (state.error) toast.error(state.error);
+    if (state.error) toast.error(state.error);
   }, [state]);
 
   // objectURL 미리보기 메모리 정리 — 값이 바뀌거나 언마운트될 때 revoke.

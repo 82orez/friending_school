@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { nationalityLabelEn } from "@/data/nationalities";
 import { genderLabelEn } from "@/data/genders";
 import TeacherApplicationForm from "@/components/mypage/TeacherApplicationForm";
+import ToastOnMount from "@/components/ToastOnMount";
 
 export const metadata: Metadata = { title: "강사 지원 — 프렌딩 스쿨" };
 
@@ -47,7 +48,9 @@ function formatDate(iso: string): string {
   return `${d.getFullYear()}.${p(d.getMonth() + 1)}.${p(d.getDate())}`;
 }
 
-export default async function TeacherApplyPage() {
+export default async function TeacherApplyPage({ searchParams }: { searchParams: Promise<{ submitted?: string }> }) {
+  // 제출 성공 신호 — 액션이 ?submitted=1로 리다이렉트하면 토스트를 띄운다(아래 ToastOnMount).
+  const { submitted } = await searchParams;
   const supabase = createClient(await cookies());
   const {
     data: { user },
@@ -86,6 +89,8 @@ export default async function TeacherApplyPage() {
 
   return (
     <div className="bg-surface min-h-screen">
+      {submitted === "1" && <ToastOnMount queryKey="submitted" message="Your teacher application has been submitted. We'll email you the result." />}
+
       {/* 라벨 바 */}
       <div className="px-5 py-7 text-center">
         <span className="bg-brand-gradient inline-block rounded-full px-6 py-1.5 text-base font-bold text-white md:text-xl">BECOME A TEACHER</span>
