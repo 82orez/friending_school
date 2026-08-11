@@ -15,3 +15,7 @@ export async function isAdmin(supabase: SupabaseClient, userId: string): Promise
 export async function isTeacher(supabase: SupabaseClient, userId: string): Promise<boolean> {
   return (await getUserRole(supabase, userId)) === "teacher";
 }
+
+export async function isFriender(supabase: SupabaseClient, userId: string): Promise<boolean> {
+  return (await getUserRole(supabase, userId)) === "friender";
+}

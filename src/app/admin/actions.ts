@@ -1813,3 +1813,126 @@ export async function rejectTeacherApplication(id: string, adminNote: string): P
   revalidatePath("/admin/teacher-requests");
   return { ok: true };
 }
+
+/* ===== 프렌더 지원 관리 ===== */
+
+// 프렌더 심사 결과는 이메일이 아니라 SMS로 통보한다 — 프렌더는 신청 시 전화번호 인증이 필수라
+// friender_applications.phone에 검증된 번호 스냅샷이 항상 존재한다.
+async function getFrienderApplicantContact(
+  admin: ReturnType<typeof createAdminClient>,
+  appId: string,
+): Promise<{ phone: string; name: string } | null> {
+  const { data } = await admin.from("friender_applications").select("phone, name").eq("id", appId).maybeSingle();
+  const row = data as { phone: string; name: string } | null;
+  if (!row?.phone) return null;
+  return { phone: row.phone, name: row.name ?? "" };
+}
+
+// 프렌더 지원 처리 후 갱신 대상 — admin 목록 + 프렌더 페이지 + 지원 페이지(상태 표시).
+function revalidateFrienderConsumers(): void {
+  revalidatePath("/admin/friender-requests");
+  revalidatePath("/friender", "layout");
+  revalidatePath("/friender/apply");
+}
+
+// 프렌더 지원 승인 → RPC로 role 부여 + 프로필 채움 + 상태 '승인'을 원자적으로 처리(상태 가드 포함).
+export async function approveFrienderApplication(id: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: result, error } = await admin.rpc("approve_friender_application", { p_app_id: id });
+  if (error) return { ok: false, error: "승인 처리 중 오류가 발생했습니다." };
+  switch (result) {
+    case "ok":
+      break;
+    case "not_found":
+      return { ok: false, error: "신청 내역을 찾을 수 없습니다." };
+    case "not_pending":
+      return { ok: false, error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
+    case "is_admin":
+      return { ok: false, error: "관리자 계정은 프렌더로 전환할 수 없습니다." };
+    case "is_teacher":
+      return { ok: false, error: "강사 계정은 프렌더로 전환할 수 없습니다." };
+    default:
+      return { ok: false, error: "승인 처리 중 오류가 발생했습니다." };
+  }
+
+  // 신청자 승인 알림 SMS (best-effort) — 실패해도 승인은 유효.
+  try {
+    const contact = await getFrienderApplicantContact(admin, id);
+    if (contact) {
+      const origin = getOrigin(await headers());
+      await sendSms(
+        contact.phone,
+        `[프렌딩 스쿨] ${contact.name}님, 프렌더 신청이 승인되었습니다. 프렌더 페이지에서 프로필을 관리하실 수 있습니다. ${origin}/friender`,
+      );
+    }
+  } catch (err) {
+    console.error("[approveFrienderApplication] 승인 알림 발송 실패:", err);
+  }
+
+  revalidateFrienderConsumers();
+  return { ok: true };
+}
+
+// 프렌더 지원 거절 (상태 '거절' + 관리자 메모). 상태 가드: '신청'만 거절 가능. role 변경 없음.
+export async function rejectFrienderApplication(id: string, adminNote: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("friender_applications")
+    .update({ status: "거절", admin_note: adminNote || null })
+    .eq("id", id)
+    .eq("status", "신청")
+    .select("id");
+  if (error) return { ok: false, error: "저장 중 오류가 발생했습니다." };
+  if (!data || data.length === 0) return { ok: false, error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
+
+  // 신청자 거절 알림 SMS (best-effort) — 사유가 길면 SMS가 과도하게 커지므로 120자로 자름.
+  try {
+    const contact = await getFrienderApplicantContact(admin, id);
+    if (contact) {
+      const reason = (adminNote || "").trim().slice(0, 120);
+      await sendSms(
+        contact.phone,
+        `[프렌딩 스쿨] ${contact.name}님, 프렌더 신청이 승인되지 않았습니다.${reason ? ` 사유: ${reason}` : ""} 내용을 수정해 다시 신청하실 수 있습니다.`,
+      );
+    }
+  } catch (err) {
+    console.error("[rejectFrienderApplication] 거절 알림 발송 실패:", err);
+  }
+
+  revalidateFrienderConsumers();
+  return { ok: true };
+}
+
+// 프렌더 자격 해제 (role → student). 계정·데이터는 유지되며 재신청 가능.
+// 강사와 달리 프렌더는 종속 데이터(수업·정산)가 없어 role 회수가 안전하다.
+export async function revokeFriender(userId: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!userId) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+
+  // 현재 role이 friender일 때만 — 오작동으로 강사/관리자를 강등시키지 않도록 방어.
+  const { data: current } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+  if ((current as { role?: string } | null)?.role !== "friender") {
+    return { ok: false, error: "프렌더 계정이 아닙니다. 목록을 새로고침해 주세요." };
+  }
+
+  const { error } = await admin.from("profiles").update({ role: "student" }).eq("id", userId);
+  if (error) return { ok: false, error: "프렌더 해제 중 오류가 발생했습니다." };
+
+  // JWT 일관성 위해 app_metadata.role 동기 (best-effort — profiles.role이 진실 소스).
+  try {
+    await admin.auth.admin.updateUserById(userId, { app_metadata: { role: "student" } });
+  } catch (err) {
+    console.error("[revokeFriender] app_metadata 동기 실패:", err);
+  }
+
+  revalidateFrienderConsumers();
+  return { ok: true };
+}

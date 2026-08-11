@@ -55,8 +55,7 @@ export default async function FrienderApplyPage() {
 
   const role = await getUserRole(supabase, user.id);
   // role은 단일값이라 중복 신분 불가 — 이미 권한이 있는 계정은 각자 위치로.
-  // TODO: 프렌더 대시보드(/friender) 도입 후 friender는 그쪽으로 리다이렉트.
-  if (role === "friender") redirect("/");
+  if (role === "friender") redirect("/friender");
   if (role === "teacher") redirect("/teacher");
   if (role === "admin") redirect("/");
 
