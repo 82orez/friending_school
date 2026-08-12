@@ -66,3 +66,17 @@ export async function updateFrienderAvatar(avatarUrl: string): Promise<FrienderA
   revalidatePath("/friender", "layout");
   return { ok: true };
 }
+
+// 등록된 프로필 사진 삭제(초기화) — 사진은 선택 입력이라 비워둘 수 있다.
+// Storage 파일 정리는 클라이언트가 cleanupOldAvatars(userId,"")로 수행(본인 폴더만 지우는 RLS 정책 활용, best-effort).
+export async function removeFrienderAvatar(): Promise<FrienderActionState> {
+  const userId = await requireFriender();
+  if (!userId) return { error: "권한이 없습니다." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("profiles").update({ avatar_url: null }).eq("id", userId);
+  if (error) return { error: "이미지 삭제 중 문제가 발생했습니다." };
+
+  revalidatePath("/friender", "layout");
+  return { ok: true };
+}

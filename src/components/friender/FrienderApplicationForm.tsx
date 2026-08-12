@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Camera, Loader2, UserRound, Video } from "lucide-react";
+import { Camera, Loader2, Trash2, UserRound, Video } from "lucide-react";
 import { toast } from "sonner";
 import { cleanupOldAvatars, uploadAvatar } from "@/lib/avatar";
 import { NATIONALITIES, nationalityLabel } from "@/data/nationalities";
@@ -81,8 +81,8 @@ export default function FrienderApplicationForm({
   // 프로필 사진(선택 입력) — 고르면 미리보기만, 실제 업로드는 최종 제출 시점에.
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(initialAvatarUrl || null);
-  // 재신청 시 이미 저장돼 있던 URL — 새 파일을 고르지 않으면 이 값을 그대로 제출.
-  const [savedAvatarUrl] = useState(initialAvatarUrl);
+  // 재신청 시 이미 저장돼 있던 URL — 새 파일을 고르지 않으면 이 값을 그대로 제출(삭제하면 빈 값).
+  const [savedAvatarUrl, setSavedAvatarUrl] = useState(initialAvatarUrl);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,6 +113,14 @@ export default function FrienderApplicationForm({
     // 업로드하지 않고 로컬 미리보기만 — 실제 업로드는 제출 시.
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  // 사진 초기화 — 아직 업로드 전이므로 선택/프리필된 URL 참조만 비운다(Storage 파일은 건드리지 않음).
+  // 제출 시 avatar_url이 빈 값으로 가고 서버가 null로 저장.
+  const handleRemoveAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null); // blob revoke는 위 useEffect cleanup이 처리
+    setSavedAvatarUrl("");
   };
 
   const handleReview = () => {
@@ -191,10 +199,19 @@ export default function FrienderApplicationForm({
           </div>
           <div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" aria-hidden />
-            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={submitting || pending}>
-              <Camera className="size-4" aria-hidden />
-              사진 변경
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={submitting || pending}>
+                <Camera className="size-4" aria-hidden />
+                사진 변경
+              </Button>
+              {/* 사진은 선택 입력 — 등록/선택된 경우에만 초기화 버튼 노출. */}
+              {avatarPreview && (
+                <Button type="button" variant="outline" onClick={handleRemoveAvatar} disabled={submitting || pending} className="text-brand">
+                  <Trash2 className="size-4" aria-hidden />
+                  사진 삭제
+                </Button>
+              )}
+            </div>
             <p className="text-muted-fg-faint mt-2 text-xs">JPG 또는 PNG, 5MB 이하. 정사각형 이미지를 권장합니다.</p>
           </div>
         </div>

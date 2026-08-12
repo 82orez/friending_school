@@ -2,10 +2,10 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import Image from "next/image";
-import { Camera, Loader2, Pencil, UserRound, Video } from "lucide-react";
+import { Camera, Loader2, Pencil, Trash2, UserRound, Video } from "lucide-react";
 import { toast } from "sonner";
 import { cleanupOldAvatars, uploadAvatar } from "@/lib/avatar";
-import { updateFrienderAvatar, updateFrienderProfile, type FrienderActionState } from "@/app/friender/actions";
+import { removeFrienderAvatar, updateFrienderAvatar, updateFrienderProfile, type FrienderActionState } from "@/app/friender/actions";
 import { NATIONALITIES } from "@/data/nationalities";
 import { GENDERS } from "@/data/genders";
 import { formatPhone } from "@/lib/phone";
@@ -13,6 +13,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 export type FrienderProfile = {
@@ -61,9 +71,10 @@ export default function FrienderProfileForm({ userId, email, initial }: { userId
     setEditing(false);
   };
 
-  // 아바타 (즉시 업로드 + 저장)
+  // 아바타 (즉시 업로드 + 저장). 사진은 선택 입력이라 삭제(초기화)도 가능.
   const [avatarUrl, setAvatarUrl] = useState(initial.avatar_url);
   const [uploading, startUpload] = useTransition();
+  const [removeOpen, setRemoveOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -111,6 +122,23 @@ export default function FrienderProfileForm({ userId, email, initial }: { userId
     });
   };
 
+  // 등록된 사진 삭제(초기화) — DB를 먼저 비우고, 성공 시 Storage 파일 정리(best-effort).
+  const handleRemove = () => {
+    const prev = avatarUrl;
+    setRemoveOpen(false);
+    startUpload(async () => {
+      setAvatarUrl(""); // 낙관적
+      const res = await removeFrienderAvatar();
+      if (res.error) {
+        setAvatarUrl(prev);
+        toast.error(res.error);
+        return;
+      }
+      toast.success("사진을 삭제했습니다.");
+      await cleanupOldAvatars(userId, ""); // 남은 파일 전부 정리
+    });
+  };
+
   return (
     <div className="space-y-5">
       {/* 프로필 사진 */}
@@ -135,14 +163,39 @@ export default function FrienderProfileForm({ userId, email, initial }: { userId
           </div>
           <div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" aria-hidden />
-            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-              {uploading ? <Loader2 className="animate-spin" aria-hidden /> : <Camera className="size-4" aria-hidden />}
-              사진 변경
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                {uploading ? <Loader2 className="animate-spin" aria-hidden /> : <Camera className="size-4" aria-hidden />}
+                사진 변경
+              </Button>
+              {/* 사진은 선택 입력이라 등록된 경우에만 삭제 버튼 노출. */}
+              {avatarUrl && (
+                <Button type="button" variant="outline" onClick={() => setRemoveOpen(true)} disabled={uploading} className="text-brand">
+                  <Trash2 className="size-4" aria-hidden />
+                  사진 삭제
+                </Button>
+              )}
+            </div>
             <p className="text-muted-fg-faint mt-2 text-xs">JPG 또는 PNG, 5MB 이하. 정사각형 이미지를 권장합니다.</p>
           </div>
         </div>
       </section>
+
+      {/* 사진 삭제 확인 — base-nova는 AlertDialogAction이 자동으로 닫히지 않으므로 handleRemove에서 직접 닫는다. */}
+      <AlertDialog open={removeOpen} onOpenChange={setRemoveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>프로필 사진을 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>등록된 사진이 삭제되고 기본 아이콘으로 표시됩니다. 언제든 다시 등록하실 수 있습니다.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRemove} variant="brand">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 기본 정보 폼 */}
       {/* 프로필 사진은 선택 입력이라 저장 차단 가드 없음(별도 업로드 섹션에서 상시 변경). */}
