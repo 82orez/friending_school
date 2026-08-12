@@ -15,7 +15,7 @@ import { GENDER_VALUES } from "@/data/genders";
 // 성공은 리다이렉트로 알리므로 success 플래그가 없다(아래 제출 성공 처리 주석 참조).
 export type FrienderApplyState = { error?: string };
 
-// 프렌더 지원 저장. 가드 순서: (1) 로그인 (2) role 확인 (3) 필수값 (4) 전화 인증 (5) rateLimit (6) 중복 신청 (7) insert.
+// 프렌더 지원 저장. 가드 순서: (1) 로그인 (2) role 확인 (3) 필수값(사진은 선택) (4) 전화 인증 (5) rateLimit (6) 중복 신청 (7) insert.
 // user_id는 서버에서 getUser()로 주입(클라 위조 차단). RLS insert 정책(user_id=auth.uid())도 이중 보호.
 // ⚠️ 전화번호는 폼 값을 쓰지 않고 profiles의 인증 완료 번호를 그대로 저장한다(인증 우회 차단).
 export async function submitFrienderApplication(_prev: FrienderApplyState, formData: FormData): Promise<FrienderApplyState> {
@@ -49,9 +49,8 @@ export async function submitFrienderApplication(_prev: FrienderApplyState, formD
   if (!GENDER_VALUES.includes(gender)) return { error: "성별을 선택해 주세요." };
   if (intro.length < 10) return { error: "자기소개를 10자 이상 작성해 주세요." };
   if (!isValidZoomUrl(zoomUrl)) return { error: "올바른 Zoom URL을 입력해 주세요. (http:// 또는 https://로 시작)" };
-  // 아바타 필수 + 본인 폴더(avatars/<uid>/)의 공개 URL인지 검증.
-  if (!avatarUrl) return { error: "프로필 사진을 등록해 주세요." };
-  if (!avatarUrl.includes(`/avatars/${user.id}/`)) return { error: "올바르지 않은 이미지 경로입니다." };
+  // 아바타는 선택 입력 — 값이 있을 때만 본인 폴더(avatars/<uid>/)의 공개 URL인지 검증.
+  if (avatarUrl && !avatarUrl.includes(`/avatars/${user.id}/`)) return { error: "올바르지 않은 이미지 경로입니다." };
 
   // 전화번호 인증 확인 — 서버가 authoritative(클라 우회 방어). 저장 값도 여기서 읽은 인증 번호를 사용.
   const { data: profile } = await supabase.from("profiles").select("phone, phone_verified_at").eq("id", user.id).maybeSingle();
@@ -77,7 +76,8 @@ export async function submitFrienderApplication(_prev: FrienderApplyState, formD
     gender,
     intro,
     zoom_url: zoomUrl,
-    avatar_url: avatarUrl,
+    // ⚠️ 빈 문자열로 저장하면 승인 RPC의 coalesce가 통과시켜 profiles.avatar_url을 ''로 덮어쓴다 → 반드시 null.
+    avatar_url: avatarUrl || null,
   });
   if (error) return { error: "신청서를 저장하는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요." };
 

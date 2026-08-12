@@ -78,7 +78,7 @@ export default function FrienderApplicationForm({
     if (initialPhone) setPhone(initialPhone);
   }, [initialPhone]);
 
-  // 프로필 사진 — 선택 시엔 미리보기만, 실제 업로드는 최종 제출 시점에.
+  // 프로필 사진(선택 입력) — 고르면 미리보기만, 실제 업로드는 최종 제출 시점에.
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(initialAvatarUrl || null);
   // 재신청 시 이미 저장돼 있던 URL — 새 파일을 고르지 않으면 이 값을 그대로 제출.
@@ -121,13 +121,9 @@ export default function FrienderApplicationForm({
       form.reportValidity();
       return;
     }
-    // 전화 인증·아바타는 폼 필드가 아니라 별도 상태 → 수동 확인.
+    // 전화 인증은 폼 필드가 아니라 별도 상태 → 수동 확인. (프로필 사진은 선택 입력이라 가드 없음)
     if (!phoneVerified) {
       toast.error("전화번호 인증을 완료해 주세요.");
-      return;
-    }
-    if (!avatarFile && !savedAvatarUrl) {
-      toast.error("프로필 사진을 등록해 주세요.");
       return;
     }
     setConfirmOpen(true);
@@ -147,12 +143,9 @@ export default function FrienderApplicationForm({
         await cleanupOldAvatars(userId, path); // best-effort
         url = publicUrl;
       }
-      if (!url) {
-        toast.error("프로필 사진을 등록해 주세요.");
-        return;
-      }
       const fd = new FormData(form);
-      fd.set("avatar_url", url);
+      // 사진은 선택 입력 — 미등록이면 빈 값으로 보내고 서버가 null로 저장한다.
+      fd.set("avatar_url", url ?? "");
       // useActionState의 dispatch는 transition 안에서 호출해야 함(await 뒤라 자동 transition 밖).
       startTransition(() => formAction(fd));
     } catch {
@@ -179,7 +172,7 @@ export default function FrienderApplicationForm({
       {/* 프로필 사진 */}
       <div className="grid gap-1.5">
         <Label>
-          프로필 사진 <span className="text-brand">*</span>
+          프로필 사진 <span className="text-muted-fg-faint font-normal">(선택)</span>
         </Label>
         <div className="flex items-center gap-4">
           <div className="bg-surface border-rule relative size-20 shrink-0 overflow-hidden rounded-2xl border">
@@ -356,11 +349,11 @@ export default function FrienderApplicationForm({
           </AlertDialogHeader>
 
           <dl className="border-rule text-ink divide-rule divide-y overflow-y-auto rounded-lg border text-left text-sm">
-            {/* 프로필 이미지 — 다른 항목과 동일한 라벨 행으로(최상단) */}
+            {/* 프로필 이미지 — 다른 항목과 동일한 라벨 행으로(최상단). 선택 입력이라 미등록도 정상. */}
             <div className="flex gap-3 px-3.5 py-2.5">
               <dt className="text-muted-fg w-28 shrink-0 sm:w-36">프로필 사진</dt>
-              <dd className="min-w-0 flex-1">
-                <div className="bg-surface border-rule relative size-20 overflow-hidden rounded-2xl border">
+              <dd className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="bg-surface border-rule relative size-20 shrink-0 overflow-hidden rounded-2xl border">
                   {avatarPreview ? (
                     <Image src={avatarPreview} alt="프로필 사진" fill sizes="80px" unoptimized className="object-cover" />
                   ) : (
@@ -369,6 +362,7 @@ export default function FrienderApplicationForm({
                     </span>
                   )}
                 </div>
+                {!avatarPreview && <span className="text-muted-fg-faint text-sm">미등록</span>}
               </dd>
             </div>
             {[

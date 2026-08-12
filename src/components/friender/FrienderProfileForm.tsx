@@ -116,7 +116,7 @@ export default function FrienderProfileForm({ userId, email, initial }: { userId
       {/* 프로필 사진 */}
       <section className="border-rule rounded-2xl border bg-white p-6">
         <h2 className="text-ink mb-4 flex items-center gap-2 text-base font-bold">
-          <span aria-hidden>📷</span> 프로필 사진 {editing && <span className="text-brand">*</span>}
+          <span aria-hidden>📷</span> 프로필 사진 <span className="text-muted-fg-faint text-sm font-normal">(선택)</span>
         </h2>
         <div className="flex items-center gap-5">
           <div className="bg-surface border-rule relative size-24 shrink-0 overflow-hidden rounded-2xl border">
@@ -145,16 +145,8 @@ export default function FrienderProfileForm({ userId, email, initial }: { userId
       </section>
 
       {/* 기본 정보 폼 */}
-      <form
-        action={formAction}
-        onSubmit={(e) => {
-          // 프로필 사진은 별도 업로드(폼 외부)라 native 검증 불가 → 없으면 저장 차단.
-          if (!avatarUrl) {
-            e.preventDefault();
-            toast.error("프로필 사진을 등록해 주세요.");
-          }
-        }}
-        className="border-rule rounded-2xl border bg-white p-6">
+      {/* 프로필 사진은 선택 입력이라 저장 차단 가드 없음(별도 업로드 섹션에서 상시 변경). */}
+      <form action={formAction} className="border-rule rounded-2xl border bg-white p-6">
         <h2 className="text-ink mb-4 flex items-center gap-2 text-base font-bold">
           <span aria-hidden>👤</span> 프렌더 정보
         </h2>
