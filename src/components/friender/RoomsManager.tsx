@@ -52,6 +52,20 @@ const kstDateStr = (offsetDays = 0): string => {
   return d.toLocaleDateString("en-CA");
 };
 
+// 지금(KST) 기준 다음 30분 슬롯. 서버가 '시작 시각이 미래'인지 검증하므로 기본값이 과거면 안 된다.
+// 06:00 이전이면 오늘 06:00, 오늘 남은 슬롯이 없으면(23:30 지남) 내일 06:00으로 넘긴다.
+const nextOpenSlot = (): { sessionDate: string; startMin: number } => {
+  const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  const first = START_OPTIONS[0];
+  const last = START_OPTIONS[START_OPTIONS.length - 1];
+  // +1분: 정각에 열면 '지금'이 아니라 그 다음 슬롯을 고르도록(서버는 now 초과만 허용).
+  const next = Math.ceil((kstNow.getHours() * 60 + kstNow.getMinutes() + 1) / 30) * 30;
+
+  if (next < first) return { sessionDate: kstDateStr(), startMin: first };
+  if (next > last) return { sessionDate: kstDateStr(1), startMin: first };
+  return { sessionDate: kstDateStr(), startMin: next };
+};
+
 type Fields = { title: string; description: string; level: string; capacity: string; sessionDate: string; startMin: number; durationMin: number };
 
 const emptyForm = (): Fields => ({
@@ -59,8 +73,7 @@ const emptyForm = (): Fields => ({
   description: "",
   level: DEFAULT_ROOM_LEVEL,
   capacity: "4",
-  sessionDate: kstDateStr(1), // 기본 내일
-  startMin: 20 * 60,
+  ...nextOpenSlot(), // 개설 날짜·시작 시각 = 지금 기준 가장 빠른 슬롯
   durationMin: 40,
 });
 
