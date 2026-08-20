@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Users, Video } from "lucide-react";
@@ -24,6 +25,7 @@ import {
 export type PublicRoom = {
   id: string;
   hostName: string;
+  avatarUrl: string | null;
   isMine: boolean;
   title: string;
   description: string | null;
@@ -288,13 +290,23 @@ function RoomCard({
 
   return (
     <div className="border-rule flex items-start gap-2.5 rounded-2xl border bg-white p-3.5">
-      {/* 아바타 — 사진 없이 이니셜(공개 목록에서 타인 profiles를 읽을 수 없음) */}
-      <span
-        aria-hidden
-        style={{ background: gradientOf(room.id) }}
-        className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white">
-        {room.hostName.slice(0, 1)}
-      </span>
+      {/* 아바타 — 등록된 프로필 사진 우선, 없으면 이니셜+그라디언트 원으로 폴백 */}
+      {room.avatarUrl ? (
+        <Image
+          src={room.avatarUrl}
+          alt={`${room.hostName}님 프로필 사진`}
+          width={36}
+          height={36}
+          className="border-rule size-9 shrink-0 rounded-full border object-cover"
+        />
+      ) : (
+        <span
+          aria-hidden
+          style={{ background: gradientOf(room.id) }}
+          className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white">
+          {room.hostName.slice(0, 1)}
+        </span>
+      )}
 
       <div className="min-w-0 flex-1">
         <p className="text-ink flex items-center gap-1.5 text-[15px] font-bold">

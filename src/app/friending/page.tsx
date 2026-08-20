@@ -46,8 +46,13 @@ export default async function FriendingPage() {
   // 참여 인원 집계 — 참가자 RLS는 select_own뿐이라 카운트는 service_role로 센다
   // (참가자 신원은 공개하지 않고 숫자만 노출).
   const countByRoom = new Map<string, number>();
+  // 개설자 프로필 사진 — profiles_select_own RLS로 공개 조회가 막혀 있어 service_role로 읽는다.
+  // avatars 버킷은 public read라 URL 노출 자체는 안전. 스냅샷 컬럼을 두지 않고 매 요청 조회하는 이유:
+  // ① 사진 교체가 즉시 반영돼야 하고 ② cleanupOldAvatars가 옛 파일을 지워 스냅샷 URL은 깨진다.
+  const avatarByUser = new Map<string, string>();
   if (rows.length > 0) {
     const admin = createAdminClient();
+
     const { data: parts } = await admin
       .from("friender_room_participants")
       .select("room_id")
@@ -57,6 +62,14 @@ export default async function FriendingPage() {
       );
     for (const p of (parts ?? []) as { room_id: string }[]) {
       countByRoom.set(p.room_id, (countByRoom.get(p.room_id) ?? 0) + 1);
+    }
+
+    const { data: profs } = await admin
+      .from("profiles")
+      .select("id, avatar_url")
+      .in("id", Array.from(new Set(rows.map((r) => r.friender_id))));
+    for (const p of (profs ?? []) as { id: string; avatar_url: string | null }[]) {
+      if (p.avatar_url?.trim()) avatarByUser.set(p.id, p.avatar_url);
     }
   }
 
@@ -70,6 +83,7 @@ export default async function FriendingPage() {
   const rooms: PublicRoom[] = rows.map((r) => ({
     id: r.id,
     hostName: r.friender_nickname?.trim() || r.friender_name?.trim() || "프렌더",
+    avatarUrl: avatarByUser.get(r.friender_id) ?? null,
     isMine: !!user && r.friender_id === user.id,
     title: r.title,
     description: r.description,
