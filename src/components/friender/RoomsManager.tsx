@@ -12,6 +12,7 @@ import { createRoom, deleteRoom, setRoomVisibility, updateRoom, type RoomInput }
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -145,122 +146,125 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
 
   const canCreate = hasZoomUrl && !!form.title.trim() && !pending;
 
+  // 툴팁은 현재 이 화면에서만 쓰여 로컬로 감싼다(다른 화면에도 퍼지면 루트 layout으로 올릴 것).
   return (
-    <div>
-      <h2 className="text-ink text-lg font-extrabold">방 관리</h2>
-      <p className="text-muted-fg mt-1 text-sm">Zoom으로 진행할 연습방을 개설합니다. 회원이 방을 클릭하면 내 Zoom 주소로 연결됩니다.</p>
+    <TooltipProvider>
+      <div>
+        <h2 className="text-ink text-lg font-extrabold">방 관리</h2>
+        <p className="text-muted-fg mt-1 text-sm">Zoom으로 진행할 연습방을 개설합니다. 회원이 방을 클릭하면 내 Zoom 주소로 연결됩니다.</p>
 
-      {!hasZoomUrl && (
-        <div className="border-brand/30 bg-brand/5 text-brand mt-4 rounded-xl border px-4 py-3 text-sm font-semibold">
-          Zoom URL이 등록되어 있지 않습니다. 「프로필」 탭에서 Zoom URL을 먼저 등록해 주세요.
-        </div>
-      )}
-
-      {/* 개설 폼 */}
-      <div className="border-rule mt-4 rounded-xl border bg-white p-5">
-        <h3 className="text-ink text-sm font-extrabold">새 방 개설</h3>
-        <RoomFields fields={form} onChange={setForm} minDate={minDate} maxDate={maxDate} disabled={!hasZoomUrl || pending} />
-        <div className="mt-4 flex justify-end">
-          <Button
-            type="button"
-            variant="brand"
-            disabled={!canCreate}
-            onClick={() =>
-              run(
-                () => createRoom(toInput(form)),
-                "방을 개설했습니다.",
-                () => setForm(emptyForm()),
-              )
-            }>
-            {pending && <Loader2 className="animate-spin" />}방 개설하기
-          </Button>
-        </div>
-      </div>
-
-      {/* 예정된 방 */}
-      <h3 className="text-ink mt-8 text-sm font-extrabold">예정된 방 ({upcoming.length})</h3>
-      <div className="border-rule mt-2 overflow-hidden rounded-xl border bg-white">
-        {upcoming.length === 0 ? (
-          <p className="text-muted-fg px-6 py-10 text-center text-sm">예정된 방이 없습니다.</p>
-        ) : (
-          <ul className="list-none">
-            {upcoming.map((r) =>
-              editingId === r.id ? (
-                <li key={r.id} className="border-rule bg-surface border-b p-5 last:border-b-0">
-                  <RoomFields fields={editFields} onChange={setEditFields} minDate={minDate} maxDate={maxDate} disabled={pending} />
-                  <div className="mt-4 flex justify-end gap-2">
-                    <Button type="button" variant="outline" disabled={pending} onClick={() => setEditingId(null)}>
-                      취소
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="brand"
-                      disabled={pending || !editFields.title.trim()}
-                      onClick={() =>
-                        run(
-                          () => updateRoom(r.id, toInput(editFields)),
-                          "방을 수정했습니다.",
-                          () => setEditingId(null),
-                        )
-                      }>
-                      {pending && <Loader2 className="animate-spin" />}
-                      저장
-                    </Button>
-                  </div>
-                </li>
-              ) : (
-                <RoomRow
-                  key={r.id}
-                  room={r}
-                  pending={pending}
-                  onEdit={() => startEdit(r)}
-                  onToggleVisible={() =>
-                    run(() => setRoomVisibility(r.id, !r.is_visible), r.is_visible ? "비공개로 전환했습니다." : "공개로 전환했습니다.")
-                  }
-                  onDelete={() => setDeleteTarget(r)}
-                />
-              ),
-            )}
-          </ul>
-        )}
-      </div>
-
-      {/* 지난 방 */}
-      {past.length > 0 && (
-        <>
-          <h3 className="text-ink mt-8 text-sm font-extrabold">지난 방 ({past.length})</h3>
-          <div className="border-rule mt-2 overflow-hidden rounded-xl border bg-white">
-            <ul className="list-none">
-              {past.map((r) => (
-                <RoomRow key={r.id} room={r} pending={pending} isPast onDelete={() => setDeleteTarget(r)} />
-              ))}
-            </ul>
+        {!hasZoomUrl && (
+          <div className="border-brand/30 bg-brand/5 text-brand mt-4 rounded-xl border px-4 py-3 text-sm font-semibold">
+            Zoom URL이 등록되어 있지 않습니다. 「프로필」 탭에서 Zoom URL을 먼저 등록해 주세요.
           </div>
-        </>
-      )}
+        )}
 
-      {/* 삭제 확인 */}
-      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>방을 삭제하시겠습니까?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {deleteTarget && (
-                <>
-                  <span className="text-ink font-semibold">{deleteTarget.title}</span> 방을 삭제합니다. 되돌릴 수 없습니다.
-                </>
+        {/* 개설 폼 */}
+        <div className="border-rule mt-4 rounded-xl border bg-white p-5">
+          <h3 className="text-ink text-sm font-extrabold">새 방 개설</h3>
+          <RoomFields fields={form} onChange={setForm} minDate={minDate} maxDate={maxDate} disabled={!hasZoomUrl || pending} />
+          <div className="mt-4 flex justify-end">
+            <Button
+              type="button"
+              variant="brand"
+              disabled={!canCreate}
+              onClick={() =>
+                run(
+                  () => createRoom(toInput(form)),
+                  "방을 개설했습니다.",
+                  () => setForm(emptyForm()),
+                )
+              }>
+              {pending && <Loader2 className="animate-spin" />}방 개설하기
+            </Button>
+          </div>
+        </div>
+
+        {/* 예정된 방 */}
+        <h3 className="text-ink mt-8 text-sm font-extrabold">예정된 방 ({upcoming.length})</h3>
+        <div className="border-rule mt-2 overflow-hidden rounded-xl border bg-white">
+          {upcoming.length === 0 ? (
+            <p className="text-muted-fg px-6 py-10 text-center text-sm">예정된 방이 없습니다.</p>
+          ) : (
+            <ul className="list-none">
+              {upcoming.map((r) =>
+                editingId === r.id ? (
+                  <li key={r.id} className="border-rule bg-surface border-b p-5 last:border-b-0">
+                    <RoomFields fields={editFields} onChange={setEditFields} minDate={minDate} maxDate={maxDate} disabled={pending} />
+                    <div className="mt-4 flex justify-end gap-2">
+                      <Button type="button" variant="outline" disabled={pending} onClick={() => setEditingId(null)}>
+                        취소
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="brand"
+                        disabled={pending || !editFields.title.trim()}
+                        onClick={() =>
+                          run(
+                            () => updateRoom(r.id, toInput(editFields)),
+                            "방을 수정했습니다.",
+                            () => setEditingId(null),
+                          )
+                        }>
+                        {pending && <Loader2 className="animate-spin" />}
+                        저장
+                      </Button>
+                    </div>
+                  </li>
+                ) : (
+                  <RoomRow
+                    key={r.id}
+                    room={r}
+                    pending={pending}
+                    onEdit={() => startEdit(r)}
+                    onToggleVisible={() =>
+                      run(() => setRoomVisibility(r.id, !r.is_visible), r.is_visible ? "비공개로 전환했습니다." : "공개로 전환했습니다.")
+                    }
+                    onDelete={() => setDeleteTarget(r)}
+                  />
+                ),
               )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} variant="brand">
-              삭제
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+            </ul>
+          )}
+        </div>
+
+        {/* 지난 방 */}
+        {past.length > 0 && (
+          <>
+            <h3 className="text-ink mt-8 text-sm font-extrabold">지난 방 ({past.length})</h3>
+            <div className="border-rule mt-2 overflow-hidden rounded-xl border bg-white">
+              <ul className="list-none">
+                {past.map((r) => (
+                  <RoomRow key={r.id} room={r} pending={pending} isPast onDelete={() => setDeleteTarget(r)} />
+                ))}
+              </ul>
+            </div>
+          </>
+        )}
+
+        {/* 삭제 확인 */}
+        <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>방을 삭제하시겠습니까?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteTarget && (
+                  <>
+                    <span className="text-ink font-semibold">{deleteTarget.title}</span> 방을 삭제합니다. 되돌릴 수 없습니다.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} variant="brand">
+                삭제
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </TooltipProvider>
   );
 }
 
@@ -404,31 +408,42 @@ function RoomRow({
         {room.description && <p className="text-muted-fg mt-1 line-clamp-2 text-xs whitespace-pre-wrap">{room.description}</p>}
       </div>
 
+      {/* 아이콘만으로는 기능을 알기 어려워 툴팁을 붙인다. TooltipTrigger는 기본이 <button>이라
+          type/onClick/disabled/aria-*가 그대로 전달된다(별도 래핑 불필요). */}
       <div className="flex shrink-0 gap-1.5">
         {onToggleVisible && (
-          <button
-            type="button"
-            onClick={onToggleVisible}
-            disabled={pending}
-            aria-pressed={room.is_visible}
-            aria-label={room.is_visible ? "비공개로 전환" : "공개로 전환"}
-            className={cn(iconBtn, room.is_visible && "border-cta/40 text-cta")}>
-            <Eye aria-hidden className="size-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              type="button"
+              onClick={onToggleVisible}
+              disabled={pending}
+              aria-pressed={room.is_visible}
+              aria-label={room.is_visible ? "비공개로 전환" : "공개로 전환"}
+              className={cn(iconBtn, room.is_visible && "border-cta/40 text-cta")}>
+              <Eye aria-hidden className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>{room.is_visible ? "비공개로 전환" : "공개로 전환"}</TooltipContent>
+          </Tooltip>
         )}
         {onEdit && (
-          <button type="button" onClick={onEdit} disabled={pending} aria-label="수정" className={iconBtn}>
-            <Pencil aria-hidden className="size-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger type="button" onClick={onEdit} disabled={pending} aria-label="수정" className={iconBtn}>
+              <Pencil aria-hidden className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>수정</TooltipContent>
+          </Tooltip>
         )}
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={pending}
-          aria-label="삭제"
-          className={cn(iconBtn, "border-brand/40 text-brand hover:bg-brand/5")}>
-          <Trash2 aria-hidden className="size-4" />
-        </button>
+        <Tooltip>
+          <TooltipTrigger
+            type="button"
+            onClick={onDelete}
+            disabled={pending}
+            aria-label="삭제"
+            className={cn(iconBtn, "border-brand/40 text-brand hover:bg-brand/5")}>
+            <Trash2 aria-hidden className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent>삭제</TooltipContent>
+        </Tooltip>
       </div>
     </li>
   );
