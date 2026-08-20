@@ -5,7 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { todayKst } from "@/lib/booking";
 import { kstDateMinToMs } from "@/lib/classtime";
-import FriendingRooms, { type PublicRoom } from "@/components/friending/FriendingRooms";
+import FriendingRooms, { type HostProfile, type PublicRoom } from "@/components/friending/FriendingRooms";
 
 export const metadata: Metadata = { title: "프렌딩 — 프렌딩 스쿨" };
 
@@ -21,6 +21,17 @@ type RoomRow = {
   session_date: string;
   start_min: number;
   duration_min: number;
+};
+
+type ProfileRow = {
+  id: string;
+  avatar_url: string | null;
+  nickname: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  bio: string | null;
+  nationality: string | null;
+  gender: string | null;
 };
 
 export default async function FriendingPage() {
@@ -46,10 +57,11 @@ export default async function FriendingPage() {
   // 참여 인원 집계 — 참가자 RLS는 select_own뿐이라 카운트는 service_role로 센다
   // (참가자 신원은 공개하지 않고 숫자만 노출).
   const countByRoom = new Map<string, number>();
-  // 개설자 프로필 사진 — profiles_select_own RLS로 공개 조회가 막혀 있어 service_role로 읽는다.
-  // avatars 버킷은 public read라 URL 노출 자체는 안전. 스냅샷 컬럼을 두지 않고 매 요청 조회하는 이유:
-  // ① 사진 교체가 즉시 반영돼야 하고 ② cleanupOldAvatars가 옛 파일을 지워 스냅샷 URL은 깨진다.
-  const avatarByUser = new Map<string, string>();
+  // 개설자 프로필 — profiles_select_own RLS로 공개 조회가 막혀 있어 service_role로 읽는다.
+  // 스냅샷 컬럼을 두지 않고 매 요청 조회하는 이유: ① 사진·소개 수정이 즉시 반영돼야 하고
+  // ② cleanupOldAvatars가 옛 파일을 지워 스냅샷 avatar URL은 깨진다.
+  // 방마다 중복 직렬화되지 않도록 friender_id 기준 맵으로 모아 별도 prop으로 넘긴다.
+  const hosts: Record<string, HostProfile> = {};
   if (rows.length > 0) {
     const admin = createAdminClient();
 
@@ -64,12 +76,21 @@ export default async function FriendingPage() {
       countByRoom.set(p.room_id, (countByRoom.get(p.room_id) ?? 0) + 1);
     }
 
+    // ⚠️ email·phone·zoom_url은 의도적으로 select하지 않는다 — 공개 페이지라
+    //    HTML 페이로드에 남기지 않기 위함. 특히 zoom_url은 방 입장의 사실상 열쇠다.
     const { data: profs } = await admin
       .from("profiles")
-      .select("id, avatar_url")
+      .select("id, avatar_url, nickname, first_name, last_name, bio, nationality, gender")
       .in("id", Array.from(new Set(rows.map((r) => r.friender_id))));
-    for (const p of (profs ?? []) as { id: string; avatar_url: string | null }[]) {
-      if (p.avatar_url?.trim()) avatarByUser.set(p.id, p.avatar_url);
+    for (const p of (profs ?? []) as ProfileRow[]) {
+      hosts[p.id] = {
+        // 표시명 규칙: 닉네임 > 성+이름(공백 없이) > "프렌더".
+        name: p.nickname?.trim() || `${p.last_name ?? ""}${p.first_name ?? ""}`.trim() || "프렌더",
+        avatarUrl: p.avatar_url?.trim() || null,
+        nationality: p.nationality,
+        gender: p.gender,
+        bio: p.bio,
+      };
     }
   }
 
@@ -82,8 +103,9 @@ export default async function FriendingPage() {
 
   const rooms: PublicRoom[] = rows.map((r) => ({
     id: r.id,
-    hostName: r.friender_nickname?.trim() || r.friender_name?.trim() || "프렌더",
-    avatarUrl: avatarByUser.get(r.friender_id) ?? null,
+    frienderId: r.friender_id,
+    // 프로필 조회가 실패했거나 방금 탈퇴한 경우를 대비한 폴백 — 방 행의 이름 스냅샷을 쓴다.
+    fallbackName: r.friender_nickname?.trim() || r.friender_name?.trim() || "프렌더",
     isMine: !!user && r.friender_id === user.id,
     title: r.title,
     description: r.description,
@@ -127,7 +149,7 @@ export default async function FriendingPage() {
           </div>
         </section>
 
-        <FriendingRooms rooms={rooms} isLoggedIn={!!user} />
+        <FriendingRooms rooms={rooms} hosts={hosts} isLoggedIn={!!user} />
       </div>
     </div>
   );

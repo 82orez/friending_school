@@ -11,6 +11,7 @@ import { fmtTime } from "@/lib/availability";
 import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { enterRoom, joinRoom, leaveRoom } from "@/app/friending/actions";
+import HostProfileModal from "@/components/friending/HostProfileModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,10 +23,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// 개설자 공개 프로필 — 방마다 중복 직렬화하지 않도록 friender_id 기준 맵으로 받는다.
+// ⚠️ 공개 페이지라 연락처(email·phone·zoom_url)는 서버 select 단계에서 제외된다.
+export type HostProfile = {
+  name: string;
+  avatarUrl: string | null;
+  nationality: string | null;
+  gender: string | null;
+  bio: string | null;
+};
+
 export type PublicRoom = {
   id: string;
-  hostName: string;
-  avatarUrl: string | null;
+  frienderId: string;
+  fallbackName: string; // hosts 조회 실패 시 쓰는 방 행의 이름 스냅샷
   isMine: boolean;
   title: string;
   description: string | null;
@@ -70,13 +81,22 @@ const fmtMonthDay = (dateStr: string): string => {
 
 type Group = { key: string; label: string; rooms: PublicRoom[] };
 
-export default function FriendingRooms({ rooms, isLoggedIn }: { rooms: PublicRoom[]; isLoggedIn: boolean }) {
+export default function FriendingRooms({
+  rooms,
+  hosts,
+  isLoggedIn,
+}: {
+  rooms: PublicRoom[];
+  hosts: Record<string, HostProfile>;
+  isLoggedIn: boolean;
+}) {
   const router = useRouter();
   const [visible, setVisible] = useState(PAGE_STEP);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [leaveTarget, setLeaveTarget] = useState<PublicRoom | null>(null);
   const [enterTarget, setEnterTarget] = useState<PublicRoom | null>(null);
+  const [hostTarget, setHostTarget] = useState<HostProfile | null>(null);
 
   // 1분 틱 — 진행 중/입장창 상태를 시간에 따라 갱신.
   const [now, setNow] = useState(() => Date.now());
@@ -187,7 +207,9 @@ export default function FriendingRooms({ rooms, isLoggedIn }: { rooms: PublicRoo
               <RoomCard
                 key={r.id}
                 room={r}
+                host={hosts[r.frienderId] ?? { name: r.fallbackName, avatarUrl: null, nationality: null, gender: null, bio: null }}
                 isLoggedIn={isLoggedIn}
+                onOpenHost={setHostTarget}
                 live={isLive(r)}
                 enterable={canEnter(r)}
                 busy={pending && pendingId === r.id}
@@ -209,6 +231,9 @@ export default function FriendingRooms({ rooms, isLoggedIn }: { rooms: PublicRoo
           더보기
         </button>
       )}
+
+      {/* 개설자 공개 프로필 */}
+      <HostProfileModal host={hostTarget} onClose={() => setHostTarget(null)} />
 
       {/* 참여 취소 확인 */}
       <AlertDialog open={leaveTarget !== null} onOpenChange={(open) => !open && setLeaveTarget(null)}>
@@ -266,6 +291,7 @@ function LiveDot({ active }: { active: boolean }) {
 
 function RoomCard({
   room,
+  host,
   isLoggedIn,
   live,
   enterable,
@@ -274,8 +300,10 @@ function RoomCard({
   onJoin,
   onLeave,
   onEnter,
+  onOpenHost,
 }: {
   room: PublicRoom;
+  host: HostProfile;
   isLoggedIn: boolean;
   live: boolean;
   enterable: boolean;
@@ -284,6 +312,7 @@ function RoomCard({
   onJoin: () => void;
   onLeave: () => void;
   onEnter: () => void;
+  onOpenHost: (host: HostProfile) => void;
 }) {
   const full = room.participants >= room.capacity;
   const pill = "shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors disabled:opacity-60";
@@ -291,10 +320,10 @@ function RoomCard({
   return (
     <div className="border-rule flex items-start gap-2.5 rounded-2xl border bg-white p-3.5">
       {/* 아바타 — 등록된 프로필 사진 우선, 없으면 이니셜+그라디언트 원으로 폴백 */}
-      {room.avatarUrl ? (
+      {host.avatarUrl ? (
         <Image
-          src={room.avatarUrl}
-          alt={`${room.hostName}님 프로필 사진`}
+          src={host.avatarUrl}
+          alt={`${host.name}님 프로필 사진`}
           width={36}
           height={36}
           className="border-rule size-9 shrink-0 rounded-full border object-cover"
@@ -304,13 +333,19 @@ function RoomCard({
           aria-hidden
           style={{ background: gradientOf(room.id) }}
           className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white">
-          {room.hostName.slice(0, 1)}
+          {host.name.slice(0, 1)}
         </span>
       )}
 
       <div className="min-w-0 flex-1">
         <p className="text-ink flex items-center gap-1.5 text-[15px] font-bold">
-          <span className="truncate">{room.hostName}님</span>
+          <button
+            type="button"
+            onClick={() => onOpenHost(host)}
+            aria-haspopup="dialog"
+            className="focus-visible:ring-accent-blue/50 hover:text-accent-blue-ink min-w-0 truncate rounded font-bold transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+            {host.name}님
+          </button>
           <span
             title="프렌더"
             aria-hidden
