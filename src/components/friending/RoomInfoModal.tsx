@@ -36,10 +36,10 @@ export default function RoomInfoModal({ description, onClose }: { description: s
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="방 소개"
+        aria-label="방 소개글"
         className="fixed top-1/2 left-1/2 z-[120] flex max-h-[90vh] w-[min(92vw,560px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="border-rule flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-ink truncate text-lg font-bold">방 소개</h2>
+          <h2 className="text-ink truncate text-lg font-bold">방 소개글</h2>
           <button
             ref={closeButtonRef}
             type="button"

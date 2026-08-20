@@ -348,7 +348,7 @@ function RoomCard({
               "focus-visible:ring-accent-blue/50 inline-flex items-center gap-0.5 rounded text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
               description ? "text-accent-blue-ink hover:underline" : "text-muted-fg-faint/60 cursor-default",
             )}>
-            <ChevronRight aria-hidden className="size-3" />방 소개 보기
+            <ChevronRight aria-hidden className="size-3" />방 소개글 보기
           </button>
         </div>
 
