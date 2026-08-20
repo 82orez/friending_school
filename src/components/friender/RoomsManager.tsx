@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, Loader2, Pencil, Trash2, Users } from "lucide-react";
+import { Eye, EyeOff, Loader2, Pencil, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime, formatDateKo } from "@/lib/availability";
@@ -419,10 +419,11 @@ function RoomRow({
               disabled={pending}
               aria-pressed={room.is_visible}
               aria-label={room.is_visible ? "비공개로 전환" : "공개로 전환"}
-              className={cn(iconBtn, room.is_visible && "border-cta/40 text-cta")}>
-              <Eye aria-hidden className="size-4" />
+              // 아이콘 모양으로 현재 상태를 구분(색만으로는 헷갈림): 공개=Eye, 비공개=EyeOff.
+              className={cn(iconBtn, room.is_visible ? "border-cta/40 text-cta" : "border-rule-faint text-muted-fg-faint")}>
+              {room.is_visible ? <Eye aria-hidden className="size-4" /> : <EyeOff aria-hidden className="size-4" />}
             </TooltipTrigger>
-            <TooltipContent>{room.is_visible ? "비공개로 전환" : "공개로 전환"}</TooltipContent>
+            <TooltipContent>{room.is_visible ? "공개 중 · 클릭하면 비공개" : "비공개 · 클릭하면 공개"}</TooltipContent>
           </Tooltip>
         )}
         {onEdit && (
