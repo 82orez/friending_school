@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, Pencil, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime, formatDateKo } from "@/lib/availability";
-import { kstDateMinToMs } from "@/lib/classtime";
+import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
 import { roomsOverlap } from "@/lib/room-time";
+import EnterRoomButton from "@/components/friending/EnterRoomButton";
 import { ROOM_LEVELS, DEFAULT_ROOM_LEVEL, roomLevelLabelKo } from "@/data/room-levels";
 import { createRoom, deleteRoom, setRoomVisibility, updateRoom, type RoomInput } from "@/app/friender/actions";
 import { Button } from "@/components/ui/button";
@@ -105,8 +106,12 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
   const minDate = useMemo(() => kstDateStr(0), []);
   const maxDate = useMemo(() => kstDateStr(MAX_AHEAD_DAYS), []);
 
-  // 지난 방 판정 = 종료 시각 경과. 마운트 시 1회 계산(분 단위 정밀도 불필요).
-  const now = useMemo(() => Date.now(), []);
+  // 1분 틱 — 입장 시간창 진입을 감지하고(버튼 자동 노출) 예정/지난 분리도 실시간 갱신한다.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const { upcoming, past } = useMemo(() => {
     const up: FrienderRoom[] = [];
     const pa: FrienderRoom[] = [];
@@ -237,6 +242,11 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
                     key={r.id}
                     room={r}
                     pending={pending}
+                    enterable={canEnterClass(
+                      now,
+                      kstDateMinToMs(r.session_date, r.start_min),
+                      kstDateMinToMs(r.session_date, r.start_min + r.duration_min),
+                    )}
                     onEdit={() => startEdit(r)}
                     onToggleVisible={() =>
                       run(() => setRoomVisibility(r.id, !r.is_visible), r.is_visible ? "비공개로 전환했습니다." : "공개로 전환했습니다.")
@@ -405,6 +415,7 @@ function RoomRow({
   room,
   pending,
   isPast,
+  enterable,
   onEdit,
   onToggleVisible,
   onDelete,
@@ -412,6 +423,7 @@ function RoomRow({
   room: FrienderRoom;
   pending?: boolean;
   isPast?: boolean;
+  enterable?: boolean;
   onEdit?: () => void;
   onToggleVisible?: () => void;
   onDelete: () => void;
@@ -440,7 +452,16 @@ function RoomRow({
 
       {/* 아이콘만으로는 기능을 알기 어려워 툴팁을 붙인다. TooltipTrigger는 기본이 <button>이라
           type/onClick/disabled/aria-*가 그대로 전달된다(별도 래핑 불필요). */}
-      <div className="flex shrink-0 gap-1.5">
+      <div className="flex shrink-0 items-center gap-1.5">
+        {/* 입장 — 시간창(시작 15분 전~종료) 안에서만. 비공개 방은 서버 enterRoom이 거부하므로 숨긴다. */}
+        {enterable && room.is_visible && (
+          <EnterRoomButton
+            roomId={room.id}
+            label="입장"
+            disabled={pending}
+            className="bg-cta mr-1 shrink-0 rounded-md px-3 py-1.5 text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+          />
+        )}
         {onToggleVisible && (
           <Tooltip>
             <TooltipTrigger

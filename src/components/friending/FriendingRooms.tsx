@@ -4,13 +4,14 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Users, Video } from "lucide-react";
+import { Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
 import { roomLevelLabelKo } from "@/data/room-levels";
-import { enterRoom, joinRoom, leaveRoom } from "@/app/friending/actions";
+import { joinRoom, leaveRoom } from "@/app/friending/actions";
+import EnterRoomButton from "@/components/friending/EnterRoomButton";
 import HostProfileModal from "@/components/friending/HostProfileModal";
 import {
   AlertDialog,
@@ -95,7 +96,6 @@ export default function FriendingRooms({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [leaveTarget, setLeaveTarget] = useState<PublicRoom | null>(null);
-  const [enterTarget, setEnterTarget] = useState<PublicRoom | null>(null);
   const [hostTarget, setHostTarget] = useState<HostProfile | null>(null);
 
   // 1분 틱 — 진행 중/입장창 상태를 시간에 따라 갱신.
@@ -156,26 +156,6 @@ export default function FriendingRooms({
     run(target.id, () => leaveRoom(target.id), "참여를 취소했습니다.");
   };
 
-  // 입장 — 팝업 차단 회피(빈 탭 먼저 열고 액션 URL로 이동). EnterClassButton과 동일 패턴.
-  const confirmEnter = () => {
-    const target = enterTarget;
-    setEnterTarget(null);
-    if (!target) return;
-    const w = window.open("", "_blank");
-    setPendingId(target.id);
-    startTransition(async () => {
-      const res = await enterRoom(target.id);
-      if (res.url) {
-        if (w) w.location.href = res.url;
-        else window.open(res.url, "_blank");
-      } else {
-        w?.close();
-        toast.error(res.error ?? "입장할 수 없어요.");
-      }
-      setPendingId(null);
-    });
-  };
-
   if (rooms.length === 0) {
     return (
       <div className="border-rule mt-8 rounded-xl border bg-white px-6 py-16 text-center">
@@ -216,7 +196,6 @@ export default function FriendingRooms({
                 disabled={pending}
                 onJoin={() => run(r.id, () => joinRoom(r.id), "참여했습니다.")}
                 onLeave={() => setLeaveTarget(r)}
-                onEnter={() => setEnterTarget(r)}
               />
             ))}
           </div>
@@ -257,24 +236,6 @@ export default function FriendingRooms({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* 입장 안내 */}
-      <AlertDialog open={enterTarget !== null} onOpenChange={(open) => !open && setEnterTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>입장 전 확인해 주세요</AlertDialogTitle>
-            <AlertDialogDescription>
-              Zoom으로 연결되며 얼굴을 보이고 참여하는 것을 원칙으로 해요. 프렌더는 강사가 아니라 함께 연습하는 회원이에요. 서로 예의를 지켜 주세요.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmEnter} className="bg-cta hover:bg-cta/90 border-transparent text-white">
-              입장할게요
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
@@ -299,7 +260,6 @@ function RoomCard({
   disabled,
   onJoin,
   onLeave,
-  onEnter,
   onOpenHost,
 }: {
   room: PublicRoom;
@@ -311,7 +271,6 @@ function RoomCard({
   disabled: boolean;
   onJoin: () => void;
   onLeave: () => void;
-  onEnter: () => void;
   onOpenHost: (host: HostProfile) => void;
 }) {
   const full = room.participants >= room.capacity;
@@ -377,15 +336,15 @@ function RoomCard({
             <Link href="/login?next=/friending" className={cn(pill, "bg-cta inline-block text-white hover:opacity-90")}>
               로그인하고 참여
             </Link>
+          ) : room.isMine && enterable ? (
+            // 개설자도 시간창 안에서는 입장 — 안내 다이얼로그는 참가자 대상 문구라 건너뛴다.
+            <EnterRoomButton roomId={room.id} className={cn(pill, "bg-cta text-white")} />
           ) : room.isMine ? (
             <button type="button" disabled className={cn(pill, "bg-rule text-muted-fg cursor-default")}>
               내 방
             </button>
           ) : room.joined && enterable ? (
-            <button type="button" onClick={onEnter} disabled={disabled} className={cn(pill, "bg-cta inline-flex items-center gap-1.5 text-white")}>
-              {busy ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <Video aria-hidden className="size-3.5" />}
-              입장하기
-            </button>
+            <EnterRoomButton roomId={room.id} withGuide className={cn(pill, "bg-cta text-white")} disabled={disabled} />
           ) : room.joined ? (
             <button type="button" onClick={onLeave} disabled={disabled} className={cn(pill, "border-rule text-muted-fg hover:bg-surface border")}>
               참여 취소
