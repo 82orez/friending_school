@@ -169,7 +169,6 @@ async function findOverlappingRoom(
 ): Promise<{ title: string; sessionDate: string; startMin: number; durationMin: number } | null> {
   // 어제부터 조회 — 어제 23:30에 시작해 오늘로 넘어온 방을 놓치지 않기 위함.
   // 그보다 과거 방은 이미 종료돼(새 방은 항상 미래 시작) 겹칠 수 없다.
-  // 숨김(is_visible=false) 방도 포함: 숨김은 공개 목록에서 빼는 것일 뿐 일정 취소가 아니다.
   const { data } = await admin
     .from("friender_rooms")
     .select("id, title, session_date, start_min, duration_min")
@@ -263,19 +262,6 @@ export async function updateRoom(id: string, input: RoomInput): Promise<RoomActi
     .eq("id", id)
     .eq("friender_id", userId);
   if (error) return { ok: false, error: "수정 중 문제가 발생했습니다." };
-
-  revalidatePath("/friender", "layout");
-  return { ok: true };
-}
-
-export async function setRoomVisibility(id: string, isVisible: boolean): Promise<RoomActionResult> {
-  const userId = await requireFriender();
-  if (!userId) return { ok: false, error: "권한이 없습니다." };
-  if (!id) return { ok: false, error: "잘못된 요청입니다." };
-
-  const admin = createAdminClient();
-  const { error } = await admin.from("friender_rooms").update({ is_visible: isVisible }).eq("id", id).eq("friender_id", userId);
-  if (error) return { ok: false, error: "변경 중 문제가 발생했습니다." };
 
   revalidatePath("/friender", "layout");
   return { ok: true };

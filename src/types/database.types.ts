@@ -471,7 +471,6 @@ export type Database = {
           friender_name: string | null
           friender_nickname: string | null
           id: string
-          is_visible: boolean
           level: string
           session_date: string
           start_min: number
@@ -487,7 +486,6 @@ export type Database = {
           friender_name?: string | null
           friender_nickname?: string | null
           id?: string
-          is_visible?: boolean
           level: string
           session_date: string
           start_min: number
@@ -503,7 +501,6 @@ export type Database = {
           friender_name?: string | null
           friender_nickname?: string | null
           id?: string
-          is_visible?: boolean
           level?: string
           session_date?: string
           start_min?: number

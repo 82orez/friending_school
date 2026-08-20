@@ -13,7 +13,7 @@ export default async function FrienderRoomsPage() {
   // RLS friender_rooms_select_own이 본인 것만 통과시킨다(비공개·지난 방 포함).
   const { data } = await supabase
     .from("friender_rooms")
-    .select("id, title, description, level, capacity, session_date, start_min, duration_min, is_visible")
+    .select("id, title, description, level, capacity, session_date, start_min, duration_min")
     .order("session_date", { ascending: false })
     .order("start_min", { ascending: false });
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2, Pencil, Trash2, Users } from "lucide-react";
+import { Loader2, Pencil, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime, formatDateKo } from "@/lib/availability";
@@ -10,7 +10,7 @@ import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
 import { roomsOverlap } from "@/lib/room-time";
 import EnterRoomButton from "@/components/friending/EnterRoomButton";
 import { ROOM_LEVELS, DEFAULT_ROOM_LEVEL, roomLevelLabelKo } from "@/data/room-levels";
-import { createRoom, deleteRoom, setRoomVisibility, updateRoom, type RoomInput } from "@/app/friender/actions";
+import { createRoom, deleteRoom, updateRoom, type RoomInput } from "@/app/friender/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,7 +35,6 @@ export type FrienderRoom = {
   session_date: string; // KST YYYY-MM-DD
   start_min: number;
   duration_min: number;
-  is_visible: boolean;
 };
 
 // 개설 가능 시간대 00:00~23:30(30분 간격, 24시간).
@@ -248,9 +247,6 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
                       kstDateMinToMs(r.session_date, r.start_min + r.duration_min),
                     )}
                     onEdit={() => startEdit(r)}
-                    onToggleVisible={() =>
-                      run(() => setRoomVisibility(r.id, !r.is_visible), r.is_visible ? "비공개로 전환했습니다." : "공개로 전환했습니다.")
-                    }
                     onDelete={() => setDeleteTarget(r)}
                   />
                 ),
@@ -417,7 +413,6 @@ function RoomRow({
   isPast,
   enterable,
   onEdit,
-  onToggleVisible,
   onDelete,
 }: {
   room: FrienderRoom;
@@ -425,7 +420,6 @@ function RoomRow({
   isPast?: boolean;
   enterable?: boolean;
   onEdit?: () => void;
-  onToggleVisible?: () => void;
   onDelete: () => void;
 }) {
   const iconBtn = "border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border p-2 transition-colors disabled:opacity-60";
@@ -433,10 +427,7 @@ function RoomRow({
   return (
     <li className={cn("border-rule flex flex-wrap items-center gap-3 border-b px-4 py-3.5 last:border-b-0 md:px-6", isPast && "opacity-60")}>
       <div className="min-w-0 flex-1">
-        <p className="text-ink truncate text-sm font-bold">
-          {room.title}
-          {!room.is_visible && <span className="bg-rule text-muted-fg ml-2 rounded-full px-2 py-0.5 text-xs font-bold">비공개</span>}
-        </p>
+        <p className="text-ink truncate text-sm font-bold">{room.title}</p>
         <p className="text-muted-fg mt-0.5 text-xs">
           {formatDateKo(room.session_date)} · {fmtTime(room.start_min)}~{fmtEnd(room.start_min + room.duration_min)}
         </p>
@@ -453,29 +444,14 @@ function RoomRow({
       {/* 아이콘만으로는 기능을 알기 어려워 툴팁을 붙인다. TooltipTrigger는 기본이 <button>이라
           type/onClick/disabled/aria-*가 그대로 전달된다(별도 래핑 불필요). */}
       <div className="flex shrink-0 items-center gap-1.5">
-        {/* 입장 — 시간창(시작 15분 전~종료) 안에서만. 비공개 방은 서버 enterRoom이 거부하므로 숨긴다. */}
-        {enterable && room.is_visible && (
+        {/* 입장 — 시간창(시작 15분 전~종료) 안에서만. */}
+        {enterable && (
           <EnterRoomButton
             roomId={room.id}
             label="입장"
             disabled={pending}
             className="bg-cta mr-1 shrink-0 rounded-md px-3 py-1.5 text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           />
-        )}
-        {onToggleVisible && (
-          <Tooltip>
-            <TooltipTrigger
-              type="button"
-              onClick={onToggleVisible}
-              disabled={pending}
-              aria-pressed={room.is_visible}
-              aria-label={room.is_visible ? "비공개로 전환" : "공개로 전환"}
-              // 아이콘 모양으로 현재 상태를 구분(색만으로는 헷갈림): 공개=Eye, 비공개=EyeOff.
-              className={cn(iconBtn, room.is_visible ? "border-cta/40 text-cta" : "border-rule-faint text-muted-fg-faint")}>
-              {room.is_visible ? <Eye aria-hidden className="size-4" /> : <EyeOff aria-hidden className="size-4" />}
-            </TooltipTrigger>
-            <TooltipContent>{room.is_visible ? "공개 중 · 클릭하면 비공개" : "비공개 · 클릭하면 공개"}</TooltipContent>
-          </Tooltip>
         )}
         {onEdit && (
           <Tooltip>

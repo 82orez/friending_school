@@ -41,11 +41,9 @@ export default async function FriendingPage() {
   } = await supabase.auth.getUser();
 
   // 공개 조회 — RLS friender_rooms_select_public이 anon에도 열려 있다.
-  // .eq("is_visible")는 정책과 중복이지만 랜딩 youtube 쿼리와 같은 belt-and-braces 컨벤션.
   const { data } = await supabase
     .from("friender_rooms")
     .select("id, friender_id, friender_name, friender_nickname, title, description, level, capacity, session_date, start_min, duration_min")
-    .eq("is_visible", true)
     .gte("session_date", todayKst())
     .order("session_date", { ascending: true })
     .order("start_min", { ascending: true });

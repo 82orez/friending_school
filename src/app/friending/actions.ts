@@ -23,7 +23,6 @@ async function currentUserId(): Promise<string | null> {
 const JOIN_ERROR: Record<string, string> = {
   unauthenticated: "로그인이 필요합니다. 다시 로그인해 주세요.",
   not_found: "방을 찾을 수 없어요. 목록을 새로고침해 주세요.",
-  not_visible: "지금은 참여할 수 없는 방이에요.",
   own_room: "내가 개설한 방에는 참여할 수 없어요.",
   ended: "이미 종료된 방이에요.",
   full: "정원이 모두 찼어요.",
@@ -86,11 +85,10 @@ export async function enterRoom(roomId: string): Promise<EnterRoomResult> {
   const admin = createAdminClient();
   const { data: room } = await admin
     .from("friender_rooms")
-    .select("id, friender_id, session_date, start_min, duration_min, is_visible")
+    .select("id, friender_id, session_date, start_min, duration_min")
     .eq("id", id)
     .maybeSingle();
   if (!room) return { error: "방을 찾을 수 없어요." };
-  if (!room.is_visible) return { error: "지금은 입장할 수 없는 방이에요." };
 
   // 개설자 본인이거나 참가자여야 입장 가능.
   const isHost = room.friender_id === userId;
