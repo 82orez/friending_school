@@ -37,11 +37,16 @@ export type FrienderRoom = {
   duration_min: number;
 };
 
-// 개설 가능 시간대 00:00~23:30(30분 간격, 24시간).
+// 개설 가능 시간대 00:00~23:50(10분 간격, 24시간). 시·분을 각각 고르게 나눠 둔 이유는
+// 10분 단위면 단일 드롭다운이 144개가 돼 스크롤 부담이 크기 때문(24개 + 6개로 분할).
 // 강사 그리드(EnrollScheduleField, 06:00~)의 하한을 따르지 않는다 — 연습방은 해외 회원과의
 // 시차 대응이 필요해 새벽 시간대가 열려 있어야 한다. 서버·DB도 이미 0~1439를 허용한다.
-const START_OPTIONS: number[] = [];
-for (let m = 0; m < 24 * 60; m += 30) START_OPTIONS.push(m);
+const START_STEP = 10;
+const START_HOURS: number[] = [];
+for (let h = 0; h < 24; h++) START_HOURS.push(h);
+const START_MINUTES: number[] = [];
+for (let m = 0; m < 60; m += START_STEP) START_MINUTES.push(m);
+const LAST_START_MIN = 24 * 60 - START_STEP; // 23:50
 
 // 진행 시간 20분~2시간, 10분 단위(서버 ROOM_DURATIONS·DB check와 동일 범위).
 const DURATIONS: number[] = [];
@@ -53,6 +58,8 @@ const MAX_AHEAD_DAYS = 90;
 // 종료 시각 표시 전용 — 자정을 넘기면 24h로 되감고 '(익일)'을 덧붙인다.
 // 저장 값·경과 판정(kstDateMinToMs)은 1440 초과를 정상 처리하므로 표시만 손본다.
 // fmtTime 자체는 강의실·정산 등 소비처가 많아 건드리지 않는다.
+const pad2 = (n: number): string => String(n).padStart(2, "0");
+
 const fmtEnd = (endMin: number): string => (endMin >= 24 * 60 ? `${fmtTime(endMin - 24 * 60)} (익일)` : fmtTime(endMin));
 
 const kstDateStr = (offsetDays = 0): string => {
@@ -61,15 +68,14 @@ const kstDateStr = (offsetDays = 0): string => {
   return d.toLocaleDateString("en-CA");
 };
 
-// 지금(KST) 기준 다음 30분 슬롯. 서버가 '시작 시각이 미래'인지 검증하므로 기본값이 과거면 안 된다.
-// 오늘 남은 슬롯이 없으면(23:30 지남) 내일 00:00으로 넘긴다.
+// 지금(KST) 기준 다음 10분 슬롯. 서버가 '시작 시각이 미래'인지 검증하므로 기본값이 과거면 안 된다.
+// 오늘 남은 슬롯이 없으면(23:50 지남) 내일 00:00으로 넘긴다.
 const nextOpenSlot = (): { sessionDate: string; startMin: number } => {
   const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-  const last = START_OPTIONS[START_OPTIONS.length - 1];
   // +1분: 정각에 열면 '지금'이 아니라 그 다음 슬롯을 고르도록(서버는 now 초과만 허용).
-  const next = Math.ceil((kstNow.getHours() * 60 + kstNow.getMinutes() + 1) / 30) * 30;
+  const next = Math.ceil((kstNow.getHours() * 60 + kstNow.getMinutes() + 1) / START_STEP) * START_STEP;
 
-  if (next > last) return { sessionDate: kstDateStr(1), startMin: START_OPTIONS[0] };
+  if (next > LAST_START_MIN) return { sessionDate: kstDateStr(1), startMin: 0 };
   return { sessionDate: kstDateStr(), startMin: next };
 };
 
@@ -350,16 +356,36 @@ function RoomFields({
       </label>
 
       <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1">
+        {/* 시·분 두 컨트롤이라 <label>로 감싸지 않는다(라벨이 첫 select에만 걸림) — 각각 aria-label을 준다. */}
+        <div className="flex flex-col gap-1">
           <span className="text-muted-fg-faint text-xs font-semibold">시작 시각</span>
-          <select value={fields.startMin} disabled={disabled} onChange={(e) => set({ startMin: Number(e.target.value) })} className={selectClass}>
-            {START_OPTIONS.map((m) => (
-              <option key={m} value={m}>
-                {fmtTime(m)}
-              </option>
-            ))}
-          </select>
-        </label>
+          <div className="flex gap-2">
+            <select
+              aria-label="시작 시각 (시)"
+              value={Math.floor(fields.startMin / 60)}
+              disabled={disabled}
+              onChange={(e) => set({ startMin: Number(e.target.value) * 60 + (fields.startMin % 60) })}
+              className={cn(selectClass, "flex-1")}>
+              {START_HOURS.map((h) => (
+                <option key={h} value={h}>
+                  {pad2(h)}시
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="시작 시각 (분)"
+              value={fields.startMin % 60}
+              disabled={disabled}
+              onChange={(e) => set({ startMin: Math.floor(fields.startMin / 60) * 60 + Number(e.target.value) })}
+              className={cn(selectClass, "flex-1")}>
+              {START_MINUTES.map((m) => (
+                <option key={m} value={m}>
+                  {pad2(m)}분
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
         <label className="flex flex-col gap-1">
           <span className="text-muted-fg-faint text-xs font-semibold">진행 시간</span>
           <select

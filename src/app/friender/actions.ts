@@ -136,7 +136,7 @@ function validateRoomInput(input: RoomInput): { error?: string; values?: Omit<Ro
   if (sessionDate > addDaysKst(today, ROOM_MAX_AHEAD_DAYS)) return { error: `개설 날짜는 ${ROOM_MAX_AHEAD_DAYS}일 이내로 선택해 주세요.` };
 
   const startMin = Number(input?.startMin);
-  if (!Number.isInteger(startMin) || startMin < 0 || startMin > 1439 || startMin % 30 !== 0) return { error: "시작 시각을 선택해 주세요." };
+  if (!Number.isInteger(startMin) || startMin < 0 || startMin > 1439 || startMin % 10 !== 0) return { error: "시작 시각을 선택해 주세요." };
 
   const durationMin = Number(input?.durationMin);
   if (!ROOM_DURATIONS.includes(durationMin)) return { error: "진행 시간을 선택해 주세요." };
