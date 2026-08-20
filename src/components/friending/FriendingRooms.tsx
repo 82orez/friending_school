@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Users } from "lucide-react";
+import { ChevronRight, Loader2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
@@ -13,6 +13,7 @@ import { roomLevelLabelKo } from "@/data/room-levels";
 import { joinRoom, leaveRoom } from "@/app/friending/actions";
 import EnterRoomButton from "@/components/friending/EnterRoomButton";
 import HostProfileModal from "@/components/friending/HostProfileModal";
+import RoomInfoModal, { type RoomInfo } from "@/components/friending/RoomInfoModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,6 +98,7 @@ export default function FriendingRooms({
   const [pending, startTransition] = useTransition();
   const [leaveTarget, setLeaveTarget] = useState<PublicRoom | null>(null);
   const [hostTarget, setHostTarget] = useState<HostProfile | null>(null);
+  const [infoTarget, setInfoTarget] = useState<RoomInfo | null>(null);
 
   // 1분 틱 — 진행 중/입장창 상태를 시간에 따라 갱신.
   const [now, setNow] = useState(() => Date.now());
@@ -190,6 +192,7 @@ export default function FriendingRooms({
                 host={hosts[r.frienderId] ?? { name: r.fallbackName, avatarUrl: null, nationality: null, gender: null, bio: null }}
                 isLoggedIn={isLoggedIn}
                 onOpenHost={setHostTarget}
+                onOpenInfo={setInfoTarget}
                 live={isLive(r)}
                 enterable={canEnter(r)}
                 busy={pending && pendingId === r.id}
@@ -213,6 +216,9 @@ export default function FriendingRooms({
 
       {/* 개설자 공개 프로필 */}
       <HostProfileModal host={hostTarget} onClose={() => setHostTarget(null)} />
+
+      {/* 방 소개 전문 */}
+      <RoomInfoModal info={infoTarget} onClose={() => setInfoTarget(null)} />
 
       {/* 참여 취소 확인 */}
       <AlertDialog open={leaveTarget !== null} onOpenChange={(open) => !open && setLeaveTarget(null)}>
@@ -261,6 +267,7 @@ function RoomCard({
   onJoin,
   onLeave,
   onOpenHost,
+  onOpenInfo,
 }: {
   room: PublicRoom;
   host: HostProfile;
@@ -272,9 +279,13 @@ function RoomCard({
   onJoin: () => void;
   onLeave: () => void;
   onOpenHost: (host: HostProfile) => void;
+  onOpenInfo: (info: RoomInfo) => void;
 }) {
   const full = room.participants >= room.capacity;
   const pill = "shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors disabled:opacity-60";
+  const levelLabel = roomLevelLabelKo(room.level);
+  const when = `${fmtMonthDay(room.sessionDate)} · ${fmtTime(room.startMin)}~${fmtEnd(room.startMin + room.durationMin)}`;
+  const description = room.description?.trim() ?? "";
 
   return (
     <div className="border-rule flex items-start gap-2.5 rounded-2xl border bg-white p-3.5">
@@ -321,15 +332,35 @@ function RoomCard({
             <Users aria-hidden className="size-3" />
             {room.participants}/{room.capacity}명
           </span>
-          <span>
-            {fmtMonthDay(room.sessionDate)} · {fmtTime(room.startMin)}~{fmtEnd(room.startMin + room.durationMin)}
-          </span>
-          <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 text-[11px] font-bold">
-            {roomLevelLabelKo(room.level)}
-          </span>
+          <span>{when}</span>
+          <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 text-[11px] font-bold">{levelLabel}</span>
         </p>
 
-        {room.description && <p className="text-muted-fg-faint mt-1.5 line-clamp-2 text-xs whitespace-pre-wrap">{room.description}</p>}
+        {/* 소개는 모달로 — 문단을 조건부로 렌더하면 카드마다 CTA 높이가 달라진다(버튼은 항상 렌더, 소개 없으면 비활성). */}
+        <div className="mt-1.5">
+          <button
+            type="button"
+            disabled={!description}
+            aria-haspopup="dialog"
+            title={description ? undefined : "등록된 소개가 없어요"}
+            onClick={() =>
+              onOpenInfo({
+                title: room.title,
+                hostName: host.name,
+                levelLabel,
+                when,
+                participants: room.participants,
+                capacity: room.capacity,
+                description,
+              })
+            }
+            className={cn(
+              "focus-visible:ring-accent-blue/50 inline-flex items-center gap-0.5 rounded text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+              description ? "text-accent-blue-ink hover:underline" : "text-muted-fg-faint/60 cursor-default",
+            )}>
+            <ChevronRight aria-hidden className="size-3" />방 소개 보기
+          </button>
+        </div>
 
         <div className="mt-2.5">
           {!isLoggedIn ? (
