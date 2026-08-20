@@ -8,6 +8,7 @@ import { getUserIdentitySummary } from "@/utils/supabase/admin";
 import { getOrigin } from "@/lib/origin";
 import { rateLimit, formatRetryAfter } from "@/lib/rate-limit";
 import { isValidEmail } from "@/lib/email";
+import { safeNextPath } from "@/lib/url";
 
 export type LoginState = { error?: string; canResend?: boolean } | null;
 export type ResendConfirmationResult = { error?: string; success?: string };
@@ -15,6 +16,8 @@ export type ResendConfirmationResult = { error?: string; success?: string };
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  // 로그인 후 돌아갈 경로. 폼의 hidden input에서 오므로 반드시 서버에서 다시 검증한다.
+  const next = safeNextPath(formData.get("next") as string | null);
 
   if (!email || !password) {
     return { error: "이메일과 비밀번호를 입력해 주세요." };
@@ -55,7 +58,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   }
 
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect(next);
 }
 
 export async function resendConfirmation(email: string): Promise<ResendConfirmationResult> {

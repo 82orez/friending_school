@@ -432,6 +432,35 @@ export type Database = {
         }
         Relationships: []
       }
+      friender_room_participants: {
+        Row: {
+          created_at: string
+          room_id: string
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          room_id: string
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          room_id?: string
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friender_room_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "friender_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friender_rooms: {
         Row: {
           capacity: number
@@ -944,6 +973,10 @@ export type Database = {
         Returns: string
       }
       increment_notice_view: { Args: { p_id: string }; Returns: undefined }
+      join_friender_room: {
+        Args: { p_room_id: string; p_user_name: string }
+        Returns: string
+      }
     }
     Enums: {
       enrollment_status:

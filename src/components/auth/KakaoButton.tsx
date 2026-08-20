@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 import { signInWithKakao } from "@/app/(auth)/oauth/actions";
 import { Button } from "@/components/ui/button";
 
-export function KakaoButton() {
+export function KakaoButton({ next }: { next?: string }) {
   const [pending, startTransition] = useTransition();
 
   return (
@@ -13,7 +13,7 @@ export function KakaoButton() {
       type="button"
       variant="kakao"
       disabled={pending}
-      onClick={() => startTransition(() => signInWithKakao())}
+      onClick={() => startTransition(() => signInWithKakao(next))}
       className="h-11 text-base font-bold">
       {pending ? (
         <>

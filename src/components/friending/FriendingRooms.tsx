@@ -1,0 +1,360 @@
+"use client";
+
+import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Loader2, Users, Video } from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { fmtTime } from "@/lib/availability";
+import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
+import { roomLevelLabelKo } from "@/data/room-levels";
+import { enterRoom, joinRoom, leaveRoom } from "@/app/friending/actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+export type PublicRoom = {
+  id: string;
+  hostName: string;
+  isMine: boolean;
+  title: string;
+  description: string | null;
+  level: string;
+  capacity: number;
+  sessionDate: string; // KST YYYY-MM-DD
+  startMin: number;
+  durationMin: number;
+  participants: number;
+  joined: boolean;
+};
+
+const PAGE_STEP = 12;
+
+// 아바타 그라디언트 — v9 목업 프리셋. 방 id 해시로 고정 배정(리렌더에도 안 바뀜).
+const AVATAR_GRADIENTS = [
+  "linear-gradient(135deg,#3ecfb2,#6366f1)",
+  "linear-gradient(135deg,#6366f1,#a855f7)",
+  "linear-gradient(135deg,#f43f8e,#f97316)",
+  "linear-gradient(135deg,#22c55e,#3ecfb2)",
+];
+const gradientOf = (id: string): string => {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length];
+};
+
+// 종료 시각 표시 — 자정을 넘기면 24h로 되감는다(RoomsManager의 fmtEnd와 같은 규칙).
+const fmtEnd = (endMin: number): string => (endMin >= 24 * 60 ? `${fmtTime(endMin - 24 * 60)} (익일)` : fmtTime(endMin));
+
+const kstDateStr = (offsetDays = 0): string => {
+  const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  d.setDate(d.getDate() + offsetDays);
+  return d.toLocaleDateString("en-CA");
+};
+
+// "8월 21일" — 날짜 그룹 헤더/카드 표기용(로케일 함수 대신 직접 조립: 하이드레이션 안전).
+const fmtMonthDay = (dateStr: string): string => {
+  const [, m, d] = dateStr.split("-").map(Number);
+  return `${m}월 ${d}일`;
+};
+
+type Group = { key: string; label: string; rooms: PublicRoom[] };
+
+export default function FriendingRooms({ rooms, isLoggedIn }: { rooms: PublicRoom[]; isLoggedIn: boolean }) {
+  const router = useRouter();
+  const [visible, setVisible] = useState(PAGE_STEP);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const [leaveTarget, setLeaveTarget] = useState<PublicRoom | null>(null);
+  const [enterTarget, setEnterTarget] = useState<PublicRoom | null>(null);
+
+  // 1분 틱 — 진행 중/입장창 상태를 시간에 따라 갱신.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  const isLive = (r: PublicRoom) =>
+    now >= kstDateMinToMs(r.sessionDate, r.startMin) && now < kstDateMinToMs(r.sessionDate, r.startMin + r.durationMin);
+
+  const canEnter = (r: PublicRoom) =>
+    canEnterClass(now, kstDateMinToMs(r.sessionDate, r.startMin), kstDateMinToMs(r.sessionDate, r.startMin + r.durationMin));
+
+  const liveCount = useMemo(() => rooms.filter(isLive).length, [rooms, now]);
+
+  // 오늘 / 내일 / 이후로 그룹. 진행 중인 방은 오늘 그룹 최상단으로 끌어올린다.
+  const groups = useMemo<Group[]>(() => {
+    const today = kstDateStr(0);
+    const tomorrow = kstDateStr(1);
+    const shown = rooms.slice(0, visible);
+    const buckets = new Map<string, PublicRoom[]>();
+    for (const r of shown) {
+      const key = r.sessionDate === today ? "today" : r.sessionDate === tomorrow ? "tomorrow" : "later";
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key)!.push(r);
+    }
+    const todayRooms = buckets.get("today") ?? [];
+    // 진행 중 우선(그 외 순서는 서버 정렬 유지).
+    todayRooms.sort((a, b) => Number(isLive(b)) - Number(isLive(a)));
+
+    const out: Group[] = [];
+    if (todayRooms.length) out.push({ key: "today", label: "오늘", rooms: todayRooms });
+    if (buckets.get("tomorrow")?.length) out.push({ key: "tomorrow", label: "내일", rooms: buckets.get("tomorrow")! });
+    if (buckets.get("later")?.length) out.push({ key: "later", label: "이후", rooms: buckets.get("later")! });
+    return out;
+  }, [rooms, visible, now]);
+
+  const run = (roomId: string, fn: () => Promise<{ ok: boolean; error?: string }>, success: string) => {
+    setPendingId(roomId);
+    startTransition(async () => {
+      const res = await fn();
+      if (res.ok) {
+        router.refresh();
+        toast.success(success);
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
+      setPendingId(null);
+    });
+  };
+
+  const confirmLeave = () => {
+    const target = leaveTarget;
+    setLeaveTarget(null); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
+    if (!target) return;
+    run(target.id, () => leaveRoom(target.id), "참여를 취소했습니다.");
+  };
+
+  // 입장 — 팝업 차단 회피(빈 탭 먼저 열고 액션 URL로 이동). EnterClassButton과 동일 패턴.
+  const confirmEnter = () => {
+    const target = enterTarget;
+    setEnterTarget(null);
+    if (!target) return;
+    const w = window.open("", "_blank");
+    setPendingId(target.id);
+    startTransition(async () => {
+      const res = await enterRoom(target.id);
+      if (res.url) {
+        if (w) w.location.href = res.url;
+        else window.open(res.url, "_blank");
+      } else {
+        w?.close();
+        toast.error(res.error ?? "입장할 수 없어요.");
+      }
+      setPendingId(null);
+    });
+  };
+
+  if (rooms.length === 0) {
+    return (
+      <div className="border-rule mt-8 rounded-xl border bg-white px-6 py-16 text-center">
+        <p className="text-ink text-sm font-bold">지금 열려 있는 방이 없어요.</p>
+        <p className="text-muted-fg mt-1 text-sm">곧 새로운 방이 열릴 거예요.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-8">
+      {/* 섹션 헤더 */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-ink flex items-center gap-2 text-base font-extrabold">
+          오픈 대화
+          <span className="rounded-full bg-[#eafff1] px-2 py-0.5 text-[11px] font-extrabold text-[#22c55e]">FREE</span>
+        </h2>
+        <p className="text-muted-fg flex items-center gap-1.5 text-[13px] font-bold">
+          <LiveDot active={liveCount > 0} />
+          {liveCount > 0 ? `지금 ${liveCount}개 진행 중` : `열린 방 ${rooms.length}개`}
+        </p>
+      </div>
+
+      {groups.map((g) => (
+        <section key={g.key} className="mt-5">
+          <h3 className="text-muted-fg-faint text-xs font-extrabold">{g.label}</h3>
+          <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {g.rooms.map((r) => (
+              <RoomCard
+                key={r.id}
+                room={r}
+                isLoggedIn={isLoggedIn}
+                live={isLive(r)}
+                enterable={canEnter(r)}
+                busy={pending && pendingId === r.id}
+                disabled={pending}
+                onJoin={() => run(r.id, () => joinRoom(r.id), "참여했습니다.")}
+                onLeave={() => setLeaveTarget(r)}
+                onEnter={() => setEnterTarget(r)}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+
+      {visible < rooms.length && (
+        <button
+          type="button"
+          onClick={() => setVisible((v) => v + PAGE_STEP)}
+          className="bg-surface text-muted-fg hover:bg-rule/60 mt-6 w-full rounded-xl py-3 text-sm font-bold transition-colors">
+          더보기
+        </button>
+      )}
+
+      {/* 참여 취소 확인 */}
+      <AlertDialog open={leaveTarget !== null} onOpenChange={(open) => !open && setLeaveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>참여를 취소하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {leaveTarget && (
+                <>
+                  <span className="text-ink font-semibold">{leaveTarget.title}</span> 방의 참여가 취소됩니다. 자리가 남아 있으면 다시 참여할 수
+                  있어요.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>닫기</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmLeave} variant="brand">
+              참여 취소
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 입장 안내 */}
+      <AlertDialog open={enterTarget !== null} onOpenChange={(open) => !open && setEnterTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>입장 전 확인해 주세요</AlertDialogTitle>
+            <AlertDialogDescription>
+              Zoom으로 연결되며 얼굴을 보이고 참여하는 것을 원칙으로 해요. 프렌더는 강사가 아니라 함께 연습하는 회원이에요. 서로 예의를 지켜 주세요.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmEnter} className="bg-cta hover:bg-cta/90 border-transparent text-white">
+              입장할게요
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// 라이브 표시 점 — v9 목업의 .app-live-dot(초록 원 + 퍼지는 링) 재현.
+function LiveDot({ active }: { active: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn("inline-block size-2 rounded-full", active ? "animate-pulse bg-[#4ade80] ring-3 ring-[#4ade80]/25" : "bg-rule-faint")}
+    />
+  );
+}
+
+function RoomCard({
+  room,
+  isLoggedIn,
+  live,
+  enterable,
+  busy,
+  disabled,
+  onJoin,
+  onLeave,
+  onEnter,
+}: {
+  room: PublicRoom;
+  isLoggedIn: boolean;
+  live: boolean;
+  enterable: boolean;
+  busy: boolean;
+  disabled: boolean;
+  onJoin: () => void;
+  onLeave: () => void;
+  onEnter: () => void;
+}) {
+  const full = room.participants >= room.capacity;
+  const pill = "shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors disabled:opacity-60";
+
+  return (
+    <div className="border-rule flex items-start gap-2.5 rounded-2xl border bg-white p-3.5">
+      {/* 아바타 — 사진 없이 이니셜(공개 목록에서 타인 profiles를 읽을 수 없음) */}
+      <span
+        aria-hidden
+        style={{ background: gradientOf(room.id) }}
+        className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white">
+        {room.hostName.slice(0, 1)}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-ink flex items-center gap-1.5 text-[15px] font-bold">
+          <span className="truncate">{room.hostName}님</span>
+          <span
+            title="프렌더"
+            aria-hidden
+            className="inline-flex size-3.5 shrink-0 items-center justify-center rounded-[50%_50%_50%_3px] bg-[#DC52B8] text-[8px] font-bold text-white">
+            F
+          </span>
+          {live && <span className="shrink-0 text-xs font-bold text-[#22c55e]">대화 중</span>}
+        </p>
+
+        <p className="text-ink mt-1 line-clamp-1 text-sm font-semibold">{room.title}</p>
+
+        <p className="text-muted-fg mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
+          <span className="inline-flex items-center gap-1">
+            <Users aria-hidden className="size-3" />
+            {room.participants}/{room.capacity}명
+          </span>
+          <span>
+            {fmtMonthDay(room.sessionDate)} · {fmtTime(room.startMin)}~{fmtEnd(room.startMin + room.durationMin)}
+          </span>
+          <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 text-[11px] font-bold">
+            {roomLevelLabelKo(room.level)}
+          </span>
+        </p>
+
+        {room.description && <p className="text-muted-fg-faint mt-1.5 line-clamp-2 text-xs whitespace-pre-wrap">{room.description}</p>}
+
+        <div className="mt-2.5">
+          {!isLoggedIn ? (
+            <Link href="/login?next=/friending" className={cn(pill, "bg-cta inline-block text-white hover:opacity-90")}>
+              로그인하고 참여
+            </Link>
+          ) : room.isMine ? (
+            <button type="button" disabled className={cn(pill, "bg-rule text-muted-fg cursor-default")}>
+              내 방
+            </button>
+          ) : room.joined && enterable ? (
+            <button type="button" onClick={onEnter} disabled={disabled} className={cn(pill, "bg-cta inline-flex items-center gap-1.5 text-white")}>
+              {busy ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <Video aria-hidden className="size-3.5" />}
+              입장하기
+            </button>
+          ) : room.joined ? (
+            <button type="button" onClick={onLeave} disabled={disabled} className={cn(pill, "border-rule text-muted-fg hover:bg-surface border")}>
+              참여 취소
+            </button>
+          ) : full ? (
+            <button type="button" disabled className={cn(pill, "bg-rule text-muted-fg-faint cursor-default")}>
+              마감
+            </button>
+          ) : (
+            <button type="button" onClick={onJoin} disabled={disabled} className={cn(pill, "bg-cta inline-flex items-center gap-1.5 text-white")}>
+              {busy && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
+              참여하기
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -5,24 +5,28 @@ import Link from "next/link";
 import LoginForm from "@/components/auth/LoginForm";
 import AuthBannerSlot from "@/components/auth/AuthBannerSlot";
 import { createClient } from "@/utils/supabase/server";
+import { safeNextPath } from "@/lib/url";
 
 export const metadata: Metadata = {
   title: "로그인 | 프렌딩 스쿨",
 };
 
-type SearchParams = Promise<{ error?: string; verified?: string }>;
+type SearchParams = Promise<{ error?: string; verified?: string; next?: string }>;
 
 export default async function LoginPage({ searchParams }: { searchParams: SearchParams }) {
+  const { error, verified, next: rawNext } = await searchParams;
+  // 로그인 후 돌아갈 경로(예: /login?next=/friending). open redirect 방지 검증 필수.
+  const next = safeNextPath(rawNext);
+
   const supabase = createClient(await cookies());
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // 이미 로그인된 상태로 들어와도 원래 가려던 곳으로 보낸다.
   if (user) {
-    redirect("/");
+    redirect(next);
   }
-
-  const { error, verified } = await searchParams;
   const showAuthCodeError = error === "auth-code-error";
   const showVerifiedPending = verified === "pending";
 
@@ -48,7 +52,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Search
             </div>
           )}
         </AuthBannerSlot>
-        <LoginForm />
+        <LoginForm next={next} />
       </div>
     </main>
   );

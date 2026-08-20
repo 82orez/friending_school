@@ -2,6 +2,7 @@ import { type EmailOtpType } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/utils/supabase/server";
+import { safeNextPath } from "@/lib/url";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -10,9 +11,8 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const flow = searchParams.get("flow");
   const isOAuth = flow === "oauth";
-  const rawNext = searchParams.get("next") ?? "/";
-  // open redirect 방지: 내부 절대경로(`/...`)만 허용하고 `//host` 형태는 차단.
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  // open redirect 방지 — 로그인 액션·카카오 OAuth와 같은 검증(safeNextPath 단일 소스).
+  const next = safeNextPath(searchParams.get("next"));
 
   // recovery 흐름 식별: type=recovery이거나 next 경로가 /reset-password로 시작하면 recovery.
   // 실패 시 /login 대신 /forgot-password로 보내 사용자가 적절한 다음 액션(재요청)을 알 수 있게 함.

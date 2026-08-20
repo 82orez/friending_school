@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { KakaoButton } from "@/components/auth/KakaoButton";
 import { useCapsLockWarning } from "@/hooks/use-caps-lock";
 
-export default function LoginForm() {
+export default function LoginForm({ next = "/" }: { next?: string }) {
   const [state, formAction, pending] = useActionState<LoginState, FormData>(login, null);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -69,6 +69,8 @@ export default function LoginForm() {
       </CardHeader>
       <CardContent>
         <form action={formAction} className="flex flex-col gap-4">
+          {/* 로그인 후 돌아갈 경로. 서버 액션이 safeNextPath로 재검증한다. */}
+          <input type="hidden" name="next" value={next} />
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">이메일</Label>
             <Input
@@ -175,7 +177,7 @@ export default function LoginForm() {
             <div className="bg-rule h-px flex-1" />
           </div>
 
-          <KakaoButton />
+          <KakaoButton next={next} />
 
           <p className="text-muted-foreground mt-2 text-center text-sm">
             계정이 없으신가요?{" "}

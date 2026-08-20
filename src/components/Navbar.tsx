@@ -115,8 +115,15 @@ export default function Navbar({
         </div>
 
         <div className="flex items-center justify-end gap-3">
-          {/* 데스크톱 인라인 인증 영역 */}
+          {/* 데스크톱 인라인 인증 영역
+              ⚠️ 원래 인증/역할 링크만 두는 영역이지만, 프렌딩은 일반 회원 대상 핵심 동선이라
+                 슬라이드 메뉴에만 두지 않고 여기에도 노출한다(의도적 예외). */}
           <div className="hidden items-center gap-3 md:flex">
+            <Link
+              href="/friending"
+              className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              프렌딩
+            </Link>
             {user ? (
               <>
                 {isAdmin && (
@@ -220,6 +227,15 @@ export default function Navbar({
           ✕
         </button>
         <ul className="list-none px-6">
+          {/* 프렌딩(공개 방 목록) — 일반 회원 대상 핵심 동선이라 최상단 flat 링크 */}
+          <li className="border-rule border-b py-4">
+            <Link
+              href="/friending"
+              onClick={closeMenu}
+              className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              프렌딩
+            </Link>
+          </li>
           {/* 커리큘럼 아코디언 */}
           <li className="border-rule border-b py-4">
             <button
