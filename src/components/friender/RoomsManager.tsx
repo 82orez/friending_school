@@ -36,9 +36,11 @@ export type FrienderRoom = {
   is_visible: boolean;
 };
 
-// 개설 가능 시간대 06:00~23:30(30분 간격) — EnrollScheduleField와 동일한 그리드.
+// 개설 가능 시간대 00:00~23:30(30분 간격, 24시간).
+// 강사 그리드(EnrollScheduleField, 06:00~)의 하한을 따르지 않는다 — 연습방은 해외 회원과의
+// 시차 대응이 필요해 새벽 시간대가 열려 있어야 한다. 서버·DB도 이미 0~1439를 허용한다.
 const START_OPTIONS: number[] = [];
-for (let m = 6 * 60; m < 24 * 60; m += 30) START_OPTIONS.push(m);
+for (let m = 0; m < 24 * 60; m += 30) START_OPTIONS.push(m);
 
 // 진행 시간 20분~2시간, 10분 단위(서버 ROOM_DURATIONS·DB check와 동일 범위).
 const DURATIONS: number[] = [];
@@ -47,6 +49,11 @@ for (let d = 20; d <= 120; d += 10) DURATIONS.push(d);
 const MAX_AHEAD_DAYS = 90;
 
 // YYYY-MM-DD (KST) + n일. 서버 validateRoomInput의 범위와 동일.
+// 종료 시각 표시 전용 — 자정을 넘기면 24h로 되감고 '(익일)'을 덧붙인다.
+// 저장 값·경과 판정(kstDateMinToMs)은 1440 초과를 정상 처리하므로 표시만 손본다.
+// fmtTime 자체는 강의실·정산 등 소비처가 많아 건드리지 않는다.
+const fmtEnd = (endMin: number): string => (endMin >= 24 * 60 ? `${fmtTime(endMin - 24 * 60)} (익일)` : fmtTime(endMin));
+
 const kstDateStr = (offsetDays = 0): string => {
   const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
   d.setDate(d.getDate() + offsetDays);
@@ -54,16 +61,14 @@ const kstDateStr = (offsetDays = 0): string => {
 };
 
 // 지금(KST) 기준 다음 30분 슬롯. 서버가 '시작 시각이 미래'인지 검증하므로 기본값이 과거면 안 된다.
-// 06:00 이전이면 오늘 06:00, 오늘 남은 슬롯이 없으면(23:30 지남) 내일 06:00으로 넘긴다.
+// 오늘 남은 슬롯이 없으면(23:30 지남) 내일 00:00으로 넘긴다.
 const nextOpenSlot = (): { sessionDate: string; startMin: number } => {
   const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-  const first = START_OPTIONS[0];
   const last = START_OPTIONS[START_OPTIONS.length - 1];
   // +1분: 정각에 열면 '지금'이 아니라 그 다음 슬롯을 고르도록(서버는 now 초과만 허용).
   const next = Math.ceil((kstNow.getHours() * 60 + kstNow.getMinutes() + 1) / 30) * 30;
 
-  if (next < first) return { sessionDate: kstDateStr(), startMin: first };
-  if (next > last) return { sessionDate: kstDateStr(1), startMin: first };
+  if (next > last) return { sessionDate: kstDateStr(1), startMin: START_OPTIONS[0] };
   return { sessionDate: kstDateStr(), startMin: next };
 };
 
@@ -396,7 +401,7 @@ function RoomRow({
           {!room.is_visible && <span className="bg-rule text-muted-fg ml-2 rounded-full px-2 py-0.5 text-xs font-bold">비공개</span>}
         </p>
         <p className="text-muted-fg mt-0.5 text-xs">
-          {formatDateKo(room.session_date)} · {fmtTime(room.start_min)}~{fmtTime(room.start_min + room.duration_min)}
+          {formatDateKo(room.session_date)} · {fmtTime(room.start_min)}~{fmtEnd(room.start_min + room.duration_min)}
         </p>
         <p className="text-muted-fg-faint mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
           <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(room.level)}</span>
