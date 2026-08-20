@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Pencil, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -106,6 +106,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<Fields>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<FrienderRoom | null>(null);
+  const [confirmCreate, setConfirmCreate] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const minDate = useMemo(() => kstDateStr(0), []);
@@ -153,6 +154,16 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
     });
   };
 
+  const confirmCreateRoom = () => {
+    setConfirmCreate(false); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
+    if (!canCreate) return; // 다이얼로그가 열려 있는 동안 상태가 바뀐 경우(1분 틱·겹침 등) 방어.
+    run(
+      () => createRoom(toInput(form)),
+      "방을 개설했습니다.",
+      () => setForm(emptyForm()),
+    );
+  };
+
   const confirmDelete = () => {
     const target = deleteTarget;
     setDeleteTarget(null); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
@@ -194,17 +205,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
           <RoomFields fields={form} onChange={setForm} minDate={minDate} maxDate={maxDate} disabled={!hasZoomUrl || pending} />
           {createConflict && <ConflictNotice room={createConflict} />}
           <div className="mt-4 flex justify-end">
-            <Button
-              type="button"
-              variant="brand"
-              disabled={!canCreate}
-              onClick={() =>
-                run(
-                  () => createRoom(toInput(form)),
-                  "방을 개설했습니다.",
-                  () => setForm(emptyForm()),
-                )
-              }>
+            <Button type="button" variant="brand" disabled={!canCreate} onClick={() => setConfirmCreate(true)}>
               {pending && <Loader2 className="animate-spin" />}방 개설하기
             </Button>
           </div>
@@ -275,6 +276,42 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
           </>
         )}
 
+        {/* 개설 확인 — 기본값이 미리 채워져 있어 값을 확인하지 않고 제출하기 쉽다. */}
+        <AlertDialog open={confirmCreate} onOpenChange={setConfirmCreate}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>이 내용으로 방을 개설할까요?</AlertDialogTitle>
+              <AlertDialogDescription>개설하면 「프렌딩」에 바로 공개되고 회원이 참여할 수 있습니다.</AlertDialogDescription>
+            </AlertDialogHeader>
+
+            {/* ⚠️ AlertDialogDescription은 <p>라 dl을 그 안에 넣을 수 없다 — 형제로 배치한다. */}
+            <dl className="border-rule mt-1 grid grid-cols-[5rem_1fr] gap-x-3 gap-y-2 border-t pt-4 text-sm">
+              {(
+                [
+                  ["주제", form.title.trim()],
+                  ["개설 날짜", formatDateKo(form.sessionDate)],
+                  ["시간", `${fmtTime(form.startMin)}~${fmtEnd(form.startMin + form.durationMin)} (${form.durationMin}분)`],
+                  ["난이도", roomLevelLabelKo(form.level)],
+                  ["제한 인원", `${form.capacity}명`],
+                  ["방 소개", form.description.trim() || "없음"],
+                ] as const
+              ).map(([label, value]) => (
+                <Fragment key={label}>
+                  <dt className="text-muted-fg-faint">{label}</dt>
+                  <dd className="text-ink line-clamp-2 font-semibold break-words">{value}</dd>
+                </Fragment>
+              ))}
+            </dl>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmCreateRoom} variant="brand">
+                개설하기
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         {/* 삭제 확인 */}
         <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
           <AlertDialogContent>
@@ -339,6 +376,7 @@ function RoomFields({
           disabled={disabled}
           maxLength={100}
           placeholder="예) 카페에서 주문하기"
+          className="h-10"
         />
       </label>
 
@@ -415,8 +453,17 @@ function RoomFields({
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-muted-fg-faint text-xs font-semibold">제한 인원 (2~100명)</span>
-        <Input type="number" min={2} max={100} value={fields.capacity} disabled={disabled} onChange={(e) => set({ capacity: e.target.value })} />
+        <span className="text-muted-fg-faint text-xs font-semibold">제한 인원 (1~100명)</span>
+        {/* h-10: shadcn Input 기본 h-8이라 옆 칸 select(selectClass)와 높이가 어긋난다. */}
+        <Input
+          type="number"
+          min={1}
+          max={100}
+          value={fields.capacity}
+          disabled={disabled}
+          onChange={(e) => set({ capacity: e.target.value })}
+          className="h-10"
+        />
       </label>
 
       <label className="flex flex-col gap-1 sm:col-span-2">

@@ -126,7 +126,7 @@ function validateRoomInput(input: RoomInput): { error?: string; values?: Omit<Ro
   if (!ROOM_LEVEL_VALUES.includes(level)) return { error: "난이도를 선택해 주세요." };
 
   const capacity = Number(input?.capacity);
-  if (!Number.isInteger(capacity) || capacity < 2 || capacity > 100) return { error: "제한 인원은 2~100명 사이로 입력해 주세요." };
+  if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100) return { error: "제한 인원은 1~100명 사이로 입력해 주세요." };
 
   const sessionDate = typeof input?.sessionDate === "string" ? input.sessionDate : "";
   if (!/^\d{4}-\d{2}-\d{2}$/.test(sessionDate)) return { error: "개설 날짜를 선택해 주세요." };
