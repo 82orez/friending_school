@@ -39,7 +39,10 @@ export type FrienderRoom = {
 const START_OPTIONS: number[] = [];
 for (let m = 6 * 60; m < 24 * 60; m += 30) START_OPTIONS.push(m);
 
-const DURATIONS = [30, 60, 90, 120];
+// 진행 시간 20분~2시간, 10분 단위(서버 ROOM_DURATIONS·DB check와 동일 범위).
+const DURATIONS: number[] = [];
+for (let d = 20; d <= 120; d += 10) DURATIONS.push(d);
+
 const MAX_AHEAD_DAYS = 90;
 
 // YYYY-MM-DD (KST) + n일. 서버 validateRoomInput의 범위와 동일.
@@ -55,10 +58,10 @@ const emptyForm = (): Fields => ({
   title: "",
   description: "",
   level: DEFAULT_ROOM_LEVEL,
-  capacity: "6",
+  capacity: "4",
   sessionDate: kstDateStr(1), // 기본 내일
   startMin: 20 * 60,
-  durationMin: 60,
+  durationMin: 40,
 });
 
 const toInput = (f: Fields): RoomInput => ({

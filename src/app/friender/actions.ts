@@ -102,7 +102,9 @@ export type RoomInput = {
 const ROOM_TITLE_MAX = 100;
 const ROOM_DESC_MAX = 1000;
 const ROOM_MAX_AHEAD_DAYS = 90;
-const ROOM_DURATIONS: number[] = [30, 60, 90, 120];
+// 진행 시간 20분~2시간, 10분 단위. DB check(friender_rooms_duration_min_check)와 범위를 맞춰 둘 것.
+const ROOM_DURATIONS: number[] = [];
+for (let d = 20; d <= 120; d += 10) ROOM_DURATIONS.push(d);
 
 // clean()의 문자열 버전(액션 인자는 FormData가 아니라 타입 객체로 받는다).
 function cleanText(value: string | undefined | null, max: number): string | null {
