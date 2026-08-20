@@ -358,7 +358,8 @@ function RoomFields({
       <div className="grid grid-cols-2 gap-3">
         {/* 시·분 두 컨트롤이라 <label>로 감싸지 않는다(라벨이 첫 select에만 걸림) — 각각 aria-label을 준다. */}
         <div className="flex flex-col gap-1">
-          <span className="text-muted-fg-faint text-xs font-semibold">시작 시각</span>
+          {/* 시·분 두 칸에 걸친 제목이라 가운데 정렬(다른 단일 필드 라벨은 좌측 정렬 유지). */}
+          <span className="text-muted-fg-faint text-center text-xs font-semibold">시작 시각</span>
           <div className="flex gap-2">
             <select
               aria-label="시작 시각 (시)"
