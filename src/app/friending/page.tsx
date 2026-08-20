@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
@@ -83,9 +84,34 @@ export default async function FriendingPage() {
 
   return (
     <div className="bg-surface">
-      <div className="mx-auto max-w-[1100px] px-5 py-12 md:py-16">
-        <h1 className="text-ink text-2xl font-bold md:text-3xl">프렌딩</h1>
-        <p className="text-muted-fg mt-2 text-sm">프렌더가 여는 화상 연습방에 참여해 보세요. 말한 만큼 늘어요.</p>
+      <div className="mx-auto max-w-[1100px] px-5 py-8 md:py-12">
+        {/* 히어로 — v9 목업(mainhero_bg01) 이식. 이미지 위에 어둡게 깔고 카피를 올린다. */}
+        <section className="relative isolate flex min-h-[140px] items-center justify-center overflow-hidden rounded-2xl md:min-h-[190px]">
+          <Image src="/images/friending-hero.jpg" alt="" fill sizes="(max-width: 1100px) 100vw, 1100px" priority className="-z-10 object-cover" />
+          <div aria-hidden className="absolute inset-0 -z-10 bg-black/45" />
+          {/* 말풍선 장식 — 목업 SVG 이식(비율 무시하고 늘려 배경처럼 깔림) */}
+          <svg
+            aria-hidden
+            viewBox="0 0 1200 300"
+            preserveAspectRatio="none"
+            className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full md:block">
+            <rect x="60" y="40" width="130" height="80" rx="24" fill="rgba(255,255,255,0.16)" />
+            <path d="M90 118 L78 142 L112 120 Z" fill="rgba(255,255,255,0.16)" />
+            <rect x="1000" y="170" width="110" height="70" rx="22" fill="rgba(255,255,255,0.14)" />
+            <path d="M1030 238 L1042 260 L1072 240 Z" fill="rgba(255,255,255,0.14)" />
+            <rect x="960" y="30" width="80" height="52" rx="18" fill="rgba(255,255,255,0.1)" />
+            <path d="M980 80 L972 98 L998 82 Z" fill="rgba(255,255,255,0.1)" />
+            <rect x="40" y="200" width="70" height="46" rx="16" fill="rgba(255,255,255,0.1)" />
+            <path d="M58 244 L50 262 L76 246 Z" fill="rgba(255,255,255,0.1)" />
+          </svg>
+
+          <div className="px-5 py-8 text-center md:px-16">
+            <p className="text-[12px] font-bold text-white/95 md:text-[15px]">친구와 친구가 만나 배우는, 프렌딩 스쿨</p>
+            <h1 className="mt-1.5 text-[22px] font-bold tracking-[-0.04em] text-white md:mt-2 md:text-[34px]">
+              스피킹은, <span className="underline decoration-white/60 underline-offset-[6px]">말한 만큼</span> 늘어요
+            </h1>
+          </div>
+        </section>
 
         <FriendingRooms rooms={rooms} isLoggedIn={!!user} />
       </div>
