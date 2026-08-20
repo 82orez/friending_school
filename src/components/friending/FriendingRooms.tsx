@@ -13,7 +13,7 @@ import { roomLevelLabelKo } from "@/data/room-levels";
 import { joinRoom, leaveRoom } from "@/app/friending/actions";
 import EnterRoomButton from "@/components/friending/EnterRoomButton";
 import HostProfileModal from "@/components/friending/HostProfileModal";
-import RoomInfoModal, { type RoomInfo } from "@/components/friending/RoomInfoModal";
+import RoomInfoModal from "@/components/friending/RoomInfoModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -98,7 +98,7 @@ export default function FriendingRooms({
   const [pending, startTransition] = useTransition();
   const [leaveTarget, setLeaveTarget] = useState<PublicRoom | null>(null);
   const [hostTarget, setHostTarget] = useState<HostProfile | null>(null);
-  const [infoTarget, setInfoTarget] = useState<RoomInfo | null>(null);
+  const [infoTarget, setInfoTarget] = useState<string | null>(null);
 
   // 1분 틱 — 진행 중/입장창 상태를 시간에 따라 갱신.
   const [now, setNow] = useState(() => Date.now());
@@ -218,7 +218,7 @@ export default function FriendingRooms({
       <HostProfileModal host={hostTarget} onClose={() => setHostTarget(null)} />
 
       {/* 방 소개 전문 */}
-      <RoomInfoModal info={infoTarget} onClose={() => setInfoTarget(null)} />
+      <RoomInfoModal description={infoTarget} onClose={() => setInfoTarget(null)} />
 
       {/* 참여 취소 확인 */}
       <AlertDialog open={leaveTarget !== null} onOpenChange={(open) => !open && setLeaveTarget(null)}>
@@ -279,7 +279,7 @@ function RoomCard({
   onJoin: () => void;
   onLeave: () => void;
   onOpenHost: (host: HostProfile) => void;
-  onOpenInfo: (info: RoomInfo) => void;
+  onOpenInfo: (description: string) => void;
 }) {
   const full = room.participants >= room.capacity;
   const pill = "shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors disabled:opacity-60";
@@ -343,17 +343,7 @@ function RoomCard({
             disabled={!description}
             aria-haspopup="dialog"
             title={description ? undefined : "등록된 소개가 없어요"}
-            onClick={() =>
-              onOpenInfo({
-                title: room.title,
-                hostName: host.name,
-                levelLabel,
-                when,
-                participants: room.participants,
-                capacity: room.capacity,
-                description,
-              })
-            }
+            onClick={() => onOpenInfo(description)}
             className={cn(
               "focus-visible:ring-accent-blue/50 inline-flex items-center gap-0.5 rounded text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
               description ? "text-accent-blue-ink hover:underline" : "text-muted-fg-faint/60 cursor-default",
