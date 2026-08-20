@@ -9,7 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/server";
-import { getUserRole } from "@/lib/auth";
+import { getUserRole, isFrienderRole } from "@/lib/auth";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -37,7 +37,7 @@ export default async function RootLayout({
   const role = user ? await getUserRole(supabase, user.id) : null;
   const admin = role === "admin";
   const teacher = role === "teacher";
-  const friender = role === "friender";
+  const friender = isFrienderRole(role); // 일반 프렌더·프렌더 Plus 모두 /friender 링크 노출
   // 센터 매니저 여부 — centers.manager_id에 본인이 지정됐는지(공개 select라 세션 클라로 조회 가능).
   let centerManager = false;
   if (user) {

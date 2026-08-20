@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { getUserRole } from "@/lib/auth";
+import { getUserRole, isFrienderRole } from "@/lib/auth";
 import { formatRetryAfter, getClientIp, rateLimit } from "@/lib/rate-limit";
 import { getAdminEmails } from "@/utils/supabase/admin";
 import { sendTeacherApplicationNotification } from "@/lib/mailer";
@@ -39,7 +39,7 @@ export async function submitTeacherApplication(_prev: TeacherApplyState, formDat
   const role = await getUserRole(supabase, user.id);
   if (role === "teacher" || role === "admin") return { error: "This account already has teacher access." };
   // role은 단일값이라 프렌더는 강사로 지원할 수 없다(대칭 차단).
-  if (role === "friender") return { error: "This account is registered as a friender." };
+  if (isFrienderRole(role)) return { error: "This account is registered as a friender." };
 
   if (!firstName || !lastName) return { error: "Please enter both your first and last name." };
   if (phone && !/^[0-9\-\s]{7,}$/.test(phone)) return { error: "Please enter a valid phone number." };

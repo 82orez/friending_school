@@ -23,7 +23,13 @@ const ROLE_BADGE: Record<string, string> = {
   admin: "bg-brand/10 text-brand",
   teacher: "bg-accent-blue-soft text-accent-blue-ink",
   friender: "bg-cta/10 text-cta",
+  friender_plus: "bg-cta text-white",
   student: "bg-rule text-muted-fg",
+};
+
+// role 원문 대신 표시용 라벨(미등재 role은 원문 그대로).
+const ROLE_LABEL: Record<string, string> = {
+  friender_plus: "friender plus",
 };
 
 export default function MembersManager({ members }: { members: AdminMember[] }) {
@@ -84,7 +90,9 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
                 <span className="text-muted-fg-faint w-7 shrink-0 text-center text-xs">{filtered.length - i}</span>
                 <span className="text-ink min-w-0 flex-1 truncate text-sm font-medium">{m.email}</span>
                 {!m.email_confirmed && <span className="bg-brand/10 text-brand shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">미인증</span>}
-                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", ROLE_BADGE[m.role] ?? ROLE_BADGE.student)}>{m.role}</span>
+                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", ROLE_BADGE[m.role] ?? ROLE_BADGE.student)}>
+                  {ROLE_LABEL[m.role] ?? m.role}
+                </span>
                 <span className="text-muted-fg-faint shrink-0 text-xs">{formatDate(m.created_at)}</span>
               </li>
             ))}

@@ -904,7 +904,7 @@ export type Database = {
         | "취소"
       friender_application_status: "신청" | "승인" | "거절"
       teacher_application_status: "신청" | "승인" | "거절"
-      user_role: "admin" | "teacher" | "student" | "friender"
+      user_role: "admin" | "teacher" | "student" | "friender" | "friender_plus"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1042,7 +1042,7 @@ export const Constants = {
       ],
       friender_application_status: ["신청", "승인", "거절"],
       teacher_application_status: ["신청", "승인", "거절"],
-      user_role: ["admin", "teacher", "student", "friender"],
+      user_role: ["admin", "teacher", "student", "friender", "friender_plus"],
     },
   },
 } as const

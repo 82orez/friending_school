@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { getUserRole } from "@/lib/auth";
+import { getUserRole, isFrienderRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { nationalityLabelEn } from "@/data/nationalities";
 import { genderLabelEn } from "@/data/genders";
@@ -62,7 +62,7 @@ export default async function TeacherApplyPage({ searchParams }: { searchParams:
   // role은 단일값이라 프렌더도 강사 지원 불가(승인 시 프렌더 권한을 잃게 됨).
   if (role === "teacher") redirect("/teacher");
   if (role === "admin") redirect("/");
-  if (role === "friender") redirect("/");
+  if (isFrienderRole(role)) redirect("/");
 
   const { data: profile } = await supabase
     .from("profiles")

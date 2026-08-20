@@ -19,14 +19,16 @@ export default async function AdminFrienderRequestsPage() {
     .map((a) => ({ ...a, email: emailById.get(a.user_id) ?? "(이메일 없음)" }))
     .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
 
+  // 프렌더 계열 전체(일반 + Plus) — 등급 변경은 목록 행에서 처리한다.
   const { data: frienderProfiles } = await admin
     .from("profiles")
-    .select("id, first_name, last_name, nickname, avatar_url, zoom_url, bio, phone, nationality, gender")
-    .eq("role", "friender");
+    .select("id, role, first_name, last_name, nickname, avatar_url, zoom_url, bio, phone, nationality, gender")
+    .in("role", ["friender", "friender_plus"]);
 
   const currentFrienders: CurrentFriender[] = (
     (frienderProfiles ?? []) as {
       id: string;
+      role: "friender" | "friender_plus";
       first_name: string | null;
       last_name: string | null;
       nickname: string | null;
@@ -39,6 +41,7 @@ export default async function AdminFrienderRequestsPage() {
     }[]
   ).map((p) => ({
     id: p.id,
+    role: p.role,
     email: emailById.get(p.id) ?? "(이메일 없음)",
     // 한국 관례상 성+이름을 공백 없이 붙임(신청 액션의 name 조합과 동일 규칙).
     name: `${p.last_name ?? ""}${p.first_name ?? ""}`,

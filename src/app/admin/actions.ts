@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { isAdmin } from "@/lib/auth";
+import { isAdmin, isFrienderRole } from "@/lib/auth";
 import { getOrigin } from "@/lib/origin";
 import {
   sendTeacherApprovalNotification,
@@ -1855,6 +1855,8 @@ export async function approveFrienderApplication(id: string): Promise<ActionResu
       return { ok: false, error: "관리자 계정은 프렌더로 전환할 수 없습니다." };
     case "is_teacher":
       return { ok: false, error: "강사 계정은 프렌더로 전환할 수 없습니다." };
+    case "is_friender_plus":
+      return { ok: false, error: "이미 프렌더 Plus 계정입니다." };
     default:
       return { ok: false, error: "승인 처리 중 오류가 발생했습니다." };
   }
@@ -1919,11 +1921,11 @@ export async function revokeFriender(userId: string, adminNote?: string): Promis
 
   const admin = createAdminClient();
 
-  // 현재 role이 friender일 때만 — 오작동으로 강사/관리자를 강등시키지 않도록 방어.
+  // 현재 role이 프렌더 계열(일반·Plus)일 때만 — 오작동으로 강사/관리자를 강등시키지 않도록 방어.
   // 이름은 안내 메일 인사말용으로 같은 쿼리에서 함께 읽는다(추가 왕복 없음).
   const { data: current } = await admin.from("profiles").select("role, first_name, last_name").eq("id", userId).maybeSingle();
   const profile = current as { role?: string; first_name?: string | null; last_name?: string | null } | null;
-  if (profile?.role !== "friender") {
+  if (!isFrienderRole(profile?.role)) {
     return { ok: false, error: "프렌더 계정이 아닙니다. 목록을 새로고침해 주세요." };
   }
 
@@ -1953,6 +1955,61 @@ export async function revokeFriender(userId: string, adminNote?: string): Promis
     }
   } catch (err) {
     console.error("[revokeFriender] 해제 안내 발송 실패:", err);
+  }
+
+  revalidateFrienderConsumers();
+  return { ok: true };
+}
+
+// 프렌더 등급 변경 (일반 프렌더 ↔ 프렌더 Plus).
+// 프렌더=Zoom 무료 연습방, 프렌더 Plus=유료방까지 개설 가능.
+// role은 단일값이라 승격/강등은 profiles.role 교체 한 번으로 표현된다.
+export async function setFrienderTier(userId: string, target: "friender" | "friender_plus"): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!userId) return { ok: false, error: "잘못된 요청입니다." };
+  // target 화이트리스트 — 파라미터로 임의 role(admin 등)을 넣는 권한 상승 차단.
+  if (target !== "friender" && target !== "friender_plus") return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const promoting = target === "friender_plus";
+  const expected = promoting ? "friender" : "friender_plus"; // 반대쪽 등급일 때만 전환
+
+  // SMS 인사말용 이름·번호를 같은 쿼리에서 함께 읽는다(추가 왕복 없음).
+  // 프렌더는 신청 시 전화 인증이 필수라 profiles.phone이 검증된 원본이다.
+  const { data: current } = await admin.from("profiles").select("role, first_name, last_name, phone").eq("id", userId).maybeSingle();
+  const profile = current as { role?: string; first_name?: string | null; last_name?: string | null; phone?: string | null } | null;
+  if (profile?.role !== expected) {
+    return {
+      ok: false,
+      error: promoting ? "일반 프렌더 계정이 아닙니다. 목록을 새로고침해 주세요." : "프렌더 Plus 계정이 아닙니다. 목록을 새로고침해 주세요.",
+    };
+  }
+
+  const { error } = await admin.from("profiles").update({ role: target }).eq("id", userId);
+  if (error) return { ok: false, error: "등급 변경 중 오류가 발생했습니다." };
+
+  // JWT 일관성 위해 app_metadata.role 동기 (best-effort — profiles.role이 진실 소스).
+  try {
+    await admin.auth.admin.updateUserById(userId, { app_metadata: { role: target } });
+  } catch (err) {
+    console.error("[setFrienderTier] app_metadata 동기 실패:", err);
+  }
+
+  // 본인 안내 SMS (best-effort) — 실패해도 등급 변경은 유효. 승인/거절과 동일하게 SMS로 통보.
+  try {
+    if (profile.phone) {
+      const origin = getOrigin(await headers());
+      // 한국 관례상 성+이름을 공백 없이 붙임(목록 페이지 표시 규칙과 동일).
+      const name = `${profile.last_name ?? ""}${profile.first_name ?? ""}`;
+      await sendSms(
+        profile.phone,
+        promoting
+          ? `[프렌딩 스쿨] ${name}님, 프렌더 Plus로 승격되었습니다. 이제 유료 연습방도 개설하실 수 있습니다. ${origin}/friender`
+          : `[프렌딩 스쿨] ${name}님, 프렌더 Plus 자격이 해제되어 일반 프렌더로 변경되었습니다. ${origin}/friender`,
+      );
+    }
+  } catch (err) {
+    console.error("[setFrienderTier] 등급 변경 알림 발송 실패:", err);
   }
 
   revalidateFrienderConsumers();

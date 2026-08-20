@@ -4,7 +4,7 @@ import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { getUserRole } from "@/lib/auth";
+import { getUserRole, isFrienderRole } from "@/lib/auth";
 import { formatRetryAfter, getClientIp, rateLimit } from "@/lib/rate-limit";
 import { getAdminEmails } from "@/utils/supabase/admin";
 import { sendFrienderApplicationNotification } from "@/lib/mailer";
@@ -40,7 +40,7 @@ export async function submitFrienderApplication(_prev: FrienderApplyState, formD
   if (!user) return { error: "로그인이 필요합니다." };
 
   const role = await getUserRole(supabase, user.id);
-  if (role === "friender") return { error: "이미 프렌더 권한이 있는 계정입니다." };
+  if (isFrienderRole(role)) return { error: "이미 프렌더 권한이 있는 계정입니다." };
   if (role === "teacher") return { error: "강사 계정은 프렌더로 지원할 수 없습니다." };
   if (role === "admin") return { error: "관리자 계정은 프렌더로 지원할 수 없습니다." };
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { getUserRole } from "@/lib/auth";
+import { getUserRole, isFrienderRole } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { formatPhone } from "@/lib/phone";
 import { nationalityLabel } from "@/data/nationalities";
@@ -59,7 +59,7 @@ export default async function FrienderApplyPage({ searchParams }: { searchParams
 
   const role = await getUserRole(supabase, user.id);
   // role은 단일값이라 중복 신분 불가 — 이미 권한이 있는 계정은 각자 위치로.
-  if (role === "friender") redirect("/friender");
+  if (isFrienderRole(role)) redirect("/friender");
   if (role === "teacher") redirect("/teacher");
   if (role === "admin") redirect("/");
 

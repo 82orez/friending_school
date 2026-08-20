@@ -4,12 +4,12 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
-import { getUserRole } from "@/lib/auth";
+import { getUserRole, isFrienderRole } from "@/lib/auth";
 import { isValidZoomUrl } from "@/lib/url";
 
 export type FrienderActionState = { ok?: boolean; error?: string };
 
-// 프렌더 액션 진입 가드 — 세션으로 role 확인(friender 또는 admin) 후 userId 반환.
+// 프렌더 액션 진입 가드 — 세션으로 role 확인(프렌더 계열 또는 admin) 후 userId 반환.
 async function requireFriender(): Promise<string | null> {
   const supabase = createClient(await cookies());
   const {
@@ -17,7 +17,7 @@ async function requireFriender(): Promise<string | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
   const role = await getUserRole(supabase, user.id);
-  return role === "friender" || role === "admin" ? user.id : null;
+  return isFrienderRole(role) || role === "admin" ? user.id : null;
 }
 
 // 빈 문자열은 null로 저장, 길이 제한 적용.

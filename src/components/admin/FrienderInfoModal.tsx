@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 import { formatPhone } from "@/lib/phone";
-import type { CurrentFriender } from "@/components/admin/FrienderRequestsManager";
+import { TIER_LABEL, type CurrentFriender } from "@/components/admin/FrienderRequestsManager";
 
 // 아바타 미설정 시 폴백 이니셜(이름 우선, 없으면 이메일 앞글자).
 function initials(name: string, email: string): string {
@@ -93,6 +93,7 @@ export default function FrienderInfoModal({ friender, onClose }: { friender: Cur
             {(
               [
                 ["이메일", friender.email],
+                ["등급", TIER_LABEL[friender.role]],
                 ["닉네임", friender.nickname || "-"],
                 ["전화", friender.phone ? formatPhone(friender.phone) : "-"],
                 ["국적", nationalityLabel(friender.nationality)],

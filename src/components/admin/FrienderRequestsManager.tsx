@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { approveFrienderApplication, rejectFrienderApplication, revokeFriender } from "@/app/admin/actions";
+import { approveFrienderApplication, rejectFrienderApplication, revokeFriender, setFrienderTier } from "@/app/admin/actions";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 import { formatPhone } from "@/lib/phone";
@@ -40,6 +40,7 @@ export type FrienderApplication = {
 
 export type CurrentFriender = {
   id: string;
+  role: FrienderTier;
   email: string;
   name: string;
   nickname: string | null;
@@ -59,6 +60,12 @@ const STATUS_BADGE: Record<Status, string> = {
   승인: "bg-[#E1F5EE] text-[#0F6E56]",
   거절: "bg-brand/10 text-brand",
 };
+
+// 프렌더 등급 — role 단일값이라 friender / friender_plus 둘 중 하나.
+export type FrienderTier = "friender" | "friender_plus";
+
+export const TIER_LABEL: Record<FrienderTier, string> = { friender: "프렌더", friender_plus: "프렌더 Plus" };
+const TIER_BADGE: Record<FrienderTier, string> = { friender: "bg-cta/10 text-cta", friender_plus: "bg-cta text-white" };
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -96,8 +103,11 @@ export default function FrienderRequestsManager({
   const [revokeTarget, setRevokeTarget] = useState<CurrentFriender | null>(null);
   const [revokeReason, setRevokeReason] = useState(""); // 선택 입력 — 적으면 본인 안내 메일에 사유로 포함
   const [revoking, startRevoke] = useTransition();
+  const [tierTarget, setTierTarget] = useState<CurrentFriender | null>(null); // 등급 변경(승격/강등) 대상
+  const [tierPending, startTier] = useTransition();
 
   const pending = useMemo(() => rows.filter((r) => r.status === "신청").length, [rows]);
+  const plusCount = useMemo(() => frienders.filter((f) => f.role === "friender_plus").length, [frienders]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -128,6 +138,23 @@ export default function FrienderRequestsManager({
     });
   };
 
+  // 등급 변경 — 현재 등급의 반대쪽으로 전환. 다이얼로그를 닫으며 state를 비우므로 대상을 먼저 스냅샷.
+  const confirmTier = () => {
+    if (!tierTarget) return;
+    const target = tierTarget;
+    const next: FrienderTier = target.role === "friender" ? "friender_plus" : "friender";
+    setTierTarget(null);
+    startTier(async () => {
+      const res = await setFrienderTier(target.id, next);
+      if (res.ok) {
+        setFrienders((prev) => prev.map((f) => (f.id === target.id ? { ...f, role: next } : f)));
+        toast.success(next === "friender_plus" ? "프렌더 Plus로 승격했습니다." : "일반 프렌더로 변경했습니다.");
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
+    });
+  };
+
   return (
     <div>
       <h1 className="text-ink text-2xl font-extrabold">프렌더 관리</h1>
@@ -135,7 +162,7 @@ export default function FrienderRequestsManager({
 
       <div className="mt-5 grid grid-cols-3 gap-3">
         <StatCard label="총 신청" value={rows.length} sub="누적 전체" />
-        <StatCard label="현재 프렌더" value={frienders.length} sub="role=friender" />
+        <StatCard label="현재 프렌더" value={frienders.length} sub={`일반 ${frienders.length - plusCount} · Plus ${plusCount}`} />
         <StatCard label="신규 (미처리)" value={`${pending}건`} sub="상태=신청" accent />
       </div>
 
@@ -190,6 +217,9 @@ export default function FrienderRequestsManager({
       {/* 현재 프렌더 */}
       <h2 className="text-ink mt-10 text-lg font-extrabold">현재 프렌더</h2>
       <p className="text-muted-fg mt-1 text-sm">
+        프렌더는 무료 연습방을, 프렌더 Plus는 유료방까지 개설할 수 있습니다. 등급 변경은 본인에게 SMS로 안내됩니다.
+      </p>
+      <p className="text-muted-fg mt-1 text-sm">
         자격을 해제하면 일반 회원(student)으로 돌아갑니다. 계정과 데이터는 유지되며 다시 신청할 수 있습니다.
       </p>
       {frienders.length === 0 ? (
@@ -197,7 +227,15 @@ export default function FrienderRequestsManager({
           <p className="text-muted-fg px-6 py-12 text-center text-sm">현재 프렌더가 없습니다.</p>
         </div>
       ) : (
-        <CurrentFrienderTable frienders={frienders} onView={setInfoTarget} onRevoke={setRevokeTarget} revoking={revoking} className="mt-4" />
+        <CurrentFrienderTable
+          frienders={frienders}
+          onView={setInfoTarget}
+          onRevoke={setRevokeTarget}
+          onTier={setTierTarget}
+          revoking={revoking}
+          tierPending={tierPending}
+          className="mt-4"
+        />
       )}
 
       {/* 프렌더 정보 보기 */}
@@ -245,6 +283,34 @@ export default function FrienderRequestsManager({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 등급 변경 확인 (승격 ↔ 강등) */}
+      <AlertDialog open={tierTarget !== null} onOpenChange={(open) => !open && setTierTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {tierTarget?.role === "friender" ? "프렌더 Plus로 승격하시겠습니까?" : "프렌더 Plus 자격을 해제하시겠습니까?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {tierTarget && (
+                <>
+                  <span className="text-ink font-semibold">{tierTarget.name || tierTarget.email}</span>
+                  {tierTarget.role === "friender"
+                    ? " 회원을 프렌더 Plus로 승격합니다. 무료 연습방에 더해 유료방도 개설할 수 있게 됩니다."
+                    : " 회원을 일반 프렌더로 되돌립니다. 유료방은 개설할 수 없고 무료 연습방만 가능해집니다."}
+                  {" 변경 내용은 본인에게 SMS로 안내됩니다."}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmTier} className="bg-cta hover:bg-cta/90 border-transparent text-white">
+              {tierTarget?.role === "friender" ? "승격" : "해제"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -278,6 +344,7 @@ function ApplicationRow({
         onUpdated({ ...row, status: "승인" });
         onApproved({
           id: row.user_id,
+          role: "friender", // 승인은 항상 일반 프렌더로 — Plus 승격은 목록에서 별도 처리
           email: row.email,
           name: row.name,
           nickname: row.nickname,
@@ -445,11 +512,12 @@ function ApplicationRow({
   );
 }
 
-type SortKey = "name" | "nationality" | "gender";
+type SortKey = "name" | "role" | "nationality" | "gender";
 
 // 정렬 비교값은 원본 값 기준(국기 이모지·라벨이 순서에 영향 주지 않도록).
 const SORT_VALUE: Record<SortKey, (f: CurrentFriender) => string> = {
   name: (f) => f.name || f.email,
+  role: (f) => f.role,
   nationality: (f) => f.nationality ?? "",
   gender: (f) => f.gender ?? "",
 };
@@ -458,13 +526,17 @@ function CurrentFrienderTable({
   frienders,
   onView,
   onRevoke,
+  onTier,
   revoking,
+  tierPending,
   className,
 }: {
   frienders: CurrentFriender[];
   onView: (f: CurrentFriender) => void;
   onRevoke: (f: CurrentFriender) => void;
+  onTier: (f: CurrentFriender) => void;
   revoking?: boolean;
+  tierPending?: boolean;
   className?: string;
 }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
@@ -489,10 +561,11 @@ function CurrentFrienderTable({
 
   return (
     <div className={cn("border-rule overflow-x-auto rounded-xl border bg-white", className)}>
-      <table className="w-full min-w-[560px] border-collapse text-sm">
+      <table className="w-full min-w-[680px] border-collapse text-sm">
         <thead>
           <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
             <SortHeader label="이름" sortKey="name" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
+            <SortHeader label="등급" sortKey="role" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
             <SortHeader label="국적" sortKey="nationality" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
             <SortHeader label="성별" sortKey="gender" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
             <th className="px-4 py-2.5 text-right md:px-6">
@@ -510,6 +583,9 @@ function CurrentFrienderTable({
                 </p>
                 {f.name && <p className="text-muted-fg text-xs">{f.email}</p>}
               </td>
+              <td className="px-4 py-3.5 align-middle whitespace-nowrap">
+                <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", TIER_BADGE[f.role])}>{TIER_LABEL[f.role]}</span>
+              </td>
               <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{nationalityLabel(f.nationality)}</td>
               <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{genderLabelKo(f.gender)}</td>
               <td className="px-4 py-3.5 align-middle md:px-6">
@@ -519,6 +595,16 @@ function CurrentFrienderTable({
                     onClick={() => onView(f)}
                     className="border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
                     정보 보기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onTier(f)}
+                    disabled={tierPending}
+                    className={cn(
+                      "shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60",
+                      f.role === "friender" ? "border-cta/40 text-cta hover:bg-cta/5" : "border-rule text-muted-fg hover:bg-surface",
+                    )}>
+                    {f.role === "friender" ? "Plus 승격" : "Plus 해제"}
                   </button>
                   <button
                     type="button"
