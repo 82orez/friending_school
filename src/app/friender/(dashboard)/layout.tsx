@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { getUserRole, isFrienderRole, isFrienderPlusRole } from "@/lib/auth";
+import FrienderTabs from "@/components/friender/FrienderTabs";
 
 export const metadata: Metadata = { title: "프렌더 — 프렌딩 스쿨", robots: { index: false } };
 
@@ -35,6 +36,8 @@ export default async function FrienderDashboardLayout({ children }: { children: 
           <p className="mt-2 text-xl font-bold md:text-2xl">{displayName}님, 환영합니다 🤝</p>
           <p className="mt-1 text-sm opacity-90">회원들에게 보여질 프로필을 관리하세요.</p>
         </div>
+
+        <FrienderTabs />
 
         {children}
       </div>

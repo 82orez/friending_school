@@ -432,6 +432,57 @@ export type Database = {
         }
         Relationships: []
       }
+      friender_rooms: {
+        Row: {
+          capacity: number
+          created_at: string
+          description: string | null
+          duration_min: number
+          friender_id: string
+          friender_name: string | null
+          friender_nickname: string | null
+          id: string
+          is_visible: boolean
+          level: string
+          session_date: string
+          start_min: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          capacity: number
+          created_at?: string
+          description?: string | null
+          duration_min?: number
+          friender_id: string
+          friender_name?: string | null
+          friender_nickname?: string | null
+          id?: string
+          is_visible?: boolean
+          level: string
+          session_date: string
+          start_min: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          duration_min?: number
+          friender_id?: string
+          friender_name?: string | null
+          friender_nickname?: string | null
+          id?: string
+          is_visible?: boolean
+          level?: string
+          session_date?: string
+          start_min?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notices: {
         Row: {
           body: string
