@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime, formatDateKo } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
+import { roomsOverlap } from "@/lib/room-time";
 import { ROOM_LEVELS, DEFAULT_ROOM_LEVEL, roomLevelLabelKo } from "@/data/room-levels";
 import { createRoom, deleteRoom, setRoomVisibility, updateRoom, type RoomInput } from "@/app/friender/actions";
 import { Button } from "@/components/ui/button";
@@ -149,7 +150,20 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
     run(() => deleteRoom(target.id), "방을 삭제했습니다.");
   };
 
-  const canCreate = hasZoomUrl && !!form.title.trim() && !pending;
+  // 시간 겹침 사전 경고 — 본인 방이 rooms prop에 전부 있어 추가 쿼리 없이 판정된다.
+  // 서버 findOverlappingRoom이 authoritative고 여기는 제출 전에 알려주는 UX 레이어일 뿐
+  // (<input min> ↔ validateRoomInput 관계와 동일).
+  const conflictOf = (f: Fields, excludeId?: string): FrienderRoom | undefined => {
+    const slot = { sessionDate: f.sessionDate, startMin: f.startMin, durationMin: f.durationMin };
+    return rooms.find(
+      (r) => r.id !== excludeId && roomsOverlap(slot, { sessionDate: r.session_date, startMin: r.start_min, durationMin: r.duration_min }),
+    );
+  };
+
+  const createConflict = useMemo(() => conflictOf(form), [form, rooms]);
+  const editConflict = useMemo(() => (editingId ? conflictOf(editFields, editingId) : undefined), [editFields, editingId, rooms]);
+
+  const canCreate = hasZoomUrl && !!form.title.trim() && !pending && !createConflict;
 
   // 툴팁은 현재 이 화면에서만 쓰여 로컬로 감싼다(다른 화면에도 퍼지면 루트 layout으로 올릴 것).
   return (
@@ -168,6 +182,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
         <div className="border-rule mt-4 rounded-xl border bg-white p-5">
           <h3 className="text-ink text-sm font-extrabold">새 방 개설</h3>
           <RoomFields fields={form} onChange={setForm} minDate={minDate} maxDate={maxDate} disabled={!hasZoomUrl || pending} />
+          {createConflict && <ConflictNotice room={createConflict} />}
           <div className="mt-4 flex justify-end">
             <Button
               type="button"
@@ -196,6 +211,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
                 editingId === r.id ? (
                   <li key={r.id} className="border-rule bg-surface border-b p-5 last:border-b-0">
                     <RoomFields fields={editFields} onChange={setEditFields} minDate={minDate} maxDate={maxDate} disabled={pending} />
+                    {editConflict && <ConflictNotice room={editConflict} />}
                     <div className="mt-4 flex justify-end gap-2">
                       <Button type="button" variant="outline" disabled={pending} onClick={() => setEditingId(null)}>
                         취소
@@ -203,7 +219,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
                       <Button
                         type="button"
                         variant="brand"
-                        disabled={pending || !editFields.title.trim()}
+                        disabled={pending || !editFields.title.trim() || !!editConflict}
                         onClick={() =>
                           run(
                             () => updateRoom(r.id, toInput(editFields)),
@@ -270,6 +286,15 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
         </AlertDialog>
       </div>
     </TooltipProvider>
+  );
+}
+
+// 시간 겹침 안내 — Zoom URL 미등록 배너와 같은 톤.
+function ConflictNotice({ room }: { room: FrienderRoom }) {
+  return (
+    <p className="border-brand/30 bg-brand/5 text-brand mt-3 rounded-lg border px-3 py-2 text-xs font-semibold">
+      이미 같은 시간에 개설한 방이 있어요. ({room.title} · {fmtTime(room.start_min)}~{fmtEnd(room.start_min + room.duration_min)})
+    </p>
   );
 }
 

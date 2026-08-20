@@ -9,6 +9,7 @@ import { isValidZoomUrl } from "@/lib/url";
 import { ROOM_LEVEL_VALUES } from "@/data/room-levels";
 import { todayKst } from "@/lib/booking";
 import { kstDateMinToMs } from "@/lib/classtime";
+import { roomsOverlap, type RoomSlot } from "@/lib/room-time";
 
 export type FrienderActionState = { ok?: boolean; error?: string };
 
@@ -154,6 +155,44 @@ function addDaysKst(dateStr: string, days: number): string {
   return t.toISOString().slice(0, 10);
 }
 
+// 같은 프렌더의 다른 방과 시간이 겹치는지 검사 — 겹치면 충돌한 방을 돌려준다(에러 문구용).
+// 프렌더는 몸이 하나고 두 방의 입장 링크가 같은 zoom_url이라, 겹치면 참가자가 뒤섞인다.
+// ⚠️ read-then-write라 원자적이지 않다. 참여 정원(join_friender_room RPC)과 달리 경쟁 주체가
+//    여러 명이 아니라 본인 한 명이고 제출 버튼이 pending 동안 잠기므로, EXCLUDE 제약
+//    (btree_gist + tstzrange)까지 가는 대신 이 수준을 수용한다.
+async function findOverlappingRoom(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  userId: string,
+  slot: RoomSlot,
+  excludeId?: string,
+): Promise<{ title: string; sessionDate: string; startMin: number; durationMin: number } | null> {
+  // 어제부터 조회 — 어제 23:30에 시작해 오늘로 넘어온 방을 놓치지 않기 위함.
+  // 그보다 과거 방은 이미 종료돼(새 방은 항상 미래 시작) 겹칠 수 없다.
+  // 숨김(is_visible=false) 방도 포함: 숨김은 공개 목록에서 빼는 것일 뿐 일정 취소가 아니다.
+  const { data } = await admin
+    .from("friender_rooms")
+    .select("id, title, session_date, start_min, duration_min")
+    .eq("friender_id", userId)
+    .gte("session_date", addDaysKst(todayKst(), -1));
+
+  const rows = (data ?? []) as { id: string; title: string; session_date: string; start_min: number; duration_min: number }[];
+  for (const r of rows) {
+    if (excludeId && r.id === excludeId) continue;
+    const other: RoomSlot = { sessionDate: r.session_date, startMin: r.start_min, durationMin: r.duration_min };
+    if (roomsOverlap(slot, other)) {
+      return { title: r.title, sessionDate: r.session_date, startMin: r.start_min, durationMin: r.duration_min };
+    }
+  }
+  return null;
+}
+
+// 충돌 안내 문구 — 어떤 방과 겹치는지 알려줘야 사용자가 시간을 옮길 수 있다.
+function overlapError(c: { title: string; startMin: number; durationMin: number }): string {
+  const fmt = (m: number) => `${String(Math.floor((m % 1440) / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  return `이미 같은 시간에 개설한 방이 있어요. (${c.title} · ${fmt(c.startMin)}~${fmt(c.startMin + c.durationMin)})`;
+}
+
 export async function createRoom(input: RoomInput): Promise<RoomActionResult> {
   const userId = await requireFriender();
   if (!userId) return { ok: false, error: "권한이 없습니다." };
@@ -167,6 +206,9 @@ export async function createRoom(input: RoomInput): Promise<RoomActionResult> {
   const { data: prof } = await admin.from("profiles").select("first_name, last_name, nickname, zoom_url").eq("id", userId).maybeSingle();
   const profile = (prof ?? {}) as { first_name?: string | null; last_name?: string | null; nickname?: string | null; zoom_url?: string | null };
   if (!profile.zoom_url?.trim()) return { ok: false, error: "먼저 프로필에서 Zoom URL을 등록해 주세요." };
+
+  const conflict = await findOverlappingRoom(admin, userId, v.values);
+  if (conflict) return { ok: false, error: overlapError(conflict) };
 
   const { error } = await admin.from("friender_rooms").insert({
     friender_id: userId,
@@ -202,6 +244,10 @@ export async function updateRoom(id: string, input: RoomInput): Promise<RoomActi
   const room = cur as { session_date?: string; start_min?: number } | null;
   if (!room) return { ok: false, error: "방을 찾을 수 없습니다. 목록을 새로고침해 주세요." };
   if (kstDateMinToMs(room.session_date, room.start_min) <= Date.now()) return { ok: false, error: "이미 시작된 방은 수정할 수 없습니다." };
+
+  // 수정 대상 자신은 제외 — 시간을 그대로 두고 제목만 바꾸는 경우가 막히면 안 된다.
+  const conflict = await findOverlappingRoom(admin, userId, v.values, id);
+  if (conflict) return { ok: false, error: overlapError(conflict) };
 
   const { error } = await admin
     .from("friender_rooms")
