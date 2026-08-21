@@ -531,9 +531,16 @@ function RoomRow({
 }) {
   const iconBtn = "border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border p-2 transition-colors disabled:opacity-60";
   const description = room.description?.trim() ?? "";
+  const hasGuests = room.participants > 0; // 예약이 들어온 방은 한눈에 구분되게 강조한다
 
   return (
-    <li className={cn("border-rule flex flex-wrap items-center gap-3 border-b px-4 py-3.5 last:border-b-0 md:px-6", isPast && "opacity-60")}>
+    <li
+      className={cn(
+        "border-rule flex flex-wrap items-center gap-3 border-b px-4 py-3.5 last:border-b-0 md:px-6",
+        // 좌측 액센트 + 옅은 배경(px는 테두리 두께만큼 줄여 텍스트 시작선을 맞춘다).
+        hasGuests && "border-l-cta bg-cta/[0.04] border-l-4 pl-3 md:pl-5",
+        isPast && "opacity-60",
+      )}>
       <div className="min-w-0 flex-1">
         <p className="text-ink truncate text-sm font-bold">{room.title}</p>
         <p className="text-muted-fg mt-0.5 text-xs">
@@ -541,7 +548,7 @@ function RoomRow({
         </p>
         <p className="text-muted-fg-faint mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
           <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(room.level)}</span>
-          <span className="inline-flex items-center gap-1">
+          <span className={cn("inline-flex items-center gap-1", hasGuests && "text-cta font-bold")}>
             <Users aria-hidden className="size-3" />
             {room.participants}/{room.capacity}명
           </span>
