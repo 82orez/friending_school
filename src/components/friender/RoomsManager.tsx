@@ -420,8 +420,9 @@ function RoomFields({
           <span className="text-muted-fg-faint text-center text-xs font-semibold">
             시작 시각 <span className="text-brand">*</span>
           </span>
-          {/* 기본값 없음 — 미선택은 value="" 플레이스홀더로 표현한다(강사 지원 폼의 센터 select와 같은 방식). */}
-          <div className="flex gap-2">
+          {/* 기본값 없음 — 미선택은 value="" 플레이스홀더로 표현한다(강사 지원 폼의 센터 select와 같은 방식).
+              옵션은 숫자만 두고 두 select 사이에 ':'을 넣어 08:30처럼 읽히게 한다. */}
+          <div className="flex items-center gap-1.5">
             <select
               aria-label="시작 시각 (시)"
               value={fields.startHour ?? ""}
@@ -431,10 +432,13 @@ function RoomFields({
               <option value="">시</option>
               {START_HOURS.map((h) => (
                 <option key={h} value={h}>
-                  {pad2(h)}시
+                  {pad2(h)}
                 </option>
               ))}
             </select>
+            <span aria-hidden className="text-muted-fg text-sm font-bold">
+              :
+            </span>
             <select
               aria-label="시작 시각 (분)"
               value={fields.startMinute ?? ""}
@@ -444,7 +448,7 @@ function RoomFields({
               <option value="">분</option>
               {START_MINUTES.map((m) => (
                 <option key={m} value={m}>
-                  {pad2(m)}분
+                  {pad2(m)}
                 </option>
               ))}
             </select>
