@@ -23,7 +23,7 @@ async function currentUserId(): Promise<string | null> {
 const JOIN_ERROR: Record<string, string> = {
   unauthenticated: "로그인이 필요합니다. 다시 로그인해 주세요.",
   not_found: "방을 찾을 수 없어요. 목록을 새로고침해 주세요.",
-  own_room: "내가 개설한 방에는 참여할 수 없어요.",
+  own_room: "내가 개설한 방에는 예약할 수 없어요.",
   ended: "이미 종료된 방이에요.",
   full: "정원이 모두 찼어요.",
 };
@@ -46,12 +46,12 @@ export async function joinRoom(roomId: string): Promise<JoinResult> {
 
   // ⚠️ 본인 세션 client로 호출해야 RPC 안의 auth.uid()가 잡힌다(service_role로 부르면 null).
   const { data, error } = await supabase.rpc("join_friender_room", { p_room_id: id, p_user_name: userName });
-  if (error) return { ok: false, error: "참여 처리 중 문제가 발생했습니다." };
+  if (error) return { ok: false, error: "예약 처리 중 문제가 발생했습니다." };
 
   const code = String(data ?? "");
   // already는 실패로 보지 않는다 — 이미 참여한 상태이므로 결과적으로 원하는 상태다(멱등).
   if (code !== "ok" && code !== "already") {
-    return { ok: false, error: JOIN_ERROR[code] ?? "참여 처리 중 문제가 발생했습니다." };
+    return { ok: false, error: JOIN_ERROR[code] ?? "예약 처리 중 문제가 발생했습니다." };
   }
 
   revalidatePath("/friending");
@@ -102,7 +102,7 @@ export async function enterRoom(roomId: string): Promise<EnterRoomResult> {
       .eq("room_id", id)
       .eq("user_id", userId)
       .maybeSingle();
-    if (!part) return { error: "먼저 참여하기를 눌러 주세요." };
+    if (!part) return { error: "먼저 예약하기를 눌러 주세요." };
     participant = part as { entered_at: string | null };
   }
 
