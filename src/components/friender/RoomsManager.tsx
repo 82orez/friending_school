@@ -36,6 +36,7 @@ export type FrienderRoom = {
   session_date: string; // KST YYYY-MM-DD
   start_min: number;
   duration_min: number;
+  participants: number; // 현재 예약 인원(서버가 service_role로 집계)
 };
 
 // 개설 가능 시간대 00:00~23:50(10분 간격, 24시간). 시·분을 각각 고르게 나눠 둔 이유는
@@ -542,7 +543,7 @@ function RoomRow({
           <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(room.level)}</span>
           <span className="inline-flex items-center gap-1">
             <Users aria-hidden className="size-3" />
-            정원 {room.capacity}명
+            {room.participants}/{room.capacity}명
           </span>
         </p>
         {/* 소개는 모달로 — 행마다 문단 길이가 달라 목록이 들쭉날쭉해진다(프렌딩·마이페이지와 같은 규칙). */}
