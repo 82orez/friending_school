@@ -435,18 +435,21 @@ export type Database = {
       friender_room_participants: {
         Row: {
           created_at: string
+          entered_at: string | null
           room_id: string
           user_id: string
           user_name: string | null
         }
         Insert: {
           created_at?: string
+          entered_at?: string | null
           room_id: string
           user_id: string
           user_name?: string | null
         }
         Update: {
           created_at?: string
+          entered_at?: string | null
           room_id?: string
           user_id?: string
           user_name?: string | null

@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { todayKst } from "@/lib/booking";
 import { kstDateMinToMs } from "@/lib/classtime";
+import { seatHeld } from "@/lib/room-time";
 import FriendingRooms, { type HostProfile, type PublicRoom } from "@/components/friending/FriendingRooms";
 
 export const metadata: Metadata = { title: "프렌딩 — 프렌딩 스쿨" };
@@ -65,12 +66,15 @@ export default async function FriendingPage() {
 
     const { data: parts } = await admin
       .from("friender_room_participants")
-      .select("room_id")
+      .select("room_id, entered_at")
       .in(
         "room_id",
         rows.map((r) => r.id),
       );
-    for (const p of (parts ?? []) as { room_id: string }[]) {
+    // 노쇼(시작 + 유예까지 미입장)는 자리를 반환한 것으로 보고 카운트에서 뺀다.
+    const startMsByRoom = new Map(rows.map((r) => [r.id, kstDateMinToMs(r.session_date, r.start_min)]));
+    for (const p of (parts ?? []) as { room_id: string; entered_at: string | null }[]) {
+      if (!seatHeld(p.entered_at, startMsByRoom.get(p.room_id) ?? 0, now)) continue;
       countByRoom.set(p.room_id, (countByRoom.get(p.room_id) ?? 0) + 1);
     }
 

@@ -94,9 +94,16 @@ export async function enterRoom(roomId: string): Promise<EnterRoomResult> {
 
   // 개설자 본인이거나 참가자여야 입장 가능.
   const isHost = room.friender_id === userId;
+  let participant: { entered_at: string | null } | null = null;
   if (!isHost) {
-    const { data: part } = await admin.from("friender_room_participants").select("room_id").eq("room_id", id).eq("user_id", userId).maybeSingle();
+    const { data: part } = await admin
+      .from("friender_room_participants")
+      .select("room_id, entered_at")
+      .eq("room_id", id)
+      .eq("user_id", userId)
+      .maybeSingle();
     if (!part) return { error: "먼저 참여하기를 눌러 주세요." };
+    participant = part as { entered_at: string | null };
   }
 
   // 시간창 검증(서버 authoritative). ⚠️ lessonEndMin은 수업 전용(30→25분 축소)이라 쓰지 않는다.
@@ -104,6 +111,19 @@ export async function enterRoom(roomId: string): Promise<EnterRoomResult> {
   const endMs = kstDateMinToMs(room.session_date, room.start_min + room.duration_min);
   if (!canEnterClass(Date.now(), startMs, endMs)) {
     return { error: "시작 15분 전부터 입장할 수 있어요." };
+  }
+
+  // 첫 입장 기록 — 노쇼 판정(시작 + 유예까지 미입장이면 자리 반환)의 근거.
+  // sticky: 한 번 찍히면 유지한다(classes.teacher_entered_at과 같은 규칙).
+  // best-effort — 기록 실패가 입장을 막지 않는다. 시간창 검증을 통과한 뒤에만 찍는다.
+  if (participant && !participant.entered_at) {
+    const { error: stampError } = await admin
+      .from("friender_room_participants")
+      .update({ entered_at: new Date().toISOString() })
+      .eq("room_id", id)
+      .eq("user_id", userId)
+      .is("entered_at", null);
+    if (stampError) console.error("[enterRoom] entered_at 기록 실패", stampError);
   }
 
   // 개설자 zoom URL 최신값(방 행에 저장하지 않는 이유는 friender_rooms 마이그레이션 주석 참고).

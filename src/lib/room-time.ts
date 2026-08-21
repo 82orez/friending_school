@@ -29,3 +29,21 @@ export function roomsOverlap(a: RoomSlot, b: RoomSlot): boolean {
 export function fmtRoomEnd(endMin: number): string {
   return endMin >= 24 * 60 ? `${fmtTime(endMin - 24 * 60)} (익일)` : fmtTime(endMin);
 }
+
+// 노쇼 유예 — 시작 후 이 시간까지 입장하지 않으면 자리를 정원 카운트에서 되돌린다.
+// ⚠️ 같은 값이 join_friender_room RPC(마이그레이션 20260821013406)에도 하드코딩돼 있다.
+//    RPC는 클라가 직접 호출할 수 있어 자급해야 하므로 불가피 — 바꿀 땐 두 곳을 함께 고칠 것.
+export const NO_SHOW_GRACE_MIN = 10;
+export const NO_SHOW_GRACE_MS = NO_SHOW_GRACE_MIN * 60_000;
+
+// 이 참가자가 아직 자리를 잡고 있는가 — 입장했거나(entered_at은 sticky) 아직 유예 안이면 true.
+// roomStartMs는 호출부가 kstDateMinToMs(session_date, start_min)로 만들어 넘긴다
+// (페이지마다 방 필드가 snake/camel로 달라 원시 ms를 받는 편이 깔끔하다).
+export function seatHeld(enteredAt: string | null | undefined, roomStartMs: number, now: number): boolean {
+  return !!enteredAt || now < roomStartMs + NO_SHOW_GRACE_MS;
+}
+
+// 유예가 지났는데 미입장 = 노쇼(자리 반환됨). 행 자체는 남기므로 늦은 입장은 계속 가능하다.
+export function isNoShow(enteredAt: string | null | undefined, roomStartMs: number, now: number): boolean {
+  return !seatHeld(enteredAt, roomStartMs, now);
+}

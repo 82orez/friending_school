@@ -36,7 +36,8 @@ export type FrienderRoom = {
   session_date: string; // KST YYYY-MM-DD
   start_min: number;
   duration_min: number;
-  participants: number; // 현재 예약 인원(서버가 service_role로 집계)
+  participants: number; // 자리를 잡고 있는 예약 인원(노쇼 제외, 서버가 service_role로 집계)
+  noShows: number; // 시작 + 유예까지 미입장이라 자리가 반환된 예약 수
 };
 
 // 개설 가능 시간대 00:00~23:50(10분 간격, 24시간). 시·분을 각각 고르게 나눠 둔 이유는
@@ -552,6 +553,8 @@ function RoomRow({
             <Users aria-hidden className="size-3" />
             {room.participants}/{room.capacity}명
           </span>
+          {/* 노쇼 — 시작 후 유예까지 미입장이라 자리를 반환한 예약. 신원은 알 수 없어 수만 보여준다. */}
+          {room.noShows > 0 && <span className="bg-rule/60 text-muted-fg rounded-full px-2 py-0.5 font-bold">미입장 {room.noShows}</span>}
         </p>
         {/* 소개는 모달로 — 행마다 문단 길이가 달라 목록이 들쭉날쭉해진다(프렌딩·마이페이지와 같은 규칙). */}
         <button

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime, formatDateKo } from "@/lib/availability";
 import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
-import { fmtRoomEnd } from "@/lib/room-time";
+import { fmtRoomEnd, isNoShow } from "@/lib/room-time";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { leaveRoom } from "@/app/friending/actions";
 import EnterRoomButton from "@/components/friending/EnterRoomButton";
@@ -39,6 +39,7 @@ export type ReservedRoom = {
   startMin: number;
   durationMin: number;
   participants: number;
+  enteredAt: string | null; // 내 입장 시각(RLS select_own) — 노쇼 안내 판정용
 };
 
 export default function MyRoomReservations({ rooms, hosts }: { rooms: ReservedRoom[]; hosts: Record<string, HostProfile> }) {
@@ -104,6 +105,7 @@ export default function MyRoomReservations({ rooms, hosts }: { rooms: ReservedRo
             room={r}
             host={hostOf(r)}
             enterable={canEnterClass(now, kstDateMinToMs(r.sessionDate, r.startMin), kstDateMinToMs(r.sessionDate, r.startMin + r.durationMin))}
+            noShow={isNoShow(r.enteredAt, kstDateMinToMs(r.sessionDate, r.startMin), now)}
             pending={pending}
             onOpenHost={setHostTarget}
             onOpenInfo={setInfoTarget}
@@ -165,6 +167,7 @@ function Row({
   room,
   host,
   enterable,
+  noShow,
   isPast,
   pending,
   onOpenHost,
@@ -174,6 +177,7 @@ function Row({
   room: ReservedRoom;
   host: HostProfile;
   enterable?: boolean;
+  noShow?: boolean;
   isPast?: boolean;
   pending: boolean;
   onOpenHost: (host: HostProfile) => void;
@@ -216,6 +220,13 @@ function Row({
           )}>
           <ChevronRight aria-hidden className="size-3" />방 소개글 보기
         </button>
+
+        {/* 유예(시작 후 10분)까지 미입장이면 자리가 반환된다. 늦은 입장은 계속 허용하므로 입장 버튼은 그대로 둔다. */}
+        {noShow && (
+          <p className="text-muted-fg bg-surface border-rule mt-1.5 rounded-md border px-2 py-1 text-xs font-semibold">
+            미입장 · 자리가 반환되었습니다. 아직 진행 중이면 입장할 수 있어요.
+          </p>
+        )}
       </div>
 
       {/* 입장 = 시간창(시작 15분 전~종료) 안일 때만. 그 밖일 때만 예약 취소를 노출한다
