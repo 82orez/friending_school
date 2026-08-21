@@ -240,7 +240,15 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
               {upcoming.map((r) =>
                 editingId === r.id ? (
                   <li key={r.id} className="border-rule bg-surface border-b p-5 last:border-b-0">
-                    <RoomFields fields={editFields} onChange={setEditFields} minDate={minDate} maxDate={maxDate} disabled={pending} />
+                    <RoomFields
+                      fields={editFields}
+                      onChange={setEditFields}
+                      minDate={minDate}
+                      maxDate={maxDate}
+                      disabled={pending}
+                      lockSchedule={r.participants > 0}
+                      minCapacity={Math.max(1, r.participants)}
+                    />
                     {editConflict && <ConflictNotice room={editConflict} />}
                     <div className="mt-4 flex justify-end gap-2">
                       <Button type="button" variant="outline" disabled={pending} onClick={() => setEditingId(null)}>
@@ -377,12 +385,17 @@ function RoomFields({
   minDate,
   maxDate,
   disabled,
+  lockSchedule,
+  minCapacity = 1,
 }: {
   fields: Fields;
   onChange: (f: Fields) => void;
   minDate: string;
   maxDate: string;
   disabled?: boolean;
+  // 예약자가 있는 방 — 날짜·시각·진행 시간만 잠근다(주제·난이도·정원·소개는 계속 수정 가능).
+  lockSchedule?: boolean;
+  minCapacity?: number;
 }) {
   const set = (patch: Partial<Fields>) => onChange({ ...fields, ...patch });
   const selectClass = "border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none disabled:opacity-60";
@@ -410,7 +423,7 @@ function RoomFields({
           value={fields.sessionDate}
           min={minDate}
           max={maxDate}
-          disabled={disabled}
+          disabled={disabled || lockSchedule}
           onChange={(e) => set({ sessionDate: e.target.value })}
           className={selectClass}
         />
@@ -429,7 +442,7 @@ function RoomFields({
             <select
               aria-label="시작 시각 (시)"
               value={fields.startHour ?? ""}
-              disabled={disabled}
+              disabled={disabled || lockSchedule}
               onChange={(e) => set({ startHour: e.target.value === "" ? null : Number(e.target.value) })}
               className={cn(selectClass, "flex-1", fields.startHour === null && "text-muted-fg-faint")}>
               <option value="">시</option>
@@ -445,7 +458,7 @@ function RoomFields({
             <select
               aria-label="시작 시각 (분)"
               value={fields.startMinute ?? ""}
-              disabled={disabled}
+              disabled={disabled || lockSchedule}
               onChange={(e) => set({ startMinute: e.target.value === "" ? null : Number(e.target.value) })}
               className={cn(selectClass, "flex-1", fields.startMinute === null && "text-muted-fg-faint")}>
               <option value="">분</option>
@@ -461,7 +474,7 @@ function RoomFields({
           <span className="text-muted-fg-faint text-xs font-semibold">진행 시간</span>
           <select
             value={fields.durationMin}
-            disabled={disabled}
+            disabled={disabled || lockSchedule}
             onChange={(e) => set({ durationMin: Number(e.target.value) })}
             className={selectClass}>
             {DURATIONS.map((d) => (
@@ -489,7 +502,7 @@ function RoomFields({
         {/* h-10: shadcn Input 기본 h-8이라 옆 칸 select(selectClass)와 높이가 어긋난다. */}
         <Input
           type="number"
-          min={1}
+          min={minCapacity}
           max={100}
           value={fields.capacity}
           disabled={disabled}
@@ -509,6 +522,12 @@ function RoomFields({
           placeholder="어떤 방인지 간단히 소개해 주세요."
         />
       </label>
+
+      {lockSchedule && (
+        <p className="text-muted-fg bg-surface border-rule rounded-lg border px-3 py-2 text-xs font-semibold sm:col-span-2">
+          예약한 회원이 있어 일정(날짜·시각·진행 시간)은 변경할 수 없어요. 주제·소개·난이도는 수정할 수 있습니다.
+        </p>
+      )}
     </div>
   );
 }
@@ -595,12 +614,18 @@ function RoomRow({
           <TooltipTrigger
             type="button"
             onClick={onDelete}
-            disabled={pending}
+            disabled={pending || hasGuests}
             aria-label="삭제"
-            className={cn(iconBtn, "border-brand/40 text-brand hover:bg-brand/5")}>
+            // 비활성 버튼은 기본적으로 hover 이벤트가 죽어 툴팁이 안 뜬다 → pointer-events를 되살린다
+            // (TeacherProfileForm의 LOCKED 패턴과 동일).
+            className={cn(
+              iconBtn,
+              "border-brand/40 text-brand hover:bg-brand/5",
+              hasGuests && "disabled:pointer-events-auto disabled:cursor-not-allowed",
+            )}>
             <Trash2 aria-hidden className="size-4" />
           </TooltipTrigger>
-          <TooltipContent>삭제</TooltipContent>
+          <TooltipContent>{hasGuests ? "예약자가 있어 삭제할 수 없어요" : "삭제"}</TooltipContent>
         </Tooltip>
       </div>
     </li>

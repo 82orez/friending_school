@@ -228,6 +228,14 @@ export async function createRoom(input: RoomInput): Promise<RoomActionResult> {
   return { ok: true };
 }
 
+// 예약 인원 — 참가자 RLS는 _select_own뿐이라 개설자도 세션 client로는 못 읽는다(service_role 필요).
+// 예약자가 있는 방은 삭제·일정 변경을 막는 판정에 쓴다. 노쇼도 포함해서 센다:
+// 노쇼 여부는 시작 후에야 갈리는데 수정은 어차피 시작 전에만 가능하고, 참가 기록은 남아야 한다.
+async function countParticipants(admin: ReturnType<typeof createAdminClient>, roomId: string): Promise<number> {
+  const { count } = await admin.from("friender_room_participants").select("room_id", { count: "exact", head: true }).eq("room_id", roomId);
+  return count ?? 0;
+}
+
 export async function updateRoom(id: string, input: RoomInput): Promise<RoomActionResult> {
   const userId = await requireFriender();
   if (!userId) return { ok: false, error: "권한이 없습니다." };
@@ -239,10 +247,30 @@ export async function updateRoom(id: string, input: RoomInput): Promise<RoomActi
   const admin = createAdminClient();
 
   // 이미 시작한 방은 수정 불가(삭제·숨김만 허용) — 관리 화면의 '지난 방' 규칙과 동일.
-  const { data: cur } = await admin.from("friender_rooms").select("session_date, start_min").eq("id", id).eq("friender_id", userId).maybeSingle();
-  const room = cur as { session_date?: string; start_min?: number } | null;
+  const { data: cur } = await admin
+    .from("friender_rooms")
+    .select("session_date, start_min, duration_min")
+    .eq("id", id)
+    .eq("friender_id", userId)
+    .maybeSingle();
+  const room = cur as { session_date?: string; start_min?: number; duration_min?: number } | null;
   if (!room) return { ok: false, error: "방을 찾을 수 없습니다. 목록을 새로고침해 주세요." };
   if (kstDateMinToMs(room.session_date, room.start_min) <= Date.now()) return { ok: false, error: "이미 시작된 방은 수정할 수 없습니다." };
+
+  // 예약자가 있으면 일정은 고정 — 방 관련 알림 인프라가 없어 옮기면 예약자가 통보 없이 끌려간다.
+  // 주제·소개·난이도는 계속 바꿀 수 있다.
+  const reserved = await countParticipants(admin, id);
+  if (reserved > 0) {
+    const scheduleChanged =
+      v.values.sessionDate !== room.session_date || v.values.startMin !== room.start_min || v.values.durationMin !== room.duration_min;
+    if (scheduleChanged) {
+      return { ok: false, error: "예약한 회원이 있어 일정을 변경할 수 없어요. 주제·소개·난이도는 수정할 수 있습니다." };
+    }
+    // 이미 잡힌 자리를 무효화하는 변경도 같은 이유로 막는다.
+    if (v.values.capacity < reserved) {
+      return { ok: false, error: `이미 ${reserved}명이 예약해 제한 인원을 그보다 적게 줄일 수 없어요.` };
+    }
+  }
 
   // 수정 대상 자신은 제외 — 시간을 그대로 두고 제목만 바꾸는 경우가 막히면 안 된다.
   const conflict = await findOverlappingRoom(admin, userId, v.values, id);
@@ -273,6 +301,13 @@ export async function deleteRoom(id: string): Promise<RoomActionResult> {
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
 
   const admin = createAdminClient();
+
+  // 삭제하면 참가 행이 FK cascade로 사라져 예약자의 마이페이지 기록까지 없어진다.
+  const reserved = await countParticipants(admin, id);
+  if (reserved > 0) {
+    return { ok: false, error: "예약한 회원이 있어 삭제할 수 없어요. 예약이 모두 취소된 뒤에 삭제할 수 있습니다." };
+  }
+
   const { error } = await admin.from("friender_rooms").delete().eq("id", id).eq("friender_id", userId);
   if (error) return { ok: false, error: "삭제 중 문제가 발생했습니다." };
 
