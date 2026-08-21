@@ -167,35 +167,46 @@ export default function FriendingRooms({
         </h2>
         <p className="text-muted-fg flex items-center gap-1.5 text-[13px] font-bold">
           <LiveDot active={liveCount > 0} />
-          {liveCount > 0 ? `지금 ${liveCount}개 대화 중` : `열린 방 ${rooms.length}개`}
+          열린 방 {rooms.length}개
         </p>
       </div>
 
-      {groups.map((g) => (
-        <section key={g.key} className="mt-5">
-          <h3 className="text-muted-fg-faint flex items-center gap-1.5 text-xs font-extrabold">
-            {g.key === "live" && <LiveDot active />}
-            {g.label}
-          </h3>
-          <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {g.rooms.map((r) => (
-              <RoomCard
-                key={r.id}
-                room={r}
-                host={hosts[r.frienderId] ?? { name: r.fallbackName, avatarUrl: null, nationality: null, gender: null, bio: null }}
-                isLoggedIn={isLoggedIn}
-                onOpenHost={setHostTarget}
-                onOpenInfo={setInfoTarget}
-                enterable={canEnter(r)}
-                busy={pending && pendingId === r.id}
-                disabled={pending}
-                onJoin={() => setJoinTarget(r)}
-                onLeave={() => setLeaveTarget(r)}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {groups.map((g) => {
+        const isLiveSection = g.key === "live";
+        return (
+          <section
+            key={g.key}
+            className={cn(
+              "mt-8",
+              // 대화 중 섹션만 배경 박스로 감싼다 — 제목만으로는 두 영역이 잘 갈리지 않았다.
+              // 초록 hex는 LiveDot·FREE 배지에서 이미 쓰는 값(대응 토큰 없는 예외)을 그대로 재사용.
+              isLiveSection && "rounded-2xl border border-[#22c55e]/25 bg-[#eafff1]/60 p-3 md:p-4",
+            )}>
+            <h3 className={cn("flex items-center gap-1.5 text-sm font-extrabold", isLiveSection ? "text-[#22c55e]" : "text-ink")}>
+              {isLiveSection && <LiveDot active />}
+              {g.label}
+              <span className="text-muted-fg font-bold">{g.rooms.length}</span>
+            </h3>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {g.rooms.map((r) => (
+                <RoomCard
+                  key={r.id}
+                  room={r}
+                  host={hosts[r.frienderId] ?? { name: r.fallbackName, avatarUrl: null, nationality: null, gender: null, bio: null }}
+                  isLoggedIn={isLoggedIn}
+                  onOpenHost={setHostTarget}
+                  onOpenInfo={setInfoTarget}
+                  enterable={canEnter(r)}
+                  busy={pending && pendingId === r.id}
+                  disabled={pending}
+                  onJoin={() => setJoinTarget(r)}
+                  onLeave={() => setLeaveTarget(r)}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
 
       {visible < rooms.length && (
         <button
