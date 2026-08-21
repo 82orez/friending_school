@@ -155,7 +155,7 @@ export default function FriendingRooms({
     const target = leaveTarget;
     setLeaveTarget(null); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
     if (!target) return;
-    run(target.id, () => leaveRoom(target.id), "참여를 취소했습니다.");
+    run(target.id, () => leaveRoom(target.id), "예약을 취소했습니다.");
   };
 
   if (rooms.length === 0) {
@@ -197,7 +197,7 @@ export default function FriendingRooms({
                 enterable={canEnter(r)}
                 busy={pending && pendingId === r.id}
                 disabled={pending}
-                onJoin={() => run(r.id, () => joinRoom(r.id), "참여했습니다.")}
+                onJoin={() => run(r.id, () => joinRoom(r.id), canEnter(r) ? "참여했습니다." : "예약했습니다.")}
                 onLeave={() => setLeaveTarget(r)}
               />
             ))}
@@ -220,15 +220,15 @@ export default function FriendingRooms({
       {/* 방 소개 전문 */}
       <RoomInfoModal description={infoTarget} onClose={() => setInfoTarget(null)} />
 
-      {/* 참여 취소 확인 */}
+      {/* 예약 취소 확인 */}
       <AlertDialog open={leaveTarget !== null} onOpenChange={(open) => !open && setLeaveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>참여를 취소하시겠습니까?</AlertDialogTitle>
+            <AlertDialogTitle>예약을 취소하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
               {leaveTarget && (
                 <>
-                  <span className="text-ink font-semibold">{leaveTarget.title}</span> 방의 참여가 취소됩니다. 자리가 남아 있으면 다시 참여할 수
+                  <span className="text-ink font-semibold">{leaveTarget.title}</span> 방의 예약이 취소됩니다. 자리가 남아 있으면 다시 예약할 수
                   있어요.
                 </>
               )}
@@ -237,7 +237,7 @@ export default function FriendingRooms({
           <AlertDialogFooter>
             <AlertDialogCancel>닫기</AlertDialogCancel>
             <AlertDialogAction onClick={confirmLeave} variant="brand">
-              참여 취소
+              예약 취소
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -283,6 +283,8 @@ function RoomCard({
 }) {
   const full = room.participants >= room.capacity;
   const pill = "shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors disabled:opacity-60";
+  // 시작 전 방은 자리를 잡아두는 것이므로 "예약", 이미 진행 중(입장 가능 창)인 방에 들어가는 건 "참여".
+  const joinWord = enterable ? "참여" : "예약";
   const levelLabel = roomLevelLabelKo(room.level);
   const when = `${fmtMonthDay(room.sessionDate)} · ${fmtTime(room.startMin)}~${fmtEnd(room.startMin + room.durationMin)}`;
   const description = room.description?.trim() ?? "";
@@ -355,7 +357,7 @@ function RoomCard({
         <div className="mt-2.5">
           {!isLoggedIn ? (
             <Link href="/login?next=/friending" className={cn(pill, "bg-cta inline-block text-white hover:opacity-90")}>
-              로그인하고 참여
+              로그인하고 {joinWord}
             </Link>
           ) : room.isMine && enterable ? (
             // 개설자도 시간창 안에서는 입장 — 안내 다이얼로그는 참가자 대상 문구라 건너뛴다.
@@ -368,7 +370,7 @@ function RoomCard({
             <EnterRoomButton roomId={room.id} withGuide className={cn(pill, "bg-cta text-white")} disabled={disabled} />
           ) : room.joined ? (
             <button type="button" onClick={onLeave} disabled={disabled} className={cn(pill, "border-rule text-muted-fg hover:bg-surface border")}>
-              참여 취소
+              예약 취소
             </button>
           ) : full ? (
             <button type="button" disabled className={cn(pill, "bg-rule text-muted-fg-faint cursor-default")}>
@@ -377,7 +379,7 @@ function RoomCard({
           ) : (
             <button type="button" onClick={onJoin} disabled={disabled} className={cn(pill, "bg-cta inline-flex items-center gap-1.5 text-white")}>
               {busy && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
-              참여하기
+              {joinWord}하기
             </button>
           )}
         </div>
