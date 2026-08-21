@@ -68,26 +68,43 @@ const kstDateStr = (offsetDays = 0): string => {
   return d.toLocaleDateString("en-CA");
 };
 
-// 지금(KST) 기준 다음 10분 슬롯. 서버가 '시작 시각이 미래'인지 검증하므로 기본값이 과거면 안 된다.
-// 오늘 남은 슬롯이 없으면(23:50 지남) 내일 00:00으로 넘긴다.
-const nextOpenSlot = (): { sessionDate: string; startMin: number } => {
+// 기본 개설 날짜 = 오늘. 단 오늘 남은 슬롯이 없으면(23:50 지남) 내일로 넘긴다
+// — 서버가 '시작 시각이 미래'인지 검증하므로 오늘을 고르면 무슨 시각을 넣어도 반려된다.
+const defaultSessionDate = (): string => {
   const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-  // +1분: 정각에 열면 '지금'이 아니라 그 다음 슬롯을 고르도록(서버는 now 초과만 허용).
+  // +1분: 정각에 열면 '지금'이 아니라 그 다음 슬롯이 기준(서버는 now 초과만 허용).
   const next = Math.ceil((kstNow.getHours() * 60 + kstNow.getMinutes() + 1) / START_STEP) * START_STEP;
-
-  if (next > LAST_START_MIN) return { sessionDate: kstDateStr(1), startMin: 0 };
-  return { sessionDate: kstDateStr(), startMin: next };
+  return next > LAST_START_MIN ? kstDateStr(1) : kstDateStr();
 };
 
-type Fields = { title: string; description: string; level: string; capacity: string; sessionDate: string; startMin: number; durationMin: number };
+const DEFAULT_DURATION = 40;
+
+// ⚠️ 시작 시각은 기본값을 두지 않는다(시·분 모두 null에서 출발).
+// 실제 약속 시각이라 기본값이 채워져 있으면 ①확인 없이 그대로 제출되기 쉽고
+// ②기존 방과 겹치는 시각이 자동으로 잡혀 폼이 열리자마자 경고가 뜬다(실제 겪음).
+type Fields = {
+  title: string;
+  description: string;
+  level: string;
+  capacity: string;
+  sessionDate: string;
+  startHour: number | null;
+  startMinute: number | null;
+  durationMin: number;
+};
+
+// 시·분이 모두 선택됐을 때만 저장 가능한 값이 된다(둘 중 하나만 고른 상태 = 미선택).
+const startMinOf = (f: Fields): number | null => (f.startHour === null || f.startMinute === null ? null : f.startHour * 60 + f.startMinute);
 
 const emptyForm = (): Fields => ({
   title: "",
   description: "",
   level: DEFAULT_ROOM_LEVEL,
   capacity: "4",
-  ...nextOpenSlot(), // 개설 날짜·시작 시각 = 지금 기준 가장 빠른 슬롯
-  durationMin: 40,
+  sessionDate: defaultSessionDate(),
+  startHour: null,
+  startMinute: null,
+  durationMin: DEFAULT_DURATION,
 });
 
 const toInput = (f: Fields): RoomInput => ({
@@ -96,7 +113,7 @@ const toInput = (f: Fields): RoomInput => ({
   level: f.level,
   capacity: Number(f.capacity),
   sessionDate: f.sessionDate,
-  startMin: f.startMin,
+  startMin: startMinOf(f) ?? 0, // 호출부(canCreate/canSave)가 미선택을 이미 막는다
   durationMin: f.durationMin,
 });
 
@@ -104,7 +121,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
   const router = useRouter();
   const [form, setForm] = useState<Fields>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFields, setEditFields] = useState<Fields>(emptyForm);
+  const [editFields, setEditFields] = useState<Fields>(emptyForm); // startEdit이 즉시 덮어쓰므로 기본값이면 충분
   const [deleteTarget, setDeleteTarget] = useState<FrienderRoom | null>(null);
   const [confirmCreate, setConfirmCreate] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -149,7 +166,8 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
       level: r.level,
       capacity: String(r.capacity),
       sessionDate: r.session_date,
-      startMin: r.start_min,
+      startHour: Math.floor(r.start_min / 60),
+      startMinute: r.start_min % 60,
       durationMin: r.duration_min,
     });
   };
@@ -160,7 +178,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
     run(
       () => createRoom(toInput(form)),
       "방을 개설했습니다.",
-      () => setForm(emptyForm()),
+      () => setForm(emptyForm()), // 시작 시각은 기본값이 없어 초기화해도 겹침이 생기지 않는다
     );
   };
 
@@ -175,7 +193,9 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
   // 서버 findOverlappingRoom이 authoritative고 여기는 제출 전에 알려주는 UX 레이어일 뿐
   // (<input min> ↔ validateRoomInput 관계와 동일).
   const conflictOf = (f: Fields, excludeId?: string): FrienderRoom | undefined => {
-    const slot = { sessionDate: f.sessionDate, startMin: f.startMin, durationMin: f.durationMin };
+    const startMin = startMinOf(f);
+    if (startMin === null) return undefined; // 시각 미선택 = 판정할 구간이 없음
+    const slot = { sessionDate: f.sessionDate, startMin, durationMin: f.durationMin };
     return rooms.find(
       (r) => r.id !== excludeId && roomsOverlap(slot, { sessionDate: r.session_date, startMin: r.start_min, durationMin: r.duration_min }),
     );
@@ -184,7 +204,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
   const createConflict = useMemo(() => conflictOf(form), [form, rooms]);
   const editConflict = useMemo(() => (editingId ? conflictOf(editFields, editingId) : undefined), [editFields, editingId, rooms]);
 
-  const canCreate = hasZoomUrl && !!form.title.trim() && !pending && !createConflict;
+  const canCreate = hasZoomUrl && !!form.title.trim() && startMinOf(form) !== null && !pending && !createConflict;
 
   // 툴팁은 현재 이 화면에서만 쓰여 로컬로 감싼다(다른 화면에도 퍼지면 루트 layout으로 올릴 것).
   return (
@@ -230,7 +250,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
                       <Button
                         type="button"
                         variant="brand"
-                        disabled={pending || !editFields.title.trim() || !!editConflict}
+                        disabled={pending || !editFields.title.trim() || startMinOf(editFields) === null || !!editConflict}
                         onClick={() =>
                           run(
                             () => updateRoom(r.id, toInput(editFields)),
@@ -290,7 +310,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
                 [
                   ["주제", form.title.trim()],
                   ["개설 날짜", formatDateKo(form.sessionDate)],
-                  ["시간", `${fmtTime(form.startMin)}~${fmtEnd(form.startMin + form.durationMin)} (${form.durationMin}분)`],
+                  ["시간", `${fmtTime(startMinOf(form) ?? 0)}~${fmtEnd((startMinOf(form) ?? 0) + form.durationMin)} (${form.durationMin}분)`],
                   ["난이도", roomLevelLabelKo(form.level)],
                   ["제한 인원", `${form.capacity}명`],
                   ["방 소개", form.description.trim() || "없음"],
@@ -397,14 +417,18 @@ function RoomFields({
         {/* 시·분 두 컨트롤이라 <label>로 감싸지 않는다(라벨이 첫 select에만 걸림) — 각각 aria-label을 준다. */}
         <div className="flex flex-col gap-1">
           {/* 시·분 두 칸에 걸친 제목이라 가운데 정렬(다른 단일 필드 라벨은 좌측 정렬 유지). */}
-          <span className="text-muted-fg-faint text-center text-xs font-semibold">시작 시각</span>
+          <span className="text-muted-fg-faint text-center text-xs font-semibold">
+            시작 시각 <span className="text-brand">*</span>
+          </span>
+          {/* 기본값 없음 — 미선택은 value="" 플레이스홀더로 표현한다(강사 지원 폼의 센터 select와 같은 방식). */}
           <div className="flex gap-2">
             <select
               aria-label="시작 시각 (시)"
-              value={Math.floor(fields.startMin / 60)}
+              value={fields.startHour ?? ""}
               disabled={disabled}
-              onChange={(e) => set({ startMin: Number(e.target.value) * 60 + (fields.startMin % 60) })}
-              className={cn(selectClass, "flex-1")}>
+              onChange={(e) => set({ startHour: e.target.value === "" ? null : Number(e.target.value) })}
+              className={cn(selectClass, "flex-1", fields.startHour === null && "text-muted-fg-faint")}>
+              <option value="">시</option>
               {START_HOURS.map((h) => (
                 <option key={h} value={h}>
                   {pad2(h)}시
@@ -413,10 +437,11 @@ function RoomFields({
             </select>
             <select
               aria-label="시작 시각 (분)"
-              value={fields.startMin % 60}
+              value={fields.startMinute ?? ""}
               disabled={disabled}
-              onChange={(e) => set({ startMin: Math.floor(fields.startMin / 60) * 60 + Number(e.target.value) })}
-              className={cn(selectClass, "flex-1")}>
+              onChange={(e) => set({ startMinute: e.target.value === "" ? null : Number(e.target.value) })}
+              className={cn(selectClass, "flex-1", fields.startMinute === null && "text-muted-fg-faint")}>
+              <option value="">분</option>
               {START_MINUTES.map((m) => (
                 <option key={m} value={m}>
                   {pad2(m)}분
