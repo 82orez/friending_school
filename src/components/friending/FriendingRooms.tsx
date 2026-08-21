@@ -171,13 +171,15 @@ export default function FriendingRooms({
         </p>
       </div>
 
-      {groups.map((g) => {
+      {groups.map((g, i) => {
         const isLiveSection = g.key === "live";
         return (
           <section
             key={g.key}
             className={cn(
               "mt-8",
+              // 첫 섹션 위에는 선을 긋지 않는다(상단 헤더와 붙어 이중선처럼 보임).
+              i > 0 && "border-rule border-t pt-8",
               // 대화 중 섹션만 배경 박스로 감싼다 — 제목만으로는 두 영역이 잘 갈리지 않았다.
               // 초록 hex는 LiveDot·FREE 배지에서 이미 쓰는 값(대응 토큰 없는 예외)을 그대로 재사용.
               isLiveSection && "rounded-2xl border border-[#22c55e]/25 bg-[#eafff1]/60 p-3 md:p-4",
