@@ -96,6 +96,7 @@ export default function FriendingRooms({
   const [visible, setVisible] = useState(PAGE_STEP);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [joinTarget, setJoinTarget] = useState<PublicRoom | null>(null);
   const [leaveTarget, setLeaveTarget] = useState<PublicRoom | null>(null);
   const [hostTarget, setHostTarget] = useState<HostProfile | null>(null);
   const [infoTarget, setInfoTarget] = useState<string | null>(null);
@@ -151,6 +152,13 @@ export default function FriendingRooms({
     });
   };
 
+  const confirmJoin = () => {
+    const target = joinTarget;
+    setJoinTarget(null); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
+    if (!target) return;
+    run(target.id, () => joinRoom(target.id), canEnter(target) ? "참여했습니다." : "예약했습니다.");
+  };
+
   const confirmLeave = () => {
     const target = leaveTarget;
     setLeaveTarget(null); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
@@ -197,7 +205,7 @@ export default function FriendingRooms({
                 enterable={canEnter(r)}
                 busy={pending && pendingId === r.id}
                 disabled={pending}
-                onJoin={() => run(r.id, () => joinRoom(r.id), canEnter(r) ? "참여했습니다." : "예약했습니다.")}
+                onJoin={() => setJoinTarget(r)}
                 onLeave={() => setLeaveTarget(r)}
               />
             ))}
@@ -219,6 +227,33 @@ export default function FriendingRooms({
 
       {/* 방 소개 전문 */}
       <RoomInfoModal description={infoTarget} onClose={() => setInfoTarget(null)} />
+
+      {/* 예약(참여) 확인 — 카드에서 바로 실행되던 것을 한 단계 거치게 한다. */}
+      <AlertDialog open={joinTarget !== null} onOpenChange={(open) => !open && setJoinTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{joinTarget && canEnter(joinTarget) ? "이 방에 참여할까요?" : "이 방을 예약할까요?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {joinTarget && (
+                <>
+                  <span className="text-ink font-semibold">{joinTarget.title}</span> · {fmtMonthDay(joinTarget.sessionDate)}{" "}
+                  {fmtTime(joinTarget.startMin)}~{fmtEnd(joinTarget.startMin + joinTarget.durationMin)}
+                  <br />
+                  {canEnter(joinTarget)
+                    ? "지금 진행 중인 방이라 바로 입장할 수 있어요."
+                    : "시작 15분 전부터 입장할 수 있어요. 예약은 언제든 취소할 수 있습니다."}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>닫기</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmJoin} variant="brand">
+              {joinTarget && canEnter(joinTarget) ? "참여하기" : "예약하기"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 예약 취소 확인 */}
       <AlertDialog open={leaveTarget !== null} onOpenChange={(open) => !open && setLeaveTarget(null)}>
