@@ -135,3 +135,91 @@ export async function enterRoom(roomId: string): Promise<EnterRoomResult> {
 
   return { url: zoomUrl };
 }
+
+// ─────────────────────────────────────────────────────────────
+// 평점·후기 — 회원이 마이페이지에서 지난 예약에 남긴다.
+// 열람은 프렌더 본인 + 관리자만(공개 목록에는 노출하지 않는 정책).
+// ─────────────────────────────────────────────────────────────
+
+export type ReviewResult = { ok: boolean; error?: string };
+
+const MAX_COMMENT = 1000;
+
+export async function saveRoomReview(roomId: string, rating: number, comment: string): Promise<ReviewResult> {
+  const id = String(roomId ?? "").trim();
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const score = Number(rating);
+  if (!Number.isInteger(score) || score < 1 || score > 5) return { ok: false, error: "별점을 선택해 주세요." };
+  const body = String(comment ?? "")
+    .trim()
+    .slice(0, MAX_COMMENT);
+
+  const admin = createAdminClient();
+  const { data: room } = await admin
+    .from("friender_rooms")
+    .select("id, friender_id, title, session_date, start_min, duration_min")
+    .eq("id", id)
+    .maybeSingle();
+  if (!room) return { ok: false, error: "방을 찾을 수 없어요." };
+
+  // 종료된 방만 — 진행 전·진행 중에는 평가할 대화가 아직 없다.
+  if (kstDateMinToMs(room.session_date, room.start_min + room.duration_min) > Date.now()) {
+    return { ok: false, error: "대화가 끝난 뒤에 후기를 남길 수 있어요." };
+  }
+
+  // 자격: 실제로 입장한 예약자만(노쇼는 평가 대상이 아니다).
+  const { data: part } = await admin
+    .from("friender_room_participants")
+    .select("user_name, entered_at")
+    .eq("room_id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!part) return { ok: false, error: "예약한 방에만 후기를 남길 수 있어요." };
+  if (!(part as { entered_at: string | null }).entered_at) {
+    return { ok: false, error: "입장한 대화에만 후기를 남길 수 있어요." };
+  }
+
+  // 방이 삭제돼도 후기가 의미를 유지하도록 표시 값을 스냅샷으로 함께 저장한다.
+  const { error } = await admin.from("friender_room_reviews").upsert(
+    {
+      room_id: id,
+      friender_id: room.friender_id,
+      user_id: user.id,
+      user_name: (part as { user_name: string | null }).user_name,
+      room_title: room.title,
+      session_date: room.session_date,
+      rating: score,
+      comment: body || null,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "room_id,user_id" },
+  );
+  if (error) return { ok: false, error: "후기 저장 중 문제가 발생했습니다." };
+
+  revalidatePath("/mypage/rooms");
+  revalidatePath("/friender/reviews");
+  return { ok: true };
+}
+
+export async function deleteRoomReview(roomId: string): Promise<ReviewResult> {
+  const id = String(roomId ?? "").trim();
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const userId = await currentUserId();
+  if (!userId) return { ok: false, error: "로그인이 필요합니다." };
+
+  const admin = createAdminClient();
+  const { error } = await admin.from("friender_room_reviews").delete().eq("room_id", id).eq("user_id", userId);
+  if (error) return { ok: false, error: "삭제 중 문제가 발생했습니다." };
+
+  revalidatePath("/mypage/rooms");
+  revalidatePath("/friender/reviews");
+  return { ok: true };
+}

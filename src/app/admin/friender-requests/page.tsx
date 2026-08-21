@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/utils/supabase/admin";
-import FrienderRequestsManager, { type FrienderApplication, type CurrentFriender } from "@/components/admin/FrienderRequestsManager";
+import FrienderRequestsManager, {
+  type FrienderApplication,
+  type CurrentFriender,
+  type FrienderReviewSummary,
+} from "@/components/admin/FrienderRequestsManager";
 
 // 미처리(신청) → 거절 → 승인 순으로 노출(같은 그룹 내에서는 최신순 유지).
 const STATUS_ORDER: Record<string, number> = { 신청: 0, 거절: 1, 승인: 2 };
@@ -24,6 +28,21 @@ export default async function AdminFrienderRequestsPage() {
     .from("profiles")
     .select("id, role, first_name, last_name, nickname, avatar_url, zoom_url, bio, phone, nationality, gender")
     .in("role", ["friender", "friender_plus"]);
+
+  // 받은 후기 — 프렌더별 평균·건수 + 모달용 최근 목록(RLS 정책이 없어 service_role만 읽는다).
+  const { data: reviewRows } = await admin
+    .from("friender_room_reviews")
+    .select("friender_id, rating, comment, user_name, room_title, session_date, created_at")
+    .order("created_at", { ascending: false });
+  const reviewsByFriender = new Map<string, FrienderReviewSummary["recent"]>();
+  const ratingSum = new Map<string, { sum: number; count: number }>();
+  for (const rv of (reviewRows ?? []) as (FrienderReviewSummary["recent"][number] & { friender_id: string })[]) {
+    const agg = ratingSum.get(rv.friender_id) ?? { sum: 0, count: 0 };
+    ratingSum.set(rv.friender_id, { sum: agg.sum + rv.rating, count: agg.count + 1 });
+    const list = reviewsByFriender.get(rv.friender_id) ?? [];
+    if (list.length < 5) list.push(rv); // 최근 5건만(created_at desc 정렬 그대로)
+    reviewsByFriender.set(rv.friender_id, list);
+  }
 
   const currentFrienders: CurrentFriender[] = (
     (frienderProfiles ?? []) as {
@@ -52,6 +71,9 @@ export default async function AdminFrienderRequestsPage() {
     bio: p.bio,
     zoomUrl: p.zoom_url,
     avatarUrl: p.avatar_url,
+    reviewCount: ratingSum.get(p.id)?.count ?? 0,
+    reviewAverage: ratingSum.get(p.id) ? ratingSum.get(p.id)!.sum / ratingSum.get(p.id)!.count : 0,
+    recentReviews: reviewsByFriender.get(p.id) ?? [],
   }));
 
   return <FrienderRequestsManager applications={applications} currentFrienders={currentFrienders} />;

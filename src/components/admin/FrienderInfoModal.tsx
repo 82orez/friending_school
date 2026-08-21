@@ -6,6 +6,9 @@ import { X } from "lucide-react";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
 import { formatPhone } from "@/lib/phone";
+import { formatDateKo } from "@/lib/availability";
+import { kstDateText } from "@/lib/kst";
+import StarRating from "@/components/StarRating";
 import { TIER_LABEL, type CurrentFriender } from "@/components/admin/FrienderRequestsManager";
 
 // 아바타 미설정 시 폴백 이니셜(이름 우선, 없으면 이메일 앞글자).
@@ -108,6 +111,45 @@ export default function FrienderInfoModal({ friender, onClose }: { friender: Cur
               </div>
             ))}
           </dl>
+
+          {/* 받은 후기 — 회원이 지난 대화에 남긴 평가(공개되지 않고 프렌더 본인과 관리자만 본다). */}
+          <div className="border-rule mt-5 border-t pt-4">
+            <p className="text-ink flex flex-wrap items-center gap-2 text-sm font-bold">
+              받은 후기
+              {friender.reviewCount > 0 ? (
+                <>
+                  <StarRating value={Math.round(friender.reviewAverage)} size="sm" />
+                  <span className="text-muted-fg font-normal">
+                    {friender.reviewAverage.toFixed(1)} · {friender.reviewCount}개
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted-fg-faint font-normal">아직 없음</span>
+              )}
+            </p>
+
+            {friender.recentReviews.length > 0 && (
+              <ul className="mt-2 list-none space-y-2">
+                {friender.recentReviews.map((r) => (
+                  <li key={`${r.created_at}-${r.user_name ?? ""}`} className="border-rule bg-surface rounded-lg border px-3 py-2">
+                    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                      <StarRating value={r.rating} size="sm" />
+                      <span className="text-ink font-bold">{r.user_name?.trim() || "회원"}님</span>
+                      <span className="text-muted-fg-faint">{kstDateText(r.created_at)}</span>
+                    </p>
+                    <p className="text-muted-fg mt-1 text-xs">
+                      {r.room_title?.trim() || "삭제된 방"}
+                      {r.session_date && ` · ${formatDateKo(r.session_date)}`}
+                    </p>
+                    {r.comment?.trim() && <p className="text-ink mt-1 text-sm break-words whitespace-pre-wrap">{r.comment}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {friender.reviewCount > friender.recentReviews.length && (
+              <p className="text-muted-fg-faint mt-2 text-xs">최근 {friender.recentReviews.length}건만 표시합니다.</p>
+            )}
+          </div>
         </div>
 
         <div className="border-rule flex justify-end border-t px-6 py-4">

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const TABS: { href: string; label: string }[] = [
   { href: "/friender", label: "프로필" },
   { href: "/friender/rooms", label: "방 관리" },
+  { href: "/friender/reviews", label: "받은 후기" },
 ];
 
 export default function FrienderTabs() {

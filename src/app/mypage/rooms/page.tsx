@@ -92,6 +92,15 @@ export default async function MyPageRooms() {
     }
   }
 
+  // 내가 쓴 후기 — RLS friender_room_reviews_select_own(작성자 본인).
+  const reviewByRoom = new Map<string, { rating: number; comment: string }>();
+  if (rows.length > 0) {
+    const { data: reviews } = await supabase.from("friender_room_reviews").select("room_id, rating, comment").eq("user_id", user.id);
+    for (const rv of (reviews ?? []) as { room_id: string | null; rating: number; comment: string | null }[]) {
+      if (rv.room_id) reviewByRoom.set(rv.room_id, { rating: rv.rating, comment: rv.comment ?? "" });
+    }
+  }
+
   const reservations: ReservedRoom[] = rows.map((r) => ({
     id: r.id,
     frienderId: r.friender_id,
@@ -105,6 +114,7 @@ export default async function MyPageRooms() {
     durationMin: r.duration_min,
     participants: countByRoom.get(r.id) ?? 0,
     enteredAt: r.entered_at,
+    review: reviewByRoom.get(r.id) ?? null,
   }));
 
   return <MyRoomReservations rooms={reservations} hosts={hosts} />;

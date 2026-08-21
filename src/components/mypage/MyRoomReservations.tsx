@@ -13,6 +13,8 @@ import { leaveRoom } from "@/app/friending/actions";
 import EnterRoomButton from "@/components/friending/EnterRoomButton";
 import HostProfileModal from "@/components/friending/HostProfileModal";
 import RoomInfoModal from "@/components/friending/RoomInfoModal";
+import RoomReviewModal, { type ReviewTarget } from "@/components/mypage/RoomReviewModal";
+import StarRating from "@/components/StarRating";
 import type { HostProfile } from "@/components/friending/FriendingRooms";
 import {
   AlertDialog,
@@ -39,7 +41,8 @@ export type ReservedRoom = {
   startMin: number;
   durationMin: number;
   participants: number;
-  enteredAt: string | null; // 내 입장 시각(RLS select_own) — 노쇼 안내 판정용
+  enteredAt: string | null; // 내 입장 시각(RLS select_own) — 노쇼 안내·후기 자격 판정용
+  review: { rating: number; comment: string } | null; // 내가 남긴 후기
 };
 
 export default function MyRoomReservations({ rooms, hosts }: { rooms: ReservedRoom[]; hosts: Record<string, HostProfile> }) {
@@ -48,6 +51,7 @@ export default function MyRoomReservations({ rooms, hosts }: { rooms: ReservedRo
   const [cancelTarget, setCancelTarget] = useState<ReservedRoom | null>(null);
   const [hostTarget, setHostTarget] = useState<HostProfile | null>(null);
   const [infoTarget, setInfoTarget] = useState<string | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<ReviewTarget | null>(null);
 
   // 1분 틱 — 입장 시간창 진입, 예정/지난 전환을 실시간으로 반영(RoomsManager와 동일).
   const [now, setNow] = useState(() => Date.now());
@@ -117,13 +121,32 @@ export default function MyRoomReservations({ rooms, hosts }: { rooms: ReservedRo
       {past.length > 0 && (
         <Section title={`지난 예약 (${past.length})`} className="mt-8">
           {past.map((r) => (
-            <Row key={r.id} room={r} host={hostOf(r)} isPast pending={pending} onOpenHost={setHostTarget} onOpenInfo={setInfoTarget} />
+            <Row
+              key={r.id}
+              room={r}
+              host={hostOf(r)}
+              isPast
+              pending={pending}
+              onOpenHost={setHostTarget}
+              onOpenInfo={setInfoTarget}
+              onOpenReview={() =>
+                setReviewTarget({
+                  roomId: r.id,
+                  roomTitle: r.title,
+                  hostName: hostOf(r).name,
+                  when: `${formatDateKo(r.sessionDate)} · ${fmtTime(r.startMin)}~${fmtRoomEnd(r.startMin + r.durationMin)}`,
+                  rating: r.review?.rating ?? null,
+                  comment: r.review?.comment ?? "",
+                })
+              }
+            />
           ))}
         </Section>
       )}
 
       <HostProfileModal host={hostTarget} onClose={() => setHostTarget(null)} />
       <RoomInfoModal description={infoTarget} onClose={() => setInfoTarget(null)} />
+      <RoomReviewModal target={reviewTarget} onClose={() => setReviewTarget(null)} />
 
       {/* 예약 취소 확인 — /friending 카드의 다이얼로그와 같은 문구를 쓴다. */}
       <AlertDialog open={cancelTarget !== null} onOpenChange={(open) => !open && setCancelTarget(null)}>
@@ -169,6 +192,7 @@ function Row({
   enterable,
   noShow,
   isPast,
+  onOpenReview,
   pending,
   onOpenHost,
   onOpenInfo,
@@ -179,6 +203,7 @@ function Row({
   enterable?: boolean;
   noShow?: boolean;
   isPast?: boolean;
+  onOpenReview?: () => void;
   pending: boolean;
   onOpenHost: (host: HostProfile) => void;
   onOpenInfo: (description: string) => void;
@@ -240,6 +265,23 @@ function Row({
             disabled={pending}
             className="bg-cta shrink-0 rounded-md px-3 py-1.5 text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
           />
+        )}
+        {/* 후기 — 지난 대화 중 '실제로 입장한' 건에만(서버 saveRoomReview도 같은 자격을 검증). */}
+        {isPast && onOpenReview && room.enteredAt && (
+          <button
+            type="button"
+            onClick={onOpenReview}
+            disabled={pending}
+            className="border-rule text-muted-fg hover:bg-surface inline-flex shrink-0 items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60">
+            {room.review ? (
+              <>
+                <StarRating value={room.review.rating} size="sm" />
+                후기 수정
+              </>
+            ) : (
+              "후기 쓰기"
+            )}
+          </button>
         )}
         {!isPast && !enterable && onCancel && (
           <button

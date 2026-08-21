@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import StarRating from "@/components/StarRating";
 import { approveFrienderApplication, rejectFrienderApplication, revokeFriender, setFrienderTier } from "@/app/admin/actions";
 import { nationalityLabel } from "@/data/nationalities";
 import { genderLabelKo } from "@/data/genders";
@@ -38,6 +39,18 @@ export type FrienderApplication = {
   created_at: string;
 };
 
+// 받은 후기 요약(열람은 프렌더 본인 + 관리자만 — 공개 목록에는 노출하지 않는 정책).
+export type FrienderReviewSummary = {
+  recent: {
+    rating: number;
+    comment: string | null;
+    user_name: string | null;
+    room_title: string | null;
+    session_date: string | null;
+    created_at: string;
+  }[];
+};
+
 export type CurrentFriender = {
   id: string;
   role: FrienderTier;
@@ -50,6 +63,9 @@ export type CurrentFriender = {
   bio: string | null;
   zoomUrl: string | null;
   avatarUrl: string | null;
+  reviewCount: number;
+  reviewAverage: number;
+  recentReviews: FrienderReviewSummary["recent"];
 };
 
 const STATUSES = ["신청", "승인", "거절"] as const;
@@ -354,6 +370,9 @@ function ApplicationRow({
           bio: row.intro,
           zoomUrl: row.zoom_url,
           avatarUrl: row.avatar_url,
+          reviewCount: 0, // 방금 승인된 프렌더라 후기가 있을 수 없다
+          reviewAverage: 0,
+          recentReviews: [],
         });
         toast.success("프렌더로 승인했습니다.");
       } else {
@@ -512,7 +531,7 @@ function ApplicationRow({
   );
 }
 
-type SortKey = "name" | "role" | "nationality" | "gender";
+type SortKey = "name" | "role" | "nationality" | "gender" | "rating";
 
 // 정렬 비교값은 원본 값 기준(국기 이모지·라벨이 순서에 영향 주지 않도록).
 const SORT_VALUE: Record<SortKey, (f: CurrentFriender) => string> = {
@@ -520,6 +539,8 @@ const SORT_VALUE: Record<SortKey, (f: CurrentFriender) => string> = {
   role: (f) => f.role,
   nationality: (f) => f.nationality ?? "",
   gender: (f) => f.gender ?? "",
+  // 숫자 정렬을 문자열 비교에 태우기 위해 zero-pad(후기 없으면 빈 값 → 항상 마지막).
+  rating: (f) => (f.reviewCount > 0 ? f.reviewAverage.toFixed(2).padStart(5, "0") : ""),
 };
 
 function CurrentFrienderTable({
@@ -561,13 +582,14 @@ function CurrentFrienderTable({
 
   return (
     <div className={cn("border-rule overflow-x-auto rounded-xl border bg-white", className)}>
-      <table className="w-full min-w-[680px] border-collapse text-sm">
+      <table className="w-full min-w-[780px] border-collapse text-sm">
         <thead>
           <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
             <SortHeader label="이름" sortKey="name" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
             <SortHeader label="등급" sortKey="role" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
             <SortHeader label="국적" sortKey="nationality" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
             <SortHeader label="성별" sortKey="gender" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+            <SortHeader label="평점" sortKey="rating" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
             <th className="px-4 py-2.5 text-right md:px-6">
               <span className="sr-only">관리</span>
             </th>
@@ -588,6 +610,17 @@ function CurrentFrienderTable({
               </td>
               <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{nationalityLabel(f.nationality)}</td>
               <td className="text-ink px-4 py-3.5 align-middle whitespace-nowrap">{genderLabelKo(f.gender)}</td>
+              <td className="px-4 py-3.5 align-middle whitespace-nowrap">
+                {f.reviewCount > 0 ? (
+                  <span className="text-ink inline-flex items-center gap-1 font-bold">
+                    <StarRating value={Math.round(f.reviewAverage)} size="sm" />
+                    {f.reviewAverage.toFixed(1)}
+                    <span className="text-muted-fg-faint font-normal">({f.reviewCount})</span>
+                  </span>
+                ) : (
+                  <span className="text-muted-fg-faint">—</span>
+                )}
+              </td>
               <td className="px-4 py-3.5 align-middle md:px-6">
                 <div className="flex justify-end gap-2">
                   <button

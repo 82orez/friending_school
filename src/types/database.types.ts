@@ -464,6 +464,56 @@ export type Database = {
           },
         ]
       }
+      friender_room_reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          friender_id: string
+          id: string
+          rating: number
+          room_id: string | null
+          room_title: string | null
+          session_date: string | null
+          updated_at: string
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          friender_id: string
+          id?: string
+          rating: number
+          room_id?: string | null
+          room_title?: string | null
+          session_date?: string | null
+          updated_at?: string
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          friender_id?: string
+          id?: string
+          rating?: number
+          room_id?: string | null
+          room_title?: string | null
+          session_date?: string | null
+          updated_at?: string
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friender_room_reviews_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "friender_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friender_rooms: {
         Row: {
           capacity: number
