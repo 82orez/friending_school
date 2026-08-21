@@ -67,12 +67,6 @@ const gradientOf = (id: string): string => {
   return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length];
 };
 
-const kstDateStr = (offsetDays = 0): string => {
-  const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-  d.setDate(d.getDate() + offsetDays);
-  return d.toLocaleDateString("en-CA");
-};
-
 // "8월 21일" — 날짜 그룹 헤더/카드 표기용(로케일 함수 대신 직접 조립: 하이드레이션 안전).
 const fmtMonthDay = (dateStr: string): string => {
   const [, m, d] = dateStr.split("-").map(Number);
@@ -106,33 +100,23 @@ export default function FriendingRooms({
     return () => clearInterval(t);
   }, []);
 
-  const isLive = (r: PublicRoom) =>
-    now >= kstDateMinToMs(r.sessionDate, r.startMin) && now < kstDateMinToMs(r.sessionDate, r.startMin + r.durationMin);
-
+  // 입장 시간창(시작 15분 전~종료) — 섹션 분류와 입장 버튼 노출이 같은 기준이라 서로 어긋나지 않는다.
   const canEnter = (r: PublicRoom) =>
     canEnterClass(now, kstDateMinToMs(r.sessionDate, r.startMin), kstDateMinToMs(r.sessionDate, r.startMin + r.durationMin));
 
-  const liveCount = useMemo(() => rooms.filter(isLive).length, [rooms, now]);
+  const liveCount = useMemo(() => rooms.filter(canEnter).length, [rooms, now]);
 
-  // 오늘 / 내일 / 이후로 그룹. 진행 중인 방은 오늘 그룹 최상단으로 끌어올린다.
+  // 상태로 그룹 — 지금 들어갈 수 있는 방이 있는지가 이 화면의 첫 질문이다.
+  // 날짜는 카드마다 "8월 22일 · 08:00~08:20"으로 적혀 있어 따로 묶지 않는다.
+  // 섹션 내부 순서는 서버 정렬(session_date, start_min 오름차순)을 그대로 쓴다.
   const groups = useMemo<Group[]>(() => {
-    const today = kstDateStr(0);
-    const tomorrow = kstDateStr(1);
-    const shown = rooms.slice(0, visible);
-    const buckets = new Map<string, PublicRoom[]>();
-    for (const r of shown) {
-      const key = r.sessionDate === today ? "today" : r.sessionDate === tomorrow ? "tomorrow" : "later";
-      if (!buckets.has(key)) buckets.set(key, []);
-      buckets.get(key)!.push(r);
-    }
-    const todayRooms = buckets.get("today") ?? [];
-    // 진행 중 우선(그 외 순서는 서버 정렬 유지).
-    todayRooms.sort((a, b) => Number(isLive(b)) - Number(isLive(a)));
+    const live: PublicRoom[] = [];
+    const waiting: PublicRoom[] = [];
+    for (const r of rooms.slice(0, visible)) (canEnter(r) ? live : waiting).push(r);
 
     const out: Group[] = [];
-    if (todayRooms.length) out.push({ key: "today", label: "오늘", rooms: todayRooms });
-    if (buckets.get("tomorrow")?.length) out.push({ key: "tomorrow", label: "내일", rooms: buckets.get("tomorrow")! });
-    if (buckets.get("later")?.length) out.push({ key: "later", label: "이후", rooms: buckets.get("later")! });
+    if (live.length) out.push({ key: "live", label: "대화 중", rooms: live });
+    if (waiting.length) out.push({ key: "waiting", label: "대기 중", rooms: waiting });
     return out;
   }, [rooms, visible, now]);
 
@@ -183,13 +167,16 @@ export default function FriendingRooms({
         </h2>
         <p className="text-muted-fg flex items-center gap-1.5 text-[13px] font-bold">
           <LiveDot active={liveCount > 0} />
-          {liveCount > 0 ? `지금 ${liveCount}개 진행 중` : `열린 방 ${rooms.length}개`}
+          {liveCount > 0 ? `지금 ${liveCount}개 대화 중` : `열린 방 ${rooms.length}개`}
         </p>
       </div>
 
       {groups.map((g) => (
         <section key={g.key} className="mt-5">
-          <h3 className="text-muted-fg-faint text-xs font-extrabold">{g.label}</h3>
+          <h3 className="text-muted-fg-faint flex items-center gap-1.5 text-xs font-extrabold">
+            {g.key === "live" && <LiveDot active />}
+            {g.label}
+          </h3>
           <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {g.rooms.map((r) => (
               <RoomCard
@@ -199,7 +186,6 @@ export default function FriendingRooms({
                 isLoggedIn={isLoggedIn}
                 onOpenHost={setHostTarget}
                 onOpenInfo={setInfoTarget}
-                live={isLive(r)}
                 enterable={canEnter(r)}
                 busy={pending && pendingId === r.id}
                 disabled={pending}
@@ -293,7 +279,6 @@ function RoomCard({
   room,
   host,
   isLoggedIn,
-  live,
   enterable,
   busy,
   disabled,
@@ -305,7 +290,6 @@ function RoomCard({
   room: PublicRoom;
   host: HostProfile;
   isLoggedIn: boolean;
-  live: boolean;
   enterable: boolean;
   busy: boolean;
   disabled: boolean;
@@ -355,7 +339,6 @@ function RoomCard({
             className="inline-flex size-3.5 shrink-0 items-center justify-center rounded-[50%_50%_50%_3px] bg-[#DC52B8] text-[8px] font-bold text-white">
             F
           </span>
-          {live && <span className="shrink-0 text-xs font-bold text-[#22c55e]">대화 중</span>}
         </p>
 
         <p className="text-ink mt-1 line-clamp-1 text-sm font-semibold">{room.title}</p>
