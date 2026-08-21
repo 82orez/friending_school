@@ -2,13 +2,14 @@
 
 import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Pencil, Trash2, Users } from "lucide-react";
+import { ChevronRight, Loader2, Pencil, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime, formatDateKo } from "@/lib/availability";
 import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
 import { fmtRoomEnd, roomsOverlap } from "@/lib/room-time";
 import EnterRoomButton from "@/components/friending/EnterRoomButton";
+import RoomInfoModal from "@/components/friending/RoomInfoModal";
 import { ROOM_LEVELS, DEFAULT_ROOM_LEVEL, roomLevelLabelKo } from "@/data/room-levels";
 import { createRoom, deleteRoom, updateRoom, type RoomInput } from "@/app/friender/actions";
 import { Button } from "@/components/ui/button";
@@ -119,6 +120,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
   const [editFields, setEditFields] = useState<Fields>(emptyForm); // startEdit이 즉시 덮어쓰므로 기본값이면 충분
   const [deleteTarget, setDeleteTarget] = useState<FrienderRoom | null>(null);
   const [confirmCreate, setConfirmCreate] = useState(false);
+  const [infoTarget, setInfoTarget] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const minDate = useMemo(() => kstDateStr(0), []);
@@ -268,6 +270,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
                       kstDateMinToMs(r.session_date, r.start_min),
                       kstDateMinToMs(r.session_date, r.start_min + r.duration_min),
                     )}
+                    onOpenInfo={setInfoTarget}
                     onEdit={() => startEdit(r)}
                     onDelete={() => setDeleteTarget(r)}
                   />
@@ -284,12 +287,15 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
             <div className="border-rule mt-2 overflow-hidden rounded-xl border bg-white">
               <ul className="list-none">
                 {past.map((r) => (
-                  <RoomRow key={r.id} room={r} pending={pending} isPast onDelete={() => setDeleteTarget(r)} />
+                  <RoomRow key={r.id} room={r} pending={pending} isPast onOpenInfo={setInfoTarget} onDelete={() => setDeleteTarget(r)} />
                 ))}
               </ul>
             </div>
           </>
         )}
+
+        {/* 방 소개글 전문 */}
+        <RoomInfoModal description={infoTarget} onClose={() => setInfoTarget(null)} />
 
         {/* 개설 확인 — 기본값이 미리 채워져 있어 값을 확인하지 않고 제출하기 쉽다. */}
         <AlertDialog open={confirmCreate} onOpenChange={setConfirmCreate}>
@@ -510,6 +516,7 @@ function RoomRow({
   pending,
   isPast,
   enterable,
+  onOpenInfo,
   onEdit,
   onDelete,
 }: {
@@ -517,10 +524,12 @@ function RoomRow({
   pending?: boolean;
   isPast?: boolean;
   enterable?: boolean;
+  onOpenInfo: (description: string) => void;
   onEdit?: () => void;
   onDelete: () => void;
 }) {
   const iconBtn = "border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border p-2 transition-colors disabled:opacity-60";
+  const description = room.description?.trim() ?? "";
 
   return (
     <li className={cn("border-rule flex flex-wrap items-center gap-3 border-b px-4 py-3.5 last:border-b-0 md:px-6", isPast && "opacity-60")}>
@@ -536,7 +545,19 @@ function RoomRow({
             정원 {room.capacity}명
           </span>
         </p>
-        {room.description && <p className="text-muted-fg mt-1 line-clamp-2 text-xs whitespace-pre-wrap">{room.description}</p>}
+        {/* 소개는 모달로 — 행마다 문단 길이가 달라 목록이 들쭉날쭉해진다(프렌딩·마이페이지와 같은 규칙). */}
+        <button
+          type="button"
+          disabled={!description}
+          aria-haspopup="dialog"
+          title={description ? undefined : "등록된 소개가 없어요"}
+          onClick={() => onOpenInfo(description)}
+          className={cn(
+            "focus-visible:ring-accent-blue/50 mt-1 inline-flex items-center gap-0.5 rounded text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:outline-none",
+            description ? "text-accent-blue-ink hover:underline" : "text-muted-fg-faint/60 cursor-default",
+          )}>
+          <ChevronRight aria-hidden className="size-3" />방 소개글 보기
+        </button>
       </div>
 
       {/* 아이콘만으로는 기능을 알기 어려워 툴팁을 붙인다. TooltipTrigger는 기본이 <button>이라
