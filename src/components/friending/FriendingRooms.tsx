@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
+import { fmtRoomEnd } from "@/lib/room-time";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { joinRoom, leaveRoom } from "@/app/friending/actions";
 import EnterRoomButton from "@/components/friending/EnterRoomButton";
@@ -65,9 +66,6 @@ const gradientOf = (id: string): string => {
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
   return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length];
 };
-
-// 종료 시각 표시 — 자정을 넘기면 24h로 되감는다(RoomsManager의 fmtEnd와 같은 규칙).
-const fmtEnd = (endMin: number): string => (endMin >= 24 * 60 ? `${fmtTime(endMin - 24 * 60)} (익일)` : fmtTime(endMin));
 
 const kstDateStr = (offsetDays = 0): string => {
   const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
@@ -237,7 +235,7 @@ export default function FriendingRooms({
               {joinTarget && (
                 <>
                   <span className="text-ink font-semibold">{joinTarget.title}</span> · {fmtMonthDay(joinTarget.sessionDate)}{" "}
-                  {fmtTime(joinTarget.startMin)}~{fmtEnd(joinTarget.startMin + joinTarget.durationMin)}
+                  {fmtTime(joinTarget.startMin)}~{fmtRoomEnd(joinTarget.startMin + joinTarget.durationMin)}
                   <br />
                   {canEnter(joinTarget)
                     ? "지금 진행 중인 방이라 바로 입장할 수 있어요."
@@ -321,7 +319,7 @@ function RoomCard({
   // 시작 전 방은 자리를 잡아두는 것이므로 "예약", 이미 진행 중(입장 가능 창)인 방에 들어가는 건 "참여".
   const joinWord = enterable ? "참여" : "예약";
   const levelLabel = roomLevelLabelKo(room.level);
-  const when = `${fmtMonthDay(room.sessionDate)} · ${fmtTime(room.startMin)}~${fmtEnd(room.startMin + room.durationMin)}`;
+  const when = `${fmtMonthDay(room.sessionDate)} · ${fmtTime(room.startMin)}~${fmtRoomEnd(room.startMin + room.durationMin)}`;
   const description = room.description?.trim() ?? "";
 
   return (

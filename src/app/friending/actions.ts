@@ -55,6 +55,7 @@ export async function joinRoom(roomId: string): Promise<JoinResult> {
   }
 
   revalidatePath("/friending");
+  revalidatePath("/mypage/rooms"); // 마이페이지 예약 목록에도 바로 반영
   return { ok: true };
 }
 
@@ -70,6 +71,7 @@ export async function leaveRoom(roomId: string): Promise<JoinResult> {
   if (error) return { ok: false, error: "취소 처리 중 문제가 발생했습니다." };
 
   revalidatePath("/friending");
+  revalidatePath("/mypage/rooms"); // 마이페이지 예약 목록도 함께 갱신
   return { ok: true };
 }
 

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime, formatDateKo } from "@/lib/availability";
 import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
-import { roomsOverlap } from "@/lib/room-time";
+import { fmtRoomEnd, roomsOverlap } from "@/lib/room-time";
 import EnterRoomButton from "@/components/friending/EnterRoomButton";
 import { ROOM_LEVELS, DEFAULT_ROOM_LEVEL, roomLevelLabelKo } from "@/data/room-levels";
 import { createRoom, deleteRoom, updateRoom, type RoomInput } from "@/app/friender/actions";
@@ -54,14 +54,9 @@ for (let d = 20; d <= 120; d += 10) DURATIONS.push(d);
 
 const MAX_AHEAD_DAYS = 90;
 
-// YYYY-MM-DD (KST) + n일. 서버 validateRoomInput의 범위와 동일.
-// 종료 시각 표시 전용 — 자정을 넘기면 24h로 되감고 '(익일)'을 덧붙인다.
-// 저장 값·경과 판정(kstDateMinToMs)은 1440 초과를 정상 처리하므로 표시만 손본다.
-// fmtTime 자체는 강의실·정산 등 소비처가 많아 건드리지 않는다.
 const pad2 = (n: number): string => String(n).padStart(2, "0");
 
-const fmtEnd = (endMin: number): string => (endMin >= 24 * 60 ? `${fmtTime(endMin - 24 * 60)} (익일)` : fmtTime(endMin));
-
+// YYYY-MM-DD (KST) + n일. 서버 validateRoomInput의 범위와 동일.
 const kstDateStr = (offsetDays = 0): string => {
   const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
   d.setDate(d.getDate() + offsetDays);
@@ -310,7 +305,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
                 [
                   ["주제", form.title.trim()],
                   ["개설 날짜", formatDateKo(form.sessionDate)],
-                  ["시간", `${fmtTime(startMinOf(form) ?? 0)}~${fmtEnd((startMinOf(form) ?? 0) + form.durationMin)} (${form.durationMin}분)`],
+                  ["시간", `${fmtTime(startMinOf(form) ?? 0)}~${fmtRoomEnd((startMinOf(form) ?? 0) + form.durationMin)} (${form.durationMin}분)`],
                   ["난이도", roomLevelLabelKo(form.level)],
                   ["제한 인원", `${form.capacity}명`],
                   ["방 소개", form.description.trim() || "없음"],
@@ -362,7 +357,7 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
 function ConflictNotice({ room }: { room: FrienderRoom }) {
   return (
     <p className="border-brand/30 bg-brand/5 text-brand mt-3 rounded-lg border px-3 py-2 text-xs font-semibold">
-      이미 같은 시간에 개설한 방이 있어요. ({room.title} · {fmtTime(room.start_min)}~{fmtEnd(room.start_min + room.duration_min)})
+      이미 같은 시간에 개설한 방이 있어요. ({room.title} · {fmtTime(room.start_min)}~{fmtRoomEnd(room.start_min + room.duration_min)})
     </p>
   );
 }
@@ -532,7 +527,7 @@ function RoomRow({
       <div className="min-w-0 flex-1">
         <p className="text-ink truncate text-sm font-bold">{room.title}</p>
         <p className="text-muted-fg mt-0.5 text-xs">
-          {formatDateKo(room.session_date)} · {fmtTime(room.start_min)}~{fmtEnd(room.start_min + room.duration_min)}
+          {formatDateKo(room.session_date)} · {fmtTime(room.start_min)}~{fmtRoomEnd(room.start_min + room.duration_min)}
         </p>
         <p className="text-muted-fg-faint mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
           <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(room.level)}</span>
