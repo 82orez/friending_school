@@ -1113,6 +1113,10 @@ export type Database = {
         Args: { p_room_id: string; p_user_name: string }
         Returns: string
       }
+      replace_prep_sessions: {
+        Args: { p_course_id: string; p_dates: string[]; p_topics: string[] }
+        Returns: string
+      }
     }
     Enums: {
       enrollment_status:

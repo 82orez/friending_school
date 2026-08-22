@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,7 +19,7 @@ import {
   PREP_TOPIC_MAX,
 } from "@/data/prep";
 import { ROOM_LEVELS, DEFAULT_ROOM_LEVEL, roomLevelLabelKo } from "@/data/room-levels";
-import { createPrepCourse } from "@/app/friender/prep-actions";
+import { createPrepCourse, deletePrepCourse, updatePrepCourse } from "@/app/friender/prep-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -120,7 +120,10 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
   const [topics, setTopics] = useState<string[]>(emptyTopics);
   const [bulk, setBulk] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PrepCourse | null>(null);
   const [pending, startTransition] = useTransition();
+  const formRef = useRef<HTMLDivElement>(null);
 
   const today = useMemo(() => kstToday(), []);
   const set = (patch: Partial<Fields>) => setForm((f) => ({ ...f, ...patch }));
@@ -158,25 +161,72 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
     setDates(Array.from(new Set(keys)).sort());
   };
 
+  const editing = useMemo(() => courses.find((c) => c.id === editingId) ?? null, [courses, editingId]);
+  // 이미 시작된 강좌는 일정·시각을 못 바꾼다(서버도 같은 판정으로 기존 값을 유지한다).
+  const editingStarted = !!editing && editing.sessions.length > 0 && editing.sessions[0].date <= today;
+  const scheduleLocked = editingStarted;
+
+  const startEdit = (c: PrepCourse) => {
+    setEditingId(c.id);
+    setForm({
+      title: c.title,
+      description: c.description ?? "",
+      level: c.level,
+      capacity: String(c.capacity),
+      startHour: Math.floor(c.startMin / 60),
+      startMinute: c.startMin % 60,
+      durationMin: c.durationMin,
+      startDate: c.sessions[0]?.date ?? "",
+    });
+    setDates(c.sessions.map((s) => s.date));
+    setTopics(emptyTopics().map((t, i) => c.sessions[i]?.topic?.trim() || t));
+    setBulk("");
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setForm(emptyForm());
+    setDates([]);
+    setTopics(emptyTopics());
+    setBulk("");
+  };
+
+  const confirmDelete = () => {
+    const target = deleteTarget;
+    setDeleteTarget(null); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
+    if (!target) return;
+    startTransition(async () => {
+      const res = await deletePrepCourse(target.id);
+      if (res.ok) {
+        if (editingId === target.id) resetForm();
+        router.refresh();
+        toast.success("강좌를 삭제했습니다.");
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
+    });
+  };
+
   const confirmCreate = () => {
     setConfirmOpen(false); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
     if (!canCreate || startMin === null) return;
+    const payload = {
+      title: form.title,
+      description: form.description,
+      level: form.level,
+      capacity: Number(form.capacity),
+      startMin,
+      durationMin: form.durationMin,
+      sessions: dates.map((date, i) => ({ date, topic: topics[i] ?? "" })),
+    };
+    const target = editingId;
     startTransition(async () => {
-      const res = await createPrepCourse({
-        title: form.title,
-        description: form.description,
-        level: form.level,
-        capacity: Number(form.capacity),
-        startMin,
-        durationMin: form.durationMin,
-        sessions: dates.map((date, i) => ({ date, topic: topics[i] ?? "" })),
-      });
+      const res = target ? await updatePrepCourse(target, payload) : await createPrepCourse(payload);
       if (res.ok) {
-        setForm(emptyForm());
-        setDates([]);
-        setTopics(emptyTopics());
+        resetForm();
         router.refresh();
-        toast.success("강좌를 개설했습니다.");
+        toast.success(target ? "강좌를 수정했습니다." : "강좌를 개설했습니다.");
       } else {
         toast.error(res.error ?? "오류가 발생했습니다.");
       }
@@ -260,7 +310,7 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
             <span className="text-muted-fg-faint text-xs font-semibold">진행 시간</span>
             <select
               value={form.durationMin}
-              disabled={disabled}
+              disabled={disabled || scheduleLocked}
               onChange={(e) => set({ durationMin: Number(e.target.value) })}
               className={selectClass}>
               {PREP_DURATIONS.map((d) => (
@@ -317,7 +367,7 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
               type="date"
               value={form.startDate}
               min={today}
-              disabled={disabled}
+              disabled={disabled || scheduleLocked}
               onChange={(e) => pickStartDate(e.target.value)}
               className={selectClass}
             />
@@ -339,9 +389,9 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
             <Calendar
               mode="multiple"
               selected={selectedDates}
-              onSelect={onSelectDates}
+              onSelect={scheduleLocked ? undefined : onSelectDates}
               defaultMonth={selectedDates[0]}
-              disabled={{ before: toDate(today) }}
+              disabled={scheduleLocked ? true : { before: toDate(today) }}
               locale={koLocale}
               weekStartsOn={0}
               showOutsideDays={false}
@@ -413,8 +463,14 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
             수강료 <span className="text-ink font-bold">{won(PREP_MONTHLY_PRICE_KRW)}</span>
             <span className="text-muted-fg-faint font-normal"> (월 {PREP_SESSION_COUNT}회 · 관리자 지정)</span>
           </p>
+          {editing && (
+            <Button type="button" variant="outline" disabled={pending} onClick={resetForm}>
+              취소
+            </Button>
+          )}
           <Button type="button" variant="brand" disabled={!canCreate} onClick={() => setConfirmOpen(true)}>
-            {pending && <Loader2 className="animate-spin" />}강좌 개설하기
+            {pending && <Loader2 className="animate-spin" />}
+            {editing ? "수정 저장하기" : "강좌 개설하기"}
           </Button>
         </div>
       </div>
@@ -428,7 +484,25 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
           <ul className="list-none">
             {courses.map((c) => (
               <li key={c.id} className="border-rule border-b px-4 py-3.5 last:border-b-0 md:px-6">
-                <p className="text-ink text-sm font-bold">{c.title}</p>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="text-ink text-sm font-bold">{c.title}</p>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(c)}
+                      disabled={pending}
+                      className="border-rule text-muted-fg hover:bg-surface rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60">
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(c)}
+                      disabled={pending}
+                      className="border-brand/40 text-brand hover:bg-brand/5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60">
+                      삭제
+                    </button>
+                  </div>
+                </div>
                 <p className="text-muted-fg mt-0.5 text-xs">
                   {c.sessions.length > 0 && `${fmtDateKo(c.sessions[0].date)} ~ ${fmtDateKo(c.sessions[c.sessions.length - 1].date)} · `}
                   {fmtTime(c.startMin)}~{fmtRoomEnd(c.startMin + c.durationMin)} · {c.sessionCount}회
@@ -465,8 +539,14 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>이 내용으로 강좌를 개설할까요?</AlertDialogTitle>
-            <AlertDialogDescription>개설 후에는 수업 일자와 내용을 바꿀 수 없습니다(수정 기능은 준비 중이에요).</AlertDialogDescription>
+            <AlertDialogTitle>{editing ? "이 내용으로 수정할까요?" : "이 내용으로 강좌를 개설할까요?"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {editing
+                ? scheduleLocked
+                  ? "이미 시작된 강좌라 일정과 시각은 그대로 유지되고, 나머지 내용만 바뀝니다."
+                  : "수업 일자와 주제가 입력한 대로 교체됩니다."
+                : "개설하면 목록에 바로 추가됩니다. 이후에도 수정·삭제할 수 있어요."}
+            </AlertDialogDescription>
           </AlertDialogHeader>
 
           {/* ⚠️ AlertDialogDescription은 <p>라 dl을 그 안에 넣을 수 없다 — 형제로 배치한다. */}
@@ -492,7 +572,30 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction onClick={confirmCreate} variant="brand">
-              개설하기
+              {editing ? "수정" : "개설하기"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 삭제 확인 */}
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>강좌를 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <>
+                  <span className="text-ink font-semibold">{deleteTarget.title}</span> 강좌와 {deleteTarget.sessions.length}개 회차가 모두 삭제됩니다.
+                  되돌릴 수 없습니다.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} variant="brand">
+              삭제
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

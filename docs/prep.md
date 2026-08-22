@@ -40,6 +40,17 @@
   ⚠️ **Calendar는 로컬 타임존 Date를 준다** — `toISOString()`으로 키를 만들면 KST에서 하루 밀린다. 로컬 연·월·일을 직접 조립(`toKey`)하고 반대 방향도 로컬 자정 Date(`toDate`)로 만든다.
   ⚠️ `AlertDialogDescription`은 `<p>`라 dl은 **바깥 형제**로, base-nova `AlertDialogAction`은 자동으로 안 닫히므로 핸들러에서 `setConfirmOpen(false)`.
 
+## 수정·삭제
+
+- **시작 전 강좌**(첫 회차가 미래): 개설 폼 그대로 **전부 수정**(일정·주제 포함).
+- **시작 후 강좌**: **일정(날짜)·시각은 고정**, 강좌명·소개·난이도·정원·**주제**만 수정. 지나간 회차의 날짜가 바뀌는 사고를 막는다.
+  ⚠️ 폼 잠금은 UX 레이어일 뿐 — **서버가 authoritative**: `updatePrepCourse`가 첫 회차로 `started`를 다시 판정하고, 우회 제출이 와도 **기존 날짜·시각으로 되돌린다**. 검증도 `validatePrepInput(input, { allowPastDates: started })`로 분기(시작 후에는 '내일 이후' 규칙을 건너뛴다 — 지난 회차가 그대로 들어오기 때문).
+- **회차 교체는 `replace_prep_sessions` RPC**(`20260822183052`)로 한 트랜잭션에서 delete+insert.
+  ⚠️ 순차 update가 아닌 이유 = `unique(course_id, session_date)` 때문에 **1강↔2강 날짜 맞바꾸기**가 중간 상태에서 충돌한다. delete→insert를 앱에서 하면 PostgREST에 트랜잭션이 없어 실패 시 **회차 0개 강좌**가 남는다.
+  ⚠️ RPC가 `auth.uid()`로 소유권을 검증하므로 **세션 client로 호출**해야 한다(service_role로 부르면 항상 거부 — `join_friender_room`과 같은 함정).
+- **삭제는 언제든 가능**(회차는 FK cascade). ⏳ 수강신청·결제가 붙으면 `deletePrepCourse`에 **"수강생이 있으면 삭제 금지"** 가드를 추가한다(연습방 `deleteRoom`의 `countParticipants`와 같은 모양 — 주석 자리 있음).
+- UI는 **개설 폼을 수정 모드로 재사용**한다(목록 안에 20개 주제 + 캘린더를 다시 그리는 건 과하다): 목록 행의 「수정」이 값을 폼에 싣고 스크롤, 헤더가 `강좌 수정: {제목}`으로 바뀌며 저장/취소 버튼이 뜬다.
+
 ## ⏳ 미구현 (다음 단계)
 
-수강신청·결제·공개 목록(`/friending` 노출)·회차 입장(zoom)·강좌 수정/삭제·연습방과의 **시간 겹침 검사**(지금은 공개·예약 동선이 없어 실제 충돌이 생기지 않는다 → 수강신청을 붙일 때 `roomsOverlap`을 확장해 함께 처리).
+수강신청·결제·공개 목록(`/friending` 노출)·회차 입장(zoom)·연습방과의 **시간 겹침 검사**(지금은 공개·예약 동선이 없어 실제 충돌이 생기지 않는다 → 수강신청을 붙일 때 `roomsOverlap`을 확장해 함께 처리).

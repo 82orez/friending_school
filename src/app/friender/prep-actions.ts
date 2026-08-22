@@ -54,7 +54,11 @@ function cleanText(value: string | undefined | null, max: number): string | null
 }
 
 // 클라 폼(캘린더·select)을 우회한 제출을 서버에서 다시 막는다.
-function validatePrepInput(input: PrepCourseInput): {
+function validatePrepInput(
+  input: PrepCourseInput,
+  // 시작 후 강좌 수정에서는 지나간 회차가 그대로 들어오므로 '내일 이후' 규칙을 건너뛴다.
+  opts: { allowPastDates?: boolean } = {},
+): {
   error?: string;
   values?: {
     title: string;
@@ -106,9 +110,11 @@ function validatePrepInput(input: PrepCourseInput): {
   if (sessions.some((s) => !s.topic)) return { error: "각 회차의 주제를 모두 입력해 주세요." };
 
   const today = todayKst();
-  if (sessions[0].date <= today) return { error: "첫 수업은 내일 이후로 잡아 주세요." };
-  if (sessions[sessions.length - 1].date > addDays(today, PREP_MAX_AHEAD_DAYS)) {
-    return { error: `수업 일자는 ${PREP_MAX_AHEAD_DAYS}일 이내로 선택해 주세요.` };
+  if (!opts.allowPastDates) {
+    if (sessions[0].date <= today) return { error: "첫 수업은 내일 이후로 잡아 주세요." };
+    if (sessions[sessions.length - 1].date > addDays(today, PREP_MAX_AHEAD_DAYS)) {
+      return { error: `수업 일자는 ${PREP_MAX_AHEAD_DAYS}일 이내로 선택해 주세요.` };
+    }
   }
 
   return { values: { title, description, level, capacity, startMin, durationMin, sessions } };
@@ -158,6 +164,99 @@ export async function createPrepCourse(input: PrepCourseInput): Promise<PrepActi
     await admin.from("prep_courses").delete().eq("id", courseId).eq("friender_id", userId);
     return { ok: false, error: "수업 일자 저장 중 문제가 발생했습니다. 다시 시도해 주세요." };
   }
+
+  revalidatePath("/friender", "layout");
+  return { ok: true };
+}
+
+// replace_prep_sessions RPC 반환 코드 → 사용자 메시지.
+const REPLACE_ERROR: Record<string, string> = {
+  unauthenticated: "로그인이 필요합니다. 다시 로그인해 주세요.",
+  not_found: "강좌를 찾을 수 없습니다. 목록을 새로고침해 주세요.",
+  forbidden: "본인이 개설한 강좌만 수정할 수 있습니다.",
+  length_mismatch: "수업 일자와 주제 수가 맞지 않습니다.",
+};
+
+export async function updatePrepCourse(id: string, input: PrepCourseInput): Promise<PrepActionResult> {
+  const courseId = String(id ?? "").trim();
+  if (!courseId) return { ok: false, error: "잘못된 요청입니다." };
+
+  const userId = await requireFrienderPlus();
+  if (!userId) return { ok: false, error: "프렌더 Plus만 강좌를 수정할 수 있습니다." };
+
+  const admin = createAdminClient();
+
+  // 소유권 + 현재 일정 확인. 회차는 첫 회차 판정(started)과 '시작 후 날짜 유지'에 쓴다.
+  const { data: cur } = await admin
+    .from("prep_courses")
+    .select("id, start_min, duration_min, prep_sessions(session_no, session_date)")
+    .eq("id", courseId)
+    .eq("friender_id", userId)
+    .maybeSingle();
+  const course = cur as {
+    start_min: number;
+    duration_min: number;
+    prep_sessions: { session_no: number; session_date: string }[] | null;
+  } | null;
+  if (!course) return { ok: false, error: "강좌를 찾을 수 없습니다. 목록을 새로고침해 주세요." };
+
+  const currentDates = (course.prep_sessions ?? []).slice().sort((a, b) => a.session_date.localeCompare(b.session_date));
+  // 이미 시작된 강좌는 일정·시각을 고정한다 — 지나간 회차의 날짜가 바뀌는 사고를 막는다.
+  // 폼도 잠그지만 서버가 authoritative: 우회 제출이 와도 여기서 기존 값으로 되돌린다.
+  const started = currentDates.length > 0 && currentDates[0].session_date <= todayKst();
+
+  const v = validatePrepInput(input, { allowPastDates: started });
+  if (v.error || !v.values) return { ok: false, error: v.error ?? "잘못된 요청입니다." };
+
+  if (started && currentDates.length !== v.values.sessions.length) {
+    return { ok: false, error: `수업 일자는 정확히 ${PREP_SESSION_COUNT}회여야 합니다.` };
+  }
+
+  const { error: updateError } = await admin
+    .from("prep_courses")
+    .update({
+      title: v.values.title,
+      description: v.values.description,
+      level: v.values.level,
+      capacity: v.values.capacity,
+      // 시작 후에는 시각도 그대로 유지한다(수강생 안내와 어긋나지 않게).
+      start_min: started ? course.start_min : v.values.startMin,
+      duration_min: started ? course.duration_min : v.values.durationMin,
+    })
+    .eq("id", courseId)
+    .eq("friender_id", userId);
+  if (updateError) return { ok: false, error: "강좌 수정 중 문제가 발생했습니다." };
+
+  // 회차 교체 — 날짜는 시작 후면 기존 값, 시작 전이면 새 값. 주제는 항상 새 값.
+  const dates = started ? currentDates.map((s) => s.session_date) : v.values.sessions.map((s) => s.date);
+  const topics = v.values.sessions.map((s) => s.topic);
+
+  // ⚠️ 세션 client로 호출한다 — RPC가 auth.uid()로 소유권을 검증하므로 service_role로 부르면 항상 거부된다.
+  const supabase = createClient(await cookies());
+  const { data: code, error: rpcError } = await supabase.rpc("replace_prep_sessions", {
+    p_course_id: courseId,
+    p_dates: dates,
+    p_topics: topics,
+  });
+  if (rpcError) return { ok: false, error: "수업 일자 저장 중 문제가 발생했습니다." };
+  if (String(code ?? "") !== "ok") return { ok: false, error: REPLACE_ERROR[String(code ?? "")] ?? "수업 일자 저장 중 문제가 발생했습니다." };
+
+  revalidatePath("/friender", "layout");
+  return { ok: true };
+}
+
+export async function deletePrepCourse(id: string): Promise<PrepActionResult> {
+  const courseId = String(id ?? "").trim();
+  if (!courseId) return { ok: false, error: "잘못된 요청입니다." };
+
+  const userId = await requireFrienderPlus();
+  if (!userId) return { ok: false, error: "프렌더 Plus만 강좌를 삭제할 수 있습니다." };
+
+  // ⏳ 수강신청·결제 동선이 붙으면 여기에 "수강생이 있으면 삭제 금지" 가드를 추가한다
+  //    (연습방 deleteRoom의 countParticipants와 같은 모양).
+  const admin = createAdminClient();
+  const { error } = await admin.from("prep_courses").delete().eq("id", courseId).eq("friender_id", userId);
+  if (error) return { ok: false, error: "삭제 중 문제가 발생했습니다." };
 
   revalidatePath("/friender", "layout");
   return { ok: true };
