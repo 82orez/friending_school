@@ -717,6 +717,89 @@ export type Database = {
         }
         Relationships: []
       }
+      prep_courses: {
+        Row: {
+          capacity: number
+          created_at: string
+          description: string | null
+          duration_min: number
+          friender_id: string
+          friender_name: string | null
+          friender_nickname: string | null
+          id: string
+          level: string
+          price_krw: number
+          session_count: number
+          start_min: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          capacity: number
+          created_at?: string
+          description?: string | null
+          duration_min: number
+          friender_id: string
+          friender_name?: string | null
+          friender_nickname?: string | null
+          id?: string
+          level: string
+          price_krw: number
+          session_count?: number
+          start_min: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          description?: string | null
+          duration_min?: number
+          friender_id?: string
+          friender_name?: string | null
+          friender_nickname?: string | null
+          id?: string
+          level?: string
+          price_krw?: number
+          session_count?: number
+          start_min?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      prep_sessions: {
+        Row: {
+          course_id: string
+          created_at: string
+          id: string
+          session_date: string
+          session_no: number
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          id?: string
+          session_date: string
+          session_no: number
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          id?: string
+          session_date?: string
+          session_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prep_sessions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "prep_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           address: string | null

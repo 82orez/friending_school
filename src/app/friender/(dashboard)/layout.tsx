@@ -20,7 +20,8 @@ export default async function FrienderDashboardLayout({ children }: { children: 
 
   const { data: profile } = await supabase.from("profiles").select("first_name, last_name").eq("id", user.id).maybeSingle();
   // 본인이 자기 등급을 확인할 수 있는 유일한 지점(admin 미리보기는 일반 "프렌더"로 표시).
-  const tierLabel = isFrienderPlusRole(role) ? "프렌더 Plus" : "프렌더";
+  const isPlus = isFrienderPlusRole(role);
+  const tierLabel = isPlus ? "프렌더 Plus" : "프렌더";
   // 한국 관례상 성+이름을 공백 없이 붙임. 이름이 없으면 이메일 로컬파트.
   const displayName = `${profile?.last_name ?? ""}${profile?.first_name ?? ""}` || user.email?.split("@")[0] || "프렌더";
 
@@ -37,7 +38,7 @@ export default async function FrienderDashboardLayout({ children }: { children: 
           <p className="mt-1 text-sm opacity-90">회원들에게 보여질 프로필을 관리하세요.</p>
         </div>
 
-        <FrienderTabs />
+        <FrienderTabs isPlus={isPlus} />
 
         {children}
       </div>
