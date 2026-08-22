@@ -57,6 +57,14 @@ export function formatWon(n: number): string {
   return `${n.toLocaleString("ko-KR")}원`;
 }
 
+// YYYY-MM-DD → **로컬 자정 Date**. 이 파일에서 유일하게 TZ에 얽힌 함수다.
+// ⚠️ react-day-picker(ui/calendar)는 로컬 타임존 Date를 다룬다 — `new Date("2026-09-01")`은 UTC 파싱이라
+//    KST에서 하루 앞 칸이 칠해진다. 캘린더에 날짜를 넘길 때는 반드시 이걸 쓸 것(개설 폼·admin 심사 공용).
+export function toLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 // 시작일부터 평일(월~금)만 골라 count개. 시작일이 주말이면 다음 평일부터 센다.
 // 무한 루프 방지를 위해 탐색 상한을 둔다(count의 3배 일수면 주말을 감안해도 충분).
 export function buildWeekdaySessions(startDate: string, count: number): string[] {

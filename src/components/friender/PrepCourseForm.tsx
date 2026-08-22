@@ -7,7 +7,7 @@ import { ko as koLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
-import { buildWeekdaySessions, fmtDateKo, fmtDateShort, formatWon, kstToday } from "@/lib/prep";
+import { buildWeekdaySessions, fmtDateKo, fmtDateShort, formatWon, kstToday, toLocalDate } from "@/lib/prep";
 import {
   type PrepStatus,
   PREP_DEFAULT_CAPACITY,
@@ -74,12 +74,8 @@ for (let m = 0; m < 60; m += START_STEP) START_MINUTES.push(m);
 const pad2 = (n: number): string => String(n).padStart(2, "0");
 
 // ⚠️ Calendar(react-day-picker)는 로컬 타임존 Date를 준다 — toISOString을 쓰면 KST에서 하루 밀린다.
-//    로컬 연·월·일을 직접 조립하고, 반대 방향도 로컬 자정 Date로 만든다.
+//    로컬 연·월·일을 직접 조립한다(반대 방향은 공용 toLocalDate).
 const toKey = (d: Date): string => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-const toDate = (key: string): Date => {
-  const [y, m, d] = key.split("-").map(Number);
-  return new Date(y, m - 1, d);
-};
 
 const emptyTopics = (): string[] => Array.from({ length: PREP_SESSION_COUNT }, () => "");
 
@@ -175,7 +171,7 @@ export default function PrepCourseForm({
     setDates(value ? buildWeekdaySessions(value, PREP_SESSION_COUNT) : []);
   };
 
-  const selectedDates = useMemo(() => dates.map(toDate), [dates]);
+  const selectedDates = useMemo(() => dates.map(toLocalDate), [dates]);
   const startMin = startMinOf(form);
   const filledTopics = useMemo(() => topics.filter((t) => t.trim()).length, [topics]);
   // form.priceKrw는 숫자만 담는다(표시할 때만 콤마를 붙인다). 빈칸은 미입력으로 보고 제출을 막는다.
@@ -416,7 +412,7 @@ export default function PrepCourseForm({
             selected={selectedDates}
             onSelect={scheduleLocked ? undefined : onSelectDates}
             defaultMonth={selectedDates[0]}
-            disabled={scheduleLocked ? true : { before: toDate(today) }}
+            disabled={scheduleLocked ? true : { before: toLocalDate(today) }}
             locale={koLocale}
             weekStartsOn={0}
             showOutsideDays={false}

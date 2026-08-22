@@ -58,7 +58,7 @@
 
 `buildWeekdaySessions(startDate, count)`(시작일부터 평일만 N개, 시작일이 주말이면 다음 평일부터) · `addDays` · `weekdayOf` · `isWeekday`. **순수 함수**라 폼과 서버 검증이 같이 쓴다.
 ⚠️ **TZ 비종속**: `Date.UTC` 산술만 쓴다(로컬 타임존이 끼면 KST 날짜가 하루 밀린다 — `addDaysKst`와 같은 이유).
-**표시 헬퍼도 여기**(폼·목록·모달이 같은 라벨을 쓰도록): `kstToday()`(Intl `en-CA`+timeZone — ⚠️ `booking.ts`의 `todayKst`는 `server-only`라 클라에서 못 쓴다) · `fmtDateKo`("9월 1일") · `fmtDateShort`("9/01(월)", 요일은 `weekdayOf`라 TZ 안전) · `formatWon`.
+**표시 헬퍼도 여기**(폼·목록·모달이 같은 라벨을 쓰도록): `kstToday()`(Intl `en-CA`+timeZone — ⚠️ `booking.ts`의 `todayKst`는 `server-only`라 클라에서 못 쓴다) · `fmtDateKo`("9월 1일") · `fmtDateShort`("9/01(월)", 요일은 `weekdayOf`라 TZ 안전) · `formatWon` · **`toLocalDate`**(YYYY-MM-DD → **로컬 자정 Date**, 이 파일에서 유일하게 TZ에 얽힌 함수 — react-day-picker에 넘길 날짜는 전부 이걸 쓴다. 개설 폼·admin 심사 캘린더 공용).
 
 ## UI
 

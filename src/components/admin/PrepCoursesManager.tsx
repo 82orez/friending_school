@@ -1,15 +1,17 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, type ReactNode, useMemo, useState, useTransition } from "react";
 import { ChevronDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
+import { ko as koLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
-import { fmtDateKo, fmtDateShort, formatWon } from "@/lib/prep";
+import { fmtDateKo, fmtDateShort, formatWon, toLocalDate } from "@/lib/prep";
 import { PREP_STATUSES, PREP_STATUS_BADGE, PREP_STATUS_LABEL, type PrepStatus } from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { approvePrepCourse, rejectPrepCourse } from "@/app/admin/actions";
+import { Calendar } from "@/components/ui/calendar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -158,6 +160,7 @@ function CourseRow({
   const [busy, setBusy] = useState<null | "approve" | "reject">(null);
   const [confirmApprove, setConfirmApprove] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const isPending = row.status === "신청";
@@ -206,9 +209,25 @@ function CourseRow({
     });
   };
 
-  const info: [string, string][] = [
+  const sessionDates = row.sessions.map((s) => toLocalDate(s.session_date));
+
+  const info: [string, ReactNode][] = [
     ["프렌더", `${row.friender_name ?? "-"}${row.friender_nickname ? ` (${row.friender_nickname})` : ""}`],
-    ["기간", period],
+    [
+      "기간",
+      <>
+        {period}
+        {row.sessions.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowCalendar((v) => !v)}
+            aria-expanded={showCalendar}
+            className="text-accent-blue-ink ml-2 text-xs font-bold">
+            {showCalendar ? "수업 일자 닫기" : "수업 일자 보기"}
+          </button>
+        )}
+      </>,
+    ],
     ["시각", `${fmtTime(row.start_min)}~${fmtRoomEnd(row.start_min + row.duration_min)} (${row.duration_min}분)`],
     ["난이도", roomLevelLabelKo(row.level)],
     ["제한 인원", `${row.capacity}명`],
@@ -247,6 +266,34 @@ function CourseRow({
               </Fragment>
             ))}
           </dl>
+
+          {/* 수업 일자 — 프렌더가 캘린더에서 개별 일자를 조정할 수 있어, 승인 전에 실제 배치를 봐야 한다.
+              ⚠️ 읽기 전용이라 mode/selected를 쓰지 않는다(선택 상태를 들고 있으면 클릭으로 시각적으로 토글된다).
+                 modifier로 표시만 하고 감싼 div의 pointer-events-none으로 상호작용을 없앤다 →
+                 월 이동도 막히므로 numberOfMonths={2}로 20회(최대 27일 span)를 한 번에 덮는다. */}
+          {showCalendar && sessionDates.length > 0 && (
+            <div className="border-rule mt-3 rounded-xl border bg-white p-3">
+              <p className="text-muted-fg text-xs font-semibold">
+                총 {row.sessions.length}회 · {period}
+              </p>
+              <div className="pointer-events-none mt-1">
+                <Calendar
+                  defaultMonth={sessionDates[0]}
+                  numberOfMonths={2}
+                  locale={koLocale}
+                  weekStartsOn={0}
+                  showOutsideDays={false}
+                  formatters={{ formatWeekdayName: (d: Date) => d.toLocaleDateString("ko-KR", { weekday: "short" }) }}
+                  modifiers={{ session: sessionDates, sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
+                  modifiersClassNames={{
+                    session: "bg-cta/10 !text-cta rounded-md font-bold",
+                    sunday: "!text-brand",
+                    saturday: "!text-accent-blue-ink",
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* 커리큘럼 — 유료 강좌 심사의 핵심이라 목록에서 바로 펼쳐 본다. */}
           {row.sessions.length > 0 && (
