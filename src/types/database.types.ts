@@ -719,6 +719,7 @@ export type Database = {
       }
       prep_courses: {
         Row: {
+          admin_note: string | null
           capacity: number
           created_at: string
           description: string | null
@@ -729,12 +730,16 @@ export type Database = {
           id: string
           level: string
           price_krw: number
+          reviewed_at: string | null
           session_count: number
           start_min: number
+          status: Database["public"]["Enums"]["prep_course_status"]
+          submitted_at: string | null
           title: string
           updated_at: string
         }
         Insert: {
+          admin_note?: string | null
           capacity: number
           created_at?: string
           description?: string | null
@@ -745,12 +750,16 @@ export type Database = {
           id?: string
           level: string
           price_krw: number
+          reviewed_at?: string | null
           session_count?: number
           start_min: number
+          status?: Database["public"]["Enums"]["prep_course_status"]
+          submitted_at?: string | null
           title: string
           updated_at?: string
         }
         Update: {
+          admin_note?: string | null
           capacity?: number
           created_at?: string
           description?: string | null
@@ -761,8 +770,11 @@ export type Database = {
           id?: string
           level?: string
           price_krw?: number
+          reviewed_at?: string | null
           session_count?: number
           start_min?: number
+          status?: Database["public"]["Enums"]["prep_course_status"]
+          submitted_at?: string | null
           title?: string
           updated_at?: string
         }
@@ -1127,6 +1139,7 @@ export type Database = {
         | "거절"
         | "취소"
       friender_application_status: "신청" | "승인" | "거절"
+      prep_course_status: "작성중" | "신청" | "승인" | "거절"
       teacher_application_status: "신청" | "승인" | "거절"
       user_role: "admin" | "teacher" | "student" | "friender" | "friender_plus"
     }
@@ -1265,6 +1278,7 @@ export const Constants = {
         "취소",
       ],
       friender_application_status: ["신청", "승인", "거절"],
+      prep_course_status: ["작성중", "신청", "승인", "거절"],
       teacher_application_status: ["신청", "승인", "거절"],
       user_role: ["admin", "teacher", "student", "friender", "friender_plus"],
     },

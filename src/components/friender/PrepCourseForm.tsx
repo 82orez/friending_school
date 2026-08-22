@@ -9,6 +9,7 @@ import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
 import { buildWeekdaySessions, fmtDateKo, fmtDateShort, formatWon, kstToday } from "@/lib/prep";
 import {
+  type PrepStatus,
   PREP_DEFAULT_CAPACITY,
   PREP_DEFAULT_DURATION,
   PREP_DURATIONS,
@@ -46,6 +47,8 @@ export type PrepCourse = {
   durationMin: number;
   sessionCount: number;
   priceKrw: number;
+  status: PrepStatus; // 개설 심사 상태 — docs/prep.md의 상태 기계
+  adminNote: string | null; // 거절 사유
   sessions: { date: string; topic: string | null }[]; // 날짜 오름차순
 };
 
@@ -130,9 +133,8 @@ const snapshotOf = (f: Fields, dates: string[], topics: string[]): string => JSO
 type Props = {
   mode: "create" | "edit";
   initial?: PrepCourse | null;
-  /** 이미 시작된 강좌 — 일정(일자)·진행 시간을 잠근다(서버도 같은 판정으로 기존 값을 유지한다). */
+  /** 이미 시작된 '승인' 강좌 — 일정(일자)·시각을 잠근다(서버도 같은 판정으로 기존 값을 유지한다). */
   scheduleLocked?: boolean;
-  hasZoomUrl: boolean;
   pending: boolean;
   onSubmit: (values: PrepFormValues) => void;
   onCancel?: () => void;
@@ -145,7 +147,6 @@ export default function PrepCourseForm({
   mode,
   initial = null,
   scheduleLocked = false,
-  hasZoomUrl,
   pending,
   onSubmit,
   onCancel,
@@ -180,13 +181,16 @@ export default function PrepCourseForm({
   // form.priceKrw는 숫자만 담는다(표시할 때만 콤마를 붙인다). 빈칸은 미입력으로 보고 제출을 막는다.
   const priceKrw = Number(form.priceKrw);
   const priceValid = form.priceKrw !== "" && Number.isInteger(priceKrw) && priceKrw >= PREP_MIN_PRICE_KRW && priceKrw <= PREP_MAX_PRICE_KRW;
+
+  // 심사 중·승인된 강좌만 커리큘럼 완결을 요구한다. 초안·거절은 주제를 나눠 채울 수 있다(서버 규칙과 짝).
+  const status: PrepStatus | null = initial?.status ?? null;
+  const topicsRequired = status === "신청" || status === "승인";
   const canSubmit =
-    hasZoomUrl &&
     !!form.title.trim() &&
     startMin !== null &&
     priceValid &&
     dates.length === PREP_SESSION_COUNT &&
-    filledTopics === PREP_SESSION_COUNT &&
+    (!topicsRequired || filledTopics === PREP_SESSION_COUNT) &&
     !pending;
 
   const setTopicAt = (index: number, value: string) => setTopics((prev) => prev.map((t, i) => (i === index ? value : t)));
@@ -227,10 +231,27 @@ export default function PrepCourseForm({
 
   const editing = mode === "edit";
   const selectClass = "border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none disabled:opacity-60";
-  const disabled = !hasZoomUrl || pending;
+  // ⚠️ Zoom URL 미등록은 저장을 막지 않는다 — 초안을 먼저 써 두고 나중에 등록할 수 있다(승인 요청에서 막힌다).
+  const disabled = pending;
+
+  // 저장 버튼 문구 — '작성중'/신규는 임시저장, 이미 요청·승인·거절된 강좌는 수정 저장.
+  const saveLabel = status === null || status === "작성중" ? "임시저장" : "수정 저장";
 
   return (
     <>
+      {status === "거절" && initial?.adminNote?.trim() && (
+        <div className="border-brand/30 bg-brand/5 mb-4 rounded-xl border px-4 py-3">
+          <p className="text-brand text-sm font-bold">승인되지 않았습니다</p>
+          <p className="text-ink mt-1 text-sm whitespace-pre-wrap">{initial.adminNote}</p>
+          <p className="text-muted-fg-faint mt-1 text-xs">내용을 수정한 뒤 목록에서 「승인 다시 요청」을 눌러 주세요.</p>
+        </div>
+      )}
+      {status === "승인" && (
+        <div className="border-rule bg-surface mb-4 rounded-xl border px-4 py-3 text-sm font-semibold">
+          승인된 강좌입니다. <span className="text-brand">저장하면 승인이 해제되고 다시 심사를 받습니다.</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="flex flex-col gap-1 sm:col-span-2">
           <span className="text-muted-fg-faint text-xs font-semibold">
@@ -416,7 +437,9 @@ export default function PrepCourseForm({
         <div className="border-rule mt-4 rounded-xl border p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-ink text-sm font-bold">회차별 주제</p>
-            <p className={cn("text-sm font-bold", filledTopics === PREP_SESSION_COUNT ? "text-cta" : "text-brand")}>
+            {/* 초안에서는 미완이 정상이라 빨강으로 경고하지 않는다(심사 요청 때 채우면 된다). */}
+            <p
+              className={cn("text-sm font-bold", filledTopics === PREP_SESSION_COUNT ? "text-cta" : topicsRequired ? "text-brand" : "text-muted-fg")}>
               {filledTopics}/{PREP_SESSION_COUNT}
             </p>
           </div>
@@ -472,21 +495,31 @@ export default function PrepCourseForm({
         )}
         <Button type="button" variant="brand" disabled={!canSubmit} onClick={() => setConfirmOpen(true)}>
           {pending && <Loader2 className="animate-spin" />}
-          {editing ? "수정 저장하기" : "강좌 개설하기"}
+          {saveLabel}
         </Button>
       </div>
+      {/* 저장과 심사 요청은 분리돼 있다 — 요청 버튼은 목록 행에 있다(PrepManager). */}
+      {(status === null || status === "작성중") && (
+        <p className="text-muted-fg-faint mt-2 text-right text-xs">저장한 뒤 목록에서 「승인 요청」을 눌러야 심사가 시작됩니다.</p>
+      )}
 
       {/* 개설·수정 확인 */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className={confirmClassName}>
           <AlertDialogHeader>
-            <AlertDialogTitle>{editing ? "이 내용으로 수정할까요?" : "이 내용으로 강좌를 개설할까요?"}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {status === "승인" ? "수정하면 승인이 해제됩니다" : editing ? "이 내용으로 저장할까요?" : "이 내용으로 저장할까요?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {editing
-                ? scheduleLocked
-                  ? "이미 시작된 강좌라 일정과 시각은 그대로 유지되고, 나머지 내용만 바뀝니다."
-                  : "수업 일자와 주제가 입력한 대로 교체됩니다."
-                : "개설하면 목록에 바로 추가됩니다. 이후에도 수정·삭제할 수 있어요."}
+              {status === "승인"
+                ? "저장하면 상태가 「심사 중」으로 돌아가고 관리자에게 다시 심사 요청이 갑니다."
+                : status === "신청"
+                  ? "심사 중인 강좌입니다. 저장해도 상태는 그대로 「심사 중」으로 남습니다."
+                  : scheduleLocked
+                    ? "이미 시작된 강좌라 일정과 시각은 그대로 유지되고, 나머지 내용만 바뀝니다."
+                    : editing
+                      ? "수업 일자와 주제가 입력한 대로 교체됩니다. 저장만으로는 심사가 시작되지 않습니다."
+                      : "임시저장됩니다. 목록에서 「승인 요청」을 눌러야 심사가 시작됩니다."}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -513,7 +546,7 @@ export default function PrepCourseForm({
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction onClick={confirmSubmit} variant="brand">
-              {editing ? "수정" : "개설하기"}
+              {saveLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -35,3 +35,28 @@ export const PREP_DEFAULT_CAPACITY = PREP_MAX_CAPACITY;
 
 // 회차 주제 — 개설 시 20개를 모두 입력해야 한다(앱이 강제, DB 컬럼은 nullable).
 export const PREP_TOPIC_MAX = 100;
+
+// ── 개설 심사 상태 ──────────────────────────────────────────────────────
+// 작성중(초안) → 신청(심사 대기) → 승인 | 거절. DB enum prep_course_status와 같은 값이다.
+// ⚠️ 프렌더 화면(PrepManager)과 admin 화면(PrepCoursesManager)이 같은 라벨·색을 쓰도록 여기 한 곳에 둔다.
+export const PREP_STATUSES = ["작성중", "신청", "승인", "거절"] as const;
+export type PrepStatus = (typeof PREP_STATUSES)[number];
+
+// 심사 중인 것은 "신청"보다 "심사 중"이 사용자 언어에 가깝다(프렌더 지원 목록과 동일).
+export const PREP_STATUS_LABEL: Record<PrepStatus, string> = {
+  작성중: "작성중",
+  신청: "심사 중",
+  승인: "승인",
+  거절: "거절",
+};
+
+// FrienderRequestsManager의 STATUS_BADGE 색을 그대로 쓰고 '작성중'만 더했다.
+export const PREP_STATUS_BADGE: Record<PrepStatus, string> = {
+  작성중: "bg-surface text-muted-fg",
+  신청: "bg-[#FFF7E6] text-[#B97400]",
+  승인: "bg-[#E1F5EE] text-[#0F6E56]",
+  거절: "bg-brand/10 text-brand",
+};
+
+// 명시적 「승인 요청」으로만 '신청'이 되는 상태(승인은 수정 시 자동 복귀라 여기 없다).
+export const PREP_REQUESTABLE_STATUSES: PrepStatus[] = ["작성중", "거절"];

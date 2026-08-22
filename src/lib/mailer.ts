@@ -177,6 +177,94 @@ export async function sendFrienderApplicationNotification(to: string[], data: Fr
   }
 }
 
+/* ===== 프렙 강좌 개설 승인 요청 알림 (관리자 대상) ===== */
+
+// 프렌더 Plus가 프렙 강좌 심사를 요청하면 관리자에게 보낸다(docs/prep.md의 상태 기계).
+// 승인이 해제된 재요청(승인된 강좌를 수정한 경우)도 같은 함수를 쓰고 제목·머리말만 갈린다.
+export type PrepReviewEmailData = {
+  frienderName: string;
+  nickname: string; // 선택 입력 — 빈 문자열이면 "-"
+  email: string;
+  title: string;
+  level: string; // 한국어 라벨(roomLevelLabelKo 적용 후)
+  capacity: number;
+  priceKrw: number;
+  period: string; // "9월 1일 ~ 9월 30일 (20회)"
+  time: string; // "06:00~06:40 (40분)"
+  firstTopic: string;
+  requestedAt: string;
+  isResubmit: boolean;
+};
+
+function prepReviewRows(d: PrepReviewEmailData): [string, string][] {
+  return [
+    ["강좌명", d.title],
+    ["프렌더", d.nickname ? `${d.frienderName} (${d.nickname})` : d.frienderName],
+    ["기간", d.period],
+    ["시각", d.time],
+    ["난이도", d.level],
+    ["제한 인원", `${d.capacity}명`],
+    ["수강료", `${d.priceKrw.toLocaleString("ko-KR")}원`],
+    ["1강 주제", d.firstTopic || "-"],
+    ["이메일", d.email || "(미입력)"],
+    ["요청 일시", new Date(d.requestedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })],
+  ];
+}
+
+function buildPrepReviewHtml(d: PrepReviewEmailData): string {
+  const tr = prepReviewRows(d)
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:8px 12px;color:#666;background:#f8f8f8;white-space:nowrap;border-bottom:1px solid #eee;vertical-align:top">${escapeHtml(
+          k,
+        )}</td><td style="padding:8px 12px;color:#1a1a1a;border-bottom:1px solid #eee;white-space:pre-wrap">${escapeHtml(v)}</td></tr>`,
+    )
+    .join("");
+  const heading = d.isResubmit ? "프렙 강좌가 수정되어 다시 심사가 필요합니다" : "새 프렙 강좌 승인 요청이 접수되었습니다";
+  return `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">${escapeHtml(heading)}</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(d.frienderName)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
+    <p style="font-size:12px;color:#999;margin:16px 0 0">프렌딩 스쿨 관리자 알림 · 관리자 페이지 「프렙 강좌」 탭에서 승인/거절할 수 있습니다.</p>
+  </div>`;
+}
+
+function buildPrepReviewText(d: PrepReviewEmailData): string {
+  const heading = d.isResubmit ? "프렙 강좌가 수정되어 다시 심사가 필요합니다." : "새 프렙 강좌 승인 요청이 접수되었습니다.";
+  return [heading, "", ...prepReviewRows(d).map(([k, v]) => `${k}: ${v}`)].join("\n");
+}
+
+/**
+ * 관리자들에게 프렙 강좌 승인 요청 알림 메일 발송. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ * 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않고 로그만 남긴다.
+ */
+export async function sendPrepCourseReviewRequestNotification(to: string[], data: PrepReviewEmailData): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[mailer] RESEND_API_KEY 미설정 — 프렙 승인요청 알림 메일 생략");
+    return;
+  }
+  if (to.length === 0) {
+    console.warn("[mailer] 관리자(admin) 수신자가 없어 메일 생략");
+    return;
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      replyTo: data.email || undefined,
+      subject: `[프렙 ${data.isResubmit ? "재승인요청" : "승인요청"}] ${data.frienderName} · ${data.title}`,
+      html: buildPrepReviewHtml(data),
+      text: buildPrepReviewText(data),
+    });
+    if (error) console.error("[mailer] Resend 발송 실패:", error);
+  } catch (err) {
+    console.error("[mailer] 메일 발송 예외:", err);
+  }
+}
+
 /* ===== 강사 대상 신규 수강신청 알림 ===== */
 
 export type EnrollmentEmailData = {

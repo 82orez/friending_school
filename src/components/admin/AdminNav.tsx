@@ -10,6 +10,7 @@ const ITEMS: { href: string; label: string }[] = [
   { href: "/admin/members", label: "👥 회원 관리" },
   { href: "/admin/teacher-requests", label: "🧑‍🏫 강사 관리" },
   { href: "/admin/friender-requests", label: "🤝 프렌더 관리" },
+  { href: "/admin/prep", label: "📘 프렙 강좌" },
   { href: "/admin/centers", label: "🏫 센터 관리" },
   { href: "/admin/revenue", label: "📈 매출 현황" },
   { href: "/admin/profit", label: "📊 매출이익" },

@@ -4,7 +4,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 
 ## 개요
 
-**"청년을 세계로"** 워홀·해외진출 영어 통합 플랫폼(브랜드 "프렌딩 스쿨"). 구성: 5섹션 랜딩 + **과정 상세페이지 5종**(`/courses/[slug]`: workhol·kitchen·grammar1·grammar2·cosmetic — 회화 기초문법 1/2는 각각 독립 과정·독립 수강신청, 교재 키 basic1/basic2) + **전자책 뷰어 `/textbook/[course]`**(레지스트리 기반 교재 5종, 무료 미리보기 외 로그인) + **수강신청→마이페이지**(`/courses/[slug]/enroll` 강사 매칭형 수강신청 → `/mypage`) + **강사 지원**(`/teacher/apply`) + **강사 페이지**(`/teacher`: 프로필·사진·zoom·주간 가능시간·수강신청 승인/거절) + **프렌더**(`/friender`: 연습방·받은 후기, Plus는 **프렙 유료 강좌** 개설) + **admin 대시보드**(`/admin`: 수강신청·화상수업·회원·강사 관리·센터·매출/매출이익/강사 정산·유튜브). Next.js 16(App Router, Turbopack) + React 19.2 + Tailwind v4. shadcn/ui(`base-nova`/`neutral`), Supabase SSR 인증(이메일 + 카카오 OAuth), 알림 메일(Resend) + SMS(Solapi).
+**"청년을 세계로"** 워홀·해외진출 영어 통합 플랫폼(브랜드 "프렌딩 스쿨"). 구성: 5섹션 랜딩 + **과정 상세페이지 5종**(`/courses/[slug]`: workhol·kitchen·grammar1·grammar2·cosmetic — 회화 기초문법 1/2는 각각 독립 과정·독립 수강신청, 교재 키 basic1/basic2) + **전자책 뷰어 `/textbook/[course]`**(레지스트리 기반 교재 5종, 무료 미리보기 외 로그인) + **수강신청→마이페이지**(`/courses/[slug]/enroll` 강사 매칭형 수강신청 → `/mypage`) + **강사 지원**(`/teacher/apply`) + **강사 페이지**(`/teacher`: 프로필·사진·zoom·주간 가능시간·수강신청 승인/거절) + **프렌더**(`/friender`: 연습방·받은 후기, Plus는 **프렙 유료 강좌** 개설 — **관리자 승인 후 개설 완료**) + **admin 대시보드**(`/admin`: 수강신청·화상수업·회원·강사 관리·센터·매출/매출이익/강사 정산·유튜브). Next.js 16(App Router, Turbopack) + React 19.2 + Tailwind v4. shadcn/ui(`base-nova`/`neutral`), Supabase SSR 인증(이메일 + 카카오 OAuth), 알림 메일(Resend) + SMS(Solapi).
 
 ## 명령어
 
@@ -24,8 +24,8 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 - `docs/classroom.md` — 클래스 자동 생성·내 강의실(학생/강사)·입장·연기/보강·피드백·진행 인정(conducted)
 - `docs/teacher.md` — 강사 지원(`/teacher/apply`)·승인 flow·강사 페이지(`/teacher` 3탭)·주간 가능시간 그리드
 - `docs/friender.md` — 프렌더 지원/승인·등급(friender/friender_plus)·연습방(`/friender/rooms`)·프렌딩(`/friending`)
-- `docs/prep.md` — **프렙(가칭)**: 프렌더 Plus 유료 강좌(월 20회·평일 기본·캘린더 일자 조정). 개설까지 구현, 수강신청·결제 미구현
-- `docs/admin.md` — admin 대시보드 12탭(수강신청·화상수업·회원·강사/프렌더 승인·센터·매출·매출이익·시뮬레이션·정산·유튜브·공지)
+- `docs/prep.md` — **프렙(가칭)**: 프렌더 Plus 유료 강좌(월 20회·평일 기본·캘린더 일자 조정) + **개설 심사**(작성중→신청→승인/거절, admin 탭 `/admin/prep`). 수강신청·결제 미구현
+- `docs/admin.md` — admin 대시보드 13탭(수강신청·화상수업·회원·강사/프렌더 승인·**프렙 강좌 심사**·센터·매출·매출이익·시뮬레이션·정산·유튜브·공지)
 - `docs/center.md` — 센터 매니저(`/center`)·권한 가드·admin 공유 컴포넌트 이중언어(`LangProvider`)
 - `docs/auth.md` — 인증 라우트 6종·카카오 OAuth·Supabase SSR client·**환경 변수 전체 목록**
 - `docs/textbook.md` — 전자책 `/textbook/[course]` 레지스트리·유닛 HTML·음성 동기화

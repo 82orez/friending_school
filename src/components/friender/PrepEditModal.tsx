@@ -25,14 +25,12 @@ const isConfirmOpen = () => typeof document !== "undefined" && !!document.queryS
 export default function PrepEditModal({
   course,
   scheduleLocked,
-  hasZoomUrl,
   pending,
   onClose,
   onSubmit,
 }: {
   course: PrepCourse | null;
   scheduleLocked: boolean;
-  hasZoomUrl: boolean;
   pending: boolean;
   onClose: () => void;
   onSubmit: (values: PrepFormValues) => void;
@@ -109,7 +107,6 @@ export default function PrepEditModal({
             mode="edit"
             initial={course}
             scheduleLocked={scheduleLocked}
-            hasZoomUrl={hasZoomUrl}
             pending={pending}
             onSubmit={onSubmit}
             onCancel={requestClose}

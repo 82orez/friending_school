@@ -2015,3 +2015,96 @@ export async function setFrienderTier(userId: string, target: "friender" | "frie
   revalidateFrienderConsumers();
   return { ok: true };
 }
+
+/* ===== 프렙 강좌 개설 심사 (docs/prep.md) ===== */
+
+// 프렌더 화면과 admin 심사 목록이 함께 바뀐다(프렌더 쪽 prep-actions.ts의 revalidatePrep과 짝).
+function revalidatePrepConsumers(): void {
+  revalidatePath("/admin/prep");
+  revalidatePath("/friender", "layout");
+}
+
+// 심사 결과 통보 SMS (best-effort) — 프렌더는 전화 인증이 필수라 profiles.phone이 검증된 번호다.
+// 프렌더 승인/거절과 같은 정책(메일이 아니라 SMS). 실패해도 심사 결과는 유효하다.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function notifyPrepReviewResult(admin: any, frienderId: string, text: string): Promise<void> {
+  try {
+    const { data } = await admin.from("profiles").select("phone").eq("id", frienderId).maybeSingle();
+    const phone = (data as { phone?: string | null } | null)?.phone?.trim();
+    if (phone) await sendSms(phone, text);
+  } catch (err) {
+    console.error("[prep] 심사 결과 SMS 발송 실패:", err);
+  }
+}
+
+// SMS에 강좌명을 그대로 넣으면 100자짜리 제목이 문자를 잡아먹는다.
+const prepSmsTitle = (title: string): string => (title.length > 30 ? `${title.slice(0, 30)}…` : title);
+
+// 프렙 강좌 승인 — 상태 '신청'만 처리한다. 승인되면 개설 완료다.
+export async function approvePrepCourse(id: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const admin = createAdminClient();
+  const { data: cur } = await admin.from("prep_courses").select("friender_id, title, status, prep_sessions(session_date)").eq("id", id).maybeSingle();
+  const course = cur as { friender_id: string; title: string; status: string; prep_sessions: { session_date: string }[] | null } | null;
+  if (!course) return { ok: false, error: "강좌를 찾을 수 없습니다. 목록을 새로고침해 주세요." };
+  if (course.status !== "신청") return { ok: false, error: "이미 처리된 요청입니다. 목록을 새로고침해 주세요." };
+
+  // 심사 대기 사이에 일정이 지나거나 Zoom URL이 지워질 수 있다 — 승인 직전에 다시 본다.
+  const dates = (course.prep_sessions ?? []).map((s) => s.session_date).sort();
+  if (dates.length === 0 || dates[0] <= todayKst()) {
+    return { ok: false, error: "첫 수업 일자가 이미 지났습니다. 프렌더에게 일정 수정을 요청해 주세요." };
+  }
+  const { data: prof } = await admin.from("profiles").select("zoom_url").eq("id", course.friender_id).maybeSingle();
+  if (!(prof as { zoom_url?: string | null } | null)?.zoom_url?.trim()) {
+    return { ok: false, error: "프렌더의 Zoom URL이 등록돼 있지 않습니다. 등록 후 승인해 주세요." };
+  }
+
+  const { data, error } = await admin
+    .from("prep_courses")
+    .update({ status: "승인", admin_note: null, reviewed_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("status", "신청") // 프렌더가 그 사이 수정해 상태를 되돌렸을 수 있다.
+    .select("id");
+  if (error) return { ok: false, error: "저장 중 오류가 발생했습니다." };
+  if (!data || data.length === 0) return { ok: false, error: "이미 처리된 요청입니다. 목록을 새로고침해 주세요." };
+
+  await notifyPrepReviewResult(
+    admin,
+    course.friender_id,
+    `[프렌딩 스쿨] '${prepSmsTitle(course.title)}' 프렙 강좌가 승인되었습니다. 예정된 일정대로 진행해 주세요.`,
+  );
+
+  revalidatePrepConsumers();
+  return { ok: true };
+}
+
+// 프렙 강좌 거절 — 사유 필수(프렌더가 무엇을 고쳐야 할지 알 유일한 경로). 수정 후 재요청할 수 있다.
+export async function rejectPrepCourse(id: string, adminNote: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+  const note = (adminNote ?? "").trim();
+  if (!note) return { ok: false, error: "거절 사유를 입력해 주세요." };
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("prep_courses")
+    .update({ status: "거절", admin_note: note.slice(0, 1000), reviewed_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("status", "신청")
+    .select("id, friender_id, title");
+  if (error) return { ok: false, error: "저장 중 오류가 발생했습니다." };
+  if (!data || data.length === 0) return { ok: false, error: "이미 처리된 요청입니다. 목록을 새로고침해 주세요." };
+
+  const row = data[0] as { friender_id: string; title: string };
+  // 사유가 길면 문자가 과도하게 커지므로 120자로 자른다(프렌더 지원 거절과 같은 규칙).
+  await notifyPrepReviewResult(
+    admin,
+    row.friender_id,
+    `[프렌딩 스쿨] '${prepSmsTitle(row.title)}' 프렙 강좌가 승인되지 않았습니다. 사유: ${note.slice(0, 120)} 내용을 수정해 다시 요청하실 수 있습니다.`,
+  );
+
+  revalidatePrepConsumers();
+  return { ok: true };
+}
