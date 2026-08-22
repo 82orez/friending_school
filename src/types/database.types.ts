@@ -775,6 +775,7 @@ export type Database = {
           id: string
           session_date: string
           session_no: number
+          topic: string | null
         }
         Insert: {
           course_id: string
@@ -782,6 +783,7 @@ export type Database = {
           id?: string
           session_date: string
           session_no: number
+          topic?: string | null
         }
         Update: {
           course_id?: string
@@ -789,6 +791,7 @@ export type Database = {
           id?: string
           session_date?: string
           session_no?: number
+          topic?: string | null
         }
         Relationships: [
           {

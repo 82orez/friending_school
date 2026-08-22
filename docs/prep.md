@@ -10,20 +10,21 @@
 - **기본 수업일 = 매주 월~금**(`PREP_DEFAULT_WEEKDAYS`=[1..5]). 시작일을 고르면 그날부터 **평일로 20회 자동 채움**(달 경계 무관), 이후 **캘린더에서 개별 일자 조정**.
 - **수강료 = 관리자 고정가**(`PREP_MONTHLY_PRICE_KRW`) — 프렌더는 입력하지 않고 **서버가 상수로 채운다**. 현재 **월 20,000원**(20회 기준). 값을 바꾸면 이후 개설분부터 적용. 상수가 바뀌어도 기존 강좌는 개설 시점 값을 유지하도록 `prep_courses.price_krw`에 **스냅샷** 저장(`payments`·`rates` 이력과 같은 사고).
 - **정원은 프렌더가 지정**(`PREP_MIN_CAPACITY`~`PREP_MAX_CAPACITY` = **1~1000**, 그룹 가능) — 연습방(1~100)보다 넓다(강의형이라 대형 정원 허용). ⚠️ 상한이 앱 상수·서버 검증·DB check 3곳에 있으니 함께 고칠 것(`20260822005713`).
+- **회차마다 주제 1개, 20개 모두 필수** — 유료 강좌라 커리큘럼이 먼저 보여야 한다. ⚠️ **주제는 날짜가 아니라 회차 번호에 귀속**된다(캘린더에서 일자를 바꿔도 "1강 주제"는 1강에 남는다) → 클라 상태는 `dates`/`topics`를 **인덱스로만 매칭**하고 `topics` 길이는 항상 20으로 고정. `prep_sessions.topic`은 **nullable**(기존 행 때문에 not null 불가)이고 필수는 **앱이 강제**한다.
 - **시각은 강좌 단위 고정**(`start_min`+`duration_min`) — 조정 대상은 '일자'다. 회차별 시각 컬럼을 두지 않는다.
 - 게이팅은 **`isFrienderPlusRole`**(`src/lib/auth.ts`) — 이 함수의 첫 사용처. ⚠️ **admin도 통과시키지 않는다**: 개설되면 `friender_id`가 admin이 돼 데이터가 오염된다.
 
 ## 데이터 (`20260822004501_add_prep_courses.sql`)
 
 - **`prep_courses`** — 표시 스냅샷(`friender_name`/`friender_nickname`, 방과 같은 이유)·`title`·`description`·`level`(room-levels 재사용)·`capacity`·`start_min`(10분 배수)·`duration_min`(20~120·10분, 기본 40)·`session_count`·`price_krw`.
-- **`prep_sessions`** — `course_id`·`session_no`(1..20)·`session_date`. `unique(course_id,session_no)` + `unique(course_id,session_date)`(하루 두 회차 금지).
+- **`prep_sessions`** — `course_id`·`session_no`(1..20)·`session_date`·**`topic`**(회차 주제, nullable — `20260822171327`). `unique(course_id,session_no)` + `unique(course_id,session_date)`(하루 두 회차 금지).
   ⚠️ 회차를 **JSON 배열이 아니라 행**으로 둔 이유: 앞으로 회차별 입장·출결·연기가 붙을 자리이고(`classes`가 같은 이유), 일자 조정도 행 갱신이 자연스럽다.
 - RLS는 **`_select_own`만**(개설자 본인). 공개 정책은 수강신청 동선을 붙일 때 추가. 쓰기 정책 없음 → 서버 액션 service_role.
 
 ## 액션 `src/app/friender/prep-actions.ts`
 
 `friender/actions.ts`가 커져 도메인별로 파일을 나눴다. **`requireFrienderPlus()`** 가드 후 `createPrepCourse(input)`:
-검증 순서 = Plus 권한 → 제목/난이도/정원/시각/진행시간 → **회차 일자 재검증**(정확히 20개·중복 없음·형식·전부 내일 이후·`PREP_MAX_AHEAD_DAYS`(120일) 이내) → Zoom URL 등록 여부 → insert.
+검증 순서 = Plus 권한 → 제목/난이도/정원/시각/진행시간 → **회차 재검증**(정확히 20개·중복 없음·형식·전부 내일 이후·`PREP_MAX_AHEAD_DAYS`(120일) 이내·**주제 20개 모두 비어 있지 않음**) → Zoom URL 등록 여부 → insert. 입력은 **`sessions: {date, topic}[]`** 한 배열로 받는다(날짜·주제를 따로 받으면 개수가 어긋나는 상태가 생긴다). `session_no`는 날짜 오름차순 정렬 후의 배열 순서.
 ⚠️ **PostgREST에 트랜잭션이 없다** — `prep_sessions` insert가 실패하면 회차 없는 고아 강좌가 남으므로 **방금 만든 course를 지우는 보상 삭제**를 한다.
 ⚠️ `price_krw`는 **입력을 받지 않는다**(클라가 보내도 무시) — 관리자 고정가 정책.
 
@@ -35,7 +36,7 @@
 ## UI
 
 - 탭 **「프렙 강좌」 `/friender/prep`** — `FrienderTabs`의 `plusOnly` 플래그로 Plus에게만 노출(레이아웃이 `isPlus`를 내려준다). ⚠️ **탭 숨김만으로는 부족** — page에서도 Plus 가드로 URL 직접 접근을 막는다.
-- **`PrepManager`**(client): 개설 폼(강좌명·시작 시각(시/분, **기본값 없음**)·진행 시간·난이도·정원·소개·시작일) + **회차 캘린더**(`ui/calendar`=react-day-picker `mode="multiple"`, 자동 채운 20일 표시·클릭 토글·`20/20` 카운터, 20회가 아니면 개설 버튼 비활성) + 개설 확인 `AlertDialog`(요약 dl) + 내 강좌 목록.
+- **`PrepManager`**(client): 개설 폼(강좌명·시작 시각(시/분, **기본값 없음**)·진행 시간·난이도·정원·소개·시작일) + **회차별 주제 20칸**(+ 여러 줄 **일괄 붙여넣기** 상자 → 앞에서부터 채움, `N/20` 카운터) + **회차 캘린더**(`ui/calendar`=react-day-picker `mode="multiple"`, 자동 채운 20일 표시·클릭 토글·`20/20` 카운터, 20회가 아니면 개설 버튼 비활성) + 개설 확인 `AlertDialog`(요약 dl) + 내 강좌 목록(회차·주제는 네이티브 `<details>` 아코디언으로 펼침 — `StudentEnrollments` 선례).
   ⚠️ **Calendar는 로컬 타임존 Date를 준다** — `toISOString()`으로 키를 만들면 KST에서 하루 밀린다. 로컬 연·월·일을 직접 조립(`toKey`)하고 반대 방향도 로컬 자정 Date(`toDate`)로 만든다.
   ⚠️ `AlertDialogDescription`은 `<p>`라 dl은 **바깥 형제**로, base-nova `AlertDialogAction`은 자동으로 안 닫히므로 핸들러에서 `setConfirmOpen(false)`.
 

@@ -9,7 +9,15 @@ import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
 import { buildWeekdaySessions } from "@/lib/prep";
-import { PREP_DEFAULT_DURATION, PREP_DURATIONS, PREP_MAX_CAPACITY, PREP_MIN_CAPACITY, PREP_MONTHLY_PRICE_KRW, PREP_SESSION_COUNT } from "@/data/prep";
+import {
+  PREP_DEFAULT_DURATION,
+  PREP_DURATIONS,
+  PREP_MAX_CAPACITY,
+  PREP_MIN_CAPACITY,
+  PREP_MONTHLY_PRICE_KRW,
+  PREP_SESSION_COUNT,
+  PREP_TOPIC_MAX,
+} from "@/data/prep";
 import { ROOM_LEVELS, DEFAULT_ROOM_LEVEL, roomLevelLabelKo } from "@/data/room-levels";
 import { createPrepCourse } from "@/app/friender/prep-actions";
 import { Button } from "@/components/ui/button";
@@ -37,7 +45,7 @@ export type PrepCourse = {
   durationMin: number;
   sessionCount: number;
   priceKrw: number;
-  sessionDates: string[]; // 오름차순
+  sessions: { date: string; topic: string | null }[]; // 날짜 오름차순
 };
 
 // 시작 시각 — 연습방과 같은 규칙(10분 단위, 시·분 분리, 기본값 없음).
@@ -66,6 +74,16 @@ const fmtDateKo = (key: string): string => {
   const [, m, d] = key.split("-").map(Number);
   return `${m}월 ${d}일`;
 };
+
+const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
+
+// "9/07(월)" — 회차 목록처럼 좁은 자리에서 쓴다.
+const fmtDateShort = (key: string): string => {
+  const [, m, d] = key.split("-").map(Number);
+  return `${m}/${pad2(d)}(${WEEKDAY_KO[toDate(key).getDay()]})`;
+};
+
+const emptyTopics = (): string[] => Array.from({ length: PREP_SESSION_COUNT }, () => "");
 
 const won = (n: number): string => `${n.toLocaleString("ko-KR")}원`;
 
@@ -97,6 +115,10 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
   const router = useRouter();
   const [form, setForm] = useState<Fields>(emptyForm);
   const [dates, setDates] = useState<string[]>([]); // 회차 일자(YYYY-MM-DD, 오름차순)
+  // ⚠️ 주제는 날짜가 아니라 '회차 번호'에 붙는다 — 캘린더에서 일자를 바꿔도 1강 주제는 1강에 남는다.
+  //    그래서 dates와 topics를 인덱스로만 매칭하고, topics 길이는 항상 PREP_SESSION_COUNT로 고정한다.
+  const [topics, setTopics] = useState<string[]>(emptyTopics);
+  const [bulk, setBulk] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -111,7 +133,24 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
 
   const selectedDates = useMemo(() => dates.map(toDate), [dates]);
   const startMin = startMinOf(form);
-  const canCreate = hasZoomUrl && !!form.title.trim() && startMin !== null && dates.length === PREP_SESSION_COUNT && !pending;
+  const filledTopics = useMemo(() => topics.filter((t) => t.trim()).length, [topics]);
+  const canCreate =
+    hasZoomUrl && !!form.title.trim() && startMin !== null && dates.length === PREP_SESSION_COUNT && filledTopics === PREP_SESSION_COUNT && !pending;
+
+  const setTopicAt = (index: number, value: string) => setTopics((prev) => prev.map((t, i) => (i === index ? value : t)));
+
+  // 여러 줄을 한 번에 붙여넣어 앞에서부터 채운다 — 20칸을 매번 타이핑하지 않도록.
+  const applyBulk = () => {
+    const lines = bulk
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .slice(0, PREP_SESSION_COUNT);
+    if (lines.length === 0) return;
+    setTopics((prev) => prev.map((t, i) => lines[i] ?? t));
+    setBulk("");
+    toast.success(`주제 ${lines.length}개를 채웠습니다.`);
+  };
 
   const onSelectDates = (next: Date[] | undefined) => {
     // 과거 날짜는 서버가 어차피 거부하므로 선택 단계에서 걸러 준다.
@@ -130,11 +169,12 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
         capacity: Number(form.capacity),
         startMin,
         durationMin: form.durationMin,
-        sessionDates: dates,
+        sessions: dates.map((date, i) => ({ date, topic: topics[i] ?? "" })),
       });
       if (res.ok) {
         setForm(emptyForm());
         setDates([]);
+        setTopics(emptyTopics());
         router.refresh();
         toast.success("강좌를 개설했습니다.");
       } else {
@@ -319,6 +359,55 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
           </div>
         )}
 
+        {/* 회차별 주제 — 20개 모두 필수. 주제는 회차 번호에 붙으므로 날짜를 바꿔도 그대로 남는다. */}
+        {dates.length > 0 && (
+          <div className="border-rule mt-4 rounded-xl border p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-ink text-sm font-bold">회차별 주제</p>
+              <p className={cn("text-sm font-bold", filledTopics === PREP_SESSION_COUNT ? "text-cta" : "text-brand")}>
+                {filledTopics}/{PREP_SESSION_COUNT}
+              </p>
+            </div>
+
+            {/* 일괄 입력 — 20칸을 매번 타이핑하지 않도록 여러 줄을 한 번에 채운다. */}
+            <div className="bg-surface mt-2 rounded-lg p-2.5">
+              <label className="flex flex-col gap-1">
+                <span className="text-muted-fg-faint text-xs font-semibold">한 번에 채우기 (한 줄에 하나씩)</span>
+                <Textarea
+                  value={bulk}
+                  onChange={(e) => setBulk(e.target.value)}
+                  disabled={disabled}
+                  rows={3}
+                  placeholder={"카페에서 주문하기\n공항 체크인\n호텔 예약하기"}
+                />
+              </label>
+              <div className="mt-2 flex justify-end">
+                <Button type="button" variant="outline" size="sm" disabled={disabled || !bulk.trim()} onClick={applyBulk}>
+                  채우기
+                </Button>
+              </div>
+            </div>
+
+            <ul className="mt-3 list-none space-y-1.5">
+              {topics.map((topic, i) => (
+                <li key={i} className="flex items-center gap-2">
+                  <span className="text-muted-fg-faint w-20 shrink-0 text-xs font-semibold">
+                    {i + 1}강 {dates[i] ? fmtDateShort(dates[i]) : "-"}
+                  </span>
+                  <Input
+                    value={topic}
+                    onChange={(e) => setTopicAt(i, e.target.value)}
+                    disabled={disabled}
+                    maxLength={PREP_TOPIC_MAX}
+                    placeholder={`${i + 1}강 주제`}
+                    className="h-9"
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
           <p className="text-muted-fg mr-auto text-sm font-semibold">
             수강료 <span className="text-ink font-bold">{won(PREP_MONTHLY_PRICE_KRW)}</span>
@@ -341,7 +430,7 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
               <li key={c.id} className="border-rule border-b px-4 py-3.5 last:border-b-0 md:px-6">
                 <p className="text-ink text-sm font-bold">{c.title}</p>
                 <p className="text-muted-fg mt-0.5 text-xs">
-                  {c.sessionDates.length > 0 && `${fmtDateKo(c.sessionDates[0])} ~ ${fmtDateKo(c.sessionDates[c.sessionDates.length - 1])} · `}
+                  {c.sessions.length > 0 && `${fmtDateKo(c.sessions[0].date)} ~ ${fmtDateKo(c.sessions[c.sessions.length - 1].date)} · `}
                   {fmtTime(c.startMin)}~{fmtRoomEnd(c.startMin + c.durationMin)} · {c.sessionCount}회
                 </p>
                 <p className="text-muted-fg-faint mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
@@ -349,6 +438,23 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
                   <span>정원 {c.capacity}명</span>
                   <span>{won(c.priceKrw)}</span>
                 </p>
+
+                {/* 커리큘럼 — 회차가 20개라 기본은 접어 둔다(마이페이지 수강신청 내역과 같은 네이티브 details). */}
+                {c.sessions.length > 0 && (
+                  <details className="mt-2">
+                    <summary className="text-accent-blue-ink cursor-default text-xs font-bold">커리큘럼 {c.sessions.length}회 보기</summary>
+                    <ol className="text-muted-fg mt-1.5 list-none space-y-1 text-xs">
+                      {c.sessions.map((s, i) => (
+                        <li key={s.date} className="flex gap-2">
+                          <span className="text-muted-fg-faint w-20 shrink-0">
+                            {i + 1}강 {fmtDateShort(s.date)}
+                          </span>
+                          <span className="text-ink break-words">{s.topic?.trim() || "-"}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </details>
+                )}
               </li>
             ))}
           </ul>
@@ -372,6 +478,7 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
                 ["시각", startMin !== null ? `${fmtTime(startMin)}~${fmtRoomEnd(startMin + form.durationMin)} (${form.durationMin}분)` : "-"],
                 ["난이도", roomLevelLabelKo(form.level)],
                 ["제한 인원", `${form.capacity}명`],
+                ["주제", topics[0]?.trim() ? `1강 ${topics[0].trim()} 외 ${PREP_SESSION_COUNT - 1}개` : "-"],
                 ["수강료", won(PREP_MONTHLY_PRICE_KRW)],
               ] as const
             ).map(([label, value]) => (

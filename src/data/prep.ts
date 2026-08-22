@@ -26,3 +26,6 @@ export const PREP_DEFAULT_DURATION = 40;
 // ⚠️ 같은 상한이 DB check(prep_courses_capacity_check)에도 있으니 바꿀 땐 마이그레이션과 함께.
 export const PREP_MIN_CAPACITY = 1;
 export const PREP_MAX_CAPACITY = 1000;
+
+// 회차 주제 — 개설 시 20개를 모두 입력해야 한다(앱이 강제, DB 컬럼은 nullable).
+export const PREP_TOPIC_MAX = 100;
