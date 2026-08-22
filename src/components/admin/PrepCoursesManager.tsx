@@ -210,6 +210,15 @@ function CourseRow({
   };
 
   const sessionDates = row.sessions.map((s) => toLocalDate(s.session_date));
+  // 수업일이 있는 달만 그린다 — 20 평일은 최대 27일 span이라 1~2개월이고, 그 사이 달은 반드시 수업이 있다.
+  const monthsSpanned =
+    sessionDates.length > 0
+      ? (() => {
+          const a = sessionDates[0];
+          const b = sessionDates[sessionDates.length - 1];
+          return b.getFullYear() * 12 + b.getMonth() - (a.getFullYear() * 12 + a.getMonth()) + 1;
+        })()
+      : 1;
 
   const info: [string, ReactNode][] = [
     ["프렌더", `${row.friender_name ?? "-"}${row.friender_nickname ? ` (${row.friender_nickname})` : ""}`],
@@ -268,30 +277,35 @@ function CourseRow({
           </dl>
 
           {/* 수업 일자 — 프렌더가 캘린더에서 개별 일자를 조정할 수 있어, 승인 전에 실제 배치를 봐야 한다.
-              ⚠️ 읽기 전용이라 mode/selected를 쓰지 않는다(선택 상태를 들고 있으면 클릭으로 시각적으로 토글된다).
-                 modifier로 표시만 하고 감싼 div의 pointer-events-none으로 상호작용을 없앤다 →
-                 월 이동도 막히므로 numberOfMonths={2}로 20회(최대 27일 span)를 한 번에 덮는다. */}
+              프렌더 개설 폼(PrepCourseForm)의 캘린더와 **같은 props로 그린다** — 두 화면에서 같은 일정이 다르게 보이면 안 된다.
+              ⚠️ 읽기 전용은 `disabled`가 아니라 감싼 div의 `inert`+`pointer-events-none`으로 만든다:
+                 `disabled`를 주면 캘린더 전체가 opacity-50으로 흐려져 프렌더 화면과 인상이 달라진다.
+                 클릭·포커스가 아예 안 들어오므로 selected 내부 상태도 바뀔 수 없다. */}
           {showCalendar && sessionDates.length > 0 && (
             <div className="border-rule mt-3 rounded-xl border bg-white p-3">
-              <p className="text-muted-fg text-xs font-semibold">
-                총 {row.sessions.length}회 · {period}
-              </p>
-              <div className="pointer-events-none mt-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-ink text-sm font-bold">수업 일자</p>
+                <p className="text-cta text-sm font-bold">총 {row.sessions.length}회</p>
+              </div>
+              <p className="text-muted-fg-faint mt-0.5 text-xs">프렌더가 등록한 일정입니다 (읽기 전용).</p>
+
+              <div inert className="pointer-events-none">
                 <Calendar
+                  mode="multiple"
+                  selected={sessionDates}
                   defaultMonth={sessionDates[0]}
-                  numberOfMonths={2}
+                  numberOfMonths={monthsSpanned}
                   locale={koLocale}
                   weekStartsOn={0}
                   showOutsideDays={false}
                   formatters={{ formatWeekdayName: (d: Date) => d.toLocaleDateString("ko-KR", { weekday: "short" }) }}
-                  modifiers={{ session: sessionDates, sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
-                  modifiersClassNames={{
-                    session: "bg-cta/10 !text-cta rounded-md font-bold",
-                    sunday: "!text-brand",
-                    saturday: "!text-accent-blue-ink",
-                  }}
+                  modifiers={{ sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
+                  modifiersClassNames={{ sunday: "!text-brand", saturday: "!text-accent-blue-ink" }}
+                  className="mt-2"
                 />
               </div>
+
+              <p className="text-muted-fg mt-2 text-xs">{period}</p>
             </div>
           )}
 
