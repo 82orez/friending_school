@@ -13,9 +13,11 @@ import {
   PREP_DEFAULT_CAPACITY,
   PREP_DEFAULT_DURATION,
   PREP_DURATIONS,
+  PREP_DEFAULT_PRICE_KRW,
   PREP_MAX_CAPACITY,
+  PREP_MAX_PRICE_KRW,
   PREP_MIN_CAPACITY,
-  PREP_MONTHLY_PRICE_KRW,
+  PREP_MIN_PRICE_KRW,
   PREP_SESSION_COUNT,
   PREP_TOPIC_MAX,
 } from "@/data/prep";
@@ -93,6 +95,7 @@ type Fields = {
   description: string;
   level: string;
   capacity: string;
+  priceKrw: string;
   startHour: number | null;
   startMinute: number | null;
   durationMin: number;
@@ -104,6 +107,7 @@ const emptyForm = (): Fields => ({
   description: "",
   level: DEFAULT_ROOM_LEVEL,
   capacity: String(PREP_DEFAULT_CAPACITY),
+  priceKrw: String(PREP_DEFAULT_PRICE_KRW),
   startHour: null,
   startMinute: null,
   durationMin: PREP_DEFAULT_DURATION,
@@ -138,8 +142,17 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
   const selectedDates = useMemo(() => dates.map(toDate), [dates]);
   const startMin = startMinOf(form);
   const filledTopics = useMemo(() => topics.filter((t) => t.trim()).length, [topics]);
+  // form.priceKrw는 숫자만 담는다(표시할 때만 콤마를 붙인다). 빈칸은 미입력으로 보고 개설을 막는다.
+  const priceKrw = Number(form.priceKrw);
+  const priceValid = form.priceKrw !== "" && Number.isInteger(priceKrw) && priceKrw >= PREP_MIN_PRICE_KRW && priceKrw <= PREP_MAX_PRICE_KRW;
   const canCreate =
-    hasZoomUrl && !!form.title.trim() && startMin !== null && dates.length === PREP_SESSION_COUNT && filledTopics === PREP_SESSION_COUNT && !pending;
+    hasZoomUrl &&
+    !!form.title.trim() &&
+    startMin !== null &&
+    priceValid &&
+    dates.length === PREP_SESSION_COUNT &&
+    filledTopics === PREP_SESSION_COUNT &&
+    !pending;
 
   const setTopicAt = (index: number, value: string) => setTopics((prev) => prev.map((t, i) => (i === index ? value : t)));
 
@@ -174,6 +187,7 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
       description: c.description ?? "",
       level: c.level,
       capacity: String(c.capacity),
+      priceKrw: String(c.priceKrw),
       startHour: Math.floor(c.startMin / 60),
       startMinute: c.startMin % 60,
       durationMin: c.durationMin,
@@ -217,6 +231,7 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
       description: form.description,
       level: form.level,
       capacity: Number(form.capacity),
+      priceKrw: Number(form.priceKrw),
       startMin,
       durationMin: form.durationMin,
       sessions: dates.map((date, i) => ({ date, topic: topics[i] ?? "" })),
@@ -348,6 +363,24 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
             />
           </label>
 
+          <label className="flex flex-col gap-1">
+            <span className="text-muted-fg-faint text-xs font-semibold">
+              수강료 (원) <span className="text-brand">*</span>
+            </span>
+            {/* 천 단위 구분점을 보여주려면 type="number"로는 안 된다(콤마를 못 담는다) →
+                text + inputMode="numeric"으로 두고 상태는 숫자만, 화면에는 포맷해서 보여준다. */}
+            <Input
+              type="text"
+              inputMode="numeric"
+              value={form.priceKrw === "" ? "" : Number(form.priceKrw).toLocaleString("ko-KR")}
+              disabled={disabled}
+              onChange={(e) => set({ priceKrw: e.target.value.replace(/\D/g, "").slice(0, 9) })}
+              placeholder="20,000"
+              className="h-10"
+            />
+            <span className="text-muted-fg-faint text-xs">월 {PREP_SESSION_COUNT}회 기준</span>
+          </label>
+
           <label className="flex flex-col gap-1 sm:col-span-2">
             <span className="text-muted-fg-faint text-xs font-semibold">강좌 소개 (선택)</span>
             <Textarea
@@ -461,8 +494,8 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
 
         <div className="mt-4 flex flex-wrap items-center justify-end gap-3">
           <p className="text-muted-fg mr-auto text-sm font-semibold">
-            수강료 <span className="text-ink font-bold">{won(PREP_MONTHLY_PRICE_KRW)}</span>
-            <span className="text-muted-fg-faint font-normal"> (월 {PREP_SESSION_COUNT}회 · 관리자 지정)</span>
+            수강료 <span className="text-ink font-bold">{priceValid ? won(priceKrw) : "-"}</span>
+            <span className="text-muted-fg-faint font-normal"> (월 {PREP_SESSION_COUNT}회)</span>
           </p>
           {editing && (
             <Button type="button" variant="outline" disabled={pending} onClick={resetForm}>
@@ -560,7 +593,7 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
                 ["난이도", roomLevelLabelKo(form.level)],
                 ["제한 인원", `${form.capacity}명`],
                 ["주제", topics[0]?.trim() ? `1강 ${topics[0].trim()} 외 ${PREP_SESSION_COUNT - 1}개` : "-"],
-                ["수강료", won(PREP_MONTHLY_PRICE_KRW)],
+                ["수강료", priceValid ? won(priceKrw) : "-"],
               ] as const
             ).map(([label, value]) => (
               <Fragment key={label}>

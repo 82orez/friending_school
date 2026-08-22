@@ -13,7 +13,8 @@ import {
   PREP_MAX_AHEAD_DAYS,
   PREP_MAX_CAPACITY,
   PREP_MIN_CAPACITY,
-  PREP_MONTHLY_PRICE_KRW,
+  PREP_MAX_PRICE_KRW,
+  PREP_MIN_PRICE_KRW,
   PREP_SESSION_COUNT,
   PREP_TOPIC_MAX,
 } from "@/data/prep";
@@ -27,6 +28,7 @@ export type PrepCourseInput = {
   description?: string;
   level: string;
   capacity: number;
+  priceKrw: number;
   startMin: number;
   durationMin: number;
   // 회차 — 날짜와 주제를 한 쌍으로 받는다(따로 받으면 개수가 어긋나는 상태가 생긴다). 정확히 PREP_SESSION_COUNT개.
@@ -65,6 +67,7 @@ function validatePrepInput(
     description: string | null;
     level: string;
     capacity: number;
+    priceKrw: number;
     startMin: number;
     durationMin: number;
     sessions: { date: string; topic: string }[];
@@ -81,6 +84,12 @@ function validatePrepInput(
   const capacity = Number(input?.capacity);
   if (!Number.isInteger(capacity) || capacity < PREP_MIN_CAPACITY || capacity > PREP_MAX_CAPACITY) {
     return { error: `제한 인원은 ${PREP_MIN_CAPACITY}~${PREP_MAX_CAPACITY}명 사이로 입력해 주세요.` };
+  }
+
+  // 수강료는 프렌더가 직접 정한다(과거엔 관리자 고정가였다) — 범위만 서버에서 다시 막는다.
+  const priceKrw = Number(input?.priceKrw);
+  if (!Number.isInteger(priceKrw) || priceKrw < PREP_MIN_PRICE_KRW || priceKrw > PREP_MAX_PRICE_KRW) {
+    return { error: `수강료는 ${PREP_MIN_PRICE_KRW.toLocaleString("ko-KR")}~${PREP_MAX_PRICE_KRW.toLocaleString("ko-KR")}원 사이로 입력해 주세요.` };
   }
 
   const startMin = Number(input?.startMin);
@@ -117,7 +126,7 @@ function validatePrepInput(
     }
   }
 
-  return { values: { title, description, level, capacity, startMin, durationMin, sessions } };
+  return { values: { title, description, level, capacity, priceKrw, startMin, durationMin, sessions } };
 }
 
 export async function createPrepCourse(input: PrepCourseInput): Promise<PrepActionResult> {
@@ -147,8 +156,8 @@ export async function createPrepCourse(input: PrepCourseInput): Promise<PrepActi
       start_min: v.values.startMin,
       duration_min: v.values.durationMin,
       session_count: PREP_SESSION_COUNT,
-      // 수강료는 입력받지 않는다 — 관리자가 정한 고정가를 서버가 채우고, 이후 상수가 바뀌어도 이 값은 유지된다.
-      price_krw: PREP_MONTHLY_PRICE_KRW,
+      // 수강료는 강좌마다 저장한다 — 폼 기본값 상수를 나중에 바꿔도 기존 강좌는 영향받지 않는다.
+      price_krw: v.values.priceKrw,
     })
     .select("id")
     .maybeSingle();
@@ -219,6 +228,7 @@ export async function updatePrepCourse(id: string, input: PrepCourseInput): Prom
       description: v.values.description,
       level: v.values.level,
       capacity: v.values.capacity,
+      price_krw: v.values.priceKrw,
       // 시작 후에는 시각도 그대로 유지한다(수강생 안내와 어긋나지 않게).
       start_min: started ? course.start_min : v.values.startMin,
       duration_min: started ? course.duration_min : v.values.durationMin,

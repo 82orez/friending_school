@@ -7,10 +7,13 @@ export const PREP_SESSION_COUNT = 20;
 // 기본 수업일 = 매주 월~금. JS getDay() 기준(0=일 … 6=토).
 export const PREP_DEFAULT_WEEKDAYS = [1, 2, 3, 4, 5];
 
-// 수강료 = 관리자가 정한 고정가(프렌더 입력 불가). 월 20회 기준.
-// 값을 바꾸면 이후 개설분부터 적용된다 — 기존 강좌는 개설 시점 값을 prep_courses.price_krw로 스냅샷해 유지한다.
-// admin 설정 화면으로 옮길 때도 이 상수가 기본값 자리가 된다.
-export const PREP_MONTHLY_PRICE_KRW = 20_000;
+// 수강료(월 20회 기준) — 프렌더 Plus가 개설·수정 시 직접 정한다. 아래는 폼 기본값일 뿐이다.
+// 강좌마다 prep_courses.price_krw에 저장되므로 이 상수를 바꿔도 기존 강좌는 영향받지 않는다.
+export const PREP_DEFAULT_PRICE_KRW = 20_000;
+
+// 입력 허용 범위. 0원(체험·무료 운영)을 막지 않고, 상한은 오타(0 하나 더 붙는 실수)를 거르는 선.
+export const PREP_MIN_PRICE_KRW = 0;
+export const PREP_MAX_PRICE_KRW = 1_000_000;
 
 // 개설 가능 범위 — 첫 회차는 오늘 이후, 마지막 회차까지 이 일수 안에 들어와야 한다.
 // 20회 × 평일이면 약 4주(28일)라 여유를 둔 값(연습방 ROOM_MAX_AHEAD_DAYS와 같은 성격).
