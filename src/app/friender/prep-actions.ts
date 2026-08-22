@@ -8,7 +8,7 @@ import { getUserRole, isFrienderPlusRole } from "@/lib/auth";
 import { ROOM_LEVEL_VALUES } from "@/data/room-levels";
 import { todayKst } from "@/lib/booking";
 import { addDays } from "@/lib/prep";
-import { PREP_DURATIONS, PREP_MAX_AHEAD_DAYS, PREP_MONTHLY_PRICE_KRW, PREP_SESSION_COUNT } from "@/data/prep";
+import { PREP_DURATIONS, PREP_MAX_AHEAD_DAYS, PREP_MAX_CAPACITY, PREP_MIN_CAPACITY, PREP_MONTHLY_PRICE_KRW, PREP_SESSION_COUNT } from "@/data/prep";
 
 // 프렙(가칭) — 프렌더 Plus 유료 강좌. friender/actions.ts가 이미 커서 도메인별로 파일을 나눈다.
 
@@ -58,7 +58,9 @@ function validatePrepInput(input: PrepCourseInput): {
   if (!ROOM_LEVEL_VALUES.includes(level)) return { error: "난이도를 선택해 주세요." };
 
   const capacity = Number(input?.capacity);
-  if (!Number.isInteger(capacity) || capacity < 1 || capacity > 100) return { error: "제한 인원은 1~100명 사이로 입력해 주세요." };
+  if (!Number.isInteger(capacity) || capacity < PREP_MIN_CAPACITY || capacity > PREP_MAX_CAPACITY) {
+    return { error: `제한 인원은 ${PREP_MIN_CAPACITY}~${PREP_MAX_CAPACITY}명 사이로 입력해 주세요.` };
+  }
 
   const startMin = Number(input?.startMin);
   if (!Number.isInteger(startMin) || startMin < 0 || startMin > 1439 || startMin % 10 !== 0) return { error: "시작 시각을 선택해 주세요." };

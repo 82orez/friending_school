@@ -9,13 +9,13 @@
 - **월 `PREP_SESSION_COUNT`=20회 고정** — 프렌더가 회차 수를 못 바꾼다.
 - **기본 수업일 = 매주 월~금**(`PREP_DEFAULT_WEEKDAYS`=[1..5]). 시작일을 고르면 그날부터 **평일로 20회 자동 채움**(달 경계 무관), 이후 **캘린더에서 개별 일자 조정**.
 - **수강료 = 관리자 고정가**(`PREP_MONTHLY_PRICE_KRW`) — 프렌더는 입력하지 않고 **서버가 상수로 채운다**. 현재 **월 20,000원**(20회 기준). 값을 바꾸면 이후 개설분부터 적용. 상수가 바뀌어도 기존 강좌는 개설 시점 값을 유지하도록 `prep_courses.price_krw`에 **스냅샷** 저장(`payments`·`rates` 이력과 같은 사고).
-- **정원은 프렌더가 지정**(1~100, 그룹 가능).
+- **정원은 프렌더가 지정**(`PREP_MIN_CAPACITY`~`PREP_MAX_CAPACITY` = **1~1000**, 그룹 가능) — 연습방(1~100)보다 넓다(강의형이라 대형 정원 허용). ⚠️ 상한이 앱 상수·서버 검증·DB check 3곳에 있으니 함께 고칠 것(`20260822005713`).
 - **시각은 강좌 단위 고정**(`start_min`+`duration_min`) — 조정 대상은 '일자'다. 회차별 시각 컬럼을 두지 않는다.
 - 게이팅은 **`isFrienderPlusRole`**(`src/lib/auth.ts`) — 이 함수의 첫 사용처. ⚠️ **admin도 통과시키지 않는다**: 개설되면 `friender_id`가 admin이 돼 데이터가 오염된다.
 
 ## 데이터 (`20260822004501_add_prep_courses.sql`)
 
-- **`prep_courses`** — 표시 스냅샷(`friender_name`/`friender_nickname`, 방과 같은 이유)·`title`·`description`·`level`(room-levels 재사용)·`capacity`·`start_min`(10분 배수)·`duration_min`(20~120·10분)·`session_count`·`price_krw`.
+- **`prep_courses`** — 표시 스냅샷(`friender_name`/`friender_nickname`, 방과 같은 이유)·`title`·`description`·`level`(room-levels 재사용)·`capacity`·`start_min`(10분 배수)·`duration_min`(20~120·10분, 기본 40)·`session_count`·`price_krw`.
 - **`prep_sessions`** — `course_id`·`session_no`(1..20)·`session_date`. `unique(course_id,session_no)` + `unique(course_id,session_date)`(하루 두 회차 금지).
   ⚠️ 회차를 **JSON 배열이 아니라 행**으로 둔 이유: 앞으로 회차별 입장·출결·연기가 붙을 자리이고(`classes`가 같은 이유), 일자 조정도 행 갱신이 자연스럽다.
 - RLS는 **`_select_own`만**(개설자 본인). 공개 정책은 수강신청 동선을 붙일 때 추가. 쓰기 정책 없음 → 서버 액션 service_role.

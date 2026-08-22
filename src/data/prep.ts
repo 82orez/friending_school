@@ -20,4 +20,9 @@ export const PREP_MAX_AHEAD_DAYS = 120;
 export const PREP_DURATIONS: number[] = [];
 for (let d = 20; d <= 120; d += 10) PREP_DURATIONS.push(d);
 
-export const PREP_DEFAULT_DURATION = 60;
+export const PREP_DEFAULT_DURATION = 40;
+
+// 제한 인원 — 연습방(1~100)보다 넓다. 프렙은 강의형이라 대형 정원을 허용한다.
+// ⚠️ 같은 상한이 DB check(prep_courses_capacity_check)에도 있으니 바꿀 땐 마이그레이션과 함께.
+export const PREP_MIN_CAPACITY = 1;
+export const PREP_MAX_CAPACITY = 1000;

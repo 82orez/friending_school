@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
 import { buildWeekdaySessions } from "@/lib/prep";
-import { PREP_DEFAULT_DURATION, PREP_DURATIONS, PREP_MONTHLY_PRICE_KRW, PREP_SESSION_COUNT } from "@/data/prep";
+import { PREP_DEFAULT_DURATION, PREP_DURATIONS, PREP_MAX_CAPACITY, PREP_MIN_CAPACITY, PREP_MONTHLY_PRICE_KRW, PREP_SESSION_COUNT } from "@/data/prep";
 import { ROOM_LEVELS, DEFAULT_ROOM_LEVEL, roomLevelLabelKo } from "@/data/room-levels";
 import { createPrepCourse } from "@/app/friender/prep-actions";
 import { Button } from "@/components/ui/button";
@@ -243,11 +243,13 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-muted-fg-faint text-xs font-semibold">제한 인원 (1~100명)</span>
+            <span className="text-muted-fg-faint text-xs font-semibold">
+              제한 인원 ({PREP_MIN_CAPACITY}~{PREP_MAX_CAPACITY}명)
+            </span>
             <Input
               type="number"
-              min={1}
-              max={100}
+              min={PREP_MIN_CAPACITY}
+              max={PREP_MAX_CAPACITY}
               value={form.capacity}
               disabled={disabled}
               onChange={(e) => set({ capacity: e.target.value })}
