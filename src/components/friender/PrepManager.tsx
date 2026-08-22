@@ -10,6 +10,7 @@ import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
 import { buildWeekdaySessions } from "@/lib/prep";
 import {
+  PREP_DEFAULT_CAPACITY,
   PREP_DEFAULT_DURATION,
   PREP_DURATIONS,
   PREP_MAX_CAPACITY,
@@ -102,7 +103,7 @@ const emptyForm = (): Fields => ({
   title: "",
   description: "",
   level: DEFAULT_ROOM_LEVEL,
-  capacity: "4",
+  capacity: String(PREP_DEFAULT_CAPACITY),
   startHour: null,
   startMinute: null,
   durationMin: PREP_DEFAULT_DURATION,

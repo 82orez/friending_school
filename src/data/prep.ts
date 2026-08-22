@@ -27,5 +27,8 @@ export const PREP_DEFAULT_DURATION = 40;
 export const PREP_MIN_CAPACITY = 1;
 export const PREP_MAX_CAPACITY = 1000;
 
+// 폼 기본값 — 프렙은 인원 제한을 두기보다 열어 두는 쪽이 기본이라 상한과 같은 값에서 출발한다.
+export const PREP_DEFAULT_CAPACITY = PREP_MAX_CAPACITY;
+
 // 회차 주제 — 개설 시 20개를 모두 입력해야 한다(앱이 강제, DB 컬럼은 nullable).
 export const PREP_TOPIC_MAX = 100;
