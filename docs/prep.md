@@ -27,17 +27,20 @@
 `friender/actions.ts`가 커져 도메인별로 파일을 나눴다. **`requireFrienderPlus()`** 가드 후 `createPrepCourse(input)`:
 검증 순서 = Plus 권한 → 제목/난이도/정원/시각/진행시간 → **회차 재검증**(정확히 20개·중복 없음·형식·전부 내일 이후·`PREP_MAX_AHEAD_DAYS`(120일) 이내·**주제 20개 모두 비어 있지 않음**) → Zoom URL 등록 여부 → insert. 입력은 **`sessions: {date, topic}[]`** 한 배열로 받는다(날짜·주제를 따로 받으면 개수가 어긋나는 상태가 생긴다). `session_no`는 날짜 오름차순 정렬 후의 배열 순서.
 ⚠️ **PostgREST에 트랜잭션이 없다** — `prep_sessions` insert가 실패하면 회차 없는 고아 강좌가 남으므로 **방금 만든 course를 지우는 보상 삭제**를 한다.
-⚠️ `price_krw`는 **입력을 받지 않는다**(클라가 보내도 무시) — 관리자 고정가 정책.
+⚠️ `price_krw`는 **입력을 받고 서버가 범위(`PREP_MIN/MAX_PRICE_KRW`)를 재검증**한다(한때 "관리자 고정가"라 무시했었다 — 위 정책 항목 참고).
 
 ## 날짜 로직 `src/lib/prep.ts`
 
 `buildWeekdaySessions(startDate, count)`(시작일부터 평일만 N개, 시작일이 주말이면 다음 평일부터) · `addDays` · `weekdayOf` · `isWeekday`. **순수 함수**라 폼과 서버 검증이 같이 쓴다.
 ⚠️ **TZ 비종속**: `Date.UTC` 산술만 쓴다(로컬 타임존이 끼면 KST 날짜가 하루 밀린다 — `addDaysKst`와 같은 이유).
+**표시 헬퍼도 여기**(폼·목록·모달이 같은 라벨을 쓰도록): `kstToday()`(Intl `en-CA`+timeZone — ⚠️ `booking.ts`의 `todayKst`는 `server-only`라 클라에서 못 쓴다) · `fmtDateKo`("9월 1일") · `fmtDateShort`("9/01(월)", 요일은 `weekdayOf`라 TZ 안전) · `formatWon`.
 
 ## UI
 
 - 탭 **「프렙 강좌」 `/friender/prep`** — `FrienderTabs`의 `plusOnly` 플래그로 Plus에게만 노출(레이아웃이 `isPlus`를 내려준다). ⚠️ **탭 숨김만으로는 부족** — page에서도 Plus 가드로 URL 직접 접근을 막는다.
-- **`PrepManager`**(client): 개설 폼(강좌명·시작 시각(시/분, **기본값 없음**)·진행 시간·난이도·정원·소개·시작일) + **회차별 주제 20칸**(+ 여러 줄 **일괄 붙여넣기** 상자 → 앞에서부터 채움, `N/20` 카운터) + **회차 캘린더**(`ui/calendar`=react-day-picker `mode="multiple"`, 자동 채운 20일 표시·클릭 토글·`20/20` 카운터, 20회가 아니면 개설 버튼 비활성) + 개설 확인 `AlertDialog`(요약 dl) + 내 강좌 목록(회차·주제는 네이티브 `<details>` 아코디언으로 펼침 — `StudentEnrollments` 선례).
+- **`PrepManager`**(client): 페이지 껍데기 — 안내문·Zoom 배너 + 인라인 **개설 폼** + **내 강좌 목록**(회차·주제는 네이티브 `<details>` 아코디언 — `StudentEnrollments` 선례) + 삭제 `AlertDialog` + 수정 모달. 서버 액션 호출·`useTransition`(`pending`)·toast·`router.refresh()`를 **여기서만** 한다(폼은 값만 올려보낸다).
+- **`PrepCourseForm`**(client, 개설·수정 **공용**): 강좌명·시작 시각(시/분, **기본값 없음**)·진행 시간·난이도·정원·수강료·소개·시작일 + **회차별 주제 20칸**(+ 여러 줄 **일괄 붙여넣기** 상자 → 앞에서부터 채움, `N/20` 카운터) + **회차 캘린더**(`ui/calendar`=react-day-picker `mode="multiple"`, 자동 채운 20일 표시·클릭 토글·`20/20` 카운터, 20회가 아니면 저장 버튼 비활성) + 확인 `AlertDialog`(요약 dl). 타입 `PrepCourse`(page가 import)·`PrepFormValues`(=`PrepCourseInput` 모양)의 정의처이고, `PrepManager`가 `PrepCourse`를 re-export한다.
+  **폼이 자기 상태를 소유한다** → 초기값은 `initial`(없으면 빈 폼)에서 만들고, 개설 성공 후 비우기는 `PrepManager`가 `key`를 증가시켜 **재마운트**로 처리(부모가 폼 내부 상태를 건드리지 않는다). `onDirtyChange`는 **초기 스냅샷(JSON) 비교**라 "고쳤다 되돌린" 경우는 dirty가 아니다.
   ⚠️ **Calendar는 로컬 타임존 Date를 준다** — `toISOString()`으로 키를 만들면 KST에서 하루 밀린다. 로컬 연·월·일을 직접 조립(`toKey`)하고 반대 방향도 로컬 자정 Date(`toDate`)로 만든다.
   ⚠️ `AlertDialogDescription`은 `<p>`라 dl은 **바깥 형제**로, base-nova `AlertDialogAction`은 자동으로 안 닫히므로 핸들러에서 `setConfirmOpen(false)`.
 
@@ -50,7 +53,9 @@
   ⚠️ 순차 update가 아닌 이유 = `unique(course_id, session_date)` 때문에 **1강↔2강 날짜 맞바꾸기**가 중간 상태에서 충돌한다. delete→insert를 앱에서 하면 PostgREST에 트랜잭션이 없어 실패 시 **회차 0개 강좌**가 남는다.
   ⚠️ RPC가 `auth.uid()`로 소유권을 검증하므로 **세션 client로 호출**해야 한다(service_role로 부르면 항상 거부 — `join_friender_room`과 같은 함정).
 - **삭제는 언제든 가능**(회차는 FK cascade). ⏳ 수강신청·결제가 붙으면 `deletePrepCourse`에 **"수강생이 있으면 삭제 금지"** 가드를 추가한다(연습방 `deleteRoom`의 `countParticipants`와 같은 모양 — 주석 자리 있음).
-- UI는 **개설 폼을 수정 모드로 재사용**한다(목록 안에 20개 주제 + 캘린더를 다시 그리는 건 과하다): 목록 행의 「수정」이 값을 폼에 싣고 스크롤, 헤더가 `강좌 수정: {제목}`으로 바뀌며 저장/취소 버튼이 뜬다.
+- UI는 **수정 모달 `PrepEditModal`**: 목록 행의 「수정」 → 모달에 `PrepCourseForm mode="edit"`를 그대로 싣는다(목록 안에 20개 주제+캘린더를 펼치거나 페이지 상단 개설 폼을 수정 모드로 바꾸면 스크롤이 길어져 지금 뭘 고치는지 놓친다 — 후자를 쓰다 모달로 옮겼다). 강좌마다 초기값이 달라 `key={course.id}`로 재마운트, `course === null`이면 언마운트(`RoomInfoModal` 방식).
+  ⚠️ **z-index/닫기 규약**(`AvailabilityModal` 이식): 오버레이 `z-[110]`·패널 `z-[120]`·**모달 안의 `AlertDialog`는 `z-[130]`**(폼의 확인 다이얼로그는 `confirmClassName`으로 주입). Esc·오버레이 클릭은 `[role="alertdialog"]`가 떠 있으면 무시(이중 닫힘 방지), **dirty면 닫기 가드 `AlertDialog`**, `pending` 중에는 닫히지 않는다. body scroll lock + 닫기 버튼 포커스.
+  ⚠️ 시작 후 강좌는 폼에서 **시작 시각(시·분) select도 함께 잠근다** — 서버가 어차피 기존 값으로 되돌리는데 입력만 열려 있으면 "바꿨는데 반영 안 된다"로 보인다.
 
 ## ⏳ 미구현 (다음 단계)
 
