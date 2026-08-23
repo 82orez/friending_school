@@ -13,10 +13,14 @@ export default async function FrienderRoomsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/friender/rooms");
 
-  // RLS friender_rooms_select_own이 본인 것만 통과시킨다(비공개·지난 방 포함).
+  // ⚠️ 소유권은 쿼리에서 강제한다 — RLS에 기대면 안 된다.
+  //    friender_rooms에는 SELECT 정책이 둘(`_select_own`, `_select_public`)이고 permissive 정책은 OR로 합쳐지는데,
+  //    `_select_public`이 is_visible 폐지(20260820220759) 이후 `using (true)`가 되어 로그인 사용자에게 전 방이 열린다.
+  //    실제로 이 필터가 없던 동안 남의 방이 관리 목록에 섞여 나왔다.
   const { data } = await supabase
     .from("friender_rooms")
     .select("id, title, description, level, capacity, session_date, start_min, duration_min")
+    .eq("friender_id", user.id)
     .order("session_date", { ascending: false })
     .order("start_min", { ascending: false });
 

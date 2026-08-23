@@ -308,8 +308,11 @@ export async function deleteRoom(id: string): Promise<RoomActionResult> {
     return { ok: false, error: "예약한 회원이 있어 삭제할 수 없어요. 예약이 모두 취소된 뒤에 삭제할 수 있습니다." };
   }
 
-  const { error } = await admin.from("friender_rooms").delete().eq("id", id).eq("friender_id", userId);
+  // ⚠️ 남의 방 id로 들어오면 delete가 0행이 되는데 PostgREST는 에러를 주지 않는다 →
+  //    select로 실제 삭제된 행을 확인해야 "삭제했습니다"라고 거짓 보고하지 않는다.
+  const { data: deleted, error } = await admin.from("friender_rooms").delete().eq("id", id).eq("friender_id", userId).select("id");
   if (error) return { ok: false, error: "삭제 중 문제가 발생했습니다." };
+  if (!deleted || deleted.length === 0) return { ok: false, error: "방을 찾을 수 없습니다. 목록을 새로고침해 주세요." };
 
   revalidatePath("/friender", "layout");
   return { ok: true };

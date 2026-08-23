@@ -14,12 +14,15 @@ export default async function FrienderPrepPage() {
   // ⚠️ 탭을 숨기는 것만으로는 부족 — URL 직접 접근을 여기서 막는다(프렙은 Plus 전용).
   if (!isFrienderPlusRole(await getUserRole(supabase, user.id))) redirect("/friender");
 
-  // RLS prep_courses_select_own / prep_sessions_select_own이 본인 것만 통과시킨다.
+  // RLS prep_courses_select_own / prep_sessions_select_own도 본인 것만 통과시키지만,
+  // ⚠️ 소유권은 쿼리에서도 강제한다 — 공개 목록용 `_select_public` 정책이 붙는 순간 permissive 정책이 OR로 합쳐져
+  //    RLS만 믿은 화면에 남의 강좌가 섞인다(연습방·받은 후기에서 실제로 겪은 회귀).
   const { data } = await supabase
     .from("prep_courses")
     .select(
       "id, title, description, level, capacity, start_min, duration_min, session_count, price_krw, status, admin_note, prep_sessions(session_date, topic)",
     )
+    .eq("friender_id", user.id)
     .order("created_at", { ascending: false });
 
   const courses: PrepCourse[] = (
