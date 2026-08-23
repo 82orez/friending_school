@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Fragment } from "react";
 import { PREP_SESSION_COUNT } from "@/data/prep";
@@ -124,13 +125,11 @@ export default function PrepPage() {
             <span className="bg-accent-blue-soft text-accent-blue-ink mb-5 inline-block rounded-full px-3.5 py-1 text-sm font-bold">
               {teacher.role}
             </span>
-            <div className="flex items-center gap-4">
-              {/* 사진 자산이 없어 이니셜 원으로 대체(프렌딩 카드 폴백과 같은 방식). */}
-              <span
-                aria-hidden
-                className="bg-brand-gradient flex size-16 shrink-0 items-center justify-center rounded-full text-xl font-bold text-white">
-                {teacher.englishName.slice(0, 1)}
-              </span>
+            <div className="flex items-center gap-5">
+              {/* 원형 아바타 — 앱 공통 규칙대로 relative 래퍼가 크기를 잡고 Image는 fill + object-cover. */}
+              <div className="relative size-24 shrink-0 overflow-hidden rounded-full md:size-28">
+                <Image src={teacher.photo} alt={`${teacher.name} 강사`} fill sizes="112px" className="object-cover" />
+              </div>
               <div className="min-w-0">
                 <p className="text-ink text-xl font-bold">
                   {teacher.name} <span className="text-muted-fg text-base font-medium">({teacher.englishName})</span>
@@ -138,6 +137,16 @@ export default function PrepPage() {
                 <p className="text-muted-fg mt-1 text-base">{teacher.desc}</p>
               </div>
             </div>
+
+            {/* 이력 — 카드 아래 남던 빈 공간을 채운다. */}
+            <ul className="border-rule mt-6 list-none space-y-2.5 border-t pt-5">
+              {teacher.credentials.map((c) => (
+                <li key={c} className="flex items-start gap-2.5">
+                  <span aria-hidden className="bg-accent-blue mt-2 size-1.5 shrink-0 rounded-full" />
+                  <span className="text-ink text-base font-medium">{c}</span>
+                </li>
+              ))}
+            </ul>
           </div>
 
           <div className="border-rule rounded-2xl border bg-white p-7 md:p-8">

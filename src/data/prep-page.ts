@@ -80,6 +80,9 @@ export const PREP_PAGE = {
     englishName: "Sean",
     role: "진행 강사",
     desc: "매일 아침 프렙 강좌를 직접 진행합니다.",
+    // 512px로 줄여 넣은 원본(sips) — next/image가 화면 크기에 맞춰 다시 줄인다.
+    photo: "/images/prep-teacher-sean.png",
+    credentials: ["줌마영어 대표강사", "영어 강의 경력 20년"],
   },
 
   price: {
