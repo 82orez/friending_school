@@ -126,8 +126,9 @@ export default function PrepPage() {
               {teacher.role}
             </span>
             <div className="flex items-center gap-5">
-              {/* 원형 아바타 — 앱 공통 규칙대로 relative 래퍼가 크기를 잡고 Image는 fill + object-cover. */}
-              <div className="relative size-24 shrink-0 overflow-hidden rounded-full md:size-28">
+              {/* 원형 아바타 — 앱 공통 규칙대로 relative 래퍼가 크기를 잡고 Image는 fill + object-cover.
+                  ⚠️ 사진 배경이 흰색이라 흰 카드 위에서는 원의 경계가 사라져 얼굴이 한쪽으로 쏠려 보인다 → ring으로 테두리를 준다. */}
+              <div className="ring-rule relative size-24 shrink-0 overflow-hidden rounded-full ring-1 md:size-28">
                 <Image src={teacher.photo} alt={`${teacher.name} 강사`} fill sizes="112px" className="object-cover" />
               </div>
               <div className="min-w-0">
