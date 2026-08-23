@@ -183,10 +183,11 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
                   <span>{formatWon(c.priceKrw)}</span>
                 </p>
 
-                {/* 거절 사유는 여기서만 보인다 — 프렌더가 무엇을 고쳐야 할지 아는 유일한 경로. */}
-                {c.status === "거절" && c.adminNote?.trim() && (
+                {/* 관리자 메모는 여기서만 보인다 — 프렌더가 무엇을 고쳐야 할지 아는 유일한 경로.
+                    거절 사유 + 관리자가 승인을 해제하며 남긴 사유(상태는 '신청'으로 돌아온다) 둘 다 담는다. */}
+                {(c.status === "거절" || c.status === "신청") && c.adminNote?.trim() && (
                   <p className="border-brand/30 bg-brand/5 text-ink mt-2 rounded-lg border px-3 py-2 text-xs whitespace-pre-wrap">
-                    <span className="text-brand font-bold">거절 사유</span> · {c.adminNote}
+                    <span className="text-brand font-bold">{c.status === "거절" ? "거절 사유" : "관리자 안내"}</span> · {c.adminNote}
                   </p>
                 )}
                 {/* 요청을 막는 조건은 버튼 title에도 있지만, 모바일에는 hover가 없어 문구로도 남긴다. */}

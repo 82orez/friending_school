@@ -1,17 +1,18 @@
 "use client";
 
-import { Fragment, type ReactNode, useMemo, useState, useTransition } from "react";
-import { ChevronDown, Loader2, Search } from "lucide-react";
+import { Fragment, type ReactNode, useCallback, useMemo, useState, useTransition } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
-import { ko as koLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
-import { fmtDateKo, fmtDateShort, formatWon, toLocalDate } from "@/lib/prep";
+import { fmtDateKo, fmtDateShort, formatWon } from "@/lib/prep";
+import { kstDateText } from "@/lib/kst";
 import { PREP_STATUSES, PREP_STATUS_BADGE, PREP_STATUS_LABEL, type PrepStatus } from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
-import { approvePrepCourse, rejectPrepCourse } from "@/app/admin/actions";
-import { Calendar } from "@/components/ui/calendar";
+import { approvePrepCourse, deletePrepCourseAsAdmin, rejectPrepCourse, unapprovePrepCourse } from "@/app/admin/actions";
+import PrepSessionCalendar from "@/components/admin/PrepSessionCalendar";
+import PrepCourseInfoModal from "@/components/admin/PrepCourseInfoModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +29,8 @@ export type AdminPrepCourse = {
   friender_id: string;
   friender_name: string | null;
   friender_nickname: string | null;
+  friender_phone: string | null; // 스냅샷이 아니라 profiles 최신값(폐강·일정 문의용)
+  friender_email: string;
   title: string;
   description: string | null;
   level: string;
@@ -39,6 +42,7 @@ export type AdminPrepCourse = {
   status: PrepStatus;
   admin_note: string | null;
   submitted_at: string | null;
+  reviewed_at: string | null; // 마지막 승인/거절 처리 시각 — 승인 목록의 '승인일'
   created_at: string;
   sessions: { session_no: number; session_date: string; topic: string | null }[]; // 날짜 오름차순
 };
@@ -69,29 +73,77 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
   const [filter, setFilter] = useState<"all" | PrepStatus>("신청");
   const [openId, setOpenId] = useState<string | null>(null);
 
+  // 개설된 강좌 관리 — 상세 보기 / 승인 해제 / 삭제.
+  const [infoTarget, setInfoTarget] = useState<AdminPrepCourse | null>(null);
+  const closeInfo = useCallback(() => setInfoTarget(null), []);
+  const [unapproveTarget, setUnapproveTarget] = useState<AdminPrepCourse | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminPrepCourse | null>(null);
+  const [reason, setReason] = useState(""); // 선택 입력 — 적으면 프렌더 SMS·화면에 사유로 붙는다
+  const [busy, startBusy] = useTransition();
+
   const pending = rows.filter((r) => r.status === "신청").length;
-  const approved = rows.filter((r) => r.status === "승인").length;
+  const approvedRows = rows.filter((r) => r.status === "승인");
   const rejected = rows.filter((r) => r.status === "거절").length;
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (filter !== "all" && r.status !== filter) return false;
+  const matches = useCallback(
+    (r: AdminPrepCourse) => {
+      const q = query.trim().toLowerCase();
       if (!q) return true;
       return [r.title, r.friender_name ?? "", r.friender_nickname ?? ""].some((v) => v.toLowerCase().includes(q));
+    },
+    [query],
+  );
+
+  const filtered = useMemo(() => rows.filter((r) => (filter === "all" || r.status === filter) && matches(r)), [rows, filter, matches]);
+  const approvedList = useMemo(() => approvedRows.filter(matches), [approvedRows, matches]);
+
+  // 다이얼로그를 닫으며 state를 비우므로 대상·사유를 먼저 스냅샷한다(FrienderRequestsManager와 같은 패턴).
+  const confirmUnapprove = () => {
+    const target = unapproveTarget;
+    const note = reason.trim();
+    setUnapproveTarget(null);
+    setReason("");
+    if (!target) return;
+    startBusy(async () => {
+      const res = await unapprovePrepCourse(target.id, note);
+      if (res.ok) {
+        setRows((prev) => prev.map((x) => (x.id === target.id ? { ...x, status: "신청" as PrepStatus, admin_note: note || null } : x)));
+        toast.success("승인을 해제했습니다. 다시 심사 대기로 돌아갑니다.");
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
     });
-  }, [rows, query, filter]);
+  };
+
+  const confirmDelete = () => {
+    const target = deleteTarget;
+    const note = reason.trim();
+    setDeleteTarget(null);
+    setReason("");
+    if (!target) return;
+    startBusy(async () => {
+      const res = await deletePrepCourseAsAdmin(target.id, note);
+      if (res.ok) {
+        setRows((prev) => prev.filter((x) => x.id !== target.id));
+        if (infoTarget?.id === target.id) setInfoTarget(null);
+        toast.success("강좌를 삭제했습니다.");
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
+    });
+  };
 
   return (
     <div>
       <h1 className="text-ink text-2xl font-extrabold">프렙 강좌</h1>
       <p className="text-muted-fg mt-1 text-sm">
-        프렌더 Plus가 올린 프렙 강좌 개설 요청을 승인/거절합니다. 승인해야 개설이 완료되며, 결과는 프렌더에게 SMS로 전달됩니다.
+        위에서 프렌더 Plus가 올린 개설 요청을 승인/거절하고, 아래 「개설된 강좌」에서 운영 중인 강좌를 관리합니다. 처리 결과는 프렌더에게 SMS로
+        전달됩니다.
       </p>
 
       <div className="mt-5 grid grid-cols-3 gap-3">
         <StatCard label="승인 대기" value={`${pending}건`} sub="상태=신청" accent />
-        <StatCard label="승인" value={approved} sub="개설 완료" />
+        <StatCard label="승인" value={approvedRows.length} sub="개설 완료" />
         <StatCard label="거절" value={rejected} sub="사유 통보됨" />
       </div>
 
@@ -141,7 +193,250 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
           </ul>
         )}
       </div>
+
+      {/* 개설된 강좌 — 심사 큐와 별개로 '지금 운영 중인 상품' 목록. 프렌더 관리 탭의 「현재 프렌더」 테이블과 같은 자리·같은 모양. */}
+      <h2 className="text-ink mt-8 text-lg font-extrabold">개설된 강좌 ({approvedRows.length})</h2>
+      <p className="text-muted-fg mt-1 text-sm">승인이 끝나 개설된 강좌입니다. 위 검색어가 이 목록에도 함께 적용됩니다.</p>
+      <ApprovedCourseTable
+        courses={approvedList}
+        onView={setInfoTarget}
+        onUnapprove={(c) => {
+          setReason("");
+          setUnapproveTarget(c);
+        }}
+        onDelete={(c) => {
+          setReason("");
+          setDeleteTarget(c);
+        }}
+        busy={busy}
+        className="mt-3"
+      />
+
+      <PrepCourseInfoModal course={infoTarget} onClose={closeInfo} />
+
+      {/* 승인 해제 확인 — 사유는 선택 입력. ⚠️ AlertDialogDescription은 <p>라 textarea는 바깥 형제로 둔다. */}
+      <AlertDialog open={unapproveTarget !== null} onOpenChange={(open) => !open && setUnapproveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>승인을 해제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {unapproveTarget && (
+                <>
+                  <span className="text-ink font-semibold">{unapproveTarget.title}</span> 강좌가 다시 「심사 중」으로 돌아가고 프렌더에게 SMS로
+                  통보됩니다.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="text-left">
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-fg-faint text-xs font-semibold">사유 (선택 · 프렌더에게 전달됩니다)</span>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={2}
+                maxLength={1000}
+                placeholder="예) 일정이 변경되어 재검토가 필요합니다."
+                className="border-rule focus:border-accent-blue rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              />
+            </label>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmUnapprove} variant="brand">
+              승인 해제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 삭제 확인 */}
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>강좌를 삭제할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <>
+                  <span className="text-ink font-semibold">{deleteTarget.title}</span> 강좌와 {deleteTarget.sessions.length}개 회차가 모두 삭제됩니다.
+                  되돌릴 수 없습니다.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="text-left">
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-fg-faint text-xs font-semibold">사유 (선택 · 프렌더에게 전달됩니다)</span>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={2}
+                maxLength={1000}
+                placeholder="예) 중복 등록된 강좌입니다."
+                className="border-rule focus:border-accent-blue rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              />
+            </label>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} variant="brand">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
+  );
+}
+
+/* ===== 개설된 강좌 테이블 ===== */
+
+type SortKey = "title" | "friender" | "start" | "price" | "capacity" | "approved";
+
+// 정렬은 문자열 비교 하나로 통일한다(FrienderRequestsManager와 같은 방식) — 날짜는 YYYY-MM-DD/ISO라,
+// 숫자는 자리수를 맞춰 문자열로 만들면 사전순 = 값 순서가 된다.
+const SORT_VALUE: Record<SortKey, (c: AdminPrepCourse) => string> = {
+  title: (c) => c.title,
+  friender: (c) => c.friender_nickname || c.friender_name || "",
+  start: (c) => c.sessions[0]?.session_date ?? "",
+  price: (c) => String(c.price_krw).padStart(12, "0"),
+  capacity: (c) => String(c.capacity).padStart(6, "0"),
+  approved: (c) => c.reviewed_at ?? "",
+};
+
+function ApprovedCourseTable({
+  courses,
+  onView,
+  onUnapprove,
+  onDelete,
+  busy,
+  className,
+}: {
+  courses: AdminPrepCourse[];
+  onView: (c: AdminPrepCourse) => void;
+  onUnapprove: (c: AdminPrepCourse) => void;
+  onDelete: (c: AdminPrepCourse) => void;
+  busy?: boolean;
+  className?: string;
+}) {
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+
+  const sorted = useMemo(() => {
+    if (!sort) return courses;
+    const val = (c: AdminPrepCourse) => SORT_VALUE[sort.key](c).trim();
+    return [...courses].sort((a, b) => {
+      const av = val(a);
+      const bv = val(b);
+      // 빈 값은 항상 마지막으로.
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      const cmp = av.localeCompare(bv, "ko");
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+  }, [courses, sort]);
+
+  if (courses.length === 0) {
+    return (
+      <div className={cn("border-rule rounded-xl border bg-white", className)}>
+        <p className="text-muted-fg px-6 py-12 text-center text-sm">개설된 강좌가 없습니다.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("border-rule overflow-x-auto rounded-xl border bg-white", className)}>
+      <table className="w-full min-w-[880px] border-collapse text-sm">
+        <thead>
+          <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
+            <SortHeader label="강좌명" sortKey="title" sort={sort} onSort={toggleSort} className="px-4 py-2.5 md:px-6" />
+            <SortHeader label="프렌더" sortKey="friender" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+            <SortHeader label="기간" sortKey="start" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+            <th className="px-4 py-2.5">시각</th>
+            <SortHeader label="정원" sortKey="capacity" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+            <SortHeader label="수강료" sortKey="price" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+            <SortHeader label="승인일" sortKey="approved" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+            <th className="px-4 py-2.5 text-right md:px-6">
+              <span className="sr-only">관리</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((c) => {
+            const first = c.sessions[0];
+            const last = c.sessions[c.sessions.length - 1];
+            return (
+              <tr key={c.id} className="border-rule border-b last:border-b-0">
+                <td className="text-ink px-4 py-3 font-bold md:px-6">{c.title}</td>
+                <td className="text-muted-fg px-4 py-3">{c.friender_nickname || c.friender_name || "-"}</td>
+                <td className="text-muted-fg px-4 py-3 whitespace-nowrap">
+                  {first && last ? `${fmtDateKo(first.session_date)} ~ ${fmtDateKo(last.session_date)}` : "-"}
+                  <span className="text-muted-fg-faint"> ({c.sessions.length}회)</span>
+                </td>
+                <td className="text-muted-fg px-4 py-3 whitespace-nowrap">
+                  {fmtTime(c.start_min)}~{fmtRoomEnd(c.start_min + c.duration_min)}
+                </td>
+                <td className="text-muted-fg px-4 py-3">{c.capacity}명</td>
+                <td className="text-ink px-4 py-3 font-semibold whitespace-nowrap">{formatWon(c.price_krw)}</td>
+                <td className="text-muted-fg-faint px-4 py-3 whitespace-nowrap">{c.reviewed_at ? kstDateText(c.reviewed_at) : "-"}</td>
+                <td className="px-4 py-3 text-right md:px-6">
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => onView(c)}
+                      className="border-rule text-muted-fg hover:bg-surface rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
+                      정보 보기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onUnapprove(c)}
+                      disabled={busy}
+                      className="border-rule text-muted-fg hover:bg-surface rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60">
+                      승인 해제
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDelete(c)}
+                      disabled={busy}
+                      className="border-brand/40 text-brand hover:bg-brand/5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60">
+                      삭제
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  className,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: { key: SortKey; dir: "asc" | "desc" } | null;
+  onSort: (key: SortKey) => void;
+  className?: string;
+}) {
+  const active = sort?.key === sortKey;
+  const Icon = active ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <th className={className} aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
+      <button type="button" onClick={() => onSort(sortKey)} className="hover:text-ink inline-flex items-center gap-1 font-semibold transition-colors">
+        {label}
+        <Icon aria-hidden className={cn("size-3.5", active ? "text-ink" : "text-muted-fg-faint/60")} />
+      </button>
+    </th>
   );
 }
 
@@ -209,17 +504,6 @@ function CourseRow({
     });
   };
 
-  const sessionDates = row.sessions.map((s) => toLocalDate(s.session_date));
-  // 수업일이 있는 달만 그린다 — 20 평일은 최대 27일 span이라 1~2개월이고, 그 사이 달은 반드시 수업이 있다.
-  const monthsSpanned =
-    sessionDates.length > 0
-      ? (() => {
-          const a = sessionDates[0];
-          const b = sessionDates[sessionDates.length - 1];
-          return b.getFullYear() * 12 + b.getMonth() - (a.getFullYear() * 12 + a.getMonth()) + 1;
-        })()
-      : 1;
-
   const info: [string, ReactNode][] = [
     ["프렌더", `${row.friender_name ?? "-"}${row.friender_nickname ? ` (${row.friender_nickname})` : ""}`],
     [
@@ -281,30 +565,14 @@ function CourseRow({
               ⚠️ 읽기 전용은 `disabled`가 아니라 감싼 div의 `inert`+`pointer-events-none`으로 만든다:
                  `disabled`를 주면 캘린더 전체가 opacity-50으로 흐려져 프렌더 화면과 인상이 달라진다.
                  클릭·포커스가 아예 안 들어오므로 selected 내부 상태도 바뀔 수 없다. */}
-          {showCalendar && sessionDates.length > 0 && (
+          {showCalendar && row.sessions.length > 0 && (
             <div className="border-rule mt-3 rounded-xl border bg-white p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-ink text-sm font-bold">수업 일자</p>
                 <p className="text-cta text-sm font-bold">총 {row.sessions.length}회</p>
               </div>
               <p className="text-muted-fg-faint mt-0.5 text-xs">프렌더가 등록한 일정입니다 (읽기 전용).</p>
-
-              <div inert className="pointer-events-none">
-                <Calendar
-                  mode="multiple"
-                  selected={sessionDates}
-                  defaultMonth={sessionDates[0]}
-                  numberOfMonths={monthsSpanned}
-                  locale={koLocale}
-                  weekStartsOn={0}
-                  showOutsideDays={false}
-                  formatters={{ formatWeekdayName: (d: Date) => d.toLocaleDateString("ko-KR", { weekday: "short" }) }}
-                  modifiers={{ sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
-                  modifiersClassNames={{ sunday: "!text-brand", saturday: "!text-accent-blue-ink" }}
-                  className="mt-2"
-                />
-              </div>
-
+              <PrepSessionCalendar dates={row.sessions.map((s) => s.session_date)} />
               <p className="text-muted-fg mt-2 text-xs">{period}</p>
             </div>
           )}
