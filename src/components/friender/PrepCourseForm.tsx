@@ -189,18 +189,21 @@ export default function PrepCourseForm({
     (!topicsRequired || filledTopics === PREP_SESSION_COUNT) &&
     !pending;
 
-  // 승인된 강좌에서 **심사 대상 항목**이 실제로 바뀌었는지 — 바뀐 경우에만 승인이 해제된다(서버 updatePrepCourse와 같은 규칙).
-  // 소개·회차 주제는 자유 수정이라 여기 없다.
-  const materialChanged =
-    !!initial &&
-    (form.title.trim() !== initial.title ||
-      form.level !== initial.level ||
-      Number(form.capacity) !== initial.capacity ||
-      Number(form.priceKrw) !== initial.priceKrw ||
-      startMin !== initial.startMin ||
-      form.durationMin !== initial.durationMin ||
-      dates.join(",") !== initial.sessions.map((s) => s.date).join(","));
-  const willRevoke = status === "승인" && materialChanged;
+  // 승인된 강좌에서 **심사 대상 항목** 중 실제로 바뀐 것들 — 하나라도 있으면 승인이 해제된다(서버 updatePrepCourse와 같은 규칙).
+  // 소개·회차 주제는 자유 수정이라 여기 없다. 라벨까지 모으는 이유: 경고에 "무엇이 바뀌었는지"를 그대로 보여 주기 위해.
+  const changedFields = useMemo(() => {
+    if (!initial) return [];
+    const out: string[] = [];
+    if (form.title.trim() !== initial.title) out.push("강좌명");
+    if (Number(form.priceKrw) !== initial.priceKrw) out.push("수강료");
+    if (dates.join(",") !== initial.sessions.map((s) => s.date).join(",")) out.push("수업 일자");
+    if (startMin !== initial.startMin) out.push("시작 시각");
+    if (form.durationMin !== initial.durationMin) out.push("진행 시간");
+    if (form.level !== initial.level) out.push("난이도");
+    if (Number(form.capacity) !== initial.capacity) out.push("제한 인원");
+    return out;
+  }, [initial, form.title, form.priceKrw, form.durationMin, form.level, form.capacity, startMin, dates]);
+  const willRevoke = status === "승인" && changedFields.length > 0;
 
   const setTopicAt = (index: number, value: string) => setTopics((prev) => prev.map((t, i) => (i === index ? value : t)));
 
@@ -274,8 +277,8 @@ export default function PrepCourseForm({
             <p className="text-ink mt-1 text-sm">
               {willRevoke ? (
                 <>
-                  <span className="font-bold">수강료·수업 일자·시각·정원·난이도·강좌명</span> 중 바뀐 항목이 있어, 저장하면 상태가 「승인」에서 「심사
-                  중」으로 돌아가고 관리자에게 다시 심사 받아야 합니다.
+                  <span className="font-bold">{changedFields.join(" · ")}</span>이(가) 바뀌었습니다. 저장하면 상태가 「승인」에서 「심사 중」으로
+                  돌아가고 관리자에게 다시 심사 받아야 합니다.
                 </>
               ) : (
                 <>
@@ -544,10 +547,13 @@ export default function PrepCourseForm({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className={confirmClassName}>
           <AlertDialogHeader>
-            <AlertDialogTitle>{willRevoke ? "수정하면 승인이 해제됩니다" : "이 내용으로 저장할까요?"}</AlertDialogTitle>
+            <AlertDialogTitle className={cn(willRevoke && "text-brand flex items-center gap-1.5")}>
+              {willRevoke && <TriangleAlert className="size-5 shrink-0" aria-hidden />}
+              {willRevoke ? "수정하면 승인이 해제됩니다" : "이 내용으로 저장할까요?"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {willRevoke
-                ? "심사 대상 항목이 바뀌어, 저장하면 상태가 「심사 중」으로 돌아가고 관리자에게 다시 심사 요청이 갑니다."
+                ? "저장하면 지금의 「승인」이 풀리고, 관리자가 다시 승인할 때까지 개설이 확정되지 않습니다."
                 : status === "승인"
                   ? "소개·회차 주제만 바뀝니다. 승인은 그대로 유지됩니다."
                   : status === "신청"
@@ -559,6 +565,16 @@ export default function PrepCourseForm({
                         : "임시저장됩니다. 목록에서 「승인 요청」을 눌러야 심사가 시작됩니다."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/* 승인 해제 경고 — 무엇이 바뀌어서 심사로 돌아가는지 그대로 보여 준다(Description은 <p>라 바깥 형제로). */}
+          {willRevoke && (
+            <div className="border-brand/40 bg-brand/5 rounded-lg border px-3 py-2.5 text-left text-sm">
+              <p className="text-ink">
+                바뀐 항목: <span className="text-brand font-extrabold">{changedFields.join(" · ")}</span>
+              </p>
+              <p className="text-brand mt-1.5 font-extrabold">그래도 진행하시겠습니까?</p>
+            </div>
+          )}
 
           {/* ⚠️ AlertDialogDescription은 <p>라 dl을 그 안에 넣을 수 없다 — 형제로 배치한다. */}
           <dl className="border-rule mt-1 grid grid-cols-[5rem_1fr] gap-x-3 gap-y-2 border-t pt-4 text-sm">
@@ -583,7 +599,8 @@ export default function PrepCourseForm({
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction onClick={confirmSubmit} variant="brand">
-              {saveLabel}
+              {/* 승인이 풀리는 저장은 버튼 문구에서도 결과가 보이게 한다. */}
+              {willRevoke ? "저장하고 다시 심사받기" : saveLabel}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
