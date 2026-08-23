@@ -252,7 +252,13 @@ export async function updatePrepCourse(id: string, input: PrepCourseInput): Prom
     return { ok: false, error: `수업 일자는 정확히 ${PREP_SESSION_COUNT}회여야 합니다.` };
   }
 
-  // 실제로 저장될 일정·시각(시작 후 강좌는 기존 값 유지) — 재심사 판정도 이 값으로 한다.
+  // 실제로 저장될 값 — **이미 시작된 강좌는 심사받은 조건 전체를 기존 값으로 되돌린다**
+  // (승인받은 조건 그대로 끝까지 간다는 규칙. 진행 중 강좌가 재심사로 내려가는 상황 자체를 없앤다).
+  // 폼도 잠그지만 서버가 authoritative — 우회 제출이 와도 여기서 무력화된다. 재심사 판정도 이 값으로 한다.
+  const nextTitle = started ? course.title : v.values.title;
+  const nextLevel = started ? course.level : v.values.level;
+  const nextCapacity = started ? course.capacity : v.values.capacity;
+  const nextPriceKrw = started ? course.price_krw : v.values.priceKrw;
   const nextStartMin = started ? course.start_min : v.values.startMin;
   const nextDurationMin = started ? course.duration_min : v.values.durationMin;
   const nextDates = started ? currentDates.map((s) => s.session_date) : v.values.sessions.map((s) => s.date);
@@ -260,10 +266,10 @@ export async function updatePrepCourse(id: string, input: PrepCourseInput): Prom
   // ⚠️ 승인된 강좌라도 **심사 대상 항목이 실제로 바뀐 경우에만** 승인을 해제한다.
   //    소개·회차 주제는 자유 수정 — 오타 하나에 승인이 풀리면 프렌더가 커리큘럼을 다듬지 못한다.
   const materialChanged =
-    course.title !== v.values.title ||
-    course.level !== v.values.level ||
-    course.capacity !== v.values.capacity ||
-    course.price_krw !== v.values.priceKrw ||
+    course.title !== nextTitle ||
+    course.level !== nextLevel ||
+    course.capacity !== nextCapacity ||
+    course.price_krw !== nextPriceKrw ||
     course.start_min !== nextStartMin ||
     course.duration_min !== nextDurationMin ||
     currentDates.map((s) => s.session_date).join(",") !== nextDates.join(",");
@@ -273,12 +279,12 @@ export async function updatePrepCourse(id: string, input: PrepCourseInput): Prom
   const { data: updated, error: updateError } = await admin
     .from("prep_courses")
     .update({
-      title: v.values.title,
+      // 소개는 시작 후에도 자유 수정(회차 주제는 아래 RPC에서 교체된다). 나머지는 시작 후면 기존 값이 그대로 들어간다.
+      title: nextTitle,
       description: v.values.description,
-      level: v.values.level,
-      capacity: v.values.capacity,
-      price_krw: v.values.priceKrw,
-      // 시작 후에는 시각도 그대로 유지한다(수강생 안내와 어긋나지 않게).
+      level: nextLevel,
+      capacity: nextCapacity,
+      price_krw: nextPriceKrw,
       start_min: nextStartMin,
       duration_min: nextDurationMin,
       ...(revoked ? { status: "신청", submitted_at: new Date().toISOString(), admin_note: null } : {}),

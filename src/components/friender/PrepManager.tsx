@@ -221,7 +221,7 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
       <PrepEditModal
         key={editTarget?.id ?? "none"}
         course={editTarget}
-        scheduleLocked={!!editTarget && startedOf(editTarget)}
+        started={!!editTarget && startedOf(editTarget)}
         pending={pending}
         onClose={() => setEditTarget(null)}
         onSubmit={submitEdit}

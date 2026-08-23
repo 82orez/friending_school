@@ -24,13 +24,13 @@ const isConfirmOpen = () => typeof document !== "undefined" && !!document.queryS
  */
 export default function PrepEditModal({
   course,
-  scheduleLocked,
+  started,
   pending,
   onClose,
   onSubmit,
 }: {
   course: PrepCourse | null;
-  scheduleLocked: boolean;
+  started: boolean;
   pending: boolean;
   onClose: () => void;
   onSubmit: (values: PrepFormValues) => void;
@@ -106,7 +106,7 @@ export default function PrepEditModal({
           <PrepCourseForm
             mode="edit"
             initial={course}
-            scheduleLocked={scheduleLocked}
+            started={started}
             pending={pending}
             onSubmit={onSubmit}
             onCancel={requestClose}

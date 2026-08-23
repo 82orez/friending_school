@@ -129,8 +129,12 @@ const snapshotOf = (f: Fields, dates: string[], topics: string[]): string => JSO
 type Props = {
   mode: "create" | "edit";
   initial?: PrepCourse | null;
-  /** 이미 시작된 '승인' 강좌 — 일정(일자)·시각을 잠근다(서버도 같은 판정으로 기존 값을 유지한다). */
-  scheduleLocked?: boolean;
+  /**
+   * 이미 시작된 '승인' 강좌 — **심사받은 조건 전체**(일정·시각·진행 시간·수강료·정원·난이도·강좌명)를 잠근다.
+   * 진행 중인 강좌는 승인받은 조건 그대로 끝까지 가고, 소개와 회차 주제만 다듬을 수 있다.
+   * 서버 `updatePrepCourse`도 같은 판정으로 기존 값을 되돌린다.
+   */
+  started?: boolean;
   pending: boolean;
   onSubmit: (values: PrepFormValues) => void;
   onCancel?: () => void;
@@ -142,7 +146,7 @@ type Props = {
 export default function PrepCourseForm({
   mode,
   initial = null,
-  scheduleLocked = false,
+  started = false,
   pending,
   onSubmit,
   onCancel,
@@ -203,7 +207,8 @@ export default function PrepCourseForm({
     if (Number(form.capacity) !== initial.capacity) out.push("제한 인원");
     return out;
   }, [initial, form.title, form.priceKrw, form.durationMin, form.level, form.capacity, startMin, dates]);
-  const willRevoke = status === "승인" && changedFields.length > 0;
+  // 시작 후에는 심사 대상 항목이 잠기므로 승인이 풀릴 일이 없다(서버도 기존 값으로 되돌린다).
+  const willRevoke = status === "승인" && !started && changedFields.length > 0;
 
   const setTopicAt = (index: number, value: string) => setTopics((prev) => prev.map((t, i) => (i === index ? value : t)));
 
@@ -272,10 +277,15 @@ export default function PrepCourseForm({
           <TriangleAlert className={cn("mt-0.5 size-5 shrink-0", willRevoke ? "text-brand" : "text-[#B97400]")} aria-hidden />
           <div className="min-w-0">
             <p className={cn("text-sm font-extrabold", willRevoke ? "text-brand" : "text-[#B97400]")}>
-              {willRevoke ? "저장하면 승인이 해제됩니다" : "승인된 강좌입니다"}
+              {willRevoke ? "저장하면 승인이 해제됩니다" : started ? "이미 시작된 강좌입니다" : "승인된 강좌입니다"}
             </p>
             <p className="text-ink mt-1 text-sm">
-              {willRevoke ? (
+              {started ? (
+                <>
+                  승인받은 조건 그대로 진행됩니다. <span className="font-bold">강좌 소개와 회차 주제</span>만 수정할 수 있고, 수강료·수업
+                  일자·시각·정원·난이도·강좌명은 잠깁니다.
+                </>
+              ) : willRevoke ? (
                 <>
                   <span className="font-bold">{changedFields.join(" · ")}</span>이(가) 바뀌었습니다. 저장하면 상태가 「승인」에서 「심사 중」으로
                   돌아가고 관리자에게 다시 심사 받아야 합니다.
@@ -300,7 +310,7 @@ export default function PrepCourseForm({
           <Input
             value={form.title}
             onChange={(e) => set({ title: e.target.value })}
-            disabled={disabled}
+            disabled={disabled || started}
             maxLength={100}
             placeholder="예) 매일 20분 비즈니스 영어"
             className="h-10"
@@ -316,7 +326,7 @@ export default function PrepCourseForm({
             <select
               aria-label="시작 시각 (시)"
               value={form.startHour ?? ""}
-              disabled={disabled || scheduleLocked}
+              disabled={disabled || started}
               onChange={(e) => set({ startHour: e.target.value === "" ? null : Number(e.target.value) })}
               className={cn(selectClass, "flex-1", form.startHour === null && "text-muted-fg-faint")}>
               <option value="">시</option>
@@ -332,7 +342,7 @@ export default function PrepCourseForm({
             <select
               aria-label="시작 시각 (분)"
               value={form.startMinute ?? ""}
-              disabled={disabled || scheduleLocked}
+              disabled={disabled || started}
               onChange={(e) => set({ startMinute: e.target.value === "" ? null : Number(e.target.value) })}
               className={cn(selectClass, "flex-1", form.startMinute === null && "text-muted-fg-faint")}>
               <option value="">분</option>
@@ -349,7 +359,7 @@ export default function PrepCourseForm({
           <span className="text-muted-fg-faint text-xs font-semibold">진행 시간</span>
           <select
             value={form.durationMin}
-            disabled={disabled || scheduleLocked}
+            disabled={disabled || started}
             onChange={(e) => set({ durationMin: Number(e.target.value) })}
             className={selectClass}>
             {PREP_DURATIONS.map((d) => (
@@ -362,7 +372,7 @@ export default function PrepCourseForm({
 
         <label className="flex flex-col gap-1">
           <span className="text-muted-fg-faint text-xs font-semibold">난이도</span>
-          <select value={form.level} disabled={disabled} onChange={(e) => set({ level: e.target.value })} className={selectClass}>
+          <select value={form.level} disabled={disabled || started} onChange={(e) => set({ level: e.target.value })} className={selectClass}>
             {ROOM_LEVELS.map((l) => (
               <option key={l.value} value={l.value}>
                 {l.ko}
@@ -380,7 +390,7 @@ export default function PrepCourseForm({
             min={PREP_MIN_CAPACITY}
             max={PREP_MAX_CAPACITY}
             value={form.capacity}
-            disabled={disabled}
+            disabled={disabled || started}
             onChange={(e) => set({ capacity: e.target.value })}
             className="h-10"
           />
@@ -396,7 +406,7 @@ export default function PrepCourseForm({
             type="text"
             inputMode="numeric"
             value={form.priceKrw === "" ? "" : Number(form.priceKrw).toLocaleString("ko-KR")}
-            disabled={disabled}
+            disabled={disabled || started}
             onChange={(e) => set({ priceKrw: e.target.value.replace(/\D/g, "").slice(0, 9) })}
             placeholder="20,000"
             className="h-10"
@@ -424,13 +434,13 @@ export default function PrepCourseForm({
             type="date"
             value={form.startDate}
             min={today}
-            disabled={disabled || scheduleLocked}
+            disabled={disabled || started}
             onChange={(e) => pickStartDate(e.target.value)}
             className={selectClass}
           />
           <span className="text-muted-fg-faint text-xs">
-            {scheduleLocked
-              ? "이미 시작된 강좌라 일정과 시각은 바꿀 수 없습니다."
+            {started
+              ? "이미 시작된 강좌라 심사받은 조건(일정·시각·수강료·정원·난이도·강좌명)은 바꿀 수 없습니다."
               : `시작일을 고르면 평일 기준으로 ${PREP_SESSION_COUNT}회가 자동으로 채워집니다.`}
           </span>
         </label>
@@ -446,17 +456,15 @@ export default function PrepCourseForm({
             </p>
           </div>
           <p className="text-muted-fg-faint mt-0.5 text-xs">
-            {scheduleLocked
-              ? "이미 시작된 강좌라 일자는 고정입니다."
-              : `날짜를 눌러 빼거나 더할 수 있어요. ${PREP_SESSION_COUNT}회를 맞춰야 저장됩니다.`}
+            {started ? "이미 시작된 강좌라 일자는 고정입니다." : `날짜를 눌러 빼거나 더할 수 있어요. ${PREP_SESSION_COUNT}회를 맞춰야 저장됩니다.`}
           </p>
 
           <Calendar
             mode="multiple"
             selected={selectedDates}
-            onSelect={scheduleLocked ? undefined : onSelectDates}
+            onSelect={started ? undefined : onSelectDates}
             defaultMonth={selectedDates[0]}
-            disabled={scheduleLocked ? true : { before: toLocalDate(today) }}
+            disabled={started ? true : { before: toLocalDate(today) }}
             locale={koLocale}
             weekStartsOn={0}
             showOutsideDays={false}
@@ -558,8 +566,8 @@ export default function PrepCourseForm({
                   ? "소개·회차 주제만 바뀝니다. 승인은 그대로 유지됩니다."
                   : status === "신청"
                     ? "심사 중인 강좌입니다. 저장해도 상태는 그대로 「심사 중」으로 남습니다."
-                    : scheduleLocked
-                      ? "이미 시작된 강좌라 일정과 시각은 그대로 유지되고, 나머지 내용만 바뀝니다."
+                    : started
+                      ? "이미 시작된 강좌라 심사받은 조건은 그대로 유지되고, 소개와 회차 주제만 바뀝니다."
                       : editing
                         ? "수업 일자와 주제가 입력한 대로 교체됩니다. 저장만으로는 심사가 시작되지 않습니다."
                         : "임시저장됩니다. 목록에서 「승인 요청」을 눌러야 심사가 시작됩니다."}
