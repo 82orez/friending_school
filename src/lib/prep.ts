@@ -57,6 +57,15 @@ export function formatWon(n: number): string {
   return `${n.toLocaleString("ko-KR")}원`;
 }
 
+// 프렌더 표시 이름 — **이름이 기본**이고 닉네임이 있으면 괄호로 함께 보여준다("프렌더1 (최강 삼성)").
+// ⚠️ 공개 화면(프렌딩 카드·호스트 프로필)은 반대로 닉네임을 앞세우는 정책이라 이 헬퍼를 쓰지 않는다 — admin 화면 전용.
+export function frienderLabel(name: string | null | undefined, nickname: string | null | undefined): string {
+  const n = (name ?? "").trim();
+  const nick = (nickname ?? "").trim();
+  if (!n) return nick || "-";
+  return nick ? `${n} (${nick})` : n;
+}
+
 // YYYY-MM-DD → **로컬 자정 Date**. 이 파일에서 유일하게 TZ에 얽힌 함수다.
 // ⚠️ react-day-picker(ui/calendar)는 로컬 타임존 Date를 다룬다 — `new Date("2026-09-01")`은 UTC 파싱이라
 //    KST에서 하루 앞 칸이 칠해진다. 캘린더에 날짜를 넘길 때는 반드시 이걸 쓸 것(개설 폼·admin 심사 공용).

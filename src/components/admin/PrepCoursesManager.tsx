@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
-import { fmtDateKo, fmtDateShort, formatWon } from "@/lib/prep";
+import { fmtDateKo, fmtDateShort, formatWon, frienderLabel } from "@/lib/prep";
 import { kstDateText } from "@/lib/kst";
 import { PREP_STATUSES, PREP_STATUS_BADGE, PREP_STATUS_LABEL, type PrepStatus } from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
@@ -297,7 +297,7 @@ type SortKey = "title" | "friender" | "start" | "price" | "capacity" | "approved
 // 숫자는 자리수를 맞춰 문자열로 만들면 사전순 = 값 순서가 된다.
 const SORT_VALUE: Record<SortKey, (c: AdminPrepCourse) => string> = {
   title: (c) => c.title,
-  friender: (c) => c.friender_nickname || c.friender_name || "",
+  friender: (c) => c.friender_name || c.friender_nickname || "",
   start: (c) => c.sessions[0]?.session_date ?? "",
   price: (c) => String(c.price_krw).padStart(12, "0"),
   capacity: (c) => String(c.capacity).padStart(6, "0"),
@@ -371,7 +371,7 @@ function ApprovedCourseTable({
             return (
               <tr key={c.id} className="border-rule border-b last:border-b-0">
                 <td className="text-ink px-4 py-3 font-bold md:px-6">{c.title}</td>
-                <td className="text-muted-fg px-4 py-3">{c.friender_nickname || c.friender_name || "-"}</td>
+                <td className="text-muted-fg px-4 py-3">{frienderLabel(c.friender_name, c.friender_nickname)}</td>
                 <td className="text-muted-fg px-4 py-3 whitespace-nowrap">
                   {first && last ? `${fmtDateKo(first.session_date)} ~ ${fmtDateKo(last.session_date)}` : "-"}
                   <span className="text-muted-fg-faint"> ({c.sessions.length}회)</span>
@@ -505,7 +505,7 @@ function CourseRow({
   };
 
   const info: [string, ReactNode][] = [
-    ["프렌더", `${row.friender_name ?? "-"}${row.friender_nickname ? ` (${row.friender_nickname})` : ""}`],
+    ["프렌더", frienderLabel(row.friender_name, row.friender_nickname)],
     [
       "기간",
       <>
@@ -543,7 +543,7 @@ function CourseRow({
         <span className="min-w-0 flex-1">
           <span className="text-ink block truncate text-sm font-bold">{row.title}</span>
           <span className="text-muted-fg-faint block truncate text-xs">
-            {row.friender_nickname || row.friender_name || "-"} · {period}
+            {frienderLabel(row.friender_name, row.friender_nickname)} · {period}
           </span>
         </span>
         <ChevronDown className={cn("text-muted-fg-faint size-4 shrink-0 transition-transform", open && "rotate-180")} aria-hidden />

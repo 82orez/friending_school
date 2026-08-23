@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
-import { fmtDateKo, fmtDateShort, formatWon } from "@/lib/prep";
+import { fmtDateKo, fmtDateShort, formatWon, frienderLabel } from "@/lib/prep";
 import { formatPhone } from "@/lib/phone";
 import { kstDateTimeText } from "@/lib/kst";
 import { PREP_STATUS_BADGE, PREP_STATUS_LABEL } from "@/data/prep";
@@ -41,7 +41,7 @@ export default function PrepCourseInfoModal({ course, onClose }: { course: Admin
   const period = dates.length > 0 ? `${fmtDateKo(dates[0])} ~ ${fmtDateKo(dates[dates.length - 1])} (${dates.length}회)` : "-";
 
   const rows: [string, string][] = [
-    ["프렌더", `${course.friender_name ?? "-"}${course.friender_nickname ? ` (${course.friender_nickname})` : ""}`],
+    ["프렌더", frienderLabel(course.friender_name, course.friender_nickname)],
     ["연락처", course.friender_phone ? formatPhone(course.friender_phone) : "-"],
     ["이메일", course.friender_email || "-"],
     ["기간", period],
