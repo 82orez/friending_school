@@ -23,7 +23,10 @@ export default function PrepPage() {
           <div className="absolute inset-0 -z-10 bg-black/45" />
 
           <div className="w-full px-6 py-12 text-center md:px-14 md:py-16">
-            <span className="bg-brand-gradient inline-block rounded-full px-5 py-1.5 text-sm font-bold text-white md:text-base">{hero.label}</span>
+            {/* 문구가 길어 모바일에서 줄바꿈될 수 있다 — 알약 모양이 깨지지 않게 max-w + leading-snug. */}
+            <span className="bg-brand-gradient inline-block max-w-full rounded-full px-5 py-2 text-[13px] leading-snug font-bold text-white md:px-6 md:text-base">
+              {hero.label}
+            </span>
             <h1 className="mt-4 text-[26px] leading-snug font-bold tracking-tight whitespace-pre-line text-white md:text-[44px]">{hero.title}</h1>
             <p className="mx-auto mt-4 max-w-[620px] text-base leading-relaxed text-white/85 md:text-lg">{hero.lead}</p>
 
