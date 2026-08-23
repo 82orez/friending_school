@@ -191,7 +191,8 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
                 )}
                 {/* 요청을 막는 조건은 버튼 title에도 있지만, 모바일에는 hover가 없어 문구로도 남긴다. */}
                 {PREP_REQUESTABLE_STATUSES.includes(c.status) && reviewBlockerOf(c) && (
-                  <p className="text-muted-fg-faint mt-1.5 text-xs">승인 요청 전: {reviewBlockerOf(c)}</p>
+                  // 버튼이 왜 비활성인지 알려 주는 문구 — 흐린 회색이면 못 보고 "버튼이 안 눌린다"가 된다.
+                  <p className="mt-1.5 text-xs font-semibold text-[#B97400]">승인 요청 전: {reviewBlockerOf(c)}</p>
                 )}
 
                 {/* 커리큘럼 — 회차가 20개라 기본은 접어 둔다(마이페이지 수강신청 내역과 같은 네이티브 details). */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { ko as koLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -249,23 +249,42 @@ export default function PrepCourseForm({
   return (
     <>
       {status === "거절" && initial?.adminNote?.trim() && (
-        <div className="border-brand/30 bg-brand/5 mb-4 rounded-xl border px-4 py-3">
-          <p className="text-brand text-sm font-bold">승인되지 않았습니다</p>
-          <p className="text-ink mt-1 text-sm whitespace-pre-wrap">{initial.adminNote}</p>
-          <p className="text-muted-fg-faint mt-1 text-xs">내용을 수정한 뒤 목록에서 「승인 다시 요청」을 눌러 주세요.</p>
+        <div className="border-brand/40 bg-brand/5 mb-4 flex items-start gap-2.5 rounded-xl border px-4 py-3">
+          <TriangleAlert className="text-brand mt-0.5 size-5 shrink-0" aria-hidden />
+          <div className="min-w-0">
+            <p className="text-brand text-sm font-extrabold">승인되지 않았습니다</p>
+            <p className="text-ink mt-1 text-sm whitespace-pre-wrap">{initial.adminNote}</p>
+            <p className="text-muted-fg mt-1 text-sm">내용을 수정한 뒤 목록에서 「승인 다시 요청」을 눌러 주세요.</p>
+          </div>
         </div>
       )}
-      {/* 승인된 강좌 — 무엇을 자유롭게 고칠 수 있는지 먼저 알려 주고, 실제로 심사 대상을 건드렸을 때만 경고한다. */}
+      {/* 승인된 강좌 — 무엇을 자유롭게 고칠 수 있는지 먼저 알려 주고, 실제로 심사 대상을 건드렸을 때만 빨강으로 경고한다.
+          ⚠️ 경고문을 흐린 회색 xs로 두면 읽히지 않는다(실제 겪음) → 주의 색 박스 + 아이콘 + text-sm 본문. */}
       {status === "승인" && (
-        <div className="border-rule bg-surface mb-4 rounded-xl border px-4 py-3 text-sm">
-          <p className="font-semibold">
-            승인된 강좌입니다. <span className="text-muted-fg font-normal">강좌 소개와 회차 주제는 자유롭게 수정할 수 있어요.</span>
-          </p>
-          <p className={cn("mt-1 text-xs", willRevoke ? "text-brand font-bold" : "text-muted-fg-faint")}>
-            {willRevoke
-              ? "심사 대상 항목이 바뀌었습니다 — 저장하면 승인이 해제되고 다시 심사를 받습니다."
-              : "수강료·수업 일자·시각·정원·난이도·강좌명을 바꾸면 다시 심사를 받습니다."}
-          </p>
+        <div
+          className={cn(
+            "mb-4 flex items-start gap-2.5 rounded-xl border px-4 py-3",
+            willRevoke ? "border-brand/40 bg-brand/5" : "border-[#F0D9A8] bg-[#FFF7E6]",
+          )}>
+          <TriangleAlert className={cn("mt-0.5 size-5 shrink-0", willRevoke ? "text-brand" : "text-[#B97400]")} aria-hidden />
+          <div className="min-w-0">
+            <p className={cn("text-sm font-extrabold", willRevoke ? "text-brand" : "text-[#B97400]")}>
+              {willRevoke ? "저장하면 승인이 해제됩니다" : "승인된 강좌입니다"}
+            </p>
+            <p className="text-ink mt-1 text-sm">
+              {willRevoke ? (
+                <>
+                  <span className="font-bold">수강료·수업 일자·시각·정원·난이도·강좌명</span> 중 바뀐 항목이 있어, 저장하면 상태가 「심사 중」으로
+                  돌아가고 관리자가 다시 심사합니다.
+                </>
+              ) : (
+                <>
+                  <span className="font-bold">강좌 소개와 회차 주제</span>는 자유롭게 수정할 수 있어요. 수강료·수업 일자·시각·정원·난이도·강좌명을
+                  바꾸면 다시 심사를 받습니다.
+                </>
+              )}
+            </p>
+          </div>
         </div>
       )}
 
