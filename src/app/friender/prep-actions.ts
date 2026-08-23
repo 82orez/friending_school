@@ -31,6 +31,8 @@ import {
 export type PrepActionResult = { ok: boolean; error?: string };
 // 개설은 id를 돌려준다 — 클라가 저장 직후 이어서 승인 요청을 걸 수 있게(작성중 → 신청).
 export type PrepCreateResult = PrepActionResult & { id?: string };
+// 수정은 '이번 저장으로 승인이 해제됐는지'를 돌려준다(심사 대상 항목이 바뀐 경우만 true).
+export type PrepUpdateResult = PrepActionResult & { reReview?: boolean };
 
 export type PrepCourseInput = {
   title: string;
@@ -206,7 +208,7 @@ const REPLACE_ERROR: Record<string, string> = {
   length_mismatch: "수업 일자와 주제 수가 맞지 않습니다.",
 };
 
-export async function updatePrepCourse(id: string, input: PrepCourseInput): Promise<PrepActionResult> {
+export async function updatePrepCourse(id: string, input: PrepCourseInput): Promise<PrepUpdateResult> {
   const courseId = String(id ?? "").trim();
   if (!courseId) return { ok: false, error: "잘못된 요청입니다." };
 
@@ -215,15 +217,19 @@ export async function updatePrepCourse(id: string, input: PrepCourseInput): Prom
 
   const admin = createAdminClient();
 
-  // 소유권 + 현재 일정 확인. 회차는 첫 회차 판정(started)과 '시작 후 날짜 유지'에 쓴다.
+  // 소유권 + 현재 값 확인. 회차는 첫 회차 판정(started)·'시작 후 날짜 유지'·재심사 판정에 쓴다.
   const { data: cur } = await admin
     .from("prep_courses")
-    .select("id, status, start_min, duration_min, prep_sessions(session_no, session_date)")
+    .select("id, status, title, level, capacity, price_krw, start_min, duration_min, prep_sessions(session_no, session_date)")
     .eq("id", courseId)
     .eq("friender_id", userId)
     .maybeSingle();
   const course = cur as {
     status: PrepStatus;
+    title: string;
+    level: string;
+    capacity: number;
+    price_krw: number;
     start_min: number;
     duration_min: number;
     prep_sessions: { session_no: number; session_date: string }[] | null;
@@ -246,8 +252,23 @@ export async function updatePrepCourse(id: string, input: PrepCourseInput): Prom
     return { ok: false, error: `수업 일자는 정확히 ${PREP_SESSION_COUNT}회여야 합니다.` };
   }
 
-  // 승인된 내용이 바뀌면 승인이 자동으로 해제된다 — 심사한 것과 실제 강좌가 어긋나면 안 된다.
-  const revoked = course.status === "승인";
+  // 실제로 저장될 일정·시각(시작 후 강좌는 기존 값 유지) — 재심사 판정도 이 값으로 한다.
+  const nextStartMin = started ? course.start_min : v.values.startMin;
+  const nextDurationMin = started ? course.duration_min : v.values.durationMin;
+  const nextDates = started ? currentDates.map((s) => s.session_date) : v.values.sessions.map((s) => s.date);
+
+  // ⚠️ 승인된 강좌라도 **심사 대상 항목이 실제로 바뀐 경우에만** 승인을 해제한다.
+  //    소개·회차 주제는 자유 수정 — 오타 하나에 승인이 풀리면 프렌더가 커리큘럼을 다듬지 못한다.
+  const materialChanged =
+    course.title !== v.values.title ||
+    course.level !== v.values.level ||
+    course.capacity !== v.values.capacity ||
+    course.price_krw !== v.values.priceKrw ||
+    course.start_min !== nextStartMin ||
+    course.duration_min !== nextDurationMin ||
+    currentDates.map((s) => s.session_date).join(",") !== nextDates.join(",");
+
+  const revoked = course.status === "승인" && materialChanged;
 
   const { data: updated, error: updateError } = await admin
     .from("prep_courses")
@@ -258,8 +279,8 @@ export async function updatePrepCourse(id: string, input: PrepCourseInput): Prom
       capacity: v.values.capacity,
       price_krw: v.values.priceKrw,
       // 시작 후에는 시각도 그대로 유지한다(수강생 안내와 어긋나지 않게).
-      start_min: started ? course.start_min : v.values.startMin,
-      duration_min: started ? course.duration_min : v.values.durationMin,
+      start_min: nextStartMin,
+      duration_min: nextDurationMin,
       ...(revoked ? { status: "신청", submitted_at: new Date().toISOString(), admin_note: null } : {}),
     })
     .eq("id", courseId)
@@ -270,8 +291,7 @@ export async function updatePrepCourse(id: string, input: PrepCourseInput): Prom
   if (updateError) return { ok: false, error: "강좌 수정 중 문제가 발생했습니다." };
   if (!updated || updated.length === 0) return { ok: false, error: "심사 상태가 바뀌었습니다. 목록을 새로고침해 주세요." };
 
-  // 회차 교체 — 날짜는 시작 후면 기존 값, 시작 전이면 새 값. 주제는 항상 새 값.
-  const dates = started ? currentDates.map((s) => s.session_date) : v.values.sessions.map((s) => s.date);
+  // 회차 교체 — 날짜는 nextDates(시작 후면 기존 값), 주제는 항상 새 값.
   const topics = v.values.sessions.map((s) => s.topic);
 
   // ⚠️ 세션 client로 호출한다 — RPC가 auth.uid()로 소유권을 검증하므로 service_role로 부르면 항상 거부된다.
@@ -280,7 +300,7 @@ export async function updatePrepCourse(id: string, input: PrepCourseInput): Prom
   const supabase = createClient(await cookies());
   const { data: code, error: rpcError } = await supabase.rpc("replace_prep_sessions", {
     p_course_id: courseId,
-    p_dates: dates,
+    p_dates: nextDates,
     p_topics: topics,
   });
   if (rpcError) return { ok: false, error: "수업 일자 저장 중 문제가 발생했습니다." };
@@ -290,7 +310,8 @@ export async function updatePrepCourse(id: string, input: PrepCourseInput): Prom
   if (revoked) await notifyAdminsOfPrepReview(admin, courseId, true);
 
   revalidatePrep();
-  return { ok: true };
+  // reReview로 클라가 토스트 문구를 고른다 — "승인이 해제됐다"고 매번 말하면 거짓이 된다.
+  return { ok: true, reReview: revoked };
 }
 
 // 승인 요청 — '작성중'·'거절' 강좌를 심사 대기로 올린다.

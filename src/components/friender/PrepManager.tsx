@@ -85,8 +85,8 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
       if (res.ok) {
         setEditTarget(null);
         router.refresh();
-        // 승인된 강좌를 고치면 승인이 해제된다 — 결과를 문구로 분명히 알린다.
-        toast.success(target.status === "승인" ? "저장했습니다. 승인이 해제되어 다시 심사에 올라갑니다." : "강좌를 수정했습니다.");
+        // 심사 대상 항목(수강료·일정·시각·정원·난이도·강좌명)이 바뀐 경우에만 승인이 해제된다 — 서버가 알려 준 결과로 문구를 고른다.
+        toast.success(res.reReview ? "저장했습니다. 승인이 해제되어 다시 심사에 올라갑니다." : "강좌를 수정했습니다.");
       } else {
         toast.error(res.error ?? "오류가 발생했습니다.");
       }

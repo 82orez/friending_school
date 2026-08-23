@@ -189,6 +189,19 @@ export default function PrepCourseForm({
     (!topicsRequired || filledTopics === PREP_SESSION_COUNT) &&
     !pending;
 
+  // 승인된 강좌에서 **심사 대상 항목**이 실제로 바뀌었는지 — 바뀐 경우에만 승인이 해제된다(서버 updatePrepCourse와 같은 규칙).
+  // 소개·회차 주제는 자유 수정이라 여기 없다.
+  const materialChanged =
+    !!initial &&
+    (form.title.trim() !== initial.title ||
+      form.level !== initial.level ||
+      Number(form.capacity) !== initial.capacity ||
+      Number(form.priceKrw) !== initial.priceKrw ||
+      startMin !== initial.startMin ||
+      form.durationMin !== initial.durationMin ||
+      dates.join(",") !== initial.sessions.map((s) => s.date).join(","));
+  const willRevoke = status === "승인" && materialChanged;
+
   const setTopicAt = (index: number, value: string) => setTopics((prev) => prev.map((t, i) => (i === index ? value : t)));
 
   // 여러 줄을 한 번에 붙여넣어 앞에서부터 채운다 — 20칸을 매번 타이핑하지 않도록.
@@ -242,9 +255,17 @@ export default function PrepCourseForm({
           <p className="text-muted-fg-faint mt-1 text-xs">내용을 수정한 뒤 목록에서 「승인 다시 요청」을 눌러 주세요.</p>
         </div>
       )}
+      {/* 승인된 강좌 — 무엇을 자유롭게 고칠 수 있는지 먼저 알려 주고, 실제로 심사 대상을 건드렸을 때만 경고한다. */}
       {status === "승인" && (
-        <div className="border-rule bg-surface mb-4 rounded-xl border px-4 py-3 text-sm font-semibold">
-          승인된 강좌입니다. <span className="text-brand">저장하면 승인이 해제되고 다시 심사를 받습니다.</span>
+        <div className="border-rule bg-surface mb-4 rounded-xl border px-4 py-3 text-sm">
+          <p className="font-semibold">
+            승인된 강좌입니다. <span className="text-muted-fg font-normal">강좌 소개와 회차 주제는 자유롭게 수정할 수 있어요.</span>
+          </p>
+          <p className={cn("mt-1 text-xs", willRevoke ? "text-brand font-bold" : "text-muted-fg-faint")}>
+            {willRevoke
+              ? "심사 대상 항목이 바뀌었습니다 — 저장하면 승인이 해제되고 다시 심사를 받습니다."
+              : "수강료·수업 일자·시각·정원·난이도·강좌명을 바꾸면 다시 심사를 받습니다."}
+          </p>
         </div>
       )}
 
@@ -503,19 +524,19 @@ export default function PrepCourseForm({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className={confirmClassName}>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {status === "승인" ? "수정하면 승인이 해제됩니다" : editing ? "이 내용으로 저장할까요?" : "이 내용으로 저장할까요?"}
-            </AlertDialogTitle>
+            <AlertDialogTitle>{willRevoke ? "수정하면 승인이 해제됩니다" : "이 내용으로 저장할까요?"}</AlertDialogTitle>
             <AlertDialogDescription>
-              {status === "승인"
-                ? "저장하면 상태가 「심사 중」으로 돌아가고 관리자에게 다시 심사 요청이 갑니다."
-                : status === "신청"
-                  ? "심사 중인 강좌입니다. 저장해도 상태는 그대로 「심사 중」으로 남습니다."
-                  : scheduleLocked
-                    ? "이미 시작된 강좌라 일정과 시각은 그대로 유지되고, 나머지 내용만 바뀝니다."
-                    : editing
-                      ? "수업 일자와 주제가 입력한 대로 교체됩니다. 저장만으로는 심사가 시작되지 않습니다."
-                      : "임시저장됩니다. 목록에서 「승인 요청」을 눌러야 심사가 시작됩니다."}
+              {willRevoke
+                ? "심사 대상 항목이 바뀌어, 저장하면 상태가 「심사 중」으로 돌아가고 관리자에게 다시 심사 요청이 갑니다."
+                : status === "승인"
+                  ? "소개·회차 주제만 바뀝니다. 승인은 그대로 유지됩니다."
+                  : status === "신청"
+                    ? "심사 중인 강좌입니다. 저장해도 상태는 그대로 「심사 중」으로 남습니다."
+                    : scheduleLocked
+                      ? "이미 시작된 강좌라 일정과 시각은 그대로 유지되고, 나머지 내용만 바뀝니다."
+                      : editing
+                        ? "수업 일자와 주제가 입력한 대로 교체됩니다. 저장만으로는 심사가 시작되지 않습니다."
+                        : "임시저장됩니다. 목록에서 「승인 요청」을 눌러야 심사가 시작됩니다."}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
