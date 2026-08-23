@@ -274,8 +274,8 @@ export default function PrepCourseForm({
             <p className="text-ink mt-1 text-sm">
               {willRevoke ? (
                 <>
-                  <span className="font-bold">수강료·수업 일자·시각·정원·난이도·강좌명</span> 중 바뀐 항목이 있어, 저장하면 상태가 「심사 중」으로
-                  돌아가고 관리자가 다시 심사합니다.
+                  <span className="font-bold">수강료·수업 일자·시각·정원·난이도·강좌명</span> 중 바뀐 항목이 있어, 저장하면 상태가 「승인」에서 「심사
+                  중」으로 돌아가고 관리자에게 다시 심사 받아야 합니다.
                 </>
               ) : (
                 <>
