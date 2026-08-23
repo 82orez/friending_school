@@ -279,8 +279,9 @@ export default function PrepCourseForm({
                 </>
               ) : (
                 <>
-                  <span className="font-bold">강좌 소개와 회차 주제</span>는 자유롭게 수정할 수 있어요. 수강료·수업 일자·시각·정원·난이도·강좌명을
-                  바꾸면 다시 심사를 받습니다.
+                  <span className="font-bold">강좌 소개와 회차 주제</span>는 자유롭게 수정할 수 있어요. 하지만,{" "}
+                  <span className={"font-bold text-red-500"}>수강료·수업 일자·시각·정원·난이도·강좌명</span>을 수정하면 관리자에게 다시 심사를 받아야
+                  합니다.
                 </>
               )}
             </p>
