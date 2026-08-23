@@ -10,7 +10,7 @@ import { fmtDateKo, fmtDateShort, formatWon, frienderLabel } from "@/lib/prep";
 import { kstDateText } from "@/lib/kst";
 import { PREP_STATUSES, PREP_STATUS_BADGE, PREP_STATUS_LABEL, type PrepStatus } from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
-import { approvePrepCourse, deletePrepCourseAsAdmin, rejectPrepCourse, unapprovePrepCourse } from "@/app/admin/actions";
+import { approvePrepCourse, deletePrepCourseAsAdmin, rejectPrepCourse } from "@/app/admin/actions";
 import PrepSessionCalendar from "@/components/admin/PrepSessionCalendar";
 import PrepCourseInfoModal from "@/components/admin/PrepCourseInfoModal";
 import {
@@ -73,10 +73,9 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
   const [filter, setFilter] = useState<"all" | PrepStatus>("신청");
   const [openId, setOpenId] = useState<string | null>(null);
 
-  // 개설된 강좌 관리 — 상세 보기 / 승인 해제 / 삭제.
+  // 개설된 강좌 관리 — 상세 보기 / 삭제.
   const [infoTarget, setInfoTarget] = useState<AdminPrepCourse | null>(null);
   const closeInfo = useCallback(() => setInfoTarget(null), []);
-  const [unapproveTarget, setUnapproveTarget] = useState<AdminPrepCourse | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminPrepCourse | null>(null);
   const [reason, setReason] = useState(""); // 선택 입력 — 적으면 프렌더 SMS·화면에 사유로 붙는다
   const [busy, startBusy] = useTransition();
@@ -98,23 +97,6 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
   const approvedList = useMemo(() => approvedRows.filter(matches), [approvedRows, matches]);
 
   // 다이얼로그를 닫으며 state를 비우므로 대상·사유를 먼저 스냅샷한다(FrienderRequestsManager와 같은 패턴).
-  const confirmUnapprove = () => {
-    const target = unapproveTarget;
-    const note = reason.trim();
-    setUnapproveTarget(null);
-    setReason("");
-    if (!target) return;
-    startBusy(async () => {
-      const res = await unapprovePrepCourse(target.id, note);
-      if (res.ok) {
-        setRows((prev) => prev.map((x) => (x.id === target.id ? { ...x, status: "신청" as PrepStatus, admin_note: note || null } : x)));
-        toast.success("승인을 해제했습니다. 다시 심사 대기로 돌아갑니다.");
-      } else {
-        toast.error(res.error ?? "오류가 발생했습니다.");
-      }
-    });
-  };
-
   const confirmDelete = () => {
     const target = deleteTarget;
     const note = reason.trim();
@@ -200,10 +182,6 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
       <ApprovedCourseTable
         courses={approvedList}
         onView={setInfoTarget}
-        onUnapprove={(c) => {
-          setReason("");
-          setUnapproveTarget(c);
-        }}
         onDelete={(c) => {
           setReason("");
           setDeleteTarget(c);
@@ -213,42 +191,6 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
       />
 
       <PrepCourseInfoModal course={infoTarget} onClose={closeInfo} />
-
-      {/* 승인 해제 확인 — 사유는 선택 입력. ⚠️ AlertDialogDescription은 <p>라 textarea는 바깥 형제로 둔다. */}
-      <AlertDialog open={unapproveTarget !== null} onOpenChange={(open) => !open && setUnapproveTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>승인을 해제할까요?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {unapproveTarget && (
-                <>
-                  <span className="text-ink font-semibold">{unapproveTarget.title}</span> 강좌가 다시 「심사 중」으로 돌아가고 프렌더에게 SMS로
-                  통보됩니다.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="text-left">
-            <label className="flex flex-col gap-1">
-              <span className="text-muted-fg-faint text-xs font-semibold">사유 (선택 · 프렌더에게 전달됩니다)</span>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={2}
-                maxLength={1000}
-                placeholder="예) 일정이 변경되어 재검토가 필요합니다."
-                className="border-rule focus:border-accent-blue rounded-md border bg-white px-3 py-2 text-sm outline-none"
-              />
-            </label>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmUnapprove} variant="brand">
-              승인 해제
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* 삭제 확인 */}
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -307,14 +249,12 @@ const SORT_VALUE: Record<SortKey, (c: AdminPrepCourse) => string> = {
 function ApprovedCourseTable({
   courses,
   onView,
-  onUnapprove,
   onDelete,
   busy,
   className,
 }: {
   courses: AdminPrepCourse[];
   onView: (c: AdminPrepCourse) => void;
-  onUnapprove: (c: AdminPrepCourse) => void;
   onDelete: (c: AdminPrepCourse) => void;
   busy?: boolean;
   className?: string;
@@ -389,13 +329,6 @@ function ApprovedCourseTable({
                       onClick={() => onView(c)}
                       className="border-rule text-muted-fg hover:bg-surface rounded-md border px-3 py-1.5 text-xs font-bold transition-colors">
                       정보 보기
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onUnapprove(c)}
-                      disabled={busy}
-                      className="border-rule text-muted-fg hover:bg-surface rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60">
-                      승인 해제
                     </button>
                     <button
                       type="button"

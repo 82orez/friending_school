@@ -2109,35 +2109,6 @@ export async function rejectPrepCourse(id: string, adminNote: string): Promise<A
   return { ok: true };
 }
 
-// 승인 해제 — 개설된 강좌를 다시 '신청'(심사 대기)으로 되돌린다.
-// 거절이 아니라 되돌리기인 이유: 관리자가 다시 승인하거나 사유를 붙여 거절할 수 있는 자리로 보내는 것이 원상복귀다.
-// 사유(선택)는 admin_note에 남겨 프렌더 화면과 SMS에 함께 노출한다.
-export async function unapprovePrepCourse(id: string, adminNote?: string): Promise<ActionResult> {
-  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
-  if (!id) return { ok: false, error: "잘못된 요청입니다." };
-  const note = (adminNote ?? "").trim();
-
-  const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("prep_courses")
-    .update({ status: "신청", admin_note: note ? note.slice(0, 1000) : null, reviewed_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("status", "승인") // 그 사이 프렌더가 수정해 이미 '신청'으로 내려갔을 수 있다.
-    .select("id, friender_id, title");
-  if (error) return { ok: false, error: "저장 중 오류가 발생했습니다." };
-  if (!data || data.length === 0) return { ok: false, error: "이미 승인 상태가 아닙니다. 목록을 새로고침해 주세요." };
-
-  const row = data[0] as { friender_id: string; title: string };
-  await notifyPrepReviewResult(
-    admin,
-    row.friender_id,
-    `[프렌딩 스쿨] '${prepSmsTitle(row.title)}' 프렙 강좌의 승인이 해제되어 다시 심사 대기 상태가 되었습니다.${note ? ` 사유: ${note.slice(0, 120)}` : ""}`,
-  );
-
-  revalidatePrepConsumers();
-  return { ok: true };
-}
-
 // 강좌 삭제 (관리자) — 회차는 FK cascade. 프렌더 본인 삭제(deletePrepCourse)와 달리 상태 제한이 없다.
 // ⏳ 수강신청·결제가 붙으면 여기에도 "수강생이 있으면 삭제 금지" 가드를 추가한다(프렌더 쪽과 같은 자리).
 export async function deletePrepCourseAsAdmin(id: string, adminNote?: string): Promise<ActionResult> {
