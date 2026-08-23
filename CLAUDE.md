@@ -4,7 +4,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 
 ## 개요
 
-**"청년을 세계로"** 워홀·해외진출 영어 통합 플랫폼(브랜드 "프렌딩 스쿨"). 구성: 5섹션 랜딩 + **과정 상세페이지 5종**(`/courses/[slug]`: workhol·kitchen·grammar1·grammar2·cosmetic — 회화 기초문법 1/2는 각각 독립 과정·독립 수강신청, 교재 키 basic1/basic2) + **전자책 뷰어 `/textbook/[course]`**(레지스트리 기반 교재 5종, 무료 미리보기 외 로그인) + **수강신청→마이페이지**(`/courses/[slug]/enroll` 강사 매칭형 수강신청 → `/mypage`) + **강사 지원**(`/teacher/apply`) + **강사 페이지**(`/teacher`: 프로필·사진·zoom·주간 가능시간·수강신청 승인/거절) + **프렌더**(`/friender`: 연습방·받은 후기, Plus는 **프렙 유료 강좌** 개설 — **관리자 승인 후 개설 완료**) + **admin 대시보드**(`/admin`: 수강신청·화상수업·회원·강사 관리·센터·매출/매출이익/강사 정산·유튜브). Next.js 16(App Router, Turbopack) + React 19.2 + Tailwind v4. shadcn/ui(`base-nova`/`neutral`), Supabase SSR 인증(이메일 + 카카오 OAuth), 알림 메일(Resend) + SMS(Solapi).
+**"청년을 세계로"** 워홀·해외진출 영어 통합 플랫폼(브랜드 "프렌딩 스쿨"). 구성: 5섹션 랜딩 + **과정 상세페이지 5종**(`/courses/[slug]`: workhol·kitchen·grammar1·grammar2·cosmetic — 회화 기초문법 1/2는 각각 독립 과정·독립 수강신청, 교재 키 basic1/basic2) + **전자책 뷰어 `/textbook/[course]`**(레지스트리 기반 교재 5종, 무료 미리보기 외 로그인) + **수강신청→마이페이지**(`/courses/[slug]/enroll` 강사 매칭형 수강신청 → `/mypage`) + **강사 지원**(`/teacher/apply`) + **강사 페이지**(`/teacher`: 프로필·사진·zoom·주간 가능시간·수강신청 승인/거절) + **프렌더**(`/friender`: 연습방·받은 후기, Plus는 **프렙 유료 강좌** 개설 — **관리자 승인 후 개설 완료**, 공개 소개 `/prep`) + **admin 대시보드**(`/admin`: 수강신청·화상수업·회원·강사 관리·센터·매출/매출이익/강사 정산·유튜브). Next.js 16(App Router, Turbopack) + React 19.2 + Tailwind v4. shadcn/ui(`base-nova`/`neutral`), Supabase SSR 인증(이메일 + 카카오 OAuth), 알림 메일(Resend) + SMS(Solapi).
 
 ## 명령어
 
