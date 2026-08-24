@@ -97,11 +97,14 @@ export default async function FriendingPage() {
     }
   }
 
-  // 내 참여 여부 — 본인 세션 client(RLS select_own).
-  const joined = new Set<string>();
+  // 내 참여 여부 + 내 입장 시각 — 본인 세션 client(RLS select_own).
+  // ⚠️ entered_at까지 읽는 이유: 카드 CTA가 "노쇼면 예약 취소를 감춘다"를 판정해야 하는데
+  //    그 판정은 본인 참가 행 없이는 불가능하다(/mypage/rooms의 같은 규칙과 한 쌍).
+  // ⚠️ service_role로 바꾸지 말 것 — 남의 entered_at은 공개 페이지 페이로드에 실리면 안 된다.
+  const enteredAtByRoom = new Map<string, string | null>();
   if (user && rows.length > 0) {
-    const { data: mine } = await supabase.from("friender_room_participants").select("room_id").eq("user_id", user.id);
-    for (const m of (mine ?? []) as { room_id: string }[]) joined.add(m.room_id);
+    const { data: mine } = await supabase.from("friender_room_participants").select("room_id, entered_at").eq("user_id", user.id);
+    for (const m of (mine ?? []) as { room_id: string; entered_at: string | null }[]) enteredAtByRoom.set(m.room_id, m.entered_at);
   }
 
   // ── 프렙 강좌(수강신청 배너) ──────────────────────────────────────────
@@ -210,7 +213,8 @@ export default async function FriendingPage() {
     startMin: r.start_min,
     durationMin: r.duration_min,
     participants: countByRoom.get(r.id) ?? 0,
-    joined: joined.has(r.id),
+    joined: enteredAtByRoom.has(r.id),
+    enteredAt: enteredAtByRoom.get(r.id) ?? null,
   }));
 
   return (

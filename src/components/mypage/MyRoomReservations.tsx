@@ -261,18 +261,26 @@ function Row({
           <ChevronRight aria-hidden className="size-3" />방 소개글 보기
         </button>
 
-        {/* 유예(시작 후 10분)까지 미입장이면 자리가 반환된다. 늦은 입장은 계속 허용하므로 입장 버튼은 그대로 둔다. */}
+        {/* 유예(시작 후 10분)까지 미입장이면 정원 카운트에서만 빠진다. 예약 자체는 살아 있고 늦은 입장도
+            계속 허용하므로 입장 버튼은 그대로 둔다.
+            ⚠️ 한때 "자리가 반환되었습니다"였는데 사용자가 **예약이 취소된 것**으로 읽었다(실제 피드백)
+               → "예약은 그대로"를 문구에 명시한다. */}
         {noShow && (
           <p className="text-muted-fg bg-surface border-rule mt-1.5 rounded-md border px-2 py-1 text-xs font-semibold">
-            미입장 · 자리가 반환되었습니다. 아직 진행 중이면 입장할 수 있어요.
+            미입장 · 정원 자리는 다시 열렸어요. 예약은 그대로이니 진행 중이면 입장할 수 있습니다.
           </p>
         )}
       </div>
 
-      {/* 입장 = 시간창(시작 15분 전~종료) 안일 때만. 예약 취소는 시작 전까지 계속 노출한다
-          — ⚠️ 한때 입장창에 들어가면 취소를 감췄으나, 어차피 안 오면 노쇼로 자리가 반환되므로
-          (유예 NO_SHOW_GRACE_MIN분) 막아 봐야 자리가 그만큼 늦게 열릴 뿐이었다. 임박 경고는
-          확인 다이얼로그가 담당한다. /friending 카드의 CTA 상태 머신과 한 쌍이라 함께 바꿀 것. */}
+      {/* 입장 = 시간창(시작 15분 전~종료) 안일 때만.
+          예약 취소 = **되돌릴 자리가 실제로 있을 때만** = seatHeld && 아직 미입장(`!enteredAt && !noShow`).
+          ⚠️ 입장창에 들어갔다고 감추지는 않는다(임박 경고는 확인 다이얼로그가 담당) — 안 오면 어차피
+             노쇼로 자리가 반환되므로 막아 봐야 자리가 그만큼 늦게 열릴 뿐이다.
+          ⚠️ 노쇼(시작+유예 경과 미입장) 이후에는 감춘다 — 자리는 이미 반환됐고, 누르면 참가 행이 지워져
+             배너가 약속한 **늦은 입장**과 **노쇼 기록**이 함께 사라진다.
+          ⚠️ 이미 입장한 경우도 감춘다 — seatHeld는 enteredAt이 있으면 sticky하게 true라 !noShow만으로는
+             안 걸러진다. 누르면 saveRoomReview가 요구하는 entered_at이 사라져 **후기 자격을 조용히 잃는다**.
+          /friending 카드의 CTA 상태 머신과 한 쌍이라 함께 바꿀 것. */}
       <div className="flex shrink-0 items-center gap-1.5">
         {enterable && (
           <EnterRoomButton
@@ -300,7 +308,7 @@ function Row({
             )}
           </button>
         )}
-        {!isPast && onCancel && (
+        {!isPast && !room.enteredAt && !noShow && onCancel && (
           <button
             type="button"
             onClick={onCancel}

@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
-import { fmtRoomEnd } from "@/lib/room-time";
+import { fmtRoomEnd, isNoShow } from "@/lib/room-time";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { joinRoom, leaveRoom } from "@/app/friending/actions";
 import EnterRoomButton from "@/components/friending/EnterRoomButton";
@@ -50,6 +50,7 @@ export type PublicRoom = {
   durationMin: number;
   participants: number;
   joined: boolean;
+  enteredAt: string | null; // 내 입장 시각(RLS select_own) — 노쇼 판정용. 미예약이면 null
 };
 
 const PAGE_STEP = 12;
@@ -103,6 +104,10 @@ export default function FriendingRooms({
   // 입장 시간창(시작 15분 전~종료) — 섹션 분류와 입장 버튼 노출이 같은 기준이라 서로 어긋나지 않는다.
   const canEnter = (r: PublicRoom) =>
     canEnterClass(now, kstDateMinToMs(r.sessionDate, r.startMin), kstDateMinToMs(r.sessionDate, r.startMin + r.durationMin));
+
+  // 노쇼(시작 + 유예까지 미입장) — 자리가 이미 반환됐으므로 취소 버튼을 감춘다.
+  // 판정은 /mypage/rooms·/friender/rooms·/admin/rooms와 같은 seatHeld 규칙(src/lib/room-time.ts).
+  const noShowOf = (r: PublicRoom) => isNoShow(r.enteredAt, kstDateMinToMs(r.sessionDate, r.startMin), now);
 
   const liveCount = useMemo(() => rooms.filter(canEnter).length, [rooms, now]);
 
@@ -199,6 +204,7 @@ export default function FriendingRooms({
                   onOpenHost={setHostTarget}
                   onOpenInfo={setInfoTarget}
                   enterable={canEnter(r)}
+                  noShow={noShowOf(r)}
                   busy={pending && pendingId === r.id}
                   disabled={pending}
                   onJoin={() => setJoinTarget(r)}
@@ -299,6 +305,7 @@ function RoomCard({
   host,
   isLoggedIn,
   enterable,
+  noShow,
   busy,
   disabled,
   onJoin,
@@ -310,6 +317,7 @@ function RoomCard({
   host: HostProfile;
   isLoggedIn: boolean;
   enterable: boolean;
+  noShow: boolean;
   busy: boolean;
   disabled: boolean;
   onJoin: () => void;
@@ -406,13 +414,17 @@ function RoomCard({
             //    취소는 부차 동작이라 pill이 아닌 텍스트 버튼(입장이 주 CTA인 위계를 유지).
             <div className="flex items-center gap-3">
               <EnterRoomButton roomId={room.id} withGuide className={cn(pill, "bg-cta text-white")} disabled={disabled} />
-              <button
-                type="button"
-                onClick={onLeave}
-                disabled={disabled}
-                className="text-muted-fg hover:text-ink shrink-0 text-xs font-bold underline underline-offset-2 transition-colors disabled:opacity-60">
-                예약 취소
-              </button>
+              {/* 취소는 되돌릴 자리가 실제로 있을 때만 — 노쇼(자리 이미 반환)·입장 완료면 감춘다.
+                  /mypage/rooms 행과 같은 조건(`!enteredAt && !noShow`). 이유는 그쪽 주석 참조. */}
+              {!room.enteredAt && !noShow && (
+                <button
+                  type="button"
+                  onClick={onLeave}
+                  disabled={disabled}
+                  className="text-muted-fg hover:text-ink shrink-0 text-xs font-bold underline underline-offset-2 transition-colors disabled:opacity-60">
+                  예약 취소
+                </button>
+              )}
             </div>
           ) : room.joined ? (
             <button type="button" onClick={onLeave} disabled={disabled} className={cn(pill, "border-rule text-muted-fg hover:bg-surface border")}>
