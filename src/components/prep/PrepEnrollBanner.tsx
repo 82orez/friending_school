@@ -122,9 +122,9 @@ export default function PrepEnrollBanner({
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
               <span className="inline-block rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-bold text-white backdrop-blur-[2px]">
-                프렙 강좌 · 매월 {PREP_SESSION_COUNT}회 아침 스몰톡
+                프렙 강좌 · 매월 {PREP_SESSION_COUNT}회 말하기 훈련
               </span>
-              <h2 className="mt-2 text-lg font-extrabold text-white md:text-2xl">여럿이 함께, 아침으로 여는 영어 스몰톡</h2>
+              <h2 className="mt-2 text-lg font-extrabold text-white md:text-2xl">여럿이 함께, 아침으로 여는 영어 스몰톡 훈련</h2>
               <p className="mt-1 text-sm text-white/80">
                 지금 신청할 수 있는 강좌 {courses.length}개
                 {mine.length > 0 && <span className="font-bold text-white"> · 내 신청 {mine.length}건</span>}
