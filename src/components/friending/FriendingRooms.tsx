@@ -266,6 +266,12 @@ export default function FriendingRooms({
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {/* 임박 경고 — ⚠️ AlertDialogDescription은 <p>라 그 바깥 형제로 둔다. */}
+          {leaveTarget && canEnter(leaveTarget) && (
+            <p className="border-brand/30 bg-brand/5 text-brand rounded-lg border px-3 py-2 text-sm font-semibold">
+              곧 시작하는 방입니다. 개설자가 인원을 기다리고 있을 수 있어요.
+            </p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>닫기</AlertDialogCancel>
             <AlertDialogAction onClick={confirmLeave} variant="brand">
@@ -394,7 +400,20 @@ function RoomCard({
               내 방
             </button>
           ) : room.joined && enterable ? (
-            <EnterRoomButton roomId={room.id} withGuide className={cn(pill, "bg-cta text-white")} disabled={disabled} />
+            // ⚠️ 입장창 안이어도 취소를 막지 않는다 — 안 오면 어차피 노쇼로 자리가 반환되므로
+            //    (유예 NO_SHOW_GRACE_MIN분) 감춰 봐야 자리가 그만큼 늦게 열릴 뿐이다.
+            //    임박 경고는 확인 다이얼로그가 담당. /mypage/rooms 행과 한 쌍이라 함께 바꿀 것.
+            //    취소는 부차 동작이라 pill이 아닌 텍스트 버튼(입장이 주 CTA인 위계를 유지).
+            <div className="flex items-center gap-3">
+              <EnterRoomButton roomId={room.id} withGuide className={cn(pill, "bg-cta text-white")} disabled={disabled} />
+              <button
+                type="button"
+                onClick={onLeave}
+                disabled={disabled}
+                className="text-muted-fg hover:text-ink shrink-0 text-xs font-bold underline underline-offset-2 transition-colors disabled:opacity-60">
+                예약 취소
+              </button>
+            </div>
           ) : room.joined ? (
             <button type="button" onClick={onLeave} disabled={disabled} className={cn(pill, "border-rule text-muted-fg hover:bg-surface border")}>
               예약 취소

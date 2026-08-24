@@ -70,6 +70,15 @@ export default function MyRoomReservations({ rooms, hosts }: { rooms: ReservedRo
     return { upcoming: up, past: pa.reverse() };
   }, [rooms, now]);
 
+  // 취소 대상이 이미 입장 시간창(시작 15분 전~종료)에 들어왔는지 — 확인 다이얼로그의 임박 경고용.
+  const cancelIsImminent =
+    !!cancelTarget &&
+    canEnterClass(
+      now,
+      kstDateMinToMs(cancelTarget.sessionDate, cancelTarget.startMin),
+      kstDateMinToMs(cancelTarget.sessionDate, cancelTarget.startMin + cancelTarget.durationMin),
+    );
+
   const confirmCancel = () => {
     const target = cancelTarget;
     setCancelTarget(null); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
@@ -162,6 +171,12 @@ export default function MyRoomReservations({ rooms, hosts }: { rooms: ReservedRo
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {/* 임박 경고 — ⚠️ AlertDialogDescription은 <p>라 그 바깥 형제로 둔다. */}
+          {cancelTarget && cancelIsImminent && (
+            <p className="border-brand/30 bg-brand/5 text-brand rounded-lg border px-3 py-2 text-sm font-semibold">
+              곧 시작하는 방입니다. 개설자가 인원을 기다리고 있을 수 있어요.
+            </p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>닫기</AlertDialogCancel>
             <AlertDialogAction onClick={confirmCancel} variant="brand">
@@ -254,8 +269,10 @@ function Row({
         )}
       </div>
 
-      {/* 입장 = 시간창(시작 15분 전~종료) 안일 때만. 그 밖일 때만 예약 취소를 노출한다
-          — /friending 카드의 CTA 상태 머신과 같은 규칙이라 두 화면이 어긋나지 않는다. */}
+      {/* 입장 = 시간창(시작 15분 전~종료) 안일 때만. 예약 취소는 시작 전까지 계속 노출한다
+          — ⚠️ 한때 입장창에 들어가면 취소를 감췄으나, 어차피 안 오면 노쇼로 자리가 반환되므로
+          (유예 NO_SHOW_GRACE_MIN분) 막아 봐야 자리가 그만큼 늦게 열릴 뿐이었다. 임박 경고는
+          확인 다이얼로그가 담당한다. /friending 카드의 CTA 상태 머신과 한 쌍이라 함께 바꿀 것. */}
       <div className="flex shrink-0 items-center gap-1.5">
         {enterable && (
           <EnterRoomButton
@@ -283,7 +300,7 @@ function Row({
             )}
           </button>
         )}
-        {!isPast && !enterable && onCancel && (
+        {!isPast && onCancel && (
           <button
             type="button"
             onClick={onCancel}
