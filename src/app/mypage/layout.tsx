@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { todayKst } from "@/lib/booking";
+import { loadTodayPrepSessions } from "@/lib/prep-session";
 import MyPageTabs from "@/components/mypage/MyPageTabs";
+import TodayPrepBanner, { type TodayPrepBannerItem } from "@/components/prep/TodayPrepBanner";
 
 export const metadata: Metadata = { title: "마이페이지 — 프렌딩 스쿨" };
 
@@ -18,6 +21,22 @@ export default async function MyPageLayout({ children }: { children: React.React
   const fullName = `${profile?.last_name ?? ""}${profile?.first_name ?? ""}`.trim();
   const displayName = fullName || user.email?.split("@")[0] || "회원";
 
+  // 오늘 프렙 수업 — 수강생(수강확정)·개설 프렌더(승인) 양쪽. 어느 탭에 있든 보이도록 layout이 담당한다.
+  // ⚠️ service_role 조회라 회차가 없으면 배너를 아예 렌더하지 않는다(빈 자리를 남기지 않기 위해).
+  const todayRows = await loadTodayPrepSessions(user.id, todayKst());
+  const todaySessions: TodayPrepBannerItem[] = todayRows.map((s) => ({
+    id: s.id,
+    courseTitle: s.courseTitle,
+    sessionNo: s.sessionNo,
+    total: s.total,
+    topic: s.topic,
+    startMin: s.startMin,
+    durationMin: s.durationMin,
+    startMs: s.startMs,
+    endMs: s.endMs,
+    isHost: s.isHost,
+  }));
+
   return (
     <div className="bg-surface min-h-screen">
       <div className="px-5 py-7 text-center">
@@ -30,6 +49,8 @@ export default async function MyPageLayout({ children }: { children: React.React
           <p className="mt-2 text-xl font-bold md:text-2xl">안녕하세요, {displayName}님! 👋</p>
           <p className="mt-1 text-sm opacity-90">프렌딩 스쿨과 함께해 주셔서 감사합니다.</p>
         </div>
+
+        {todaySessions.length > 0 && <TodayPrepBanner sessions={todaySessions} />}
 
         <MyPageTabs />
 

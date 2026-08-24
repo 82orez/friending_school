@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { getUserRole, isFrienderPlusRole } from "@/lib/auth";
+import { loadPrepSessionsForFriender } from "@/lib/prep-session";
 import PrepManager, { type PrepCourse } from "@/components/friender/PrepManager";
 
 export default async function FrienderPrepPage() {
@@ -71,5 +72,10 @@ export default async function FrienderPrepPage() {
   const { data: prof } = await supabase.from("profiles").select("zoom_url").eq("id", user.id).maybeSingle();
   const hasZoomUrl = !!(prof as { zoom_url?: string | null } | null)?.zoom_url?.trim();
 
-  return <PrepManager courses={courses} hasZoomUrl={hasZoomUrl} />;
+  // 회차 입장·출결 — '승인'된 강좌만 실제로 수업을 여는 대상이다.
+  // ⚠️ 출석 수는 신청자 수와 같은 이유로 service_role(prep_attendance RLS도 _select_own뿐).
+  const approvedIds = courses.filter((c) => c.status === "승인").map((c) => c.id);
+  const sessionsByCourse = await loadPrepSessionsForFriender(user.id, approvedIds);
+
+  return <PrepManager courses={courses} hasZoomUrl={hasZoomUrl} sessionsByCourse={sessionsByCourse} />;
 }

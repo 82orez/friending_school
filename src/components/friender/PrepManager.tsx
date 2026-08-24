@@ -12,6 +12,8 @@ import { createPrepCourse, deletePrepCourse, requestPrepReview, updatePrepCourse
 import { cn } from "@/lib/utils";
 import PrepCourseForm, { type PrepCourse, type PrepFormValues } from "@/components/friender/PrepCourseForm";
 import PrepEditModal from "@/components/friender/PrepEditModal";
+import PrepSessionList from "@/components/prep/PrepSessionList";
+import type { PrepCourseSessions } from "@/lib/prep-session";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +27,16 @@ import {
 
 export type { PrepCourse };
 
-export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCourse[]; hasZoomUrl: boolean }) {
+export default function PrepManager({
+  courses,
+  hasZoomUrl,
+  sessionsByCourse,
+}: {
+  courses: PrepCourse[];
+  hasZoomUrl: boolean;
+  // course_id → 회차(입장·출결). '승인' 강좌에만 들어온다 — 승인돼야 실제로 수업을 연다.
+  sessionsByCourse: Record<string, PrepCourseSessions>;
+}) {
   const router = useRouter();
   // 개설 폼은 상태를 스스로 들고 있으므로, 개설 성공 뒤에는 key를 바꿔 다시 마운트해 비운다.
   const [createKey, setCreateKey] = useState(0);
@@ -196,8 +207,27 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
                   <p className="mt-1.5 text-xs font-semibold text-[#B97400]">승인 요청 전: {reviewBlockerOf(c)}</p>
                 )}
 
-                {/* 커리큘럼 — 회차가 20개라 기본은 접어 둔다(마이페이지 수강신청 내역과 같은 네이티브 details). */}
-                {c.sessions.length > 0 && (
+                {/* 승인된 강좌 = 실제로 수업을 여는 대상 → 회차 목록·입장 버튼.
+                    ⚠️ 이게 없으면 수강생만 들어가는 방이 된다(강사가 수업을 열 수단). */}
+                {c.status === "승인" &&
+                  sessionsByCourse[c.id] &&
+                  (() => {
+                    const s = sessionsByCourse[c.id];
+                    return (
+                      <PrepSessionList
+                        sessions={s.sessions}
+                        total={s.sessions.length}
+                        startMin={s.startMin}
+                        durationMin={s.durationMin}
+                        isHost
+                        zoomReady={hasZoomUrl}
+                      />
+                    );
+                  })()}
+
+                {/* 커리큘럼 — 회차가 20개라 기본은 접어 둔다(마이페이지 수강신청 내역과 같은 네이티브 details).
+                    ⚠️ 승인 강좌는 위 회차 목록이 같은 내용을 더 잘 보여 주므로 초안·심사·거절일 때만 남긴다. */}
+                {c.status !== "승인" && c.sessions.length > 0 && (
                   <details className="mt-2">
                     <summary className="text-accent-blue-ink cursor-default text-xs font-bold">커리큘럼 {c.sessions.length}회 보기</summary>
                     <ol className="text-muted-fg mt-1.5 list-none space-y-1 text-xs">

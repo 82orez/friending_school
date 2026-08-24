@@ -717,6 +717,32 @@ export type Database = {
         }
         Relationships: []
       }
+      prep_attendance: {
+        Row: {
+          entered_at: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          entered_at?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          entered_at?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prep_attendance_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "prep_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prep_courses: {
         Row: {
           admin_note: string | null
@@ -855,7 +881,9 @@ export type Database = {
         Row: {
           course_id: string
           created_at: string
+          host_entered_at: string | null
           id: string
+          reminder_sent_at: string | null
           session_date: string
           session_no: number
           topic: string | null
@@ -863,7 +891,9 @@ export type Database = {
         Insert: {
           course_id: string
           created_at?: string
+          host_entered_at?: string | null
           id?: string
+          reminder_sent_at?: string | null
           session_date: string
           session_no: number
           topic?: string | null
@@ -871,7 +901,9 @@ export type Database = {
         Update: {
           course_id?: string
           created_at?: string
+          host_entered_at?: string | null
           id?: string
+          reminder_sent_at?: string | null
           session_date?: string
           session_no?: number
           topic?: string | null
