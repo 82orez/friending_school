@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPhone } from "@/lib/phone";
 
@@ -37,8 +37,31 @@ const ROLE_LABEL: Record<string, string> = {
   friender_plus: "friender plus",
 };
 
+type SortKey = "seq" | "last_name" | "first_name" | "english_name" | "email" | "phone" | "role" | "created_at";
+
+// 정렬 비교값(전부 문자열). seq·가입일은 자릿수 맞춤/ISO라 문자열 비교로도 순서가 맞는다.
+const SORT_VALUE: Record<SortKey, (m: MemberRow) => string> = {
+  seq: (m) => String(m.seq).padStart(8, "0"),
+  last_name: (m) => m.last_name ?? "",
+  first_name: (m) => m.first_name ?? "",
+  english_name: (m) => m.english_name ?? "",
+  email: (m) => m.email,
+  phone: (m) => (m.phone ?? "").replace(/\D/g, ""),
+  role: (m) => ROLE_LABEL[m.role] ?? m.role,
+  created_at: (m) => m.created_at,
+};
+
+type MemberRow = AdminMember & { seq: number };
+
 export default function MembersManager({ members }: { members: AdminMember[] }) {
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
+
+  const toggleSort = (key: SortKey) =>
+    setSort((prev) => (prev?.key === key ? { key, dir: prev.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+
+  // 가입순 번호는 정렬·검색과 무관하게 고정(members는 가입일 desc로 들어옴).
+  const rows: MemberRow[] = useMemo(() => members.map((m, i) => ({ ...m, seq: members.length - i })), [members]);
 
   const thisMonth = useMemo(() => {
     const now = new Date();
@@ -51,17 +74,30 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
   // 이메일 외 이름·영어이름·전화번호도 검색 대상(전화는 숫자만 비교 → 하이픈 입력 무관).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return members;
     const qDigits = q.replace(/\D/g, "");
-    return members.filter((m) => {
-      const haystack = [m.email, m.last_name, m.first_name, `${m.last_name ?? ""}${m.first_name ?? ""}`, m.english_name]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      if (haystack.includes(q)) return true;
-      return !!qDigits && !!m.phone && m.phone.replace(/\D/g, "").includes(qDigits);
+    const base = !q
+      ? rows
+      : rows.filter((m) => {
+          const haystack = [m.email, m.last_name, m.first_name, `${m.last_name ?? ""}${m.first_name ?? ""}`, m.english_name]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          if (haystack.includes(q)) return true;
+          return !!qDigits && !!m.phone && m.phone.replace(/\D/g, "").includes(qDigits);
+        });
+    if (!sort) return base;
+    // 빈 값은 방향과 무관하게 항상 뒤로.
+    const val = (m: MemberRow) => SORT_VALUE[sort.key](m).trim();
+    return [...base].sort((a, b) => {
+      const av = val(a);
+      const bv = val(b);
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      const cmp = av.localeCompare(bv, "ko");
+      return sort.dir === "asc" ? cmp : -cmp;
     });
-  }, [members, query]);
+  }, [rows, query, sort]);
 
   return (
     <div>
@@ -102,20 +138,20 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
             <table className="w-full min-w-[900px] border-collapse text-sm">
               <thead>
                 <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
-                  <th className="w-12 px-4 py-2.5 text-center md:px-6">#</th>
-                  <th className="px-4 py-2.5">성</th>
-                  <th className="px-4 py-2.5">이름</th>
-                  <th className="px-4 py-2.5">영어 이름</th>
-                  <th className="px-4 py-2.5">이메일</th>
-                  <th className="px-4 py-2.5">전화번호</th>
-                  <th className="px-4 py-2.5">권한</th>
-                  <th className="px-4 py-2.5 text-right md:px-6">가입일</th>
+                  <SortHeader label="#" sortKey="seq" sort={sort} onSort={toggleSort} className="w-20 px-4 py-2.5 text-center md:px-6" />
+                  <SortHeader label="성" sortKey="last_name" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+                  <SortHeader label="이름" sortKey="first_name" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+                  <SortHeader label="영어 이름" sortKey="english_name" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+                  <SortHeader label="이메일" sortKey="email" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+                  <SortHeader label="전화번호" sortKey="phone" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+                  <SortHeader label="권한" sortKey="role" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+                  <SortHeader label="가입일" sortKey="created_at" sort={sort} onSort={toggleSort} className="px-4 py-2.5 text-right md:px-6" />
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((m, i) => (
+                {filtered.map((m) => (
                   <tr key={m.id} className="border-rule border-b last:border-b-0">
-                    <td className="text-muted-fg-faint px-4 py-3.5 text-center align-middle text-xs md:px-6">{filtered.length - i}</td>
+                    <td className="text-muted-fg-faint px-4 py-3.5 text-center align-middle text-xs md:px-6">{m.seq}</td>
                     <td className="text-ink px-4 py-3.5 align-middle text-sm font-semibold whitespace-nowrap">
                       {m.last_name || <span className="text-muted-fg-faint font-normal">-</span>}
                     </td>
@@ -156,5 +192,31 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
         )}
       </div>
     </div>
+  );
+}
+
+// 클릭 시 asc→desc 토글. 다른 admin 매니저(EnrollmentsManager 등)와 동일한 헤더 UI.
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  className,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: { key: SortKey; dir: "asc" | "desc" } | null;
+  onSort: (key: SortKey) => void;
+  className?: string;
+}) {
+  const active = sort?.key === sortKey;
+  const Icon = active ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <th className={className} aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
+      <button type="button" onClick={() => onSort(sortKey)} className="hover:text-ink inline-flex items-center gap-1 font-semibold transition-colors">
+        {label}
+        <Icon aria-hidden className={cn("size-3.5", active ? "text-ink" : "text-muted-fg-faint/60")} />
+      </button>
+    </th>
   );
 }
