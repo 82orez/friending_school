@@ -85,3 +85,9 @@ export function buildWeekdaySessions(startDate: string, count: number): string[]
   }
   return out;
 }
+
+// SMS에 강좌명을 그대로 넣으면 100자짜리 제목이 문자를 잡아먹는다 — 30자에서 자른다.
+// admin 심사 통보와 수강신청 알림이 함께 쓴다.
+export function prepSmsTitle(title: string): string {
+  return title.length > 30 ? `${title.slice(0, 30)}…` : title;
+}

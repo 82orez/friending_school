@@ -82,22 +82,40 @@
 - **회차 교체는 `replace_prep_sessions` RPC**(`20260822183052`)로 한 트랜잭션에서 delete+insert.
   ⚠️ 순차 update가 아닌 이유 = `unique(course_id, session_date)` 때문에 **1강↔2강 날짜 맞바꾸기**가 중간 상태에서 충돌한다. delete→insert를 앱에서 하면 PostgREST에 트랜잭션이 없어 실패 시 **회차 0개 강좌**가 남는다.
   ⚠️ RPC가 `auth.uid()`로 소유권을 검증하므로 **세션 client로 호출**해야 한다(service_role로 부르면 항상 거부 — `join_friender_room`과 같은 함정).
-- **삭제는 언제든 가능**(회차는 FK cascade). ⏳ 수강신청·결제가 붙으면 `deletePrepCourse`에 **"수강생이 있으면 삭제 금지"** 가드를 추가한다(연습방 `deleteRoom`의 `countParticipants`와 같은 모양 — 주석 자리 있음).
+- **삭제는 신청자가 없을 때만**(회차는 FK cascade) — 프렌더·관리자 양쪽에 `countPrepEnrollments` 가드가 있다(위 수강신청 절).
 - UI는 **수정 모달 `PrepEditModal`**: 목록 행의 「수정」 → 모달에 `PrepCourseForm mode="edit"`를 그대로 싣는다(목록 안에 20개 주제+캘린더를 펼치거나 페이지 상단 개설 폼을 수정 모드로 바꾸면 스크롤이 길어져 지금 뭘 고치는지 놓친다 — 후자를 쓰다 모달로 옮겼다). 강좌마다 초기값이 달라 `key={course.id}`로 재마운트, `course === null`이면 언마운트(`RoomInfoModal` 방식).
   ⚠️ **z-index/닫기 규약**(`AvailabilityModal` 이식): 오버레이 `z-[110]`·패널 `z-[120]`·**모달 안의 `AlertDialog`는 `z-[130]`**(폼의 확인 다이얼로그는 `confirmClassName`으로 주입). Esc·오버레이 클릭은 `[role="alertdialog"]`가 떠 있으면 무시(이중 닫힘 방지), **dirty면 닫기 가드 `AlertDialog`**, `pending` 중에는 닫히지 않는다. body scroll lock + 닫기 버튼 포커스.
   ⚠️ 시작 후 강좌는 폼에서 **심사 대상 입력 전체를 잠근다**(`started` prop — 예전 이름 `scheduleLocked`) — 서버가 어차피 기존 값으로 되돌리는데 입력만 열려 있으면 "바꿨는데 반영 안 된다"로 보인다.
 
+## 수강신청 (`20260824001559_add_prep_enrollments.sql`)
+
+**신청 접수 + 무통장 입금 안내**까지가 이번 범위다 — 카드결제·자동 환불은 없다. 관리자가 입금을 확인하면 확정.
+상태: **`입금대기` → `수강확정`**, 그리고 `취소`. ⚠️ `prep_courses.status`의 `신청`은 **개설 심사** 상태라 수강신청 쪽에서는 그 단어를 쓰지 않는다.
+
+- **`prep_enrollments`** — `id` PK + **부분 unique `(course_id, user_id) where status <> '취소'`**. ⚠️ 복합 PK를 쓰지 않은 이유: 돈이 걸려 **취소 이력을 남겨야** 하는데(입금 확인 기록이 환불 근거), 복합 PK에 `취소` 행이 남으면 **재신청이 영영 막힌다**(`enrollments`와 같은 선택, `friender_room_participants`의 delete 방식과 반대).
+  컬럼: 학생 스냅샷(`student_name`·`student_phone`) + **강좌 표시 스냅샷**(`course_title`·`start_min`·`duration_min`·`session_count`·`first_session_date`·`last_session_date`·`price_krw`) + `status`·`admin_note`·`paid_at`·`cancelled_at`.
+  ⚠️ **강좌 스냅샷이 필수인 이유**: 프렌더가 승인된 강좌를 고치면 `승인`이 풀려 공개 정책(`status='승인'`)에서 빠지고, 임베드 조회를 쓰면 **학생 마이페이지가 빈칸**이 된다.
+  RLS는 **본인 select만**. 쓰기 정책 없음 → 신청=RPC, 취소·입금확인=서버 액션(service_role).
+- **공개 조회 정책 신설**: `prep_courses_select_public`·`prep_sessions_select_public`(둘 다 `status='승인'`). ⚠️ permissive OR이라 이 정책이 생긴 뒤로 **소유자 화면은 반드시 쿼리에서 `.eq("friender_id", …)`** 를 걸어야 한다(이미 적용).
+- **RPC `join_prep_course(p_course_id)`** — ⚠️ **인자가 강좌 id 하나뿐**인 것이 핵심이다. `authenticated`에 grant돼 브라우저가 직접 부를 수 있어, 이름·전화·가격을 인자로 받으면 ① 서버 액션의 전화 인증 게이트가 우회되고 ② 임의 번호가 스냅샷에 심어져 **확정 SMS가 남에게 간다**. 이름·전화는 함수가 `profiles`에서, 가격·일정은 잠근 강좌 행에서 직접 읽는다. 검사 순서: `unauthenticated` → `for update` 잠금 → `not_found`/`not_approved`/`own_course`/`already` → `phone_unverified` → `started`(첫 회차 ≤ 오늘 KST) → `full`(정원 대비 `status <> '취소'` 수) → insert.
+  ⚠️ 연습방의 노쇼 유예(`seatHeld`)는 **적용하지 않는다** — 20회차 과정이라 자리를 잡는 건 입장이 아니라 돈이다.
+- **액션** `src/app/prep/enroll-actions.ts`: `applyPrepCourse`(로그인 → `rateLimit('prep-apply:…', 10/10분)` → **세션 client로 RPC** → 관리자 메일 + 프렌더 SMS best-effort) · `cancelPrepEnrollment`(`입금대기`만, **삭제가 아니라 `취소` 상태 변경**).
+  admin(`src/app/admin/actions.ts`): `confirmPrepPayment(enrollmentId)`(`입금대기` CAS → `수강확정`+`paid_at` → 학생 SMS) · `cancelPrepEnrollmentAsAdmin(enrollmentId, note?)`(미입금 자리 회수·폐강 정리, 사유 SMS).
+- **가드(이제 실효)**: 신청자가 있으면 **프렌더·관리자 모두 강좌 삭제 금지**(cascade로 입금 기록까지 사라진다), **프렌더는 심사 대상 항목 수정도 금지**(승인이 풀려 목록에서 사라지고 이미 입금하려던 사람의 조건이 바뀐다), **정원을 신청자 수보다 작게 축소 금지**. 소개·회차 주제는 계속 수정 가능.
+- **UI**: `/friending` 상단 **`<PrepEnrollBanner>`**(배너 + 신청 모달: 강좌 라디오 선택·요약·`PAYMENT_BANK` 계좌 안내·확인 `AlertDialog`, 비로그인은 `/login?next=/friending`, 전화 미인증은 마이페이지 안내) · **`/mypage/prep`** 탭(스냅샷 기반 내역·계좌 안내·취소) · **`/admin/prep`**(개설된 강좌 테이블의 「신청자」 컬럼 + `PrepCourseInfoModal`의 신청자 목록·입금 확인·신청 취소 — ⚠️ 액션은 `PrepCoursesManager`가 소유하고 모달은 표시+콜백만).
+- ⏳ **매출 미연동**: `payments`가 `enrollment_id` FK라 프렙 입금은 `/admin/revenue`에 잡히지 않는다(의도적 범위 밖).
+
 ## 공개 소개 페이지 `/prep`
 
-예비 수강생용 **정적 홍보 페이지**(`src/app/prep/page.tsx`). ⚠️ **DB를 읽지 않는다** — `prep_courses`에는 아직 공개 RLS 정책이 없고, 실제 개설 강좌 카드는 수강신청 동선과 함께 붙인다. 그래서 이 페이지는 마이그레이션 없이 존재할 수 있다.
+예비 수강생용 **정적 홍보 페이지**(`src/app/prep/page.tsx`). ⚠️ **DB를 읽지 않는다** — 실제 강좌 카드·신청은 `/friending` 상단 배너가 담당하고 이 페이지의 CTA 2개가 그쪽으로 보낸다(`PREP_PAGE.hero.ctaHref`).
 
 - 문구는 **`src/data/prep-page.ts`(`PREP_PAGE`)** 한 곳에 모았다(비개발자가 카피만 고칠 수 있게 — `landing.ts` 선례). ⚠️ 값 출처 구분: **회차 수는 `PREP_SESSION_COUNT`**(정책 고정), **수강료 20,000원·06:00~06:40은 이 강좌의 값**이라 리터럴(개설 폼 기본값 `PREP_DEFAULT_PRICE_KRW`와 우연히 같을 뿐 의미가 다르다). 금액은 `formatWon`.
 - 구성: 히어로(스펙 칩 4개 + **비활성 CTA**) → 이런 분께 3장 → 진행 방식 다크 박스 01~04 → **커리큘럼 예시 20강**(⚠️ 실제 주제는 프렌더가 정하므로 "예시" 배지 필수) → 강사·수강료 2열 → FAQ(`<details>`) → 마무리 CTA 밴드(`#E05A6A`, 과정 상세와 같은 색) + `/friending` 텍스트 링크.
 - **히어로 그림은 인라인 SVG `src/components/prep/PrepHeroArt.tsx`**(새벽 하늘·해·Zoom 타일·6:00 시계). ⚠️ 파일 `.svg`를 `next/image`로 쓰려면 `images.dangerouslyAllowSVG`를 켜야 해서 장식 하나 때문에 그 스위치를 켜지 않았다(`/friending` 히어로의 인라인 장식 SVG와 같은 선택). 색은 토큰과 같은 hex 리터럴(SVG gradient에 CSS 변수는 불안정).
 - ⚠️ **`CoursePriceLine`을 쓰지 않는다** — 그 컴포넌트는 전역 21만원 상수 전용이고 프렙은 강좌마다 가격이 다르다.
 - 진입은 **Navbar 링크만**(데스크톱 인라인 + 모바일 flat) — 랜딩 과정 카드에는 넣지 않았다(카드가 `CoursePriceLine`으로 21만원을 그린다).
-- ⏳ 수강신청이 열리면 **비활성 버튼 두 개만 `Link`로 교체**하면 된다(히어로·마무리 밴드).
+- 수강신청이 열리면서 비활성 버튼 두 개는 **`/friending` 링크로 교체**됐다(히어로·마무리 밴드).
 
 ## ⏳ 미구현 (다음 단계)
 
-수강신청·결제·**실제 강좌 공개 목록**(`/prep`·`/friending` 노출 — ⚠️ 그때 추가할 `prep_courses_select_public` 정책은 **`status = '승인'`** 조건을 반드시 포함할 것)·**관리자 「승인 해제」**(한 번 만들었다가 걷어냈다 — 지금은 승인 상태가 배지 말고 하는 일이 없고, 프렌더가 승인된 강좌를 수정하면 자동으로 `신청`으로 내려가는 경로가 이미 있어 중복이었다. 수강신청이 붙어 승인이 '판매 중'을 뜻하게 되면, **수강생이 있는 강좌를 삭제 대신 멈추는 수단**으로 그때 다시 넣는다)·회차 입장(zoom)·연습방과의 **시간 겹침 검사**(지금은 공개·예약 동선이 없어 실제 충돌이 생기지 않는다 → 수강신청을 붙일 때 `roomsOverlap`을 확장해 함께 처리).
+**카드결제·환불**(지금은 무통장 + 관리자 입금 확인만)·**프렙 매출 집계**(`payments`가 `enrollment_id` FK라 미연동)·**회차 입장(zoom)**·**관리자 「승인 해제」**(한 번 만들었다가 걷어냈다 — 지금은 승인 상태가 배지 말고 하는 일이 없고, 프렌더가 승인된 강좌를 수정하면 자동으로 `신청`으로 내려가는 경로가 이미 있어 중복이었다. 수강신청이 붙어 승인이 '판매 중'을 뜻하게 되면, **수강생이 있는 강좌를 삭제 대신 멈추는 수단**으로 그때 다시 넣는다)·회차 입장(zoom)·연습방과의 **시간 겹침 검사**(지금은 공개·예약 동선이 없어 실제 충돌이 생기지 않는다 → 수강신청을 붙일 때 `roomsOverlap`을 확장해 함께 처리).

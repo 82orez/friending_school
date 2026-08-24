@@ -1,0 +1,166 @@
+"use server";
+
+import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
+import { createClient } from "@/utils/supabase/server";
+import { createAdminClient, getAdminEmails } from "@/utils/supabase/admin";
+import { sendPrepEnrollmentNotification } from "@/lib/mailer";
+import { sendSms } from "@/lib/sms";
+import { rateLimit } from "@/lib/rate-limit";
+import { fmtTime } from "@/lib/availability";
+import { fmtRoomEnd } from "@/lib/room-time";
+import { fmtDateKo, formatWon, prepSmsTitle } from "@/lib/prep";
+import { roomLevelLabelKo } from "@/data/room-levels";
+
+// 프렙 수강신청 — 일반 회원 동선이라 역할 가드가 없다(로그인만 확인).
+// 신청=RPC(정원·중복·시작 여부·전화 인증을 원자적으로 검사), 취소=service_role 상태 변경.
+
+export type PrepEnrollResult = { ok: boolean; error?: string };
+
+// join_prep_course RPC 반환 코드 → 사용자 메시지.
+const JOIN_ERROR: Record<string, string> = {
+  unauthenticated: "로그인이 필요합니다. 다시 로그인해 주세요.",
+  not_found: "강좌를 찾을 수 없어요. 목록을 새로고침해 주세요.",
+  not_approved: "지금은 신청할 수 없는 강좌예요. 목록을 새로고침해 주세요.",
+  own_course: "내가 개설한 강좌에는 신청할 수 없어요.",
+  already: "이미 신청한 강좌예요.",
+  started: "이미 시작된 강좌라 신청을 받지 않아요.",
+  full: "정원이 모두 찼어요.",
+  phone_unverified: "휴대폰 인증이 필요합니다. 마이페이지에서 인증한 뒤 다시 신청해 주세요.",
+};
+
+function revalidatePrepEnroll(): void {
+  revalidatePath("/friending");
+  revalidatePath("/mypage/prep");
+  revalidatePath("/admin/prep");
+  revalidatePath("/friender", "layout"); // 프렌더 목록의 신청자 수
+}
+
+export async function applyPrepCourse(courseId: string): Promise<PrepEnrollResult> {
+  const id = String(courseId ?? "").trim();
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  // 메일·SMS가 딸린 액션이라 연타를 막는다(requestPrepReview와 같은 규칙).
+  if (!rateLimit(`prep-apply:${user.id}`, 10, 10 * 60_000).allowed) {
+    return { ok: false, error: "요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요." };
+  }
+
+  // ⚠️ 이름·전화·가격은 **넘기지 않는다** — RPC가 profiles와 강좌 행에서 직접 읽는다.
+  //    RPC가 authenticated에 grant돼 브라우저에서 직접 호출할 수 있으므로, 인자로 받으면
+  //    전화 인증 게이트가 우회되고 임의 번호가 스냅샷에 심어진다(그 번호로 확정 SMS가 나간다).
+  // ⚠️ 본인 세션 client로 호출해야 RPC 안의 auth.uid()가 잡힌다(service_role로 부르면 null).
+  const { data, error } = await supabase.rpc("join_prep_course", { p_course_id: id });
+  if (error) return { ok: false, error: "신청 처리 중 문제가 발생했습니다." };
+
+  const code = String(data ?? "");
+  if (code !== "ok") return { ok: false, error: JOIN_ERROR[code] ?? "신청 처리 중 문제가 발생했습니다." };
+
+  await notifyPrepEnrollment(createAdminClient(), id, user.id, user.email ?? "");
+
+  revalidatePrepEnroll();
+  return { ok: true };
+}
+
+// 입금 전에는 학생이 직접 취소할 수 있다.
+// ⚠️ 삭제가 아니라 상태 변경 — 취소 이력을 남긴다(부분 unique 인덱스가 재신청을 열어 준다).
+export async function cancelPrepEnrollment(courseId: string): Promise<PrepEnrollResult> {
+  const id = String(courseId ?? "").trim();
+  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+
+  const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "로그인이 필요합니다." };
+
+  const admin = createAdminClient();
+  const { data: cancelled, error } = await admin
+    .from("prep_enrollments")
+    .update({ status: "취소", cancelled_at: new Date().toISOString() })
+    .eq("course_id", id)
+    .eq("user_id", user.id)
+    .eq("status", "입금대기") // 입금이 확인된 뒤에는 관리자만 처리한다(환불 동선 미구현).
+    .select("id");
+  if (error) return { ok: false, error: "취소 처리 중 문제가 발생했습니다." };
+  if (!cancelled || cancelled.length === 0) {
+    return { ok: false, error: "이미 입금이 확인된 신청은 직접 취소할 수 없어요. 문의해 주세요." };
+  }
+
+  revalidatePrepEnroll();
+  return { ok: true };
+}
+
+// 신규 신청 알림 (best-effort) — 관리자 메일 + 개설 프렌더 SMS. 실패해도 신청은 유효하다.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function notifyPrepEnrollment(admin: any, courseId: string, userId: string, studentEmail: string): Promise<void> {
+  try {
+    // 이름·전화는 RPC가 방금 넣은 스냅샷에서 읽는다(액션이 직접 다루지 않는 이유와 같은 맥락).
+    const { data: mine } = await admin
+      .from("prep_enrollments")
+      .select("student_name, student_phone")
+      .eq("course_id", courseId)
+      .eq("user_id", userId)
+      .neq("status", "취소")
+      .maybeSingle();
+    const student = (mine ?? {}) as { student_name?: string | null; student_phone?: string | null };
+
+    const { data } = await admin
+      .from("prep_courses")
+      .select("friender_id, friender_name, title, level, capacity, price_krw, start_min, duration_min, prep_sessions(session_date)")
+      .eq("id", courseId)
+      .maybeSingle();
+    if (!data) return;
+    const c = data as {
+      friender_id: string;
+      friender_name: string | null;
+      title: string;
+      level: string;
+      capacity: number;
+      price_krw: number;
+      start_min: number;
+      duration_min: number;
+      prep_sessions: { session_date: string }[] | null;
+    };
+
+    const dates = (c.prep_sessions ?? []).map((s) => s.session_date).sort();
+    const period = dates.length > 0 ? `${fmtDateKo(dates[0])} ~ ${fmtDateKo(dates[dates.length - 1])} (${dates.length}회)` : "-";
+    const { count } = await admin
+      .from("prep_enrollments")
+      .select("id", { count: "exact", head: true })
+      .eq("course_id", courseId)
+      .neq("status", "취소");
+
+    await sendPrepEnrollmentNotification(await getAdminEmails(), {
+      courseTitle: c.title,
+      frienderName: c.friender_name ?? "(이름 없음)",
+      studentName: student.student_name ?? "(이름 없음)",
+      studentPhone: student.student_phone ?? "",
+      studentEmail,
+      period,
+      time: `${fmtTime(c.start_min)}~${fmtRoomEnd(c.start_min + c.duration_min)} (${c.duration_min}분)`,
+      level: roomLevelLabelKo(c.level),
+      priceKrw: c.price_krw,
+      enrolledCount: count ?? 1,
+      capacity: c.capacity,
+      appliedAt: new Date().toISOString(),
+    });
+
+    // 개설 프렌더에게도 알린다 — 프렌더 도메인은 메일이 아니라 SMS가 관례.
+    const { data: fprof } = await admin.from("profiles").select("phone").eq("id", c.friender_id).maybeSingle();
+    const fphone = (fprof as { phone?: string | null } | null)?.phone?.trim();
+    if (fphone) {
+      await sendSms(
+        fphone,
+        `[프렌딩 스쿨] '${prepSmsTitle(c.title)}' 프렙 강좌에 새 수강신청이 있습니다. (${count ?? 1}/${c.capacity}명 · ${formatWon(c.price_krw)} · 입금 확인 후 확정)`,
+      );
+    }
+  } catch (err) {
+    console.error("[prep] 수강신청 알림 발송 실패:", err);
+  }
+}

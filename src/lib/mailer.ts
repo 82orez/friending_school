@@ -265,6 +265,93 @@ export async function sendPrepCourseReviewRequestNotification(to: string[], data
   }
 }
 
+/* ===== 프렙 강좌 수강신청 알림 (관리자 대상) ===== */
+
+// 일반 회원이 프렙 강좌를 신청하면 관리자에게 보낸다. 무통장 입금 확인이 관리자 몫이라
+// "누가 어느 강좌에 얼마를 넣어야 하는지"가 한눈에 보여야 한다(docs/prep.md의 수강신청 항목).
+export type PrepEnrollmentEmailData = {
+  courseTitle: string;
+  frienderName: string;
+  studentName: string;
+  studentPhone: string;
+  studentEmail: string;
+  period: string; // "9월 1일 ~ 9월 30일 (20회)"
+  time: string; // "06:00~06:40 (40분)"
+  level: string; // 한국어 라벨
+  priceKrw: number;
+  enrolledCount: number;
+  capacity: number;
+  appliedAt: string;
+};
+
+function prepEnrollmentRows(d: PrepEnrollmentEmailData): [string, string][] {
+  return [
+    ["강좌명", d.courseTitle],
+    ["프렌더", d.frienderName],
+    ["신청자", d.studentName],
+    ["연락처", d.studentPhone || "-"],
+    ["이메일", d.studentEmail || "(미입력)"],
+    ["기간", d.period],
+    ["시각", d.time],
+    ["난이도", d.level],
+    ["수강료", `${d.priceKrw.toLocaleString("ko-KR")}원 (무통장 입금 대기)`],
+    ["신청 인원", `${d.enrolledCount}/${d.capacity}명`],
+    ["신청 일시", new Date(d.appliedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })],
+  ];
+}
+
+function buildPrepEnrollmentHtml(d: PrepEnrollmentEmailData): string {
+  const tr = prepEnrollmentRows(d)
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:8px 12px;color:#666;background:#f8f8f8;white-space:nowrap;border-bottom:1px solid #eee;vertical-align:top">${escapeHtml(
+          k,
+        )}</td><td style="padding:8px 12px;color:#1a1a1a;border-bottom:1px solid #eee;white-space:pre-wrap">${escapeHtml(v)}</td></tr>`,
+    )
+    .join("");
+  return `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">프렙 강좌 수강신청이 접수되었습니다</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(d.studentName)} · ${escapeHtml(d.courseTitle)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
+    <p style="font-size:12px;color:#999;margin:16px 0 0">프렌딩 스쿨 관리자 알림 · 입금이 확인되면 관리자 페이지 「프렙 강좌」 탭에서 수강 확정 처리해 주세요.</p>
+  </div>`;
+}
+
+function buildPrepEnrollmentText(d: PrepEnrollmentEmailData): string {
+  return ["프렙 강좌 수강신청이 접수되었습니다.", "", ...prepEnrollmentRows(d).map(([k, v]) => `${k}: ${v}`)].join("\n");
+}
+
+/**
+ * 관리자들에게 프렙 수강신청 알림 메일 발송. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ * 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않고 로그만 남긴다.
+ */
+export async function sendPrepEnrollmentNotification(to: string[], data: PrepEnrollmentEmailData): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[mailer] RESEND_API_KEY 미설정 — 프렙 수강신청 알림 메일 생략");
+    return;
+  }
+  if (to.length === 0) {
+    console.warn("[mailer] 관리자(admin) 수신자가 없어 메일 생략");
+    return;
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      replyTo: data.studentEmail || undefined,
+      subject: `[프렙 수강신청] ${data.studentName} · ${data.courseTitle}`,
+      html: buildPrepEnrollmentHtml(data),
+      text: buildPrepEnrollmentText(data),
+    });
+    if (error) console.error("[mailer] Resend 발송 실패:", error);
+  } catch (err) {
+    console.error("[mailer] 메일 발송 예외:", err);
+  }
+}
+
 /* ===== 강사 대상 신규 수강신청 알림 ===== */
 
 export type EnrollmentEmailData = {

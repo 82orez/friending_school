@@ -10,7 +10,7 @@ import { fmtDateKo, fmtDateShort, formatWon, frienderLabel } from "@/lib/prep";
 import { kstDateText } from "@/lib/kst";
 import { PREP_STATUSES, PREP_STATUS_BADGE, PREP_STATUS_LABEL, type PrepStatus } from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
-import { approvePrepCourse, deletePrepCourseAsAdmin, rejectPrepCourse } from "@/app/admin/actions";
+import { approvePrepCourse, cancelPrepEnrollmentAsAdmin, confirmPrepPayment, deletePrepCourseAsAdmin, rejectPrepCourse } from "@/app/admin/actions";
 import PrepSessionCalendar from "@/components/admin/PrepSessionCalendar";
 import PrepCourseInfoModal from "@/components/admin/PrepCourseInfoModal";
 import {
@@ -45,7 +45,23 @@ export type AdminPrepCourse = {
   reviewed_at: string | null; // 마지막 승인/거절 처리 시각 — 승인 목록의 '승인일'
   created_at: string;
   sessions: { session_no: number; session_date: string; topic: string | null }[]; // 날짜 오름차순
+  enrollments: AdminPrepEnrollment[]; // 신청 순(취소 이력 포함)
 };
+
+// 수강신청 — 무통장 입금 확인이 관리자 몫이라 강좌 상세에서 함께 본다.
+export type AdminPrepEnrollment = {
+  id: string;
+  user_id: string;
+  student_name: string | null;
+  student_phone: string | null;
+  price_krw: number;
+  status: "입금대기" | "수강확정" | "취소";
+  paid_at: string | null;
+  created_at: string;
+};
+
+// 유효 신청 수(입금대기 + 수강확정) — 취소는 이력이라 세지 않는다(서버 카운트와 같은 규칙).
+export const activeEnrollments = (c: AdminPrepCourse): number => c.enrollments.filter((e) => e.status !== "취소").length;
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return "-";
@@ -79,6 +95,9 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
   const [deleteTarget, setDeleteTarget] = useState<AdminPrepCourse | null>(null);
   const [reason, setReason] = useState(""); // 선택 입력 — 적으면 프렌더 SMS·화면에 사유로 붙는다
   const [busy, startBusy] = useTransition();
+  // 수강신청 처리 — 모달은 표시만 하고 액션은 여기서(프렙 UI 규약).
+  const [payTarget, setPayTarget] = useState<AdminPrepEnrollment | null>(null);
+  const [enrollCancelTarget, setEnrollCancelTarget] = useState<AdminPrepEnrollment | null>(null);
 
   const pending = rows.filter((r) => r.status === "신청").length;
   const approvedRows = rows.filter((r) => r.status === "승인");
@@ -97,6 +116,42 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
   const approvedList = useMemo(() => approvedRows.filter(matches), [approvedRows, matches]);
 
   // 다이얼로그를 닫으며 state를 비우므로 대상·사유를 먼저 스냅샷한다(FrienderRequestsManager와 같은 패턴).
+  // 입금 확인 — 성공하면 로컬 rows의 해당 신청만 갈아끼운다(재조회 없이 즉시 반영).
+  const patchEnrollment = (id: string, patch: Partial<AdminPrepEnrollment>) =>
+    setRows((prev) => prev.map((c) => ({ ...c, enrollments: c.enrollments.map((e) => (e.id === id ? { ...e, ...patch } : e)) })));
+
+  const confirmPay = () => {
+    const target = payTarget;
+    setPayTarget(null);
+    if (!target) return;
+    startBusy(async () => {
+      const res = await confirmPrepPayment(target.id);
+      if (res.ok) {
+        patchEnrollment(target.id, { status: "수강확정", paid_at: new Date().toISOString() });
+        toast.success("입금을 확인해 수강을 확정했습니다.");
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
+    });
+  };
+
+  const confirmEnrollCancel = () => {
+    const target = enrollCancelTarget;
+    const note = reason.trim();
+    setEnrollCancelTarget(null);
+    setReason("");
+    if (!target) return;
+    startBusy(async () => {
+      const res = await cancelPrepEnrollmentAsAdmin(target.id, note);
+      if (res.ok) {
+        patchEnrollment(target.id, { status: "취소" });
+        toast.success("신청을 취소 처리했습니다.");
+      } else {
+        toast.error(res.error ?? "오류가 발생했습니다.");
+      }
+    });
+  };
+
   const confirmDelete = () => {
     const target = deleteTarget;
     const note = reason.trim();
@@ -190,7 +245,74 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
         className="mt-3"
       />
 
-      <PrepCourseInfoModal course={infoTarget} onClose={closeInfo} />
+      <PrepCourseInfoModal
+        course={infoTarget && (rows.find((c) => c.id === infoTarget.id) ?? infoTarget)}
+        busy={busy}
+        onConfirmPayment={setPayTarget}
+        onCancelEnrollment={(e) => {
+          setReason("");
+          setEnrollCancelTarget(e);
+        }}
+        onClose={closeInfo}
+      />
+
+      {/* 입금 확인 */}
+      <AlertDialog open={payTarget !== null} onOpenChange={(open) => !open && setPayTarget(null)}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>입금을 확인할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {payTarget && (
+                <>
+                  <span className="text-ink font-semibold">{payTarget.student_name ?? "신청자"}</span>님의 수강이 확정되고 확정 문자가 발송됩니다.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmPay} className="bg-cta hover:bg-cta/90 border-transparent text-white">
+              입금 확인
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 신청 취소 */}
+      <AlertDialog open={enrollCancelTarget !== null} onOpenChange={(open) => !open && setEnrollCancelTarget(null)}>
+        <AlertDialogContent className="z-[130]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>이 신청을 취소 처리할까요?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {enrollCancelTarget && (
+                <>
+                  <span className="text-ink font-semibold">{enrollCancelTarget.student_name ?? "신청자"}</span>님의 신청이 취소되고 문자로 통보됩니다.
+                  자리는 다시 비워집니다.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="text-left">
+            <label className="flex flex-col gap-1">
+              <span className="text-muted-fg-faint text-xs font-semibold">사유 (선택 · 신청자에게 전달됩니다)</span>
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={2}
+                maxLength={500}
+                placeholder="예) 기한 내 미입금으로 취소합니다."
+                className="border-rule focus:border-accent-blue rounded-md border bg-white px-3 py-2 text-sm outline-none"
+              />
+            </label>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>닫기</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmEnrollCancel} variant="brand">
+              신청 취소
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* 삭제 확인 */}
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
@@ -233,7 +355,7 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
 
 /* ===== 개설된 강좌 테이블 ===== */
 
-type SortKey = "title" | "friender" | "start" | "price" | "capacity" | "approved";
+type SortKey = "title" | "friender" | "start" | "price" | "capacity" | "enrolled" | "approved";
 
 // 정렬은 문자열 비교 하나로 통일한다(FrienderRequestsManager와 같은 방식) — 날짜는 YYYY-MM-DD/ISO라,
 // 숫자는 자리수를 맞춰 문자열로 만들면 사전순 = 값 순서가 된다.
@@ -243,6 +365,7 @@ const SORT_VALUE: Record<SortKey, (c: AdminPrepCourse) => string> = {
   start: (c) => c.sessions[0]?.session_date ?? "",
   price: (c) => String(c.price_krw).padStart(12, "0"),
   capacity: (c) => String(c.capacity).padStart(6, "0"),
+  enrolled: (c) => String(activeEnrollments(c)).padStart(6, "0"),
   approved: (c) => c.reviewed_at ?? "",
 };
 
@@ -298,6 +421,7 @@ function ApprovedCourseTable({
             <th className="px-4 py-2.5">시각</th>
             <SortHeader label="정원" sortKey="capacity" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
             <SortHeader label="수강료" sortKey="price" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
+            <SortHeader label="신청자" sortKey="enrolled" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
             <SortHeader label="승인일" sortKey="approved" sort={sort} onSort={toggleSort} className="px-4 py-2.5" />
             <th className="px-4 py-2.5 text-right md:px-6">
               <span className="sr-only">관리</span>
@@ -321,6 +445,18 @@ function ApprovedCourseTable({
                 </td>
                 <td className="text-muted-fg px-4 py-3">{c.capacity}명</td>
                 <td className="text-ink px-4 py-3 font-semibold whitespace-nowrap">{formatWon(c.price_krw)}</td>
+                <td className="px-4 py-3 whitespace-nowrap">
+                  {(() => {
+                    const active = activeEnrollments(c);
+                    const waiting = c.enrollments.filter((e) => e.status === "입금대기").length;
+                    if (active === 0) return <span className="text-muted-fg-faint">-</span>;
+                    return (
+                      <span className="text-ink font-semibold">
+                        {active}명{waiting > 0 && <span className="text-[#B97400]"> (입금대기 {waiting})</span>}
+                      </span>
+                    );
+                  })()}
+                </td>
                 <td className="text-muted-fg-faint px-4 py-3 whitespace-nowrap">{c.reviewed_at ? kstDateText(c.reviewed_at) : "-"}</td>
                 <td className="px-4 py-3 text-right md:px-6">
                   <div className="flex flex-wrap justify-end gap-1.5">

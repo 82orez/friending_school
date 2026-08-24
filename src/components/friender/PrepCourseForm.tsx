@@ -49,6 +49,7 @@ export type PrepCourse = {
   priceKrw: number;
   status: PrepStatus; // 개설 심사 상태 — docs/prep.md의 상태 기계
   adminNote: string | null; // 거절 사유
+  enrolled: number; // 유효 수강신청 수(입금대기 + 수강확정)
   sessions: { date: string; topic: string | null }[]; // 날짜 오름차순
 };
 

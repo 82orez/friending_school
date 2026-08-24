@@ -9,12 +9,15 @@ const TABS: { href: string; label: string }[] = [
   { href: "/mypage/enrollments", label: "수강신청 내역" },
   { href: "/mypage/classroom", label: "내 강의실" },
   { href: "/mypage/rooms", label: "프렌딩 예약" },
+  { href: "/mypage/prep", label: "프렙 수강" },
 ];
 
 export default function MyPageTabs() {
   const pathname = usePathname();
   return (
-    <nav className="border-rule mb-5 flex gap-1 border-b" aria-label="마이페이지 메뉴">
+    <nav
+      className="border-rule mb-5 flex [scrollbar-width:none] gap-1 overflow-x-auto border-b [&::-webkit-scrollbar]:hidden"
+      aria-label="마이페이지 메뉴">
       {TABS.map((t) => {
         const active = t.href === "/mypage" ? pathname === "/mypage" : pathname.startsWith(t.href);
         return (
@@ -23,7 +26,7 @@ export default function MyPageTabs() {
             href={t.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "focus-visible:ring-accent-blue/50 -mb-px rounded-t-md border-b-2 px-4 py-2.5 text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:outline-none",
+              "focus-visible:ring-accent-blue/50 -mb-px shrink-0 rounded-t-md border-b-2 px-4 py-2.5 text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:outline-none",
               active ? "border-accent-blue-ink text-accent-blue-ink" : "text-muted-fg hover:text-ink border-transparent",
             )}>
             {t.label}

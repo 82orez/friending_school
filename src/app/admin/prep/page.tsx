@@ -10,12 +10,13 @@ export default async function AdminPrepPage() {
   const { data } = await admin
     .from("prep_courses")
     .select(
-      "id, friender_id, friender_name, friender_nickname, title, description, level, capacity, start_min, duration_min, session_count, price_krw, status, admin_note, submitted_at, reviewed_at, created_at, prep_sessions(session_no, session_date, topic)",
+      "id, friender_id, friender_name, friender_nickname, title, description, level, capacity, start_min, duration_min, session_count, price_krw, status, admin_note, submitted_at, reviewed_at, created_at, prep_sessions(session_no, session_date, topic), prep_enrollments(id, user_id, student_name, student_phone, price_krw, status, paid_at, created_at)",
     )
     .order("created_at", { ascending: false });
 
-  const rows = (data ?? []) as unknown as (Omit<AdminPrepCourse, "sessions" | "friender_phone" | "friender_email"> & {
+  const rows = (data ?? []) as unknown as (Omit<AdminPrepCourse, "sessions" | "enrollments" | "friender_phone" | "friender_email"> & {
     prep_sessions: { session_no: number; session_date: string; topic: string | null }[] | null;
+    prep_enrollments: AdminPrepCourse["enrollments"] | null;
   })[];
 
   // 개설된 강좌 상세에서 프렌더에게 연락할 수 있어야 한다(폐강·일정 문의). 이름 스냅샷과 달리 연락처는 매번 최신값을 읽는다.
@@ -37,6 +38,8 @@ export default async function AdminPrepPage() {
       friender_email: emailById.get(c.friender_id) ?? "",
       // 임베드는 정렬이 안 붙는다(PostgREST) — 회차 순서는 화면에서 그대로 쓰이므로 여기서 맞춘다.
       sessions: (c.prep_sessions ?? []).slice().sort((a, b) => a.session_date.localeCompare(b.session_date)),
+      // 신청자도 마찬가지(신청 순). 취소 이력까지 함께 내려 보내고 화면에서 구분한다.
+      enrollments: (c.prep_enrollments ?? []).slice().sort((a, b) => a.created_at.localeCompare(b.created_at)),
     }))
     .sort((a, b) => (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9));
 

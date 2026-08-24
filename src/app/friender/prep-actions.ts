@@ -60,6 +60,15 @@ async function requireFrienderPlus(): Promise<string | null> {
   return isFrienderPlusRole(await getUserRole(supabase, user.id)) ? user.id : null;
 }
 
+// 유효 수강신청 수(입금대기 + 수강확정). 취소 행은 이력이라 세지 않는다.
+// ⚠️ 신청자 RLS는 select_own뿐이라 개설자도 세션 client로 못 읽는다 → service_role로 카운트만 집계
+//    (연습방 참가자 카운트와 같은 이유·같은 모양).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function countPrepEnrollments(admin: any, courseId: string): Promise<number> {
+  const { count } = await admin.from("prep_enrollments").select("id", { count: "exact", head: true }).eq("course_id", courseId).neq("status", "취소");
+  return count ?? 0;
+}
+
 function cleanText(value: string | undefined | null, max: number): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
@@ -274,6 +283,21 @@ export async function updatePrepCourse(id: string, input: PrepCourseInput): Prom
     course.duration_min !== nextDurationMin ||
     currentDates.map((s) => s.session_date).join(",") !== nextDates.join(",");
 
+  // ⚠️ 신청자가 있으면 심사 대상 항목을 못 바꾼다 — 바뀌면 승인이 풀려(→'신청') 공개 목록에서 사라지고,
+  //    이미 입금하려던 사람의 수강료·일정이 흔들린다(연습방 updateRoom의 "예약자 있으면 일정 고정"과 같은 사고).
+  const enrolled = await countPrepEnrollments(admin, courseId);
+  if (enrolled > 0) {
+    if (materialChanged) {
+      return {
+        ok: false,
+        error: "수강 신청자가 있어 수강료·일정·시각·정원·난이도·강좌명은 변경할 수 없어요. 소개와 회차 주제는 수정할 수 있습니다.",
+      };
+    }
+    if (v.values.capacity < enrolled) {
+      return { ok: false, error: `이미 ${enrolled}명이 신청해 정원을 그보다 줄일 수 없어요.` };
+    }
+  }
+
   const revoked = course.status === "승인" && materialChanged;
 
   const { data: updated, error: updateError } = await admin
@@ -428,9 +452,15 @@ export async function deletePrepCourse(id: string): Promise<PrepActionResult> {
   const userId = await requireFrienderPlus();
   if (!userId) return { ok: false, error: "프렌더 Plus만 강좌를 삭제할 수 있습니다." };
 
-  // ⏳ 수강신청·결제 동선이 붙으면 여기에 "수강생이 있으면 삭제 금지" 가드를 추가한다
-  //    (연습방 deleteRoom의 countParticipants와 같은 모양).
   const admin = createAdminClient();
+
+  // ⚠️ 수강신청이 있으면 삭제 금지 — course_id가 cascade라 신청·입금 기록까지 함께 사라진다
+  //    (연습방 deleteRoom의 countParticipants와 같은 규칙).
+  const enrolled = await countPrepEnrollments(admin, courseId);
+  if (enrolled > 0) {
+    return { ok: false, error: `수강 신청자가 ${enrolled}명 있어 삭제할 수 없어요. 폐강은 관리자에게 문의해 주세요.` };
+  }
+
   const { error } = await admin.from("prep_courses").delete().eq("id", courseId).eq("friender_id", userId);
   if (error) return { ok: false, error: "삭제 중 문제가 발생했습니다." };
 

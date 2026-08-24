@@ -42,13 +42,12 @@ export default function PrepPage() {
               ))}
             </ul>
 
-            {/* ⚠️ 수강신청 동선이 아직 없다 — 열리는 순간 이 버튼만 Link로 바꾸면 된다. */}
-            <button
-              type="button"
-              disabled
-              className="mt-8 inline-block rounded-full bg-white/20 px-8 py-3.5 text-base font-bold tracking-wide text-white/70 disabled:cursor-not-allowed">
-              {hero.ctaDisabled}
-            </button>
+            {/* 신청 폼은 프렌딩 상단 배너에 있다(로그인 필요 · 무통장 입금 안내). */}
+            <Link
+              href={hero.ctaHref}
+              className="text-ink mt-8 inline-block rounded-full bg-white px-8 py-3.5 text-base font-bold tracking-wide transition-opacity hover:opacity-90">
+              {hero.cta}
+            </Link>
           </div>
         </div>
       </section>
@@ -192,16 +191,15 @@ export default function PrepPage() {
         <div className="mx-auto max-w-[1200px] px-5 md:px-10">
           <div className="rounded-2xl bg-[#E05A6A] px-5 py-12 text-center md:px-10 md:py-16">
             <h2 className="mb-4 text-[22px] leading-snug font-bold tracking-tight text-white md:text-[28px]">내일 아침 6시, 같이 시작해요</h2>
-            <p className="mb-8 text-base text-white/85">수강 신청은 곧 열립니다. 먼저 무료 연습방에서 분위기를 확인해 보세요.</p>
-            <button
-              type="button"
-              disabled
-              className="text-ink inline-block rounded-full bg-white/70 px-8 py-3.5 text-base font-bold tracking-wide disabled:cursor-not-allowed">
-              {hero.ctaDisabled}
-            </button>
+            <p className="mb-8 text-base text-white/85">프렌딩 페이지 상단에서 바로 신청할 수 있어요. 수강료는 신청 후 무통장으로 입금합니다.</p>
+            <Link
+              href={hero.ctaHref}
+              className="text-ink inline-block rounded-full bg-white px-8 py-3.5 text-base font-bold tracking-wide transition-opacity hover:opacity-90">
+              {hero.cta}
+            </Link>
             <p className="mt-5 text-sm text-white/85">
               <Link href="/friending" className="font-bold text-white underline underline-offset-4 hover:opacity-90">
-                무료 연습방 둘러보기
+                무료 연습방도 둘러보기
               </Link>
             </p>
           </div>

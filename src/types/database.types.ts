@@ -780,6 +780,77 @@ export type Database = {
         }
         Relationships: []
       }
+      prep_enrollments: {
+        Row: {
+          admin_note: string | null
+          cancelled_at: string | null
+          course_id: string
+          course_title: string
+          created_at: string
+          duration_min: number
+          first_session_date: string | null
+          id: string
+          last_session_date: string | null
+          paid_at: string | null
+          price_krw: number
+          session_count: number
+          start_min: number
+          status: Database["public"]["Enums"]["prep_enrollment_status"]
+          student_name: string | null
+          student_phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          cancelled_at?: string | null
+          course_id: string
+          course_title: string
+          created_at?: string
+          duration_min: number
+          first_session_date?: string | null
+          id?: string
+          last_session_date?: string | null
+          paid_at?: string | null
+          price_krw: number
+          session_count: number
+          start_min: number
+          status?: Database["public"]["Enums"]["prep_enrollment_status"]
+          student_name?: string | null
+          student_phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          cancelled_at?: string | null
+          course_id?: string
+          course_title?: string
+          created_at?: string
+          duration_min?: number
+          first_session_date?: string | null
+          id?: string
+          last_session_date?: string | null
+          paid_at?: string | null
+          price_krw?: number
+          session_count?: number
+          start_min?: number
+          status?: Database["public"]["Enums"]["prep_enrollment_status"]
+          student_name?: string | null
+          student_phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prep_enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "prep_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prep_sessions: {
         Row: {
           course_id: string
@@ -1125,6 +1196,7 @@ export type Database = {
         Args: { p_room_id: string; p_user_name: string }
         Returns: string
       }
+      join_prep_course: { Args: { p_course_id: string }; Returns: string }
       replace_prep_sessions: {
         Args: { p_course_id: string; p_dates: string[]; p_topics: string[] }
         Returns: string
@@ -1140,6 +1212,7 @@ export type Database = {
         | "취소"
       friender_application_status: "신청" | "승인" | "거절"
       prep_course_status: "작성중" | "신청" | "승인" | "거절"
+      prep_enrollment_status: "입금대기" | "수강확정" | "취소"
       teacher_application_status: "신청" | "승인" | "거절"
       user_role: "admin" | "teacher" | "student" | "friender" | "friender_plus"
     }
@@ -1279,6 +1352,7 @@ export const Constants = {
       ],
       friender_application_status: ["신청", "승인", "거절"],
       prep_course_status: ["작성중", "신청", "승인", "거절"],
+      prep_enrollment_status: ["입금대기", "수강확정", "취소"],
       teacher_application_status: ["신청", "승인", "거절"],
       user_role: ["admin", "teacher", "student", "friender", "friender_plus"],
     },

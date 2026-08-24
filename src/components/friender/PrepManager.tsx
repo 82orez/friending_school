@@ -181,6 +181,7 @@ export default function PrepManager({ courses, hasZoomUrl }: { courses: PrepCour
                   <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(c.level)}</span>
                   <span>정원 {c.capacity}명</span>
                   <span>{formatWon(c.priceKrw)}</span>
+                  {c.enrolled > 0 && <span className="text-cta font-bold">수강신청 {c.enrolled}명</span>}
                 </p>
 
                 {/* 거절 사유는 여기서만 보인다 — 프렌더가 무엇을 고쳐야 할지 아는 유일한 경로. */}

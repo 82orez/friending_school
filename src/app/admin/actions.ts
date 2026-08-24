@@ -33,6 +33,7 @@ import {
 } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { todayKst } from "@/lib/booking";
+import { fmtDateKo, prepSmsTitle } from "@/lib/prep";
 import { createMakeupClass, weekdayOf, addDaysStr, type ClassForMakeup } from "@/lib/makeup";
 import { resolveCenterId } from "@/lib/center";
 import { logEnrollmentEvent } from "@/lib/events";
@@ -2037,9 +2038,6 @@ async function notifyPrepReviewResult(admin: any, frienderId: string, text: stri
   }
 }
 
-// SMS에 강좌명을 그대로 넣으면 100자짜리 제목이 문자를 잡아먹는다.
-const prepSmsTitle = (title: string): string => (title.length > 30 ? `${title.slice(0, 30)}…` : title);
-
 // 프렙 강좌 승인 — 상태 '신청'만 처리한다. 승인되면 개설 완료다.
 export async function approvePrepCourse(id: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
@@ -2122,6 +2120,13 @@ export async function deletePrepCourseAsAdmin(id: string, adminNote?: string): P
   const course = cur as { friender_id: string; title: string } | null;
   if (!course) return { ok: false, error: "강좌를 찾을 수 없습니다. 목록을 새로고침해 주세요." };
 
+  // ⚠️ 수강신청이 남아 있으면 삭제 금지 — course_id가 cascade라 입금 확인 기록까지 함께 증발한다.
+  //    먼저 신청을 취소 처리(cancelPrepEnrollmentAsAdmin)한 뒤 삭제하도록 유도한다.
+  const enrolled = await countPrepEnrollments(admin, id);
+  if (enrolled > 0) {
+    return { ok: false, error: `수강신청이 ${enrolled}건 남아 있어 삭제할 수 없습니다. 신청을 먼저 취소 처리해 주세요.` };
+  }
+
   const { error } = await admin.from("prep_courses").delete().eq("id", id);
   if (error) return { ok: false, error: "삭제 중 오류가 발생했습니다." };
 
@@ -2132,5 +2137,80 @@ export async function deletePrepCourseAsAdmin(id: string, adminNote?: string): P
   );
 
   revalidatePrepConsumers();
+  return { ok: true };
+}
+
+// 유효 수강신청 수(입금대기 + 수강확정). 취소 행은 이력이라 세지 않는다.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function countPrepEnrollments(admin: any, courseId: string): Promise<number> {
+  const { count } = await admin.from("prep_enrollments").select("id", { count: "exact", head: true }).eq("course_id", courseId).neq("status", "취소");
+  return count ?? 0;
+}
+
+// 무통장 입금 확인 — '입금대기' → '수강확정'. 카드결제·환불 자동화는 아직 없다(docs/prep.md).
+export async function confirmPrepPayment(enrollmentId: string, adminNote?: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
+  const note = (adminNote ?? "").trim();
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("prep_enrollments")
+    .update({ status: "수강확정", paid_at: new Date().toISOString(), admin_note: note ? note.slice(0, 500) : null })
+    .eq("id", enrollmentId)
+    .eq("status", "입금대기") // 두 번 눌러도 한 번만 처리된다.
+    .select("student_phone, course_title, first_session_date, start_min");
+  if (error) return { ok: false, error: "저장 중 오류가 발생했습니다." };
+  if (!data || data.length === 0) return { ok: false, error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
+
+  const row = data[0] as { student_phone: string | null; course_title: string; first_session_date: string | null; start_min: number };
+  try {
+    if (row.student_phone?.trim()) {
+      const first = row.first_session_date ? ` 첫 수업: ${fmtDateKo(row.first_session_date)} ${fmtTime(row.start_min)}` : "";
+      await sendSms(
+        row.student_phone.trim(),
+        `[프렌딩 스쿨] '${prepSmsTitle(row.course_title)}' 수강료 입금이 확인되어 수강이 확정되었습니다.${first}`,
+      );
+    }
+  } catch (err) {
+    console.error("[prep] 수강 확정 SMS 발송 실패:", err);
+  }
+
+  revalidatePrepConsumers();
+  revalidatePath("/mypage/prep");
+  return { ok: true };
+}
+
+// 관리자 신청 취소 — 미입금 자리를 비우거나(정원 점유) 폐강 전 정리에 쓴다.
+// 학생 자가 취소와 달리 '수강확정'도 취소할 수 있다(환불은 별도 수단으로 처리).
+export async function cancelPrepEnrollmentAsAdmin(enrollmentId: string, adminNote?: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
+  const note = (adminNote ?? "").trim();
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("prep_enrollments")
+    .update({ status: "취소", cancelled_at: new Date().toISOString(), admin_note: note ? note.slice(0, 500) : null })
+    .eq("id", enrollmentId)
+    .neq("status", "취소")
+    .select("student_phone, course_title, status");
+  if (error) return { ok: false, error: "저장 중 오류가 발생했습니다." };
+  if (!data || data.length === 0) return { ok: false, error: "이미 취소된 신청입니다. 목록을 새로고침해 주세요." };
+
+  const row = data[0] as { student_phone: string | null; course_title: string };
+  try {
+    if (row.student_phone?.trim()) {
+      await sendSms(
+        row.student_phone.trim(),
+        `[프렌딩 스쿨] '${prepSmsTitle(row.course_title)}' 프렙 강좌 수강신청이 취소되었습니다.${note ? ` 사유: ${note.slice(0, 120)}` : ""}`,
+      );
+    }
+  } catch (err) {
+    console.error("[prep] 신청 취소 SMS 발송 실패:", err);
+  }
+
+  revalidatePrepConsumers();
+  revalidatePath("/mypage/prep");
   return { ok: true };
 }

@@ -6,16 +6,29 @@ import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
 import { fmtDateKo, fmtDateShort, formatWon, frienderLabel } from "@/lib/prep";
 import { formatPhone } from "@/lib/phone";
+import { kstDateText } from "@/lib/kst";
 import { kstDateTimeText } from "@/lib/kst";
 import { PREP_STATUS_BADGE, PREP_STATUS_LABEL } from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { cn } from "@/lib/utils";
 import PrepSessionCalendar from "@/components/admin/PrepSessionCalendar";
-import type { AdminPrepCourse } from "@/components/admin/PrepCoursesManager";
+import type { AdminPrepCourse, AdminPrepEnrollment } from "@/components/admin/PrepCoursesManager";
 
 // 개설된 프렙 강좌 상세(읽기 전용). FrienderInfoModal의 패널 스켈레톤을 이식했다.
 // 심사 목록 아코디언과 달리 여기서는 프렌더 연락처까지 함께 본다(폐강·일정 문의가 강좌 단위로 생긴다).
-export default function PrepCourseInfoModal({ course, onClose }: { course: AdminPrepCourse | null; onClose: () => void }) {
+export default function PrepCourseInfoModal({
+  course,
+  busy,
+  onConfirmPayment,
+  onCancelEnrollment,
+  onClose,
+}: {
+  course: AdminPrepCourse | null;
+  busy?: boolean;
+  onConfirmPayment: (e: AdminPrepEnrollment) => void;
+  onCancelEnrollment: (e: AdminPrepEnrollment) => void;
+  onClose: () => void;
+}) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   // 열림 시: Esc 닫기 + body scroll lock + 닫기 버튼 포커스.
@@ -39,6 +52,9 @@ export default function PrepCourseInfoModal({ course, onClose }: { course: Admin
 
   const dates = course.sessions.map((s) => s.session_date);
   const period = dates.length > 0 ? `${fmtDateKo(dates[0])} ~ ${fmtDateKo(dates[dates.length - 1])} (${dates.length}회)` : "-";
+
+  const active = course.enrollments.filter((e) => e.status !== "취소");
+  const waiting = course.enrollments.filter((e) => e.status === "입금대기").length;
 
   const rows: [string, string][] = [
     ["프렌더", frienderLabel(course.friender_name, course.friender_nickname)],
@@ -101,6 +117,69 @@ export default function PrepCourseInfoModal({ course, onClose }: { course: Admin
               <p className="text-muted-fg mt-2 text-xs">{period}</p>
             </div>
           )}
+
+          {/* 수강신청 — 무통장 입금 확인이 관리자 몫이라 여기서 바로 처리한다.
+              ⚠️ 액션은 매니저가 소유하고 이 모달은 표시 + 콜백만 한다(프렙 UI 규약). */}
+          <div className="border-rule mt-4 rounded-xl border p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-ink text-sm font-bold">수강신청</p>
+              <p className="text-cta text-sm font-bold">
+                {active.length}명{waiting > 0 && <span className="text-[#B97400]"> · 입금대기 {waiting}</span>}
+              </p>
+            </div>
+            {course.enrollments.length === 0 ? (
+              <p className="text-muted-fg mt-2 text-sm">아직 신청자가 없습니다.</p>
+            ) : (
+              <ul className="mt-2 list-none space-y-2">
+                {course.enrollments.map((e) => (
+                  <li
+                    key={e.id}
+                    className={cn(
+                      "border-rule flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border p-2.5",
+                      e.status === "취소" && "opacity-60",
+                    )}>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-xs font-bold",
+                        e.status === "수강확정"
+                          ? "bg-[#E1F5EE] text-[#0F6E56]"
+                          : e.status === "입금대기"
+                            ? "bg-[#FFF7E6] text-[#B97400]"
+                            : "bg-surface text-muted-fg",
+                      )}>
+                      {e.status === "입금대기" ? "입금 대기" : e.status === "수강확정" ? "수강 확정" : "취소"}
+                    </span>
+                    <span className="text-ink min-w-0 text-sm font-bold">{e.student_name ?? "(이름 없음)"}</span>
+                    <span className="text-muted-fg text-sm">{e.student_phone ? formatPhone(e.student_phone) : "-"}</span>
+                    <span className="text-muted-fg-faint text-xs">
+                      신청 {kstDateText(e.created_at)}
+                      {e.paid_at && ` · 입금 확인 ${kstDateText(e.paid_at)}`}
+                    </span>
+                    {e.status !== "취소" && (
+                      <span className="ml-auto flex shrink-0 gap-1.5">
+                        {e.status === "입금대기" && (
+                          <button
+                            type="button"
+                            onClick={() => onConfirmPayment(e)}
+                            disabled={busy}
+                            className="bg-cta hover:bg-cta/90 rounded-md px-3 py-1.5 text-xs font-bold text-white transition-colors disabled:opacity-60">
+                            입금 확인
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => onCancelEnrollment(e)}
+                          disabled={busy}
+                          className="border-brand/40 text-brand hover:bg-brand/5 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60">
+                          신청 취소
+                        </button>
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           {course.sessions.length > 0 && (
             <div className="border-rule mt-4 rounded-xl border p-3">

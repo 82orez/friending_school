@@ -7,6 +7,7 @@ import { todayKst } from "@/lib/booking";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { seatHeld } from "@/lib/room-time";
 import FriendingRooms, { type HostProfile, type PublicRoom } from "@/components/friending/FriendingRooms";
+import PrepEnrollBanner, { type OpenPrepCourse } from "@/components/prep/PrepEnrollBanner";
 
 export const metadata: Metadata = { title: "프렌딩 — 프렌딩 스쿨" };
 
@@ -103,6 +104,85 @@ export default async function FriendingPage() {
     for (const m of (mine ?? []) as { room_id: string }[]) joined.add(m.room_id);
   }
 
+  // ── 프렙 강좌(수강신청 배너) ──────────────────────────────────────────
+  // 공개 조회 — RLS prep_courses_select_public이 '승인'만 통과시킨다(비로그인 포함).
+  // ⚠️ 마이그레이션 적용 전에는 테이블·정책이 없어 에러가 나지만, data가 null이 되어
+  //    배너가 렌더되지 않을 뿐이다(페이지는 죽지 않는다). 이 성질을 일부러 유지한다.
+  const { data: prepData } = await supabase
+    .from("prep_courses")
+    .select(
+      "id, title, description, friender_name, friender_nickname, level, capacity, start_min, duration_min, price_krw, prep_sessions(session_date)",
+    )
+    .eq("status", "승인");
+
+  type PrepRow = {
+    id: string;
+    title: string;
+    description: string | null;
+    friender_name: string | null;
+    friender_nickname: string | null;
+    level: string;
+    capacity: number;
+    start_min: number;
+    duration_min: number;
+    price_krw: number;
+    prep_sessions: { session_date: string }[] | null;
+  };
+
+  const today = todayKst();
+  const prepRows = ((prepData ?? []) as unknown as PrepRow[])
+    .map((c) => {
+      const dates = (c.prep_sessions ?? []).map((s) => s.session_date).sort();
+      return { ...c, dates };
+    })
+    // 첫 회차가 지난 강좌는 신청을 받지 않는다(RPC의 started 판정과 같은 기준).
+    .filter((c) => c.dates.length > 0 && c.dates[0] > today)
+    .sort((a, b) => a.dates[0].localeCompare(b.dates[0]));
+
+  // 신청자 수는 신청자 RLS(select_own) 때문에 세션 client로 못 읽는다 → 카운트만 service_role
+  // (연습방 참여 인원과 같은 방식·같은 이유. 신원은 노출하지 않는다).
+  const prepCountByCourse = new Map<string, number>();
+  const myPrep = new Map<string, "입금대기" | "수강확정">();
+  if (prepRows.length > 0) {
+    const ids = prepRows.map((c) => c.id);
+    const { data: counts } = await createAdminClient()
+      .from("prep_enrollments")
+      .select("course_id, status")
+      .in("course_id", ids)
+      .neq("status", "취소");
+    for (const row of (counts ?? []) as { course_id: string; status: string }[]) {
+      prepCountByCourse.set(row.course_id, (prepCountByCourse.get(row.course_id) ?? 0) + 1);
+    }
+    if (user) {
+      const { data: mine } = await supabase.from("prep_enrollments").select("course_id, status").in("course_id", ids).neq("status", "취소");
+      for (const m of (mine ?? []) as { course_id: string; status: "입금대기" | "수강확정" }[]) myPrep.set(m.course_id, m.status);
+    }
+  }
+
+  const prepCourses: OpenPrepCourse[] = prepRows.map((c) => ({
+    id: c.id,
+    title: c.title,
+    description: c.description,
+    frienderName: c.friender_name?.trim() || c.friender_nickname?.trim() || "프렌더",
+    level: c.level,
+    capacity: c.capacity,
+    startMin: c.start_min,
+    durationMin: c.duration_min,
+    priceKrw: c.price_krw,
+    sessionCount: c.dates.length,
+    firstDate: c.dates[0],
+    lastDate: c.dates[c.dates.length - 1],
+    enrolled: prepCountByCourse.get(c.id) ?? 0,
+    myStatus: myPrep.get(c.id) ?? null,
+  }));
+
+  // 휴대폰 인증 여부 — 모달에서 미인증자를 미리 안내한다(서버 RPC가 authoritative).
+  let phoneVerified = false;
+  if (user) {
+    const { data: prof } = await supabase.from("profiles").select("phone_verified_at").eq("id", user.id).maybeSingle();
+    phoneVerified = !!(prof as { phone_verified_at?: string | null } | null)?.phone_verified_at;
+  }
+
   const rooms: PublicRoom[] = rows.map((r) => ({
     id: r.id,
     frienderId: r.friender_id,
@@ -150,6 +230,8 @@ export default async function FriendingPage() {
             </h1>
           </div>
         </section>
+
+        <PrepEnrollBanner courses={prepCourses} isLoggedIn={!!user} phoneVerified={phoneVerified} />
 
         <FriendingRooms rooms={rooms} hosts={hosts} isLoggedIn={!!user} />
       </div>
