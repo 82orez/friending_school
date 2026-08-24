@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
 import { fmtDateKo, formatWon } from "@/lib/prep";
-import { PREP_MAX_CAPACITY } from "@/data/prep";
+import { PREP_MAX_CAPACITY, PREP_SESSION_COUNT } from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { applyPrepCourse, cancelPrepEnrollment } from "@/app/prep/enroll-actions";
 import { PAYMENT_BANK } from "@/data/payment";
@@ -109,35 +109,91 @@ export default function PrepEnrollBanner({
 
   return (
     <>
-      {/* 배너 */}
+      {/* 배너 — 강좌 세부 정보(기간·시간·진행 방식·강사·수강료)를 여기서 바로 보여 준다.
+          모달까지 열어야 조건을 알 수 있으면 신청 전에 비교가 안 된다. */}
       <section className="bg-brand-gradient mt-6 rounded-2xl p-[1.5px]">
-        <div className="flex flex-col gap-4 rounded-2xl bg-white px-5 py-5 md:flex-row md:items-center md:justify-between md:px-7 md:py-6">
-          <div className="min-w-0">
-            <p className="text-accent-blue-ink text-xs font-bold">프렙 강좌 · 매월 20회 아침 스몰톡</p>
-            <h2 className="text-ink mt-1 text-lg font-extrabold md:text-xl">여럿이 함께, 아침으로 여는 영어 스몰톡</h2>
-            <p className="text-muted-fg mt-1 text-sm">
-              지금 신청할 수 있는 강좌 {courses.length}개{mine.length > 0 && <span className="text-cta font-bold"> · 내 신청 {mine.length}건</span>}
-              <span className="text-muted-fg-faint"> · </span>
-              <Link href="/prep" className="text-accent-blue-ink font-semibold underline underline-offset-2">
-                강좌 소개 보기
+        <div className="rounded-2xl bg-white px-5 py-5 md:px-7 md:py-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <p className="text-accent-blue-ink text-xs font-bold">프렙 강좌 · 매월 {PREP_SESSION_COUNT}회 아침 스몰톡</p>
+              <h2 className="text-ink mt-1 text-lg font-extrabold md:text-xl">여럿이 함께, 아침으로 여는 영어 스몰톡</h2>
+              <p className="text-muted-fg mt-1 text-sm">
+                지금 신청할 수 있는 강좌 {courses.length}개{mine.length > 0 && <span className="text-cta font-bold"> · 내 신청 {mine.length}건</span>}
+                <span className="text-muted-fg-faint"> · </span>
+                <Link href="/prep" className="text-accent-blue-ink font-semibold underline underline-offset-2">
+                  강좌 소개 보기
+                </Link>
+              </p>
+            </div>
+
+            {!isLoggedIn && (
+              <Link
+                href="/login?next=/friending"
+                className="bg-cta hover:bg-cta/90 shrink-0 rounded-full px-6 py-2.5 text-center text-sm font-bold text-white transition-colors">
+                로그인하고 신청
               </Link>
-            </p>
+            )}
           </div>
 
-          {isLoggedIn ? (
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="bg-cta hover:bg-cta/90 shrink-0 rounded-full px-6 py-2.5 text-sm font-bold text-white transition-colors">
-              수강 신청하기
-            </button>
-          ) : (
-            <Link
-              href="/login?next=/friending"
-              className="bg-cta hover:bg-cta/90 shrink-0 rounded-full px-6 py-2.5 text-center text-sm font-bold text-white transition-colors">
-              로그인하고 신청
-            </Link>
-          )}
+          <ul className="mt-4 list-none space-y-3">
+            {courses.map((c) => (
+              <li key={c.id} className="border-rule rounded-xl border p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-2">
+                      <span className="text-ink text-base font-bold break-words">{c.title}</span>
+                      {c.myStatus && (
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-2 py-0.5 text-xs font-bold",
+                            c.myStatus === "수강확정" ? "bg-[#E1F5EE] text-[#0F6E56]" : "bg-[#FFF7E6] text-[#B97400]",
+                          )}>
+                          {c.myStatus === "수강확정" ? "수강 확정" : "신청 완료 · 입금 대기"}
+                        </span>
+                      )}
+                    </p>
+                    {c.description?.trim() && <p className="text-muted-fg mt-1 line-clamp-2 text-sm">{c.description}</p>}
+                  </div>
+
+                  {isLoggedIn &&
+                    (c.myStatus ? (
+                      <Link href="/mypage/prep" className="text-accent-blue-ink shrink-0 text-sm font-bold underline underline-offset-2">
+                        내 신청 보기
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedId(c.id);
+                          setOpen(true);
+                        }}
+                        className="bg-cta hover:bg-cta/90 shrink-0 rounded-full px-5 py-2 text-sm font-bold text-white transition-colors">
+                        신청하기
+                      </button>
+                    ))}
+                </div>
+
+                {/* 세부 정보 — 신청 전에 조건을 다 볼 수 있게. 모달에도 같은 값이 요약으로 다시 나온다. */}
+                <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+                  {(
+                    [
+                      ["기간", `${fmtDateKo(c.firstDate)} ~ ${fmtDateKo(c.lastDate)} (${c.sessionCount}회)`],
+                      ["시간", `${fmtTime(c.startMin)}~${fmtRoomEnd(c.startMin + c.durationMin)} (${c.durationMin}분)`],
+                      ["진행 방식", `Zoom 그룹 수업 · ${roomLevelLabelKo(c.level)}`],
+                      ["강사", c.frienderName],
+                      ["수강료", `${formatWon(c.priceKrw)} (무통장 입금)`],
+                      ["신청 현황", seatLabel(c)],
+                    ] as const
+                  ).map(([label, value]) => (
+                    <div key={label} className="flex gap-2.5">
+                      <dt className="text-muted-fg-faint w-16 shrink-0">{label}</dt>
+                      <dd className="text-ink min-w-0 font-medium break-words">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
