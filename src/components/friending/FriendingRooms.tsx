@@ -115,8 +115,8 @@ export default function FriendingRooms({
     for (const r of rooms.slice(0, visible)) (canEnter(r) ? live : waiting).push(r);
 
     const out: Group[] = [];
-    if (live.length) out.push({ key: "live", label: "대화 중", rooms: live });
-    if (waiting.length) out.push({ key: "waiting", label: "대기 중", rooms: waiting });
+    if (live.length) out.push({ key: "live", label: "진행 중", rooms: live });
+    if (waiting.length) out.push({ key: "waiting", label: "예정", rooms: waiting });
     return out;
   }, [rooms, visible, now]);
 
@@ -162,7 +162,7 @@ export default function FriendingRooms({
       {/* 섹션 헤더 */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-ink flex items-center gap-2 text-base font-extrabold">
-          오픈 대화
+          무료 연습방
           <span className="rounded-full bg-[#eafff1] px-2 py-0.5 text-[11px] font-extrabold text-[#22c55e]">FREE</span>
         </h2>
         <p className="text-muted-fg flex items-center gap-1.5 text-[13px] font-bold">
@@ -180,7 +180,7 @@ export default function FriendingRooms({
               "mt-8",
               // 첫 섹션 위에는 선을 긋지 않는다(상단 헤더와 붙어 이중선처럼 보임).
               i > 0 && "border-rule border-t pt-8",
-              // 대화 중 섹션만 배경 박스로 감싼다 — 제목만으로는 두 영역이 잘 갈리지 않았다.
+              // 진행 중 섹션만 배경 박스로 감싼다 — 제목만으로는 두 영역이 잘 갈리지 않았다.
               // 초록 hex는 LiveDot·FREE 배지에서 이미 쓰는 값(대응 토큰 없는 예외)을 그대로 재사용.
               isLiveSection && "rounded-2xl border border-[#22c55e]/25 bg-[#eafff1]/60 p-3 md:p-4",
             )}>

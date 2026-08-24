@@ -233,6 +233,10 @@ export default async function FriendingPage() {
 
         <PrepEnrollBanner courses={prepCourses} isLoggedIn={!!user} phoneVerified={phoneVerified} />
 
+        {/* 유료 프렙 신청과 무료 연습방은 성격이 다른 영역이라 구분선으로 나눈다.
+            ⚠️ 배너가 없으면(신청 가능한 강좌 0개) 히어로 바로 아래에 선만 남으므로 함께 숨긴다. */}
+        {prepCourses.length > 0 && <div aria-hidden className="border-rule mt-8 border-t" />}
+
         <FriendingRooms rooms={rooms} hosts={hosts} isLoggedIn={!!user} />
       </div>
     </div>
