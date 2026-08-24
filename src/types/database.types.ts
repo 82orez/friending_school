@@ -883,7 +883,6 @@ export type Database = {
           created_at: string
           host_entered_at: string | null
           id: string
-          reminder_sent_at: string | null
           session_date: string
           session_no: number
           topic: string | null
@@ -893,7 +892,6 @@ export type Database = {
           created_at?: string
           host_entered_at?: string | null
           id?: string
-          reminder_sent_at?: string | null
           session_date: string
           session_no: number
           topic?: string | null
@@ -903,7 +901,6 @@ export type Database = {
           created_at?: string
           host_entered_at?: string | null
           id?: string
-          reminder_sent_at?: string | null
           session_date?: string
           session_no?: number
           topic?: string | null
