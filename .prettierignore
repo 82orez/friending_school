@@ -1,8 +1,16 @@
-# CLAUDE.md는 prettier 대상에서 제외.
+# CLAUDE.md·docs/*.md는 prettier 대상에서 제외.
 # 마크다운 포매터가 (1) snake_case 식별자의 `_`를 강조 구문으로 오인해 `*`로 치환하고
 # (avatar_url → avatar*url), (2) 인라인 코드 앞뒤 공백을 제거해(`X` 최대 → `X`최대)
 # 문서에 적힌 심볼명이 실제 코드와 어긋나게 된다. 실제로 발생했음.
+#
+# ⚠️ docs/도 같은 이유로 제외한다 — CLAUDE.md만 빼 두는 동안 docs/에서 그대로 재발했다
+#    (admin.md의 is_test→is*test·conducted_override→conducted*override·total_krw→total*krw,
+#     db.md의 service_role→service*role이 실제로 깨진 채 커밋됨). 이 문서들은 한 줄이 수만 자인
+#    초장문 문단이라 백틱 페어링이 한 번 어긋나면 코드 스팬 밖으로 노출된 `_`가 계속 치환되고,
+#    치환이 다음 파스의 페어링을 또 바꿔 **--write를 해도 --check가 수렴하지 않는다**.
+#    printWidth도 적용될 여지가 없어 포매터가 얻는 것은 없고 손상만 남는다.
 CLAUDE.md
+docs/
 
 # 전자책 교재 HTML — 손으로 작성한 인쇄형(.page) 레이아웃 + 인라인 <script>.
 # fs.readFile로 읽어 iframe srcDoc에 원문 그대로 주입되므로 포매터가 건드리지 않는다.
