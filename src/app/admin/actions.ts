@@ -2025,17 +2025,24 @@ function revalidatePrepConsumers(): void {
   revalidatePath("/friender", "layout");
 }
 
-// 심사 결과 통보 SMS (best-effort) — 프렌더는 전화 인증이 필수라 profiles.phone이 검증된 번호다.
-// 프렌더 승인/거절과 같은 정책(메일이 아니라 SMS). 실패해도 심사 결과는 유효하다.
+// 특정 사용자에게 SMS 통보 (best-effort) — profiles.phone이 비어 있으면 조용히 건너뛴다.
+// 프렌더는 전화 인증이 필수라 항상 검증된 번호가 있지만, 일반 회원은 없을 수 있다.
+// 실패해도 호출한 처리(심사 결과·삭제 등)는 유효하다.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function notifyPrepReviewResult(admin: any, frienderId: string, text: string): Promise<void> {
+async function notifyUserBySms(admin: any, userId: string, text: string, tag: string): Promise<void> {
   try {
-    const { data } = await admin.from("profiles").select("phone").eq("id", frienderId).maybeSingle();
+    const { data } = await admin.from("profiles").select("phone").eq("id", userId).maybeSingle();
     const phone = (data as { phone?: string | null } | null)?.phone?.trim();
     if (phone) await sendSms(phone, text);
   } catch (err) {
-    console.error("[prep] 심사 결과 SMS 발송 실패:", err);
+    console.error(`${tag} SMS 발송 실패:`, err);
   }
+}
+
+// 심사 결과 통보 SMS — 프렌더 승인/거절과 같은 정책(메일이 아니라 SMS).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function notifyPrepReviewResult(admin: any, frienderId: string, text: string): Promise<void> {
+  await notifyUserBySms(admin, frienderId, text, "[prep] 심사 결과");
 }
 
 // 프렙 강좌 승인 — 상태 '신청'만 처리한다. 승인되면 개설 완료다.
@@ -2212,5 +2219,78 @@ export async function cancelPrepEnrollmentAsAdmin(enrollmentId: string, adminNot
 
   revalidatePrepConsumers();
   revalidatePath("/mypage/prep");
+  return { ok: true };
+}
+
+/* ===== 프렌더 연습방 관리 (docs/friender.md) ===== */
+
+// 방이 사라지면 공개 목록·예약자 화면·개설자 화면이 모두 바뀐다.
+// (joinRoom/leaveRoom이 /friending·/mypage/rooms를 함께 revalidate하는 것과 같은 짝.)
+function revalidateRoomConsumers(): void {
+  revalidatePath("/admin/rooms");
+  revalidatePath("/friending");
+  revalidatePath("/mypage/rooms");
+  revalidatePath("/friender", "layout");
+}
+
+// SMS에 넣을 방 제목 — 길면 잘라 문자 길이를 지킨다(프렙 제목과 같은 규칙).
+function roomSmsTitle(title: string): string {
+  return title.length > 30 ? `${title.slice(0, 30)}…` : title;
+}
+
+// 연습방 강제 삭제 (관리자).
+// ⚠️ 프렌더 본인의 deleteRoom(src/app/friender/actions.ts)은 **예약자가 1명이라도 있으면 거부**한다
+//    — cascade로 예약자의 마이페이지 기록까지 사라지는데 알릴 방법이 없었기 때문이다.
+//    그래서 문제 방(부적절한 주제·소개, 자격 해제된 프렌더가 남긴 방 등)은 아무도 못 내리는 상태였다.
+//    이 액션은 정확히 그 구멍을 메우는 것이 목적이라 **예약자가 있어도 삭제한다**. 대신 프렌더 쪽이
+//    미룬 통보 비용을 여기서 치른다(아래 SMS).
+// ⚠️ friender_room_reviews.room_id는 ON DELETE SET NULL이라 **후기·평점은 남는다**
+//    (room_title·session_date 스냅샷이 있어 계속 읽힌다). 방 삭제로 평점을 세탁할 수 없다.
+export async function deleteRoomAsAdmin(roomId: string, adminNote?: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!roomId) return { ok: false, error: "잘못된 요청입니다." };
+  const note = (adminNote ?? "").trim();
+
+  const admin = createAdminClient();
+  // 삭제하면 행이 사라져 통보에 쓸 제목·일시·대상을 못 읽으므로 먼저 읽어 둔다.
+  const { data: cur } = await admin
+    .from("friender_rooms")
+    .select("friender_id, title, session_date, start_min, duration_min")
+    .eq("id", roomId)
+    .maybeSingle();
+  const room = cur as { friender_id: string; title: string; session_date: string; start_min: number; duration_min: number } | null;
+  if (!room) return { ok: false, error: "방을 찾을 수 없습니다. 목록을 새로고침해 주세요." };
+
+  // 예약자도 마찬가지 — room_id가 cascade라 삭제 후에는 대상을 잃는다. **차단 조건이 아니라 통보용**이다.
+  const { data: partsData } = await admin.from("friender_room_participants").select("user_id").eq("room_id", roomId);
+  const participantIds = ((partsData ?? []) as { user_id: string }[]).map((p) => p.user_id);
+
+  // ⚠️ 프렌더 쪽 deleteRoom과 달리 friender_id로 스코프하지 않는다(관리자는 소유자를 가리지 않는다).
+  //    PostgREST는 0행 삭제를 에러로 주지 않으므로 select로 실제 삭제 여부를 확인한다(중복 클릭 방어).
+  const { data: deleted, error } = await admin.from("friender_rooms").delete().eq("id", roomId).select("id");
+  if (error) return { ok: false, error: "삭제 중 오류가 발생했습니다." };
+  if (!deleted || deleted.length === 0) return { ok: false, error: "방을 찾을 수 없습니다. 목록을 새로고침해 주세요." };
+
+  const when = `${fmtDateKo(room.session_date)} ${fmtTime(room.start_min)}`;
+  const reason = note ? ` 사유: ${note.slice(0, 120)}` : "";
+
+  // 개설 프렌더에게는 항상 통보(전화 인증이 필수라 검증된 번호가 있다).
+  await notifyUserBySms(
+    admin,
+    room.friender_id,
+    `[프렌딩 스쿨] '${roomSmsTitle(room.title)}' 연습방(${when})이 관리자에 의해 삭제되었습니다.${reason}`,
+    "[rooms] 프렌더 삭제 안내",
+  );
+
+  // 예약자에게도 통보 — 예약이 통보 없이 사라지는 것이 프렌더 쪽 가드가 막으려던 바로 그 상황이다.
+  // ⚠️ 이미 끝난 방을 정리하는 경우에는 보내지 않는다(지난 일정으로 문자를 보내면 소음일 뿐).
+  // ⚠️ 일반 회원은 profiles.phone이 비어 있을 수 있어 철저히 best-effort다.
+  const notEnded = kstDateMinToMs(room.session_date, room.start_min + room.duration_min) > Date.now();
+  if (notEnded && participantIds.length > 0) {
+    const text = `[프렌딩 스쿨] 예약하신 '${roomSmsTitle(room.title)}' 연습방(${when})이 취소되었습니다.${reason}`;
+    await Promise.allSettled(participantIds.map((id) => notifyUserBySms(admin, id, text, "[rooms] 예약자 취소 안내")));
+  }
+
+  revalidateRoomConsumers();
   return { ok: true };
 }

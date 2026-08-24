@@ -23,6 +23,12 @@ export function kstDateTimeText(iso: string): string {
   return `${y}.${p2(m)}.${p2(d)} ${p2(hh)}:${p2(mi)}`;
 }
 
+// "10:43" (24시간제, 같은 날짜 안에서 시각만 필요한 좁은 영역용)
+export function kstTimeText(iso: string): string {
+  const { hh, mi } = kstParts(iso);
+  return `${p2(hh)}:${p2(mi)}`;
+}
+
 // "7.19" (Footer 등 좁은 영역용)
 export function kstShortDate(iso: string): string {
   const { m, d } = kstParts(iso);
