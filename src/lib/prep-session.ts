@@ -24,6 +24,9 @@ export type PrepSessionItem = {
 export type PrepCourseSessions = {
   courseId: string;
   courseTitle: string;
+  // 개설자 표시 스냅샷 — 화면에서 frienderLabel(name, nickname)로 조립한다(admin·프렙 공통 규칙).
+  frienderName: string | null;
+  frienderNickname: string | null;
   startMin: number;
   durationMin: number;
   sessions: PrepSessionItem[]; // 회차 순(session_no asc)
@@ -36,6 +39,15 @@ type SessionRow = {
   session_date: string;
   topic: string | null;
   host_entered_at: string | null;
+};
+
+type CourseRow = {
+  id: string;
+  title: string;
+  friender_name: string | null;
+  friender_nickname: string | null;
+  start_min: number;
+  duration_min: number;
 };
 
 const SESSION_SELECT = "id, course_id, session_no, session_date, topic, host_entered_at";
@@ -75,7 +87,10 @@ export async function loadPrepSessionsForStudent(userId: string): Promise<Record
   if (courseIds.length === 0) return {};
 
   // 시각·제목은 강좌 행의 현재 값을 쓴다(신청 스냅샷은 카드 상단 정보용).
-  const { data: courses } = await admin.from("prep_courses").select("id, title, start_min, duration_min").in("id", courseIds);
+  const { data: courses } = await admin
+    .from("prep_courses")
+    .select("id, title, friender_name, friender_nickname, start_min, duration_min")
+    .in("id", courseIds);
   const { data: rows } = await admin.from("prep_sessions").select(SESSION_SELECT).in("course_id", courseIds);
   const sessionRows = (rows ?? []) as SessionRow[];
 
@@ -94,10 +109,12 @@ export async function loadPrepSessionsForStudent(userId: string): Promise<Record
   }
 
   const out: Record<string, PrepCourseSessions> = {};
-  for (const c of (courses ?? []) as { id: string; title: string; start_min: number; duration_min: number }[]) {
+  for (const c of (courses ?? []) as CourseRow[]) {
     out[c.id] = {
       courseId: c.id,
       courseTitle: c.title,
+      frienderName: c.friender_name,
+      frienderNickname: c.friender_nickname,
       startMin: c.start_min,
       durationMin: c.duration_min,
       sessions: mapSessions(
@@ -120,10 +137,10 @@ export async function loadPrepSessionsForFriender(userId: string, courseIds: str
   // ⚠️ 소유권은 쿼리에서 강제한다 — prep_courses_select_public이 permissive라 OR로 합쳐진다.
   const { data: courses } = await admin
     .from("prep_courses")
-    .select("id, title, start_min, duration_min")
+    .select("id, title, friender_name, friender_nickname, start_min, duration_min")
     .eq("friender_id", userId)
     .in("id", courseIds);
-  const owned = (courses ?? []) as { id: string; title: string; start_min: number; duration_min: number }[];
+  const owned = (courses ?? []) as CourseRow[];
   if (owned.length === 0) return {};
 
   const ownedIds = owned.map((c) => c.id);
@@ -147,6 +164,8 @@ export async function loadPrepSessionsForFriender(userId: string, courseIds: str
     out[c.id] = {
       courseId: c.id,
       courseTitle: c.title,
+      frienderName: c.friender_name,
+      frienderNickname: c.friender_nickname,
       startMin: c.start_min,
       durationMin: c.duration_min,
       sessions: mapSessions(

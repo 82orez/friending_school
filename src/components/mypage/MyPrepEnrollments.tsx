@@ -10,8 +10,6 @@ import { fmtRoomEnd } from "@/lib/room-time";
 import { fmtDateKo, formatWon } from "@/lib/prep";
 import { PAYMENT_BANK } from "@/data/payment";
 import { cancelPrepEnrollment } from "@/app/prep/enroll-actions";
-import PrepSessionList from "@/components/prep/PrepSessionList";
-import type { PrepCourseSessions } from "@/lib/prep-session";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,14 +43,7 @@ const STATUS_BADGE: Record<MyPrepEnrollment["status"], string> = {
   취소: "bg-surface text-muted-fg",
 };
 
-export default function MyPrepEnrollments({
-  enrollments,
-  sessionsByCourse,
-}: {
-  enrollments: MyPrepEnrollment[];
-  // course_id → 회차. '수강확정' 건에만 들어온다(page가 자격을 확인해 채운다).
-  sessionsByCourse: Record<string, PrepCourseSessions>;
-}) {
+export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrepEnrollment[] }) {
   const router = useRouter();
   const [cancelTarget, setCancelTarget] = useState<MyPrepEnrollment | null>(null);
   const [pending, startTransition] = useTransition();
@@ -125,14 +116,17 @@ export default function MyPrepEnrollments({
               ))}
             </dl>
 
-            {/* 수강 확정 = 실제로 수업에 들어갈 수 있는 상태 → 회차 목록·입장 버튼을 편다.
-                시각·회차는 신청 스냅샷이 아니라 강좌의 현재 값을 쓴다(스냅샷은 위 dl 담당). */}
-            {e.status === "수강확정" &&
-              sessionsByCourse[e.course_id] &&
-              (() => {
-                const c = sessionsByCourse[e.course_id];
-                return <PrepSessionList sessions={c.sessions} total={c.sessions.length} startMin={c.startMin} durationMin={c.durationMin} />;
-              })()}
+            {/* ⚠️ 회차 목록·입장은 「내 강의실」로 옮겼다(입장 동선을 과정 종류와 무관하게 한 곳으로).
+                옮겼다는 사실이 화면에 없으면 "입장 버튼이 사라졌다"로 읽히므로 길을 남긴다. */}
+            {e.status === "수강확정" && (
+              <p className="text-muted-fg mt-3 text-sm">
+                수업 입장과 회차 일정은{" "}
+                <Link href="/mypage/classroom" className="text-accent-blue-ink font-bold underline underline-offset-2">
+                  내 강의실
+                </Link>{" "}
+                탭에서 확인하세요.
+              </p>
+            )}
 
             {e.status === "입금대기" && (
               <div className="border-rule bg-surface mt-3 rounded-lg border p-3 text-sm">
