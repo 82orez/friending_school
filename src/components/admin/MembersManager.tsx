@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatPhone } from "@/lib/phone";
 
 export type AdminMember = {
   id: string;
@@ -10,6 +11,10 @@ export type AdminMember = {
   created_at: string;
   role: string;
   email_confirmed: boolean;
+  last_name: string | null;
+  first_name: string | null;
+  english_name: string | null;
+  phone: string | null;
 };
 
 function formatDate(iso: string): string {
@@ -43,10 +48,19 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
     }).length;
   }, [members]);
 
+  // 이메일 외 이름·영어이름·전화번호도 검색 대상(전화는 숫자만 비교 → 하이픈 입력 무관).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return members;
-    return members.filter((m) => m.email.toLowerCase().includes(q));
+    const qDigits = q.replace(/\D/g, "");
+    return members.filter((m) => {
+      const haystack = [m.email, m.last_name, m.first_name, `${m.last_name ?? ""}${m.first_name ?? ""}`, m.english_name]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (haystack.includes(q)) return true;
+      return !!qDigits && !!m.phone && m.phone.replace(/\D/g, "").includes(qDigits);
+    });
   }, [members, query]);
 
   return (
@@ -75,7 +89,7 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="이메일 검색..."
+          placeholder="이메일·이름·영어 이름·전화번호 검색..."
           className="h-10 flex-1 bg-transparent text-sm outline-none"
         />
       </div>
@@ -84,19 +98,61 @@ export default function MembersManager({ members }: { members: AdminMember[] }) 
         {filtered.length === 0 ? (
           <p className="text-muted-fg px-6 py-12 text-center text-sm">표시할 회원이 없습니다.</p>
         ) : (
-          <ul className="list-none">
-            {filtered.map((m, i) => (
-              <li key={m.id} className="border-rule flex items-center gap-3 border-b px-4 py-3.5 last:border-b-0 md:px-6">
-                <span className="text-muted-fg-faint w-7 shrink-0 text-center text-xs">{filtered.length - i}</span>
-                <span className="text-ink min-w-0 flex-1 truncate text-sm font-medium">{m.email}</span>
-                {!m.email_confirmed && <span className="bg-brand/10 text-brand shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">미인증</span>}
-                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", ROLE_BADGE[m.role] ?? ROLE_BADGE.student)}>
-                  {ROLE_LABEL[m.role] ?? m.role}
-                </span>
-                <span className="text-muted-fg-faint shrink-0 text-xs">{formatDate(m.created_at)}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] border-collapse text-sm">
+              <thead>
+                <tr className="border-rule bg-surface text-muted-fg-faint border-b text-left text-xs font-semibold">
+                  <th className="w-12 px-4 py-2.5 text-center md:px-6">#</th>
+                  <th className="px-4 py-2.5">성</th>
+                  <th className="px-4 py-2.5">이름</th>
+                  <th className="px-4 py-2.5">영어 이름</th>
+                  <th className="px-4 py-2.5">이메일</th>
+                  <th className="px-4 py-2.5">전화번호</th>
+                  <th className="px-4 py-2.5">권한</th>
+                  <th className="px-4 py-2.5 text-right md:px-6">가입일</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((m, i) => (
+                  <tr key={m.id} className="border-rule border-b last:border-b-0">
+                    <td className="text-muted-fg-faint px-4 py-3.5 text-center align-middle text-xs md:px-6">{filtered.length - i}</td>
+                    <td className="text-ink px-4 py-3.5 align-middle text-sm font-semibold whitespace-nowrap">
+                      {m.last_name || <span className="text-muted-fg-faint font-normal">-</span>}
+                    </td>
+                    <td className="text-ink px-4 py-3.5 align-middle text-sm font-semibold whitespace-nowrap">
+                      {m.first_name || <span className="text-muted-fg-faint font-normal">-</span>}
+                    </td>
+                    <td className="text-muted-fg px-4 py-3.5 align-middle text-sm whitespace-nowrap">
+                      {m.english_name || <span className="text-muted-fg-faint">-</span>}
+                    </td>
+                    <td className="text-ink px-4 py-3.5 align-middle text-sm">
+                      <span className="flex items-center gap-2">
+                        <span className="min-w-0 truncate">{m.email}</span>
+                        {!m.email_confirmed && (
+                          <span className="bg-brand/10 text-brand shrink-0 rounded-full px-2 py-0.5 text-xs font-bold">미인증</span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="text-muted-fg px-4 py-3.5 align-middle text-sm whitespace-nowrap">
+                      {m.phone ? formatPhone(m.phone) : <span className="text-muted-fg-faint">-</span>}
+                    </td>
+                    <td className="px-4 py-3.5 align-middle">
+                      <span
+                        className={cn(
+                          "inline-block rounded-full px-2 py-0.5 text-xs font-bold whitespace-nowrap",
+                          ROLE_BADGE[m.role] ?? ROLE_BADGE.student,
+                        )}>
+                        {ROLE_LABEL[m.role] ?? m.role}
+                      </span>
+                    </td>
+                    <td className="text-muted-fg-faint px-4 py-3.5 text-right align-middle text-xs whitespace-nowrap md:px-6">
+                      {formatDate(m.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
