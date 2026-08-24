@@ -176,11 +176,24 @@ export default async function FriendingPage() {
     myStatus: myPrep.get(c.id) ?? null,
   }));
 
-  // 휴대폰 인증 여부 — 모달에서 미인증자를 미리 안내한다(서버 RPC가 authoritative).
-  let phoneVerified = false;
+  // 신청 자격(휴대폰 인증 + 성·이름·영어 이름)에서 빠진 항목 — 모달에서 미리 안내한다.
+  // ⚠️ 서버 RPC(join_prep_course)가 authoritative고 여기는 사전 안내 레이어일 뿐이다.
+  const profileMissing: string[] = [];
   if (user) {
-    const { data: prof } = await supabase.from("profiles").select("phone_verified_at").eq("id", user.id).maybeSingle();
-    phoneVerified = !!(prof as { phone_verified_at?: string | null } | null)?.phone_verified_at;
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("phone_verified_at, first_name, last_name, english_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    const p = (prof ?? {}) as {
+      phone_verified_at?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+      english_name?: string | null;
+    };
+    if (!p.phone_verified_at) profileMissing.push("휴대폰 인증");
+    if (!p.last_name?.trim() || !p.first_name?.trim()) profileMissing.push("성·이름");
+    if (!p.english_name?.trim()) profileMissing.push("영어 이름");
   }
 
   const rooms: PublicRoom[] = rows.map((r) => ({
@@ -231,7 +244,7 @@ export default async function FriendingPage() {
           </div>
         </section>
 
-        <PrepEnrollBanner courses={prepCourses} isLoggedIn={!!user} phoneVerified={phoneVerified} />
+        <PrepEnrollBanner courses={prepCourses} isLoggedIn={!!user} profileMissing={profileMissing} />
 
         {/* 유료 프렙 신청과 무료 연습방은 성격이 다른 영역이라 구분선으로 나눈다.
             ⚠️ 배너가 없으면(신청 가능한 강좌 0개) 히어로 바로 아래에 선만 남으므로 함께 숨긴다. */}

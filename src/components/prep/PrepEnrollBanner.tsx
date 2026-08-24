@@ -55,12 +55,14 @@ const seatLabel = (c: OpenPrepCourse): string =>
 export default function PrepEnrollBanner({
   courses,
   isLoggedIn,
-  phoneVerified,
+  profileMissing,
 }: {
   courses: OpenPrepCourse[];
   isLoggedIn: boolean;
-  phoneVerified: boolean;
+  /** 신청 자격에서 빠진 프로필 항목(휴대폰 인증·성·이름·영어 이름). 비어 있어야 신청할 수 있다. */
+  profileMissing: string[];
 }) {
+  const profileReady = profileMissing.length === 0;
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(courses[0]?.id ?? null);
@@ -233,13 +235,13 @@ export default function PrepEnrollBanner({
             </div>
 
             <div className="overflow-auto px-5 py-5 md:px-6">
-              {!phoneVerified && (
+              {!profileReady && (
                 <div className="border-brand/30 bg-brand/5 mb-4 rounded-xl border px-4 py-3 text-sm">
-                  <p className="text-brand font-bold">휴대폰 인증이 필요해요</p>
+                  <p className="text-brand font-bold">신청 전에 프로필을 완성해 주세요</p>
                   <p className="text-ink mt-1">
-                    수업 안내 문자를 보내기 위해 인증이 필요합니다.{" "}
+                    <span className="font-bold">{profileMissing.join(" · ")}</span>이(가) 필요합니다. 수업 안내 문자와 출석부에 쓰입니다.{" "}
                     <Link href="/mypage" className="text-accent-blue-ink font-bold underline underline-offset-2">
-                      마이페이지에서 인증하기
+                      마이페이지에서 등록하기
                     </Link>
                   </p>
                 </div>
@@ -333,7 +335,7 @@ export default function PrepEnrollBanner({
                 <button
                   type="button"
                   onClick={() => selected && setConfirmTarget(selected)}
-                  disabled={pending || !selected || !!selected.myStatus || !phoneVerified}
+                  disabled={pending || !selected || !!selected.myStatus || !profileReady}
                   className="bg-cta hover:bg-cta/90 inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-bold text-white transition-colors disabled:opacity-50">
                   {pending && <Loader2 className="size-4 animate-spin" />}이 강좌 신청하기
                 </button>

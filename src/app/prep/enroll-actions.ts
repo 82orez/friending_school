@@ -27,6 +27,7 @@ const JOIN_ERROR: Record<string, string> = {
   started: "이미 시작된 강좌라 신청을 받지 않아요.",
   full: "정원이 모두 찼어요.",
   phone_unverified: "휴대폰 인증이 필요합니다. 마이페이지에서 인증한 뒤 다시 신청해 주세요.",
+  profile_incomplete: "성·이름·영어 이름을 먼저 입력해 주세요. 마이페이지에서 등록한 뒤 다시 신청할 수 있어요.",
 };
 
 function revalidatePrepEnroll(): void {
