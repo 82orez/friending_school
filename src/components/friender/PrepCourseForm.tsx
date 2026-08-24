@@ -7,7 +7,7 @@ import { ko as koLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
-import { buildWeekdaySessions, fmtDateKo, fmtDateShort, formatWon, kstToday, toLocalDate } from "@/lib/prep";
+import { addDays, buildWeekdaySessions, fmtDateKo, fmtDateShort, formatWon, kstToday, toLocalDate } from "@/lib/prep";
 import {
   type PrepStatus,
   PREP_DEFAULT_CAPACITY,
@@ -162,6 +162,11 @@ export default function PrepCourseForm({
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const today = useMemo(() => kstToday(), []);
+  // 첫 수업은 **내일 이후**여야 한다 — 서버가 그렇게 검증한다("첫 수업은 내일 이후로 잡아 주세요.",
+  // prep-actions.ts의 저장 가드 + 승인 시 admin의 재검증). 오늘을 고를 수 있게 두면 달력에서는
+  // 눌리는데 저장에서 반려되거나(시작일 입력) 회차가 조용히 19개로 빠져(캘린더) 사용자가 이유를 모른다.
+  // 시작일 input의 min·회차 캘린더의 하한·수동 선택 필터가 모두 이 한 값을 쓴다.
+  const minDate = useMemo(() => addDays(today, 1), [today]);
   const set = (patch: Partial<Fields>) => setForm((f) => ({ ...f, ...patch }));
 
   const initialSnapshot = useMemo(() => snapshotOf(fieldsOf(initial), datesOf(initial), topicsOf(initial)), [initial]);
@@ -227,8 +232,8 @@ export default function PrepCourseForm({
   };
 
   const onSelectDates = (next: Date[] | undefined) => {
-    // 과거 날짜는 서버가 어차피 거부하므로 선택 단계에서 걸러 준다.
-    const keys = (next ?? []).map(toKey).filter((k) => k > today);
+    // 오늘 이전(오늘 포함)은 서버가 어차피 거부하므로 선택 단계에서 걸러 준다.
+    const keys = (next ?? []).map(toKey).filter((k) => k >= minDate);
     setDates(Array.from(new Set(keys)).sort());
   };
 
@@ -434,7 +439,7 @@ export default function PrepCourseForm({
           <input
             type="date"
             value={form.startDate}
-            min={today}
+            min={minDate}
             disabled={disabled || started}
             onChange={(e) => pickStartDate(e.target.value)}
             className={selectClass}
@@ -442,7 +447,7 @@ export default function PrepCourseForm({
           <span className="text-muted-fg-faint text-xs">
             {started
               ? "이미 시작된 강좌라 심사받은 조건(일정·시각·수강료·정원·난이도·강좌명)은 바꿀 수 없습니다."
-              : `시작일을 고르면 평일 기준으로 ${PREP_SESSION_COUNT}회가 자동으로 채워집니다.`}
+              : `내일부터 고를 수 있어요. 시작일을 고르면 평일 기준으로 ${PREP_SESSION_COUNT}회가 자동으로 채워집니다.`}
           </span>
         </label>
       </div>
@@ -465,7 +470,7 @@ export default function PrepCourseForm({
             selected={selectedDates}
             onSelect={started ? undefined : onSelectDates}
             defaultMonth={selectedDates[0]}
-            disabled={started ? true : { before: toLocalDate(today) }}
+            disabled={started ? true : { before: toLocalDate(minDate) }}
             locale={koLocale}
             weekStartsOn={0}
             showOutsideDays={false}
