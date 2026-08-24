@@ -12,6 +12,7 @@ import { fmtDateKo, formatWon } from "@/lib/prep";
 import { PREP_MAX_CAPACITY, PREP_SESSION_COUNT } from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { applyPrepCourse, cancelPrepEnrollment } from "@/app/prep/enroll-actions";
+import PrepHeroArt from "@/components/prep/PrepHeroArt";
 import { PAYMENT_BANK } from "@/data/payment";
 import {
   AlertDialog,
@@ -110,17 +111,25 @@ export default function PrepEnrollBanner({
   return (
     <>
       {/* 배너 — 강좌 세부 정보(기간·시간·진행 방식·강사·수강료)를 여기서 바로 보여 준다.
-          모달까지 열어야 조건을 알 수 있으면 신청 전에 비교가 안 된다. */}
-      <section className="bg-brand-gradient mt-6 rounded-2xl p-[1.5px]">
-        <div className="rounded-2xl bg-white px-5 py-5 md:px-7 md:py-6">
+          모달까지 열어야 조건을 알 수 있으면 신청 전에 비교가 안 된다.
+          배경은 /prep 히어로와 같은 새벽 일러스트(banner variant) — 흰 카드로는 위 히어로에 눌려 안 보였다. */}
+      <section className="relative isolate mt-6 overflow-hidden rounded-2xl bg-[#1b2450]">
+        <PrepHeroArt variant="banner" className="absolute inset-0 -z-10 h-full w-full" />
+        {/* 왼쪽만 진하게 — 오른쪽 해·하늘을 살려 두려고 단색 대신 그라디언트 오버레이를 쓴다. */}
+        <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-black/75 via-black/55 to-black/25" />
+
+        <div className="px-5 py-5 md:px-7 md:py-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div className="min-w-0">
-              <p className="text-accent-blue-ink text-xs font-bold">프렙 강좌 · 매월 {PREP_SESSION_COUNT}회 아침 스몰톡</p>
-              <h2 className="text-ink mt-1 text-lg font-extrabold md:text-xl">여럿이 함께, 아침으로 여는 영어 스몰톡</h2>
-              <p className="text-muted-fg mt-1 text-sm">
-                지금 신청할 수 있는 강좌 {courses.length}개{mine.length > 0 && <span className="text-cta font-bold"> · 내 신청 {mine.length}건</span>}
-                <span className="text-muted-fg-faint"> · </span>
-                <Link href="/prep" className="text-accent-blue-ink font-semibold underline underline-offset-2">
+              <span className="inline-block rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-bold text-white backdrop-blur-[2px]">
+                프렙 강좌 · 매월 {PREP_SESSION_COUNT}회 아침 스몰톡
+              </span>
+              <h2 className="mt-2 text-lg font-extrabold text-white md:text-2xl">여럿이 함께, 아침으로 여는 영어 스몰톡</h2>
+              <p className="mt-1 text-sm text-white/80">
+                지금 신청할 수 있는 강좌 {courses.length}개
+                {mine.length > 0 && <span className="font-bold text-white"> · 내 신청 {mine.length}건</span>}
+                <span className="text-white/50"> · </span>
+                <Link href="/prep" className="font-semibold text-white underline underline-offset-2 hover:opacity-90">
                   강좌 소개 보기
                 </Link>
               </p>
@@ -129,7 +138,7 @@ export default function PrepEnrollBanner({
             {!isLoggedIn && (
               <Link
                 href="/login?next=/friending"
-                className="bg-cta hover:bg-cta/90 shrink-0 rounded-full px-6 py-2.5 text-center text-sm font-bold text-white transition-colors">
+                className="text-ink shrink-0 rounded-full bg-white px-6 py-2.5 text-center text-sm font-bold transition-opacity hover:opacity-90">
                 로그인하고 신청
               </Link>
             )}
@@ -137,11 +146,11 @@ export default function PrepEnrollBanner({
 
           <ul className="mt-4 list-none space-y-3">
             {courses.map((c) => (
-              <li key={c.id} className="border-rule rounded-xl border p-4">
+              <li key={c.id} className="rounded-xl border border-white/20 bg-white/10 p-4 backdrop-blur-[2px] transition-colors hover:bg-white/15">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="flex flex-wrap items-center gap-2">
-                      <span className="text-ink text-base font-bold break-words">{c.title}</span>
+                      <span className="text-base font-bold break-words text-white">{c.title}</span>
                       {c.myStatus && (
                         <span
                           className={cn(
@@ -152,12 +161,12 @@ export default function PrepEnrollBanner({
                         </span>
                       )}
                     </p>
-                    {c.description?.trim() && <p className="text-muted-fg mt-1 line-clamp-2 text-sm">{c.description}</p>}
+                    {c.description?.trim() && <p className="mt-1 line-clamp-2 text-sm text-white/75">{c.description}</p>}
                   </div>
 
                   {isLoggedIn &&
                     (c.myStatus ? (
-                      <Link href="/mypage/prep" className="text-accent-blue-ink shrink-0 text-sm font-bold underline underline-offset-2">
+                      <Link href="/mypage/prep" className="shrink-0 text-sm font-bold text-white underline underline-offset-2 hover:opacity-90">
                         내 신청 보기
                       </Link>
                     ) : (
@@ -167,7 +176,7 @@ export default function PrepEnrollBanner({
                           setSelectedId(c.id);
                           setOpen(true);
                         }}
-                        className="bg-cta hover:bg-cta/90 shrink-0 rounded-full px-5 py-2 text-sm font-bold text-white transition-colors">
+                        className="text-ink shrink-0 rounded-full bg-white px-5 py-2 text-sm font-bold transition-opacity hover:opacity-90">
                         신청하기
                       </button>
                     ))}
@@ -186,8 +195,8 @@ export default function PrepEnrollBanner({
                     ] as const
                   ).map(([label, value]) => (
                     <div key={label} className="flex gap-2.5">
-                      <dt className="text-muted-fg-faint w-16 shrink-0">{label}</dt>
-                      <dd className="text-ink min-w-0 font-medium break-words">{value}</dd>
+                      <dt className="w-16 shrink-0 text-white/60">{label}</dt>
+                      <dd className="min-w-0 font-medium break-words text-white">{value}</dd>
                     </div>
                   ))}
                 </dl>

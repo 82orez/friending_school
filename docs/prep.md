@@ -102,7 +102,7 @@
 - **액션** `src/app/prep/enroll-actions.ts`: `applyPrepCourse`(로그인 → `rateLimit('prep-apply:…', 10/10분)` → **세션 client로 RPC** → 관리자 메일 + 프렌더 SMS best-effort) · `cancelPrepEnrollment`(`입금대기`만, **삭제가 아니라 `취소` 상태 변경**).
   admin(`src/app/admin/actions.ts`): `confirmPrepPayment(enrollmentId)`(`입금대기` CAS → `수강확정`+`paid_at` → 학생 SMS) · `cancelPrepEnrollmentAsAdmin(enrollmentId, note?)`(미입금 자리 회수·폐강 정리, 사유 SMS).
 - **가드(이제 실효)**: 신청자가 있으면 **프렌더·관리자 모두 강좌 삭제 금지**(cascade로 입금 기록까지 사라진다), **프렌더는 심사 대상 항목 수정도 금지**(승인이 풀려 목록에서 사라지고 이미 입금하려던 사람의 조건이 바뀐다), **정원을 신청자 수보다 작게 축소 금지**. 소개·회차 주제는 계속 수정 가능.
-- **UI**: `/friending` 상단 **`<PrepEnrollBanner>`**(배너 + 신청 모달: 강좌 라디오 선택·요약·`PAYMENT_BANK` 계좌 안내·확인 `AlertDialog`, 비로그인은 `/login?next=/friending`, 전화 미인증은 마이페이지 안내) · **`/mypage/prep`** 탭(스냅샷 기반 내역·계좌 안내·취소) · **`/admin/prep`**(개설된 강좌 테이블의 「신청자」 컬럼 + `PrepCourseInfoModal`의 신청자 목록·입금 확인·신청 취소 — ⚠️ 액션은 `PrepCoursesManager`가 소유하고 모달은 표시+콜백만).
+- **UI**: `/friending` 상단 **`<PrepEnrollBanner>`** — **새벽 하늘 다크 배너**(`PrepHeroArt variant="banner"`를 `-z-10`으로 깔고 왼쪽이 진한 그라디언트 오버레이. ⚠️ 흰 카드였을 때 바로 위 프렌딩 히어로에 눌려 안 보였다. ⚠️ 어두운 판에서 남색 `bg-cta`는 묻히므로 **CTA는 흰 알약 + `text-ink`**). 강좌마다 **세부 정보(기간·시간·진행 방식·강사·수강료·신청 현황)를 반투명 카드에 펼쳐** 두고 카드별 「신청하기」가 그 강좌를 선택한 채 모달을 연다(모달 = 계좌 안내 + 최종 확인: `PAYMENT_BANK`·확인 `AlertDialog`, 비로그인은 `/login?next=/friending`, 전화 미인증은 마이페이지 안내). ⚠️ 정원 상한(1000)은 사실상 무제한이라 `N/1000` 대신 "N명 신청"으로 표기(`seatLabel`) · **`/mypage/prep`** 탭(스냅샷 기반 내역·계좌 안내·취소) · **`/admin/prep`**(개설된 강좌 테이블의 「신청자」 컬럼 + `PrepCourseInfoModal`의 신청자 목록·입금 확인·신청 취소 — ⚠️ 액션은 `PrepCoursesManager`가 소유하고 모달은 표시+콜백만).
 - ⏳ **매출 미연동**: `payments`가 `enrollment_id` FK라 프렙 입금은 `/admin/revenue`에 잡히지 않는다(의도적 범위 밖).
 
 ## 공개 소개 페이지 `/prep`
