@@ -8,7 +8,7 @@ import { kstDateMinToMs } from "@/lib/classtime";
 // ⚠️ 전부 service_role로 읽는다. prep_sessions의 SELECT 정책은 _select_own(개설자)과
 //    _select_public(course.status='승인')뿐이라, 프렌더가 승인된 강좌를 고쳐 승인이 풀리는 순간
 //    수강생 세션 client에서 회차가 통째로 사라진다. 자격은 여기서 prep_enrollments로 직접 확인한다
-//    (/mypage/prep이 임베드 대신 스냅샷을 쓰는 것과 같은 이유·같은 방어).
+//    (수강신청 내역이 임베드 대신 스냅샷을 쓰는 것과 같은 이유·같은 방어).
 
 export type PrepSessionItem = {
   id: string;

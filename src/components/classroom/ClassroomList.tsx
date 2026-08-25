@@ -256,7 +256,7 @@ export default function ClassroomList({
             <div className="border-accent-blue/30 bg-accent-blue-soft flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-3">
               <Info aria-hidden className="text-accent-blue-ink size-4 shrink-0" />
               <p className="text-accent-blue-ink min-w-0 flex-1 text-sm font-semibold">
-                주간 시간표에는 <span className="font-extrabold">정규 과정만</span> 표시됩니다. 프렙 강좌{" "}
+                주간 시간표에는 <span className="font-extrabold">필리핀 화상영어 과정만</span> 표시됩니다. 프렙 강좌{" "}
                 <span className="font-extrabold">
                   「{prepCourses[0].courseTitle}」{prepCourses.length > 1 ? ` 외 ${prepCourses.length - 1}개` : ""}
                 </span>
@@ -276,7 +276,7 @@ export default function ClassroomList({
         <div className="space-y-6">
           {classes.length > 0 && (
             <section>
-              {showHeadings && <h2 className="text-ink mb-3 text-sm font-extrabold">정규 과정</h2>}
+              {showHeadings && <h2 className="text-ink mb-3 text-sm font-extrabold">필리핀 화상영어 과정</h2>}
               <div className="grid gap-4 sm:grid-cols-2">
                 {groups.map((g) => (
                   <CourseCard key={g.enrollmentId} group={g} isTeacher={isTeacher} now={now} onSelect={() => setSelectedId(g.enrollmentId)} />

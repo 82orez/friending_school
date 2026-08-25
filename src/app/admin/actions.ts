@@ -2184,7 +2184,7 @@ export async function confirmPrepPayment(enrollmentId: string, adminNote?: strin
   }
 
   revalidatePrepConsumers();
-  revalidatePath("/mypage/prep");
+  revalidatePath("/mypage/enrollments");
   return { ok: true };
 }
 
@@ -2218,7 +2218,7 @@ export async function cancelPrepEnrollmentAsAdmin(enrollmentId: string, adminNot
   }
 
   revalidatePrepConsumers();
-  revalidatePath("/mypage/prep");
+  revalidatePath("/mypage/enrollments");
   return { ok: true };
 }
 

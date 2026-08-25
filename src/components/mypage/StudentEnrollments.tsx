@@ -112,7 +112,7 @@ export default function StudentEnrollments({ enrollments }: { enrollments: Stude
     <section className="border-rule overflow-hidden rounded-2xl border bg-white">
       <div className="border-rule flex items-center gap-2 border-b px-6 py-5">
         <span aria-hidden>📋</span>
-        <h2 className="text-ink text-base font-bold">수강신청 내역</h2>
+        <h2 className="text-ink text-base font-bold">필리핀 화상영어 과정</h2>
         <span className="text-muted-fg-faint ml-auto text-sm">{rows.length}건</span>
       </div>
 

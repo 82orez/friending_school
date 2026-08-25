@@ -6,6 +6,7 @@ import { getCourse } from "@/data/courses";
 import { COURSE_PRICE_KRW } from "@/data/pricing";
 import { formatPrice } from "@/data/currencies";
 import StudentEnrollments, { type StudentEnrollment } from "@/components/mypage/StudentEnrollments";
+import MyPrepEnrollments, { type MyPrepEnrollment } from "@/components/mypage/MyPrepEnrollments";
 
 type EnrollmentRow = {
   id: string;
@@ -85,5 +86,21 @@ export default async function MyPageEnrollments() {
     })(),
   }));
 
-  return <StudentEnrollments enrollments={enrollments} />;
+  // 프렙 신청 내역 — 「프렙 수강」 탭을 여기로 통합했다(입장=내 강의실 / 신청·결제 기록=이 탭 두 축).
+  // ⚠️ 강좌 정보는 임베드가 아니라 **신청 시점 스냅샷 컬럼**을 쓴다 — 프렌더가 강좌를 고쳐 승인이 풀리면
+  //    prep_courses 공개 정책(status='승인')에서 빠져 임베드가 비어 버린다. RLS prep_enrollments_select_own.
+  const { data: prepData } = await supabase
+    .from("prep_enrollments")
+    .select(
+      "id, course_id, course_title, start_min, duration_min, session_count, first_session_date, last_session_date, price_krw, status, paid_at, created_at",
+    )
+    .order("created_at", { ascending: false });
+  const prepEnrollments = (prepData ?? []) as unknown as MyPrepEnrollment[];
+
+  return (
+    <div className="space-y-5">
+      <StudentEnrollments enrollments={enrollments} />
+      <MyPrepEnrollments enrollments={prepEnrollments} />
+    </div>
+  );
 }

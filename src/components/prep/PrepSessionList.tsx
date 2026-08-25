@@ -26,7 +26,7 @@ export type PrepSessionView = {
 
 type View = "list" | "calendar";
 
-// 프렙 회차 목록 — 수강생(/mypage/prep)과 개설 프렌더(/friender/prep)가 공용한다.
+// 프렙 회차 목록 — 수강생(/mypage/classroom 「내 강의실」)과 개설 프렌더(/friender/prep)가 공용한다.
 // isHost로만 갈린다: 호스트는 안내 다이얼로그 없이 바로 입장하고, 지난 회차에 '출석 N명'을 본다.
 export default function PrepSessionList({
   sessions,

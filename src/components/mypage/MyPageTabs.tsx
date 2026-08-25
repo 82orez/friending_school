@@ -9,7 +9,6 @@ const TABS: { href: string; label: string }[] = [
   { href: "/mypage/enrollments", label: "수강신청 내역" },
   { href: "/mypage/classroom", label: "내 강의실" },
   { href: "/mypage/rooms", label: "프렌딩 예약" },
-  { href: "/mypage/prep", label: "프렙 수강" },
 ];
 
 export default function MyPageTabs() {

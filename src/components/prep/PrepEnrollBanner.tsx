@@ -168,7 +168,9 @@ export default function PrepEnrollBanner({
 
                   {isLoggedIn &&
                     (c.myStatus ? (
-                      <Link href="/mypage/prep" className="shrink-0 text-sm font-bold text-white underline underline-offset-2 hover:opacity-90">
+                      <Link
+                        href="/mypage/enrollments"
+                        className="shrink-0 text-sm font-bold text-white underline underline-offset-2 hover:opacity-90">
                         내 신청 보기
                       </Link>
                     ) : (

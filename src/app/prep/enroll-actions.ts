@@ -32,7 +32,7 @@ const JOIN_ERROR: Record<string, string> = {
 
 function revalidatePrepEnroll(): void {
   revalidatePath("/friending");
-  revalidatePath("/mypage/prep");
+  revalidatePath("/mypage/enrollments");
   revalidatePath("/admin/prep");
   revalidatePath("/friender", "layout"); // 프렌더 목록의 신청자 수
 }

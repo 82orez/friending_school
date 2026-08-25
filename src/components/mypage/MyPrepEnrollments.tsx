@@ -63,83 +63,91 @@ export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrep
     });
   };
 
-  if (enrollments.length === 0) {
-    return (
-      <div className="border-rule rounded-xl border bg-white px-6 py-16 text-center">
-        <p className="text-muted-fg text-sm">신청한 프렙 강좌가 없습니다.</p>
-        <Link href="/prep" className="text-accent-blue-ink mt-3 inline-block text-sm font-bold underline underline-offset-2">
-          프렙 강좌 소개 보기
-        </Link>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-3">
-      {enrollments.map((e) => {
-        const period =
-          e.first_session_date && e.last_session_date
-            ? `${fmtDateKo(e.first_session_date)} ~ ${fmtDateKo(e.last_session_date)} (${e.session_count}회)`
-            : "-";
-        return (
-          <div key={e.id} className="border-rule rounded-xl border bg-white p-5">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="flex min-w-0 items-center gap-2">
-                <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[e.status])}>
-                  {e.status === "입금대기" ? "입금 대기" : e.status === "수강확정" ? "수강 확정" : "취소됨"}
-                </span>
-                <span className="text-ink text-base font-bold break-words">{e.course_title}</span>
-              </p>
-              {e.status === "입금대기" && (
-                <button
-                  type="button"
-                  onClick={() => setCancelTarget(e)}
-                  disabled={pending}
-                  className="border-brand/40 text-brand hover:bg-brand/5 shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60">
-                  신청 취소
-                </button>
-              )}
-            </div>
+    // 껍데기·헤더·행 여백은 StudentEnrollments(필리핀 화상영어 과정)와 같은 값 —
+    // 같은 탭에 두 섹션이 나란히 놓이므로 한쪽만 다르면 바로 눈에 띈다.
+    <section className="border-rule overflow-hidden rounded-2xl border bg-white">
+      <div className="border-rule flex items-center gap-2 border-b px-6 py-5">
+        <span aria-hidden>📘</span>
+        <h2 className="text-ink text-base font-bold">프렙 강좌</h2>
+        <span className="text-muted-fg-faint ml-auto text-sm">{enrollments.length}건</span>
+      </div>
 
-            <dl className="mt-3 grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1.5 text-sm">
-              {(
-                [
-                  ["기간", period],
-                  ["시각", `${fmtTime(e.start_min)}~${fmtRoomEnd(e.start_min + e.duration_min)} (${e.duration_min}분)`],
-                  ["수강료", formatWon(e.price_krw)],
-                ] as const
-              ).map(([label, value]) => (
-                <Fragment key={label}>
-                  <dt className="text-muted-fg-faint">{label}</dt>
-                  <dd className="text-ink font-semibold break-words">{value}</dd>
-                </Fragment>
-              ))}
-            </dl>
+      {enrollments.length === 0 ? (
+        <div className="px-6 py-12 text-center">
+          <p className="text-muted-fg text-sm">신청한 프렙 강좌가 없어요.</p>
+          <Link href="/prep" className="text-accent-blue-ink mt-3 inline-block text-sm font-bold underline underline-offset-2">
+            프렙 강좌 소개 보기
+          </Link>
+        </div>
+      ) : (
+        <ul className="list-none">
+          {enrollments.map((e) => {
+            const period =
+              e.first_session_date && e.last_session_date
+                ? `${fmtDateKo(e.first_session_date)} ~ ${fmtDateKo(e.last_session_date)} (${e.session_count}회)`
+                : "-";
+            return (
+              <li key={e.id} className="border-rule border-b px-6 py-4 last:border-b-0">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <p className="flex min-w-0 items-center gap-2">
+                    <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[e.status])}>
+                      {e.status === "입금대기" ? "입금 대기" : e.status === "수강확정" ? "수강 확정" : "취소됨"}
+                    </span>
+                    <span className="text-ink text-base font-bold break-words">{e.course_title}</span>
+                  </p>
+                  {e.status === "입금대기" && (
+                    <button
+                      type="button"
+                      onClick={() => setCancelTarget(e)}
+                      disabled={pending}
+                      className="border-brand/40 text-brand hover:bg-brand/5 shrink-0 rounded-md border px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-60">
+                      신청 취소
+                    </button>
+                  )}
+                </div>
 
-            {/* ⚠️ 회차 목록·입장은 「내 강의실」로 옮겼다(입장 동선을 과정 종류와 무관하게 한 곳으로).
+                <dl className="mt-3 grid grid-cols-[4.5rem_1fr] gap-x-3 gap-y-1.5 text-sm">
+                  {(
+                    [
+                      ["기간", period],
+                      ["시각", `${fmtTime(e.start_min)}~${fmtRoomEnd(e.start_min + e.duration_min)} (${e.duration_min}분)`],
+                      ["수강료", formatWon(e.price_krw)],
+                    ] as const
+                  ).map(([label, value]) => (
+                    <Fragment key={label}>
+                      <dt className="text-muted-fg-faint">{label}</dt>
+                      <dd className="text-ink font-semibold break-words">{value}</dd>
+                    </Fragment>
+                  ))}
+                </dl>
+
+                {/* ⚠️ 회차 목록·입장은 「내 강의실」로 옮겼다(입장 동선을 과정 종류와 무관하게 한 곳으로).
                 옮겼다는 사실이 화면에 없으면 "입장 버튼이 사라졌다"로 읽히므로 길을 남긴다. */}
-            {e.status === "수강확정" && (
-              <p className="text-muted-fg mt-3 text-sm">
-                수업 입장과 회차 일정은{" "}
-                <Link href="/mypage/classroom" className="text-accent-blue-ink font-bold underline underline-offset-2">
-                  내 강의실
-                </Link>{" "}
-                탭에서 확인하세요.
-              </p>
-            )}
+                {e.status === "수강확정" && (
+                  <p className="text-muted-fg mt-3 text-sm">
+                    수업 입장과 회차 일정은{" "}
+                    <Link href="/mypage/classroom" className="text-accent-blue-ink font-bold underline underline-offset-2">
+                      내 강의실
+                    </Link>{" "}
+                    탭에서 확인하세요.
+                  </p>
+                )}
 
-            {e.status === "입금대기" && (
-              <div className="border-rule bg-surface mt-3 rounded-lg border p-3 text-sm">
-                <p className="text-ink font-bold">입금 안내</p>
-                <p className="text-ink mt-1">
-                  {PAYMENT_BANK.bank} {PAYMENT_BANK.account} · 예금주 {PAYMENT_BANK.holder}
-                </p>
-                <p className="text-muted-fg-faint mt-1 text-xs">입금이 확인되면 수강이 확정되고 문자로 알려 드립니다.</p>
-              </div>
-            )}
-          </div>
-        );
-      })}
+                {e.status === "입금대기" && (
+                  <div className="border-rule bg-surface mt-3 rounded-lg border p-3 text-sm">
+                    <p className="text-ink font-bold">입금 안내</p>
+                    <p className="text-ink mt-1">
+                      {PAYMENT_BANK.bank} {PAYMENT_BANK.account} · 예금주 {PAYMENT_BANK.holder}
+                    </p>
+                    <p className="text-muted-fg-faint mt-1 text-xs">입금이 확인되면 수강이 확정되고 문자로 알려 드립니다.</p>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <AlertDialog open={cancelTarget !== null} onOpenChange={(o) => !o && setCancelTarget(null)}>
         <AlertDialogContent>
@@ -161,6 +169,6 @@ export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrep
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </section>
   );
 }
