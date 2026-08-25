@@ -89,13 +89,14 @@ export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrep
                 : "-";
             return (
               <li key={e.id} className="border-rule border-b px-6 py-4 last:border-b-0">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <p className="flex min-w-0 items-center gap-2">
-                    <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[e.status])}>
-                      {e.status === "입금대기" ? "입금 대기" : e.status === "수강확정" ? "수강 확정" : "취소됨"}
-                    </span>
-                    <span className="text-ink text-base font-bold break-words">{e.course_title}</span>
-                  </p>
+                {/* 배치는 필리핀 화상영어 과정 행(EnrollmentRow)과 같은 순서 —
+                    제목(flex-1) → 상태 배지 → 액션. 두 섹션이 세로로 붙어 있어 배지가 좌우로 갈리면
+                    시선이 오른쪽 끝과 왼쪽을 오간다(실제 피드백). 취소 버튼이 정규 행의 ▾ 자리를 쓴다. */}
+                <div className="flex items-center gap-3">
+                  <p className="text-ink min-w-0 flex-1 truncate text-base font-bold">{e.course_title}</p>
+                  <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[e.status])}>
+                    {e.status === "입금대기" ? "입금 대기" : e.status === "수강확정" ? "수강 확정" : "취소됨"}
+                  </span>
                   {e.status === "입금대기" && (
                     <button
                       type="button"
@@ -121,18 +122,6 @@ export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrep
                     </Fragment>
                   ))}
                 </dl>
-
-                {/* ⚠️ 회차 목록·입장은 「내 강의실」로 옮겼다(입장 동선을 과정 종류와 무관하게 한 곳으로).
-                옮겼다는 사실이 화면에 없으면 "입장 버튼이 사라졌다"로 읽히므로 길을 남긴다. */}
-                {e.status === "수강확정" && (
-                  <p className="text-muted-fg mt-3 text-sm">
-                    수업 입장과 회차 일정은{" "}
-                    <Link href="/mypage/classroom" className="text-accent-blue-ink font-bold underline underline-offset-2">
-                      내 강의실
-                    </Link>{" "}
-                    탭에서 확인하세요.
-                  </p>
-                )}
 
                 {e.status === "입금대기" && (
                   <div className="border-rule bg-surface mt-3 rounded-lg border p-3 text-sm">
