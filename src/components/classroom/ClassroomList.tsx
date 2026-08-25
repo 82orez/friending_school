@@ -249,9 +249,28 @@ export default function ClassroomList({
 
       {landingView === "weekly" ? (
         <>
+          {/* ⚠️ 주간 타임그리드는 ClassItem 전용이라 프렙이 빠진다. 빠졌다는 사실은 그리드를 훑고
+              "왜 없지?"가 된 **뒤**에 알면 늦으므로 그리드 **위**에 두고, 어느 강좌가 빠졌는지
+              이름까지 말한 뒤 그 자리에서 「과정별」로 넘어갈 수 있게 한다. */}
+          {prepCourses.length > 0 && (
+            <div className="border-accent-blue/30 bg-accent-blue-soft flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-3">
+              <Info aria-hidden className="text-accent-blue-ink size-4 shrink-0" />
+              <p className="text-accent-blue-ink min-w-0 flex-1 text-sm font-semibold">
+                주간 시간표에는 <span className="font-extrabold">정규 과정만</span> 표시됩니다. 프렙 강좌{" "}
+                <span className="font-extrabold">
+                  「{prepCourses[0].courseTitle}」{prepCourses.length > 1 ? ` 외 ${prepCourses.length - 1}개` : ""}
+                </span>
+                의 일정은 「과정별」 뷰에서 확인하세요.
+              </p>
+              <button
+                type="button"
+                onClick={() => setLandingView("cards")}
+                className="border-accent-blue/40 text-accent-blue-ink focus-visible:ring-accent-blue/50 shrink-0 rounded-md border bg-white px-3 py-1.5 text-sm font-bold transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:outline-none">
+                과정별 뷰로 보기
+              </button>
+            </div>
+          )}
           <WeekSchedule classes={classes} groups={groups} isTeacher={isTeacher} now={now} ko={ko} onSelectCourse={setSelectedId} />
-          {/* 주간 타임그리드는 ClassItem 전용이라 프렙이 빠진다 — 사라진 게 아니라는 안내. */}
-          {prepCourses.length > 0 && <p className="text-muted-fg-faint mt-3 text-xs">프렙 강좌 일정은 「과정별」 뷰에서 볼 수 있어요.</p>}
         </>
       ) : (
         <div className="space-y-6">
