@@ -31,6 +31,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cancelClass, enterClass, saveClassFeedback } from "@/app/classroom/actions";
+import type { PrepCourseSessions } from "@/lib/prep-session";
+import PrepCourseCard from "@/components/classroom/PrepCourseCard";
+import PrepCourseDetail from "@/components/classroom/PrepCourseDetail";
 
 export type ClassItem = {
   id: string;
@@ -143,7 +146,18 @@ function nextUpcomingIdOf(items: ClassItem[], now: number): string | null {
   return up[0]?.id ?? null;
 }
 
-export default function ClassroomList({ classes, isTeacher }: { classes: ClassItem[]; isTeacher: boolean }) {
+export default function ClassroomList({
+  classes,
+  isTeacher,
+  prepCourses = [],
+}: {
+  classes: ClassItem[];
+  isTeacher: boolean;
+  // 프렙 강좌(학생 전용) — ⚠️ /teacher/classroom은 넘기지 않는다(강사 경로엔 프렙이 없음을 타입으로 보장).
+  // 정규 과정과 **같은 컴포넌트가 선택 상태를 소유**해야 한다: 형제로 두면 정규 상세를 보는 중에도
+  // 프렙 카드가 아래에 남는다(실제로 겪은 문제).
+  prepCourses?: PrepCourseSessions[];
+}) {
   // 강사 화면은 영문, 학생 화면은 한국어.
   const ko = !isTeacher;
 
@@ -155,6 +169,7 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
   }, []);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedPrepId, setSelectedPrepId] = useState<string | null>(null);
   const [landingView, setLandingView] = useState<"cards" | "weekly">("cards");
 
   // enrollment_id별 그룹핑(서버 정렬 유지) → 다음 예정 수업 빠른 그룹 먼저, 전부 종료된 그룹은 뒤로.
@@ -185,7 +200,7 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
     return out.sort((a, b) => nextStart(a) - nextStart(b));
   }, [classes, now]);
 
-  if (classes.length === 0) {
+  if (classes.length === 0 && prepCourses.length === 0) {
     return (
       <section className="border-rule overflow-hidden rounded-2xl border bg-white">
         <div className="px-6 py-12 text-center">
@@ -200,6 +215,14 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
   if (selected) {
     return <CourseDetail group={selected} isTeacher={isTeacher} now={now} ko={ko} onBack={() => setSelectedId(null)} />;
   }
+
+  const selectedPrep = selectedPrepId ? (prepCourses.find((c) => c.courseId === selectedPrepId) ?? null) : null;
+  if (selectedPrep) {
+    return <PrepCourseDetail course={selectedPrep} onBack={() => setSelectedPrepId(null)} />;
+  }
+
+  // 두 종류가 모두 있을 때만 섹션 제목을 붙인다(정규 과정만 듣는 회원에게는 기존 화면 그대로).
+  const showHeadings = classes.length > 0 && prepCourses.length > 0;
 
   // 진입 — 뷰 토글(카드 / 주간) + 선택 뷰.
   const landingTabs: [typeof landingView, string][] = [
@@ -225,12 +248,33 @@ export default function ClassroomList({ classes, isTeacher }: { classes: ClassIt
       </div>
 
       {landingView === "weekly" ? (
-        <WeekSchedule classes={classes} groups={groups} isTeacher={isTeacher} now={now} ko={ko} onSelectCourse={setSelectedId} />
+        <>
+          <WeekSchedule classes={classes} groups={groups} isTeacher={isTeacher} now={now} ko={ko} onSelectCourse={setSelectedId} />
+          {/* 주간 타임그리드는 ClassItem 전용이라 프렙이 빠진다 — 사라진 게 아니라는 안내. */}
+          {prepCourses.length > 0 && <p className="text-muted-fg-faint mt-3 text-xs">프렙 강좌 일정은 「과정별」 뷰에서 볼 수 있어요.</p>}
+        </>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {groups.map((g) => (
-            <CourseCard key={g.enrollmentId} group={g} isTeacher={isTeacher} now={now} onSelect={() => setSelectedId(g.enrollmentId)} />
-          ))}
+        <div className="space-y-6">
+          {classes.length > 0 && (
+            <section>
+              {showHeadings && <h2 className="text-ink mb-3 text-sm font-extrabold">정규 과정</h2>}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {groups.map((g) => (
+                  <CourseCard key={g.enrollmentId} group={g} isTeacher={isTeacher} now={now} onSelect={() => setSelectedId(g.enrollmentId)} />
+                ))}
+              </div>
+            </section>
+          )}
+          {prepCourses.length > 0 && (
+            <section>
+              {showHeadings && <h2 className="text-ink mb-3 text-sm font-extrabold">프렙 강좌</h2>}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {prepCourses.map((c) => (
+                  <PrepCourseCard key={c.courseId} course={c} now={now} onSelect={() => setSelectedPrepId(c.courseId)} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
     </div>

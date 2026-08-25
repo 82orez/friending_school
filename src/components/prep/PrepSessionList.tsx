@@ -35,6 +35,8 @@ export default function PrepSessionList({
   durationMin,
   isHost = false,
   zoomReady = true,
+  defaultView = "list",
+  bare = false,
 }: {
   sessions: PrepSessionView[];
   total: number;
@@ -42,8 +44,12 @@ export default function PrepSessionList({
   durationMin: number;
   isHost?: boolean;
   zoomReady?: boolean;
+  // 「내 강의실」 상세는 정규 과정 CourseDetail과 맞춰 달력으로 연다. /friender/prep은 목록 기본.
+  defaultView?: View;
+  // 바깥 테두리 박스와 「수업 일정 N회」 제목을 생략 — 상세 화면엔 이미 헤더가 있어 이중 제목이 된다.
+  bare?: boolean;
 }) {
-  const [view, setView] = useState<View>("list");
+  const [view, setView] = useState<View>(defaultView);
 
   // 1분 틱 — 입장 시간창 진입과 예정/지난 전환이 새로고침 없이 반영된다
   // (ClassroomList·MyRoomReservations와 같은 방식).
@@ -65,13 +71,18 @@ export default function PrepSessionList({
   const rowProps = { total, startMin, durationMin, isHost, zoomReady, now };
 
   return (
-    <div className="border-rule mt-3 rounded-xl border p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-ink text-sm font-bold">
-          수업 일정 <span className="text-muted-fg-faint font-semibold">{sessions.length}회</span>
-        </p>
+    <div className={bare ? undefined : "border-rule mt-3 rounded-xl border p-3"}>
+      {/* bare = 상세 화면 — CourseDetail처럼 토글만 좌측에 놓는다(제목은 바깥 헤더가 갖는다). */}
+      {bare ? (
         <ViewToggle view={view} setView={setView} />
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-ink text-sm font-bold">
+            수업 일정 <span className="text-muted-fg-faint font-semibold">{sessions.length}회</span>
+          </p>
+          <ViewToggle view={view} setView={setView} />
+        </div>
+      )}
 
       {view === "list" ? (
         <div className="mt-3">
