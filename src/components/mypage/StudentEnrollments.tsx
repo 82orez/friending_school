@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { ChevronDown, CreditCard, ExternalLink, Loader2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ENROLLMENT_STATUS_BADGE, ENROLLMENT_STATUS_LABEL, type EnrollmentDisplayStatus } from "@/data/enrollment-status";
 import { cancelEnrollment, confirmPortonePayment } from "@/app/mypage/actions";
 import { summarizeSlots, lessonEndDate, type Slot } from "@/lib/availability";
 import { PAYMENT_BANK } from "@/data/payment";
@@ -47,29 +48,26 @@ export type StudentEnrollment = {
 };
 
 // 학생 화면 상태 라벨(강사 승인 흐름 — 승인 시 결제대기, 입금 확인 시 결제완료).
-const STATUS_LABEL: Record<StudentEnrollment["status"], string> = {
-  신청: "승인 대기",
+// DB enum → 표시 상태. 문구·색은 src/data/enrollment-status.ts가 갖는다(프렙과 한 어휘를 쓰기 위해).
+// ⚠️ '결제완료'는 화면에 **「수강 확정」**으로 뜬다 — 배지가 답해야 할 질문은 "돈 냈나"가 아니라
+//    "내 수업 어떻게 됐나"이고, 결제완료 시점에 실제로 classes가 생성된다.
+const DISPLAY_STATUS: Record<StudentEnrollment["status"], EnrollmentDisplayStatus> = {
+  신청: "승인대기",
   승인: "승인됨",
-  결제대기: "결제 대기",
-  결제완료: "결제 완료",
+  결제대기: "결제대기",
+  결제완료: "수강확정",
   거절: "거절됨",
   취소: "취소됨",
 };
 
-const STATUS_BADGE: Record<StudentEnrollment["status"], string> = {
-  신청: "bg-accent-blue-soft text-accent-blue-ink",
-  승인: "bg-[#E1F5EE] text-[#0F6E56]",
-  결제대기: "bg-[#F3EEFD] text-[#6B4AD4]",
-  결제완료: "bg-[#E6F4EA] text-[#1E7E34]",
-  거절: "bg-brand/10 text-brand",
-  취소: "bg-rule text-muted-fg",
-};
-
-const REFUND_BADGE = "bg-[#FFF4E5] text-[#B45309]";
-
 // 환불로 취소된 건은 '환불됨'으로 구분(일반 취소는 '취소됨').
+// ⚠️ 표시 계층이 아니라 payments.status 기반 파생이라 여기 남는다.
 function isRefunded(r: StudentEnrollment): boolean {
   return r.status === "취소" && !!r.refunded;
+}
+
+function displayStatusOf(r: StudentEnrollment): EnrollmentDisplayStatus {
+  return isRefunded(r) ? "환불됨" : DISPLAY_STATUS[r.status];
 }
 
 function formatDate(iso: string): string {
@@ -214,8 +212,8 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
             </p>
             <p className="text-muted-fg-faint mt-0.5 text-xs">신청일 {formatDate(row.createdAt)}</p>
           </div>
-          <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", isRefunded(row) ? REFUND_BADGE : STATUS_BADGE[row.status])}>
-            {isRefunded(row) ? "환불됨" : STATUS_LABEL[row.status]}
+          <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", ENROLLMENT_STATUS_BADGE[displayStatusOf(row)])}>
+            {ENROLLMENT_STATUS_LABEL[displayStatusOf(row)]}
           </span>
           <ChevronDown aria-hidden className="text-muted-fg-faint size-4 shrink-0 transition-transform group-open:rotate-180" />
         </summary>

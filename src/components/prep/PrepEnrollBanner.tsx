@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ENROLLMENT_STATUS_BADGE, ENROLLMENT_STATUS_LABEL, type EnrollmentDisplayStatus } from "@/data/enrollment-status";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
 import { fmtDateKo, formatWon } from "@/lib/prep";
@@ -52,6 +53,9 @@ const seatLabel = (c: OpenPrepCourse): string =>
  * 프렌딩 상단의 프렙 수강신청 배너 + 신청 모달.
  * ⚠️ 액션 호출·toast·router.refresh()는 이 컴포넌트가 전담한다(프렙 UI 규약).
  */
+// DB enum → 표시 상태(마이페이지와 공용 어휘).
+const BANNER_STATUS: Record<"입금대기" | "수강확정", EnrollmentDisplayStatus> = { 입금대기: "결제대기", 수강확정: "수강확정" };
+
 export default function PrepEnrollBanner({
   courses,
   isLoggedIn,
@@ -154,12 +158,11 @@ export default function PrepEnrollBanner({
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="text-base font-bold break-words text-white">{c.title}</span>
                       {c.myStatus && (
+                        // 마이페이지 배지와 같은 어휘·색(src/data/enrollment-status.ts) — 한 상태를
+                        // 화면마다 다르게 부르지 않는다. '입금대기'는 여기서도 「결제 대기」.
                         <span
-                          className={cn(
-                            "shrink-0 rounded-full px-2 py-0.5 text-xs font-bold",
-                            c.myStatus === "수강확정" ? "bg-[#E1F5EE] text-[#0F6E56]" : "bg-[#FFF7E6] text-[#B97400]",
-                          )}>
-                          {c.myStatus === "수강확정" ? "수강 확정" : "신청 완료 · 입금 대기"}
+                          className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-bold", ENROLLMENT_STATUS_BADGE[BANNER_STATUS[c.myStatus]])}>
+                          {ENROLLMENT_STATUS_LABEL[BANNER_STATUS[c.myStatus]]}
                         </span>
                       )}
                     </p>
@@ -273,11 +276,8 @@ export default function PrepEnrollBanner({
                               <span className="text-ink text-base font-bold">{c.title}</span>
                               {c.myStatus && (
                                 <span
-                                  className={cn(
-                                    "rounded-full px-2 py-0.5 text-xs font-bold",
-                                    c.myStatus === "수강확정" ? "bg-[#E1F5EE] text-[#0F6E56]" : "bg-[#FFF7E6] text-[#B97400]",
-                                  )}>
-                                  {c.myStatus === "수강확정" ? "수강 확정" : "신청 완료 · 입금 대기"}
+                                  className={cn("rounded-full px-2 py-0.5 text-xs font-bold", ENROLLMENT_STATUS_BADGE[BANNER_STATUS[c.myStatus]])}>
+                                  {ENROLLMENT_STATUS_LABEL[BANNER_STATUS[c.myStatus]]}
                                 </span>
                               )}
                             </span>

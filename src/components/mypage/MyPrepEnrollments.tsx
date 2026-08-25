@@ -9,6 +9,7 @@ import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
 import { fmtDateKo, formatWon } from "@/lib/prep";
 import { PAYMENT_BANK } from "@/data/payment";
+import { ENROLLMENT_STATUS_BADGE, ENROLLMENT_STATUS_LABEL, type EnrollmentDisplayStatus } from "@/data/enrollment-status";
 import { cancelPrepEnrollment } from "@/app/prep/enroll-actions";
 import {
   AlertDialog,
@@ -37,10 +38,13 @@ export type MyPrepEnrollment = {
   created_at: string;
 };
 
-const STATUS_BADGE: Record<MyPrepEnrollment["status"], string> = {
-  입금대기: "bg-[#FFF7E6] text-[#B97400]",
-  수강확정: "bg-[#E1F5EE] text-[#0F6E56]",
-  취소: "bg-surface text-muted-fg",
+// DB enum → 표시 상태. 문구·색은 src/data/enrollment-status.ts가 갖는다
+// (정규 과정 섹션과 같은 탭에 있어 같은 뜻이면 같은 배지여야 한다).
+// ⚠️ '입금대기'는 화면에 「결제 대기」로 뜬다 — 프렙은 무통장만 있지만 어휘를 하나로 맞춘다.
+const DISPLAY_STATUS: Record<MyPrepEnrollment["status"], EnrollmentDisplayStatus> = {
+  입금대기: "결제대기",
+  수강확정: "수강확정",
+  취소: "취소됨",
 };
 
 export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrepEnrollment[] }) {
@@ -94,8 +98,8 @@ export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrep
                     시선이 오른쪽 끝과 왼쪽을 오간다(실제 피드백). 취소 버튼이 정규 행의 ▾ 자리를 쓴다. */}
                 <div className="flex items-center gap-3">
                   <p className="text-ink min-w-0 flex-1 truncate text-base font-bold">{e.course_title}</p>
-                  <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", STATUS_BADGE[e.status])}>
-                    {e.status === "입금대기" ? "입금 대기" : e.status === "수강확정" ? "수강 확정" : "취소됨"}
+                  <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", ENROLLMENT_STATUS_BADGE[DISPLAY_STATUS[e.status]])}>
+                    {ENROLLMENT_STATUS_LABEL[DISPLAY_STATUS[e.status]]}
                   </span>
                   {e.status === "입금대기" && (
                     <button
