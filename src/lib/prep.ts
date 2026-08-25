@@ -47,6 +47,12 @@ export function fmtDateKo(dateStr: string): string {
 
 const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"];
 
+// "9월 1일 (월)" — 회차 행 제목처럼 넓은 자리. 내 강의실의 정규 과정 행(formatSessionDate)과 같은 표기다.
+export function fmtDateKoDow(dateStr: string): string {
+  const [, m, d] = dateStr.split("-").map(Number);
+  return `${m}월 ${d}일 (${WEEKDAY_KO[weekdayOf(dateStr)]})`;
+}
+
 // "9/01(월)" — 회차 목록처럼 좁은 자리에서 쓴다. 요일은 UTC 산술(weekdayOf)이라 TZ에 흔들리지 않는다.
 export function fmtDateShort(dateStr: string): string {
   const [, m, d] = dateStr.split("-").map(Number);
