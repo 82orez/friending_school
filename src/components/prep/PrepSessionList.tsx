@@ -108,7 +108,7 @@ export default function PrepSessionList({
 
 function ViewToggle({ view, setView }: { view: View; setView: (v: View) => void }) {
   // 순서는 정규 과정 ClassroomList의 ViewToggle과 동일(달력 먼저).
-  // ⚠️ 표시 순서만이고 기본 선택은 defaultView prop이 정한다(/friender/prep은 목록 기본).
+  // ⚠️ 표시 순서만이고 기본 선택은 defaultView prop이 정한다(소비처는 모두 달력 기본).
   const tabs: [View, string][] = [
     ["calendar", "달력"],
     ["list", "목록"],

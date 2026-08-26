@@ -216,11 +216,12 @@ export default function PrepManager({
                     return (
                       <PrepSessionList
                         sessions={s.sessions}
-                        total={s.sessions.length}
+                        total={s.totalSessions}
                         startMin={s.startMin}
                         durationMin={s.durationMin}
                         isHost
                         zoomReady={hasZoomUrl}
+                        defaultView="calendar"
                       />
                     );
                   })()}
