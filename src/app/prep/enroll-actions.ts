@@ -30,7 +30,7 @@ const JOIN_ERROR: Record<string, string> = {
   // 중도 신청 도입 전(20260826003601 이전) RPC가 돌려주던 코드 — 마이그레이션 적용 전 배포 시차용으로 남겨 둔다.
   started: "이미 시작된 강좌라 신청을 받지 않아요.",
   full: "정원이 모두 찼어요.",
-  // 접수 시간창 밖(KST 19:00~익일 07:00). 액션이 먼저 걸러내지만, RPC를 직접 부르는 경로를 위해 매핑을 둔다.
+  // 접수 시간창 밖(KST 19:00~익일 08:00). 액션이 먼저 걸러내지만, RPC를 직접 부르는 경로를 위해 매핑을 둔다.
   closed: PREP_APPLY_CLOSED_MSG,
   phone_unverified: "휴대폰 인증이 필요합니다. 마이페이지에서 인증한 뒤 다시 신청해 주세요.",
   profile_incomplete: "성·이름·영어 이름을 먼저 입력해 주세요. 마이페이지에서 등록한 뒤 다시 신청할 수 있어요.",
@@ -53,7 +53,7 @@ export async function applyPrepCourse(courseId: string): Promise<PrepEnrollResul
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "로그인이 필요합니다." };
 
-  // 접수 시간창(KST 07:00~19:00) 밖 — 알림도 나가지 않으므로 rate limit 예산을 쓰기 전에 돌려보낸다.
+  // 접수 시간창(KST 08:00~19:00) 밖 — 알림도 나가지 않으므로 rate limit 예산을 쓰기 전에 돌려보낸다.
   // ⚠️ authoritative는 RPC의 같은 검사다(브라우저가 RPC를 직접 부를 수 있다). 여기는 빠른 반려용.
   if (!isPrepApplyOpen()) return { ok: false, error: PREP_APPLY_CLOSED_MSG };
 

@@ -253,7 +253,7 @@ export default async function FriendingPage() {
           </div>
         </section>
 
-        {/* 접수 시간창(KST 07:00~19:00)은 서버에서 계산해 초기값으로 넘긴다 — 배너가 1분 틱으로 갱신하되
+        {/* 접수 시간창(KST 08:00~19:00)은 서버에서 계산해 초기값으로 넘긴다 — 배너가 1분 틱으로 갱신하되
             첫 렌더 값이 서버·클라에서 갈리면 hydration mismatch가 난다. */}
         <PrepEnrollBanner courses={prepCourses} isLoggedIn={!!user} profileMissing={profileMissing} applyOpenInitial={isPrepApplyOpen()} />
 

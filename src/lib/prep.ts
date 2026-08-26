@@ -50,7 +50,7 @@ export function kstMinuteOfDay(nowMs: number = Date.now()): number {
   return Math.floor(((((nowMs + KST_OFFSET_MS) % dayMs) + dayMs) % dayMs) / 60_000);
 }
 
-// 07:00 정각은 개시, 19:00 정각은 마감(반개구간) — SQL의 `hour not between 7 and 18`과 같은 결론.
+// 08:00 정각은 개시, 19:00 정각은 마감(반개구간) — SQL의 `hour not between 8 and 18`과 같은 결론.
 export function isPrepApplyOpen(nowMs: number = Date.now()): boolean {
   const m = kstMinuteOfDay(nowMs);
   return m >= PREP_APPLY_OPEN_MIN && m < PREP_APPLY_CLOSE_MIN;
