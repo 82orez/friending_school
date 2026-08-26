@@ -352,6 +352,91 @@ export async function sendPrepEnrollmentNotification(to: string[], data: PrepEnr
   }
 }
 
+/* ===== 프렙 강좌 수강신청 취소 알림 (관리자 대상) ===== */
+
+// 학생이 입금 전 신청을 스스로 취소하면 관리자에게 보낸다.
+// ⚠️ 관리자가 **오지 않을 입금을 기다리는 것**을 막는 게 목적이다(자리도 함께 비워진다).
+export type PrepCancellationEmailData = {
+  courseTitle: string;
+  frienderName: string;
+  studentName: string;
+  studentPhone: string;
+  studentEmail: string;
+  period: string;
+  priceKrw: number;
+  enrolledCount: number;
+  capacity: number;
+  appliedAt: string;
+  cancelledAt: string;
+};
+
+function prepCancellationRows(d: PrepCancellationEmailData): [string, string][] {
+  const kst = (iso: string) => new Date(iso).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+  return [
+    ["강좌명", d.courseTitle],
+    ["프렌더", d.frienderName],
+    ["신청자", d.studentName],
+    ["연락처", d.studentPhone || "-"],
+    ["이메일", d.studentEmail || "(미입력)"],
+    ["기간", d.period],
+    ["수강료", `${d.priceKrw.toLocaleString("ko-KR")}원 (미입금)`],
+    ["남은 신청 인원", `${d.enrolledCount}/${d.capacity}명`],
+    ["신청 일시", kst(d.appliedAt)],
+    ["취소 일시", kst(d.cancelledAt)],
+  ];
+}
+
+function buildPrepCancellationHtml(d: PrepCancellationEmailData): string {
+  const tr = prepCancellationRows(d)
+    .map(
+      ([k, v]) =>
+        `<tr><td style="padding:8px 12px;color:#666;background:#f8f8f8;white-space:nowrap;border-bottom:1px solid #eee;vertical-align:top">${escapeHtml(
+          k,
+        )}</td><td style="padding:8px 12px;color:#1a1a1a;border-bottom:1px solid #eee;white-space:pre-wrap">${escapeHtml(v)}</td></tr>`,
+    )
+    .join("");
+  return `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">프렙 강좌 수강신청이 취소되었습니다</h2>
+    <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(d.studentName)} · ${escapeHtml(d.courseTitle)}</p>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
+    <p style="font-size:12px;color:#999;margin:16px 0 0">프렌딩 스쿨 관리자 알림 · 신청자가 입금 전에 직접 취소했습니다. 이 건의 입금은 기다리지 않으셔도 됩니다.</p>
+  </div>`;
+}
+
+function buildPrepCancellationText(d: PrepCancellationEmailData): string {
+  return ["프렙 강좌 수강신청이 취소되었습니다.", "", ...prepCancellationRows(d).map(([k, v]) => `${k}: ${v}`)].join("\n");
+}
+
+/**
+ * 관리자들에게 프렙 수강신청 취소 알림 메일 발송. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ */
+export async function sendPrepCancellationNotification(to: string[], data: PrepCancellationEmailData): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("[mailer] RESEND_API_KEY 미설정 — 프렙 수강신청 취소 알림 메일 생략");
+    return;
+  }
+  if (to.length === 0) {
+    console.warn("[mailer] 관리자(admin) 수신자가 없어 메일 생략");
+    return;
+  }
+
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to,
+      replyTo: data.studentEmail || undefined,
+      subject: `[프렙 신청취소] ${data.studentName} · ${data.courseTitle}`,
+      html: buildPrepCancellationHtml(data),
+      text: buildPrepCancellationText(data),
+    });
+    if (error) console.error("[mailer] Resend 발송 실패:", error);
+  } catch (err) {
+    console.error("[mailer] 메일 발송 예외:", err);
+  }
+}
+
 /* ===== 강사 대상 신규 수강신청 알림 ===== */
 
 export type EnrollmentEmailData = {

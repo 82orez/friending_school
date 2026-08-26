@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient, getAdminEmails } from "@/utils/supabase/admin";
-import { sendPrepEnrollmentNotification } from "@/lib/mailer";
+import { sendPrepCancellationNotification, sendPrepEnrollmentNotification } from "@/lib/mailer";
 import { sendSms } from "@/lib/sms";
 import { rateLimit } from "@/lib/rate-limit";
 import { fmtTime } from "@/lib/availability";
@@ -89,14 +89,80 @@ export async function cancelPrepEnrollment(courseId: string): Promise<PrepEnroll
     .eq("course_id", id)
     .eq("user_id", user.id)
     .eq("status", "입금대기") // 입금이 확인된 뒤에는 관리자만 처리한다(환불 동선 미구현).
-    .select("id");
+    // 알림에 쓸 값은 **취소된 행에서 바로 받는다** — 다시 읽으면 이미 '취소' 상태라 조건이 꼬이고 왕복도 는다.
+    .select("id, student_name, student_phone, session_count, first_session_date, last_session_date, price_krw, created_at, cancelled_at");
   if (error) return { ok: false, error: "취소 처리 중 문제가 발생했습니다." };
   if (!cancelled || cancelled.length === 0) {
     return { ok: false, error: "이미 입금이 확인된 신청은 직접 취소할 수 없어요. 문의해 주세요." };
   }
 
+  await notifyPrepCancellation(admin, id, cancelled[0] as CancelledRow, user.email ?? "");
+
   revalidatePrepEnroll();
   return { ok: true };
+}
+
+// 취소된 신청 행의 스냅샷 — 알림 문구는 전부 여기서 만든다(강좌 원본이 아니라).
+type CancelledRow = {
+  id: string;
+  student_name: string | null;
+  student_phone: string | null;
+  session_count: number | null;
+  first_session_date: string | null;
+  last_session_date: string | null;
+  price_krw: number | null;
+  created_at: string;
+  cancelled_at: string | null;
+};
+
+// 학생 자가 취소 알림 (best-effort) — 관리자 메일 + 개설 프렌더 SMS. 실패해도 취소는 유효하다.
+// ⚠️ 신청 알림과 대칭이다: 안 보내면 관리자는 오지 않을 입금을 기다리고, 프렌더는 정원이
+//    비워진 사실을 목록을 새로고침해야만 안다.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function notifyPrepCancellation(admin: any, courseId: string, row: CancelledRow, studentEmail: string): Promise<void> {
+  try {
+    const { data } = await admin.from("prep_courses").select("friender_id, friender_name, title, capacity").eq("id", courseId).maybeSingle();
+    if (!data) return;
+    const c = data as { friender_id: string; friender_name: string | null; title: string; capacity: number };
+
+    // 취소 후 남은 유효 신청 수 — 관리자·프렌더가 자리 상황을 바로 알 수 있게.
+    const { count } = await admin
+      .from("prep_enrollments")
+      .select("id", { count: "exact", head: true })
+      .eq("course_id", courseId)
+      .neq("status", "취소");
+    const remaining = count ?? 0;
+
+    const period =
+      row.first_session_date && row.last_session_date
+        ? `${fmtDateKo(row.first_session_date)} ~ ${fmtDateKo(row.last_session_date)} (${row.session_count ?? 0}회)`
+        : "-";
+
+    await sendPrepCancellationNotification(await getAdminEmails(), {
+      courseTitle: c.title,
+      frienderName: c.friender_name ?? "(이름 없음)",
+      studentName: row.student_name ?? "(이름 없음)",
+      studentPhone: row.student_phone ?? "",
+      studentEmail,
+      period,
+      priceKrw: row.price_krw ?? 0,
+      enrolledCount: remaining,
+      capacity: c.capacity,
+      appliedAt: row.created_at,
+      cancelledAt: row.cancelled_at ?? new Date().toISOString(),
+    });
+
+    const { data: fprof } = await admin.from("profiles").select("phone").eq("id", c.friender_id).maybeSingle();
+    const fphone = (fprof as { phone?: string | null } | null)?.phone?.trim();
+    if (fphone) {
+      await sendSms(
+        fphone,
+        `[프렌딩 스쿨] '${prepSmsTitle(c.title)}' 프렙 강좌의 수강신청 1건이 취소되었습니다. (입금 전 취소 · 남은 신청 ${remaining}/${c.capacity}명)`,
+      );
+    }
+  } catch (err) {
+    console.error("[prep] 수강신청 취소 알림 발송 실패:", err);
+  }
 }
 
 // 신규 신청 알림 (best-effort) — 관리자 메일 + 개설 프렌더 SMS. 실패해도 신청은 유효하다.
