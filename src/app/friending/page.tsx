@@ -6,6 +6,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { todayKst } from "@/lib/booking";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { seatHeld } from "@/lib/room-time";
+import { prepChargeKrw, prepRemainingSessions } from "@/lib/prep";
 import FriendingRooms, { type HostProfile, type PublicRoom } from "@/components/friending/FriendingRooms";
 import PrepEnrollBanner, { type OpenPrepCourse } from "@/components/prep/PrepEnrollBanner";
 
@@ -132,15 +133,15 @@ export default async function FriendingPage() {
     prep_sessions: { session_date: string }[] | null;
   };
 
-  const today = todayKst();
+  // 중도 신청 — 시작된 강좌도 **남은 회차가 있으면** 계속 받는다(RPC의 ended 판정과 같은 기준).
+  // 잔여 회차·청구액 계산은 src/lib/prep.ts가 소유한다(RPC와 같은 공식).
   const prepRows = ((prepData ?? []) as unknown as PrepRow[])
     .map((c) => {
       const dates = (c.prep_sessions ?? []).map((s) => s.session_date).sort();
-      return { ...c, dates };
+      return { ...c, dates, remaining: prepRemainingSessions(dates, c.start_min, c.duration_min) };
     })
-    // 첫 회차가 지난 강좌는 신청을 받지 않는다(RPC의 started 판정과 같은 기준).
-    .filter((c) => c.dates.length > 0 && c.dates[0] > today)
-    .sort((a, b) => a.dates[0].localeCompare(b.dates[0]));
+    .filter((c) => c.remaining.length > 0)
+    .sort((a, b) => a.remaining[0].localeCompare(b.remaining[0]));
 
   // 신청자 수는 신청자 RLS(select_own) 때문에 세션 client로 못 읽는다 → 카운트만 service_role
   // (연습방 참여 인원과 같은 방식·같은 이유. 신원은 노출하지 않는다).
@@ -175,6 +176,10 @@ export default async function FriendingPage() {
     sessionCount: c.dates.length,
     firstDate: c.dates[0],
     lastDate: c.dates[c.dates.length - 1],
+    // 잔여(=실제로 사게 되는 것). 시작 전 강좌는 잔여 = 전체라 청구액도 정가 그대로다.
+    remainingCount: c.remaining.length,
+    remainingFirstDate: c.remaining[0],
+    chargeKrw: prepChargeKrw(c.price_krw, c.dates.length, c.remaining.length),
     enrolled: prepCountByCourse.get(c.id) ?? 0,
     myStatus: myPrep.get(c.id) ?? null,
   }));

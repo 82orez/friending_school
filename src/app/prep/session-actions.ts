@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { createAdminClient } from "@/utils/supabase/admin";
 import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
+import { isMySession } from "@/lib/prep-session";
 import { isValidZoomUrl } from "@/lib/url";
 
 // 프렙 회차 입장 — enterRoom(src/app/friending/actions.ts)의 가드 순서를 그대로 따른다.
@@ -43,12 +44,15 @@ export async function enterPrepSession(sessionId: string): Promise<EnterPrepResu
   if (!isHost) {
     const { data: enroll } = await admin
       .from("prep_enrollments")
-      .select("id")
+      .select("id, first_session_date")
       .eq("course_id", session.course_id)
       .eq("user_id", user.id)
       .eq("status", "수강확정")
       .maybeSingle();
     if (!enroll) return { error: "수강 확정된 수강생만 입장할 수 있어요." };
+    // 중도 신청 컷오프 — 결제한 첫 회차보다 앞선 회차는 내 것이 아니다(화면에도 안 보이지만 서버가 authoritative).
+    const from = (enroll as { first_session_date: string | null }).first_session_date;
+    if (!isMySession(from, session.session_date)) return { error: "수강 시작 전 회차라 입장할 수 없어요." };
   }
 
   // 시간창 — 서버가 authoritative(클라 버튼 노출은 사전 안내 레이어일 뿐).

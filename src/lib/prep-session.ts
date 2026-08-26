@@ -29,7 +29,10 @@ export type PrepCourseSessions = {
   frienderNickname: string | null;
   startMin: number;
   durationMin: number;
-  sessions: PrepSessionItem[]; // 회차 순(session_no asc)
+  sessions: PrepSessionItem[]; // 회차 순(session_no asc). ⚠️ 중도 신청 학생은 **내 회차만** 들어 있다
+  // 강좌 전체 회차 수 — `{sessionNo}/{totalSessions}회차`의 분모다. 회차 번호는 강좌 기준(절대 번호)이라
+  // sessions.length(=내 회차 수)를 분모로 쓰면 중도 신청자에게 "13/14회차" 같은 값이 나온다.
+  totalSessions: number;
 };
 
 type SessionRow = {
@@ -76,14 +79,28 @@ function mapSessions(
     }));
 }
 
+// 중도 신청 컷오프 — 신청 스냅샷의 첫 회차(=내가 결제한 첫 회차)보다 앞선 회차는 내 것이 아니다.
+// 스냅샷이 비어 있는(초기 데이터) 경우는 예전처럼 전 회차를 보여 준다.
+export function isMySession(from: string | null | undefined, sessionDate: string): boolean {
+  return !from || sessionDate >= from;
+}
+
 // 수강생 화면 — '수강확정' 강좌의 회차 + 내 출결.
 // 반환은 course_id 기준 맵(마이페이지가 신청 카드마다 붙여 쓴다).
 export async function loadPrepSessionsForStudent(userId: string): Promise<Record<string, PrepCourseSessions>> {
   const admin = createAdminClient();
 
   // 자격은 여기서 확정한다 — '입금대기'는 회차를 보여 주지 않는다(입장도 서버가 거부한다).
-  const { data: enrolls } = await admin.from("prep_enrollments").select("course_id").eq("user_id", userId).eq("status", "수강확정");
-  const courseIds = Array.from(new Set(((enrolls ?? []) as { course_id: string }[]).map((e) => e.course_id)));
+  // ⚠️ `first_session_date`는 **내 첫 수강 회차**(중도 신청이면 강좌 첫 회차보다 뒤다) — 결제하지 않은
+  //    지난 회차가 "미입장"으로 남지 않도록 컷오프 키로 쓴다. 회차 id를 키로 쓰면 안 된다(replace_prep_sessions가 delete+insert).
+  const { data: enrolls } = await admin
+    .from("prep_enrollments")
+    .select("course_id, first_session_date")
+    .eq("user_id", userId)
+    .eq("status", "수강확정");
+  const enrollRows = (enrolls ?? []) as { course_id: string; first_session_date: string | null }[];
+  const fromByCourse = new Map<string, string | null>(enrollRows.map((e) => [e.course_id, e.first_session_date]));
+  const courseIds = Array.from(fromByCourse.keys());
   if (courseIds.length === 0) return {};
 
   // 시각·제목은 강좌 행의 현재 값을 쓴다(신청 스냅샷은 카드 상단 정보용).
@@ -118,11 +135,12 @@ export async function loadPrepSessionsForStudent(userId: string): Promise<Record
       startMin: c.start_min,
       durationMin: c.duration_min,
       sessions: mapSessions(
-        sessionRows.filter((r) => r.course_id === c.id),
+        sessionRows.filter((r) => r.course_id === c.id && isMySession(fromByCourse.get(c.id), r.session_date)),
         c.start_min,
         c.duration_min,
         (r) => enteredBySession.get(r.id) ?? null,
       ),
+      totalSessions: sessionRows.filter((r) => r.course_id === c.id).length,
     };
   }
   return out;
@@ -175,6 +193,8 @@ export async function loadPrepSessionsForFriender(userId: string, courseIds: str
         (r) => r.host_entered_at,
         (r) => attendeesBySession.get(r.id) ?? 0,
       ),
+      // 프렌더는 자기 강좌라 컷오프가 없다 — 내려보낸 회차가 곧 전체다.
+      totalSessions: sessionRows.filter((r) => r.course_id === c.id).length,
     };
   }
   return out;
@@ -193,8 +213,15 @@ export type TodayPrepSession = PrepSessionItem & {
 export async function loadTodayPrepSessions(userId: string, todayKstDate: string): Promise<TodayPrepSession[]> {
   const admin = createAdminClient();
 
-  const { data: enrolls } = await admin.from("prep_enrollments").select("course_id").eq("user_id", userId).eq("status", "수강확정");
-  const studentIds = Array.from(new Set(((enrolls ?? []) as { course_id: string }[]).map((e) => e.course_id)));
+  const { data: enrolls } = await admin
+    .from("prep_enrollments")
+    .select("course_id, first_session_date")
+    .eq("user_id", userId)
+    .eq("status", "수강확정");
+  const fromByCourse = new Map<string, string | null>(
+    ((enrolls ?? []) as { course_id: string; first_session_date: string | null }[]).map((e) => [e.course_id, e.first_session_date]),
+  );
+  const studentIds = Array.from(fromByCourse.keys());
 
   const { data: mine } = await admin.from("prep_courses").select("id").eq("friender_id", userId).eq("status", "승인");
   const hostIds = ((mine ?? []) as { id: string }[]).map((c) => c.id);
@@ -216,6 +243,8 @@ export async function loadTodayPrepSessions(userId: string, todayKstDate: string
     .map((r) => {
       const c = byId.get(r.course_id);
       if (!c) return null;
+      // 중도 신청자에게는 결제 전 회차를 오늘 배너에도 띄우지 않는다(호스트는 자기 강좌라 전부 본다).
+      if (!hostSet.has(r.course_id) && !isMySession(fromByCourse.get(r.course_id), r.session_date)) return null;
       return {
         id: r.id,
         sessionNo: r.session_no,

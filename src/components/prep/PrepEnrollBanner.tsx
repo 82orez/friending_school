@@ -26,7 +26,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// 신청 가능한(승인 + 시작 전) 프렙 강좌. 페이지가 공개 RLS로 읽어 내려준다.
+// 신청 가능한(승인 + **남은 회차가 있는**) 프렙 강좌. 페이지가 공개 RLS로 읽어 내려준다.
+// ⚠️ 시작된 강좌도 남은 회차만큼 신청을 받는다(중도 신청) → 표시 금액은 정가가 아니라 `chargeKrw`다.
 export type OpenPrepCourse = {
   id: string;
   title: string;
@@ -40,6 +41,12 @@ export type OpenPrepCourse = {
   sessionCount: number;
   firstDate: string;
   lastDate: string;
+  /** 지금 신청하면 듣게 되는 회차 수. 시작 전 강좌는 sessionCount와 같다. */
+  remainingCount: number;
+  /** 내 첫 수강 회차가 될 날짜. */
+  remainingFirstDate: string;
+  /** 실제 청구액(잔여 비례). 잔여 = 전체이면 priceKrw 원값. */
+  chargeKrw: number;
   enrolled: number;
   /** 내 신청 상태 — 없으면 미신청. */
   myStatus: "입금대기" | "수강확정" | null;
@@ -48,6 +55,22 @@ export type OpenPrepCourse = {
 const seatLabel = (c: OpenPrepCourse): string =>
   // 정원 상한(1000)은 사실상 '제한 없음'이라 N/1000으로 보여 주면 이상하다.
   c.capacity >= PREP_MAX_CAPACITY ? `${c.enrolled}명 신청` : `${c.enrolled}/${c.capacity}명`;
+
+// 이미 시작해 일부 회차가 지나간 강좌 — 기간·수강료를 '잔여' 기준으로 바꿔 보여 준다.
+const isOngoing = (c: OpenPrepCourse): boolean => c.remainingCount < c.sessionCount;
+
+// 기간은 **내가 듣게 될 구간**을 먼저 보여 준다. 전체 일정은 회차 수와 함께 괄호로 남긴다
+// (진행 중 강좌에서 강좌 시작일을 앞세우면 "이미 지난 날짜부터 결제하는" 것처럼 읽힌다).
+const periodLabel = (c: OpenPrepCourse): string =>
+  isOngoing(c)
+    ? `${fmtDateKo(c.remainingFirstDate)} ~ ${fmtDateKo(c.lastDate)} (남은 ${c.remainingCount}회)`
+    : `${fmtDateKo(c.firstDate)} ~ ${fmtDateKo(c.lastDate)} (${c.sessionCount}회)`;
+
+// 진행 중이면 청구액이 정가가 아니므로 근거(전체 N회 M원 중 잔여 K회)를 함께 적는다.
+const priceLabel = (c: OpenPrepCourse): string =>
+  isOngoing(c)
+    ? `${formatWon(c.chargeKrw)} (전체 ${c.sessionCount}회 ${formatWon(c.priceKrw)} 중 남은 ${c.remainingCount}회)`
+    : formatWon(c.priceKrw);
 
 /**
  * 프렌딩 상단의 프렙 수강신청 배너 + 신청 모달.
@@ -157,6 +180,12 @@ export default function PrepEnrollBanner({
                   <div className="min-w-0">
                     <p className="flex flex-wrap items-center gap-2">
                       <span className="text-base font-bold break-words text-white">{c.title}</span>
+                      {/* 이미 시작한 강좌라는 사실을 금액보다 먼저 알린다 — 아래 dl의 '남은 N회'가 왜 그런지의 근거다. */}
+                      {isOngoing(c) && (
+                        <span className="shrink-0 rounded-full bg-white/20 px-2 py-0.5 text-xs font-bold text-white">
+                          진행 중 · 남은 {c.remainingCount}회
+                        </span>
+                      )}
                       {c.myStatus && (
                         // 마이페이지 배지와 같은 어휘·색(src/data/enrollment-status.ts) — 한 상태를
                         // 화면마다 다르게 부르지 않는다. '입금대기'는 여기서도 「결제 대기」.
@@ -193,11 +222,11 @@ export default function PrepEnrollBanner({
                 <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
                   {(
                     [
-                      ["기간", `${fmtDateKo(c.firstDate)} ~ ${fmtDateKo(c.lastDate)} (${c.sessionCount}회)`],
+                      ["기간", periodLabel(c)],
                       ["시간", `${fmtTime(c.startMin)}~${fmtRoomEnd(c.startMin + c.durationMin)} (${c.durationMin}분)`],
                       ["진행 방식", `Zoom 그룹 수업 · ${roomLevelLabelKo(c.level)}`],
                       ["강사", c.frienderName],
-                      ["수강료", `${formatWon(c.priceKrw)} (무통장 입금)`],
+                      ["수강료", `${priceLabel(c)} (무통장 입금)`],
                       ["신청 현황", seatLabel(c)],
                     ] as const
                   ).map(([label, value]) => (
@@ -282,12 +311,12 @@ export default function PrepEnrollBanner({
                               )}
                             </span>
                             <span className="text-muted-fg mt-1 block text-sm">
-                              {c.frienderName} · {fmtDateKo(c.firstDate)} ~ {fmtDateKo(c.lastDate)} ({c.sessionCount}회)
+                              {c.frienderName} · {periodLabel(c)}
                             </span>
                             <span className="text-muted-fg mt-0.5 block text-sm">
                               {fmtTime(c.startMin)}~{fmtRoomEnd(c.startMin + c.durationMin)} · {roomLevelLabelKo(c.level)} · {seatLabel(c)}
                             </span>
-                            <span className="text-ink mt-1 block text-base font-bold">{formatWon(c.priceKrw)}</span>
+                            <span className="text-ink mt-1 block text-base font-bold">{priceLabel(c)}</span>
                           </span>
                         </span>
                       </label>
@@ -304,7 +333,8 @@ export default function PrepEnrollBanner({
                     [
                       ["입금 계좌", `${PAYMENT_BANK.bank} ${PAYMENT_BANK.account}`],
                       ["예금주", PAYMENT_BANK.holder],
-                      ["금액", selected ? formatWon(selected.priceKrw) : "-"],
+                      // ⚠️ 정가가 아니라 **청구액**(중도 신청이면 잔여 비례) — RPC가 스냅샷에 넣는 값과 같아야 한다.
+                      ["금액", selected ? formatWon(selected.chargeKrw) : "-"],
                     ] as const
                   ).map(([label, value]) => (
                     <Fragment key={label}>
@@ -313,7 +343,10 @@ export default function PrepEnrollBanner({
                     </Fragment>
                   ))}
                 </dl>
-                <p className="text-muted-fg-faint mt-2 text-xs">신청 후 위 계좌로 입금해 주세요. 관리자가 입금을 확인하면 수강이 확정됩니다.</p>
+                <p className="text-muted-fg-faint mt-2 text-xs">
+                  신청 후 위 계좌로 입금해 주세요. 관리자가 입금을 확인하면 수강이 확정됩니다.
+                  {selected && isOngoing(selected) && ` 이미 시작한 강좌라 남은 ${selected.remainingCount}회분으로 계산된 금액입니다.`}
+                </p>
               </div>
             </div>
 
@@ -355,7 +388,13 @@ export default function PrepEnrollBanner({
             <AlertDialogDescription>
               {confirmTarget && (
                 <>
-                  <span className="text-ink font-semibold">{confirmTarget.title}</span> · {formatWon(confirmTarget.priceKrw)}
+                  <span className="text-ink font-semibold">{confirmTarget.title}</span> · {formatWon(confirmTarget.chargeKrw)}
+                  {isOngoing(confirmTarget) && (
+                    <>
+                      {" "}
+                      · {fmtDateKo(confirmTarget.remainingFirstDate)}부터 남은 {confirmTarget.remainingCount}회
+                    </>
+                  )}
                   <br />
                   신청 후 안내된 계좌로 입금하시면, 관리자 확인 뒤 수강이 확정됩니다.
                 </>

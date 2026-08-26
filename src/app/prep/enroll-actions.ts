@@ -24,6 +24,8 @@ const JOIN_ERROR: Record<string, string> = {
   not_approved: "지금은 신청할 수 없는 강좌예요. 목록을 새로고침해 주세요.",
   own_course: "내가 개설한 강좌에는 신청할 수 없어요.",
   already: "이미 신청한 강좌예요.",
+  ended: "모든 회차가 끝난 강좌예요. 목록을 새로고침해 주세요.",
+  // 중도 신청 도입 전(20260826003601 이전) RPC가 돌려주던 코드 — 마이그레이션 적용 전 배포 시차용으로 남겨 둔다.
   started: "이미 시작된 강좌라 신청을 받지 않아요.",
   full: "정원이 모두 찼어요.",
   phone_unverified: "휴대폰 인증이 필요합니다. 마이페이지에서 인증한 뒤 다시 신청해 주세요.",
@@ -102,14 +104,22 @@ export async function cancelPrepEnrollment(courseId: string): Promise<PrepEnroll
 async function notifyPrepEnrollment(admin: any, courseId: string, userId: string, studentEmail: string): Promise<void> {
   try {
     // 이름·전화는 RPC가 방금 넣은 스냅샷에서 읽는다(액션이 직접 다루지 않는 이유와 같은 맥락).
+    // ⚠️ **기간·금액도 스냅샷에서 읽는다** — 중도 신청이면 강좌 원본의 정가·전체 일정과 다르다.
     const { data: mine } = await admin
       .from("prep_enrollments")
-      .select("student_name, student_phone")
+      .select("student_name, student_phone, session_count, first_session_date, last_session_date, price_krw")
       .eq("course_id", courseId)
       .eq("user_id", userId)
       .neq("status", "취소")
       .maybeSingle();
-    const student = (mine ?? {}) as { student_name?: string | null; student_phone?: string | null };
+    const student = (mine ?? {}) as {
+      student_name?: string | null;
+      student_phone?: string | null;
+      session_count?: number | null;
+      first_session_date?: string | null;
+      last_session_date?: string | null;
+      price_krw?: number | null;
+    };
 
     const { data } = await admin
       .from("prep_courses")
@@ -129,8 +139,15 @@ async function notifyPrepEnrollment(admin: any, courseId: string, userId: string
       prep_sessions: { session_date: string }[] | null;
     };
 
+    // 기간·금액은 **이 신청자가 산 것** 기준(스냅샷). 스냅샷이 없는 예외 상황에서만 강좌 원본으로 폴백한다.
     const dates = (c.prep_sessions ?? []).map((s) => s.session_date).sort();
-    const period = dates.length > 0 ? `${fmtDateKo(dates[0])} ~ ${fmtDateKo(dates[dates.length - 1])} (${dates.length}회)` : "-";
+    const period =
+      student.first_session_date && student.last_session_date
+        ? `${fmtDateKo(student.first_session_date)} ~ ${fmtDateKo(student.last_session_date)} (${student.session_count ?? dates.length}회)`
+        : dates.length > 0
+          ? `${fmtDateKo(dates[0])} ~ ${fmtDateKo(dates[dates.length - 1])} (${dates.length}회)`
+          : "-";
+    const priceKrw = student.price_krw ?? c.price_krw;
     const { count } = await admin
       .from("prep_enrollments")
       .select("id", { count: "exact", head: true })
@@ -146,7 +163,7 @@ async function notifyPrepEnrollment(admin: any, courseId: string, userId: string
       period,
       time: `${fmtTime(c.start_min)}~${fmtRoomEnd(c.start_min + c.duration_min)} (${c.duration_min}분)`,
       level: roomLevelLabelKo(c.level),
-      priceKrw: c.price_krw,
+      priceKrw,
       enrolledCount: count ?? 1,
       capacity: c.capacity,
       appliedAt: new Date().toISOString(),
@@ -158,7 +175,7 @@ async function notifyPrepEnrollment(admin: any, courseId: string, userId: string
     if (fphone) {
       await sendSms(
         fphone,
-        `[프렌딩 스쿨] '${prepSmsTitle(c.title)}' 프렙 강좌에 새 수강신청이 있습니다. (${count ?? 1}/${c.capacity}명 · ${formatWon(c.price_krw)} · 입금 확인 후 확정)`,
+        `[프렌딩 스쿨] '${prepSmsTitle(c.title)}' 프렙 강좌에 새 수강신청이 있습니다. (${count ?? 1}/${c.capacity}명 · ${formatWon(priceKrw)} · 입금 확인 후 확정)`,
       );
     }
   } catch (err) {

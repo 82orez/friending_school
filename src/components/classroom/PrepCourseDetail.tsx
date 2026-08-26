@@ -21,10 +21,12 @@ export default function PrepCourseDetail({ course, onBack }: { course: PrepCours
         <h2 className="text-ink truncate text-base font-bold">{course.courseTitle}</h2>
       </div>
 
-      {/* 정규 과정 상세와 같은 기본 뷰(달력). bare=바깥 박스·중복 제목 생략. */}
+      {/* 정규 과정 상세와 같은 기본 뷰(달력). bare=바깥 박스·중복 제목 생략.
+          ⚠️ total(회차 번호의 분모)은 **강좌 전체 회차**다 — 중도 신청자의 sessions에는 내 회차만
+             들어 있어 그 길이를 쓰면 "7/14회차" 같은 값이 나온다. */}
       <PrepSessionList
         sessions={course.sessions}
-        total={course.sessions.length}
+        total={course.totalSessions}
         startMin={course.startMin}
         durationMin={course.durationMin}
         defaultView="calendar"

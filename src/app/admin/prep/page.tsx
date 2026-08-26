@@ -10,7 +10,7 @@ export default async function AdminPrepPage() {
   const { data } = await admin
     .from("prep_courses")
     .select(
-      "id, friender_id, friender_name, friender_nickname, title, description, level, capacity, start_min, duration_min, session_count, price_krw, status, admin_note, submitted_at, reviewed_at, created_at, prep_sessions(session_no, session_date, topic), prep_enrollments(id, user_id, student_name, student_phone, price_krw, status, paid_at, created_at)",
+      "id, friender_id, friender_name, friender_nickname, title, description, level, capacity, start_min, duration_min, session_count, price_krw, status, admin_note, submitted_at, reviewed_at, created_at, prep_sessions(session_no, session_date, topic), prep_enrollments(id, user_id, student_name, student_phone, price_krw, session_count, status, paid_at, created_at)",
     )
     .order("created_at", { ascending: false });
 

@@ -151,6 +151,11 @@ export default function PrepCourseInfoModal({
                     </span>
                     <span className="text-ink min-w-0 text-sm font-bold">{e.student_name ?? "(이름 없음)"}</span>
                     <span className="text-muted-fg text-sm">{e.student_phone ? formatPhone(e.student_phone) : "-"}</span>
+                    {/* 입금 대조 기준 금액 — 중도 신청자는 잔여 회차만큼만 결제하므로 강좌 정가와 다르다. */}
+                    <span className="text-ink text-sm font-semibold">
+                      {formatWon(e.price_krw)}
+                      {e.session_count < dates.length && <span className="text-brand"> · 중도 {e.session_count}회</span>}
+                    </span>
                     <span className="text-muted-fg-faint text-xs">
                       신청 {kstDateText(e.created_at)}
                       {e.paid_at && ` · 입금 확인 ${kstDateText(e.paid_at)}`}

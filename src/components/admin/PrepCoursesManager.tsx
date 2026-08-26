@@ -54,7 +54,10 @@ export type AdminPrepEnrollment = {
   user_id: string;
   student_name: string | null;
   student_phone: string | null;
+  // ⚠️ 신청 시점 스냅샷이라 **학생마다 다를 수 있다** — 중도 신청자는 잔여 회차만큼만 결제한다.
+  //    입금 대조는 강좌 정가가 아니라 이 행의 금액으로 해야 한다.
   price_krw: number;
+  session_count: number;
   status: "입금대기" | "수강확정" | "취소";
   paid_at: string | null;
   created_at: string;

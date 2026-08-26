@@ -1,4 +1,5 @@
 import { PREP_DEFAULT_WEEKDAYS } from "@/data/prep";
+import { kstDateMinToMs } from "@/lib/classtime";
 
 // 프렙 회차 날짜 계산 — 개설 폼과 서버 검증이 같은 규칙을 쓰도록 한 곳에 모은다.
 // 순수 로직(server-only 아님), TZ 비종속: 날짜 문자열 산술만 하고 Date는 UTC로만 다룬다
@@ -90,6 +91,29 @@ export function buildWeekdaySessions(startDate: string, count: number): string[]
     cursor = addDays(cursor, 1);
   }
   return out;
+}
+
+// ── 중도 수강신청 — 잔여 회차와 비례 요금 ────────────────────────────────
+// ⚠️ **같은 공식이 RPC join_prep_course에도 있다**(20260826003601). 서버(RPC)가 authoritative고
+//    여기는 배너·모달의 사전 표시용이라, 한쪽만 고치면 "보여준 금액과 청구액이 다르다"가 된다.
+
+// 남은 회차 = **종료 시각이 미래인 회차**. 날짜 비교(session_date >= 오늘)를 쓰지 않는 이유:
+// 06:00~06:40 강좌를 23시에 신청하면 오늘 회차는 이미 못 듣는데 날짜로 세면 그 회차까지 청구된다.
+// 입장 시간창(canEnterClass: 시작 15분 전~종료)과 같은 경계라 "샀는데 못 들어가는 회차"가 안 생긴다.
+export function prepRemainingSessions(dates: string[], startMin: number, durationMin: number, nowMs: number = Date.now()): string[] {
+  return dates.filter((d) => kstDateMinToMs(d, startMin + durationMin) > nowMs).sort();
+}
+
+// 1회 단가 — **절사**. 반올림하면 나누어떨어지지 않는 가격에서 1회분이 정가 비율보다 비싸진다.
+export function prepUnitKrw(priceKrw: number, total: number): number {
+  return total > 0 ? Math.floor(priceKrw / total) : 0;
+}
+
+// 잔여 비례 청구액 = 단가 × 남은 회차.
+// ⚠️ 남은 회차 = 전체 회차이면 **원값 그대로** — 시작 전 신청자가 절사 누적으로 정가보다 싸지면 안 된다.
+export function prepChargeKrw(priceKrw: number, total: number, remaining: number): number {
+  if (total <= 0 || remaining >= total) return priceKrw;
+  return prepUnitKrw(priceKrw, total) * remaining;
 }
 
 // SMS에 강좌명을 그대로 넣으면 100자짜리 제목이 문자를 잡아먹는다 — 30자에서 자른다.
