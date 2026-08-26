@@ -154,8 +154,9 @@ export default function PrepEnrollBanner({
     <>
       {/* 배너 — 강좌 세부 정보(기간·시간·진행 방식·강사·수강료)를 여기서 바로 보여 준다.
           모달까지 열어야 조건을 알 수 있으면 신청 전에 비교가 안 된다.
-          배경은 /prep 히어로와 같은 새벽 일러스트(banner variant) — 흰 카드로는 위 히어로에 눌려 안 보였다. */}
-      <section className="relative isolate mt-6 overflow-hidden rounded-2xl bg-[#1b2450]">
+          배경은 /prep 히어로와 같은 새벽 일러스트(banner variant) — 흰 카드로는 위 히어로에 눌려 안 보였다.
+          ⚠️ 위 여백 없음: /friending은 이 배너가 뜰 때 히어로를 숨기므로 배너가 항상 컨테이너 첫 자식이다. */}
+      <section className="relative isolate overflow-hidden rounded-2xl bg-[#1b2450]">
         <PrepHeroArt variant="banner" className="absolute inset-0 -z-10 h-full w-full" />
         {/* 왼쪽만 진하게 — 오른쪽 해·하늘을 살려 두려고 단색 대신 그라디언트 오버레이를 쓴다. */}
         <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-black/75 via-black/55 to-black/25" />

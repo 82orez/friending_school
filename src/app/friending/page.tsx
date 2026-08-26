@@ -222,36 +222,44 @@ export default async function FriendingPage() {
     enteredAt: enteredAtByRoom.get(r.id) ?? null,
   }));
 
+  // 프렙 배너 노출 조건 = PrepEnrollBanner의 자체 가드(courses.length === 0 → null)와 같은 값.
+  // 히어로·구분선이 배너와 어긋나지 않도록 한 곳에서 뽑아 쓴다.
+  const showPrepBanner = prepCourses.length > 0;
+
   return (
     <div className="bg-surface">
       <div className="mx-auto max-w-[1100px] px-5 py-8 md:py-12">
-        {/* 히어로 — v9 목업(mainhero_bg01) 이식. 이미지 위에 어둡게 깔고 카피를 올린다. */}
-        <section className="relative isolate flex min-h-[140px] items-center justify-center overflow-hidden rounded-2xl md:min-h-[190px]">
-          <Image src="/images/friending-hero.jpg" alt="" fill sizes="(max-width: 1100px) 100vw, 1100px" priority className="-z-10 object-cover" />
-          <div aria-hidden className="absolute inset-0 -z-10 bg-black/45" />
-          {/* 말풍선 장식 — 목업 SVG 이식(비율 무시하고 늘려 배경처럼 깔림) */}
-          <svg
-            aria-hidden
-            viewBox="0 0 1200 300"
-            preserveAspectRatio="none"
-            className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full md:block">
-            <rect x="60" y="40" width="130" height="80" rx="24" fill="rgba(255,255,255,0.16)" />
-            <path d="M90 118 L78 142 L112 120 Z" fill="rgba(255,255,255,0.16)" />
-            <rect x="1000" y="170" width="110" height="70" rx="22" fill="rgba(255,255,255,0.14)" />
-            <path d="M1030 238 L1042 260 L1072 240 Z" fill="rgba(255,255,255,0.14)" />
-            <rect x="960" y="30" width="80" height="52" rx="18" fill="rgba(255,255,255,0.1)" />
-            <path d="M980 80 L972 98 L998 82 Z" fill="rgba(255,255,255,0.1)" />
-            <rect x="40" y="200" width="70" height="46" rx="16" fill="rgba(255,255,255,0.1)" />
-            <path d="M58 244 L50 262 L76 246 Z" fill="rgba(255,255,255,0.1)" />
-          </svg>
+        {/* 히어로 — v9 목업(mainhero_bg01) 이식. 이미지 위에 어둡게 깔고 카피를 올린다.
+            ⚠️ **프렙 배너가 없을 때만** 보여 준다: 둘 다 전폭 다크 비주얼이라 함께 두면 첫 화면이
+            배너 두 장으로 채워져 정작 강좌·연습방 목록이 접힌다. 배너가 있으면 그것이 페이지 헤더 역할을 한다. */}
+        {!showPrepBanner && (
+          <section className="relative isolate flex min-h-[140px] items-center justify-center overflow-hidden rounded-2xl md:min-h-[190px]">
+            <Image src="/images/friending-hero.jpg" alt="" fill sizes="(max-width: 1100px) 100vw, 1100px" priority className="-z-10 object-cover" />
+            <div aria-hidden className="absolute inset-0 -z-10 bg-black/45" />
+            {/* 말풍선 장식 — 목업 SVG 이식(비율 무시하고 늘려 배경처럼 깔림) */}
+            <svg
+              aria-hidden
+              viewBox="0 0 1200 300"
+              preserveAspectRatio="none"
+              className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full md:block">
+              <rect x="60" y="40" width="130" height="80" rx="24" fill="rgba(255,255,255,0.16)" />
+              <path d="M90 118 L78 142 L112 120 Z" fill="rgba(255,255,255,0.16)" />
+              <rect x="1000" y="170" width="110" height="70" rx="22" fill="rgba(255,255,255,0.14)" />
+              <path d="M1030 238 L1042 260 L1072 240 Z" fill="rgba(255,255,255,0.14)" />
+              <rect x="960" y="30" width="80" height="52" rx="18" fill="rgba(255,255,255,0.1)" />
+              <path d="M980 80 L972 98 L998 82 Z" fill="rgba(255,255,255,0.1)" />
+              <rect x="40" y="200" width="70" height="46" rx="16" fill="rgba(255,255,255,0.1)" />
+              <path d="M58 244 L50 262 L76 246 Z" fill="rgba(255,255,255,0.1)" />
+            </svg>
 
-          <div className="px-5 py-8 text-center md:px-16">
-            <p className="text-[12px] font-bold text-white/95 md:text-[15px]">친구와 친구가 만나 배우는, 프렌딩 스쿨</p>
-            <h1 className="mt-1.5 text-[22px] font-bold tracking-[-0.04em] text-white md:mt-2 md:text-[34px]">
-              스피킹은, <span className="underline decoration-white/60 underline-offset-[6px]">말한 만큼</span> 늘어요
-            </h1>
-          </div>
-        </section>
+            <div className="px-5 py-8 text-center md:px-16">
+              <p className="text-[12px] font-bold text-white/95 md:text-[15px]">친구와 친구가 만나 배우는, 프렌딩 스쿨</p>
+              <h1 className="mt-1.5 text-[22px] font-bold tracking-[-0.04em] text-white md:mt-2 md:text-[34px]">
+                스피킹은, <span className="underline decoration-white/60 underline-offset-[6px]">말한 만큼</span> 늘어요
+              </h1>
+            </div>
+          </section>
+        )}
 
         {/* 접수 시간창(KST 08:00~19:00)은 서버에서 계산해 초기값으로 넘긴다 — 배너가 1분 틱으로 갱신하되
             첫 렌더 값이 서버·클라에서 갈리면 hydration mismatch가 난다. */}
@@ -259,7 +267,7 @@ export default async function FriendingPage() {
 
         {/* 유료 프렙 신청과 무료 연습방은 성격이 다른 영역이라 구분선으로 나눈다.
             ⚠️ 배너가 없으면(신청 가능한 강좌 0개) 히어로 바로 아래에 선만 남으므로 함께 숨긴다. */}
-        {prepCourses.length > 0 && <div aria-hidden className="border-rule mt-8 border-t" />}
+        {showPrepBanner && <div aria-hidden className="border-rule mt-8 border-t" />}
 
         <FriendingRooms rooms={rooms} hosts={hosts} isLoggedIn={!!user} />
       </div>
