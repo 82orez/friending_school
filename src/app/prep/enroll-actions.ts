@@ -11,6 +11,7 @@ import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
 import { fmtDateKo, formatWon, prepSmsTitle } from "@/lib/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
+import { PAYMENT_BANK } from "@/data/payment";
 
 // 프렙 수강신청 — 일반 회원 동선이라 역할 가드가 없다(로그인만 확인).
 // 신청=RPC(정원·중복·시작 여부·전화 인증을 원자적으로 검사), 취소=service_role 상태 변경.
@@ -165,7 +166,8 @@ async function notifyPrepCancellation(admin: any, courseId: string, row: Cancell
   }
 }
 
-// 신규 신청 알림 (best-effort) — 관리자 메일 + 개설 프렌더 SMS. 실패해도 신청은 유효하다.
+// 신규 신청 알림 (best-effort) — **신청자 SMS(입금 안내)** + 관리자 메일 + 개설 프렌더 SMS.
+// 실패해도 신청은 유효하다(화면·마이페이지에 같은 계좌 안내가 남아 있다).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function notifyPrepEnrollment(admin: any, courseId: string, userId: string, studentEmail: string): Promise<void> {
   try {
@@ -214,6 +216,24 @@ async function notifyPrepEnrollment(admin: any, courseId: string, userId: string
           ? `${fmtDateKo(dates[0])} ~ ${fmtDateKo(dates[dates.length - 1])} (${dates.length}회)`
           : "-";
     const priceKrw = student.price_krw ?? c.price_krw;
+
+    // ① 신청자 본인 — 무통장 입금 안내. **관리자·프렌더보다 먼저 보낸다**(뒤 조회가 실패해도 이건 나가야 한다).
+    // ⚠️ 화면(모달·마이페이지)에도 같은 안내가 있지만, 신청 직후 화면을 닫으면 계좌를 다시 찾아야 했다.
+    //    금액은 스냅샷이라 중도 신청자는 잔여 비례액이 그대로 찍힌다.
+    const sphone = student.student_phone?.trim();
+    if (sphone) {
+      await sendSms(
+        sphone,
+        [
+          `[프렌딩 스쿨] '${prepSmsTitle(c.title)}' 프렙 강좌 신청이 접수되었습니다.`,
+          `수업 ${period} ${fmtTime(c.start_min)}~${fmtRoomEnd(c.start_min + c.duration_min)}`,
+          `입금액 ${formatWon(priceKrw)}`,
+          `입금 계좌 ${PAYMENT_BANK.bank} ${PAYMENT_BANK.account} (예금주 ${PAYMENT_BANK.holder})`,
+          `입금자명은 신청자 성함으로 넣어 주세요. 입금이 확인되면 수강이 확정됩니다.`,
+        ].join("\n"),
+      );
+    }
+
     const { count } = await admin
       .from("prep_enrollments")
       .select("id", { count: "exact", head: true })
