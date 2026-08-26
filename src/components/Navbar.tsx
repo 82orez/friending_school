@@ -114,21 +114,18 @@ export default function Navbar({
           </Link>
         </div>
 
-        <div className="flex items-center justify-end gap-3">
-          {/* 데스크톱 인라인 인증 영역
-              ⚠️ 원래 인증/역할 링크만 두는 영역이지만, 프렌딩·프렙은 일반 회원 대상 핵심 동선이라
-                 슬라이드 메뉴에만 두지 않고 여기에도 노출한다(의도적 예외 2건). */}
+        {/* 프렌딩 — 일반 회원 대상 핵심 동선이라 네비 중앙에 단독 노출(의도적 예외) */}
+        <div className="hidden items-center justify-center md:flex">
+          <Link
+            href="/friending"
+            className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+            프렌딩
+          </Link>
+        </div>
+
+        <div className="flex flex-1 items-center justify-end gap-3">
+          {/* 데스크톱 인라인 인증 영역 */}
           <div className="hidden items-center gap-3 md:flex">
-            <Link
-              href="/friending"
-              className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-              프렌딩
-            </Link>
-            <Link
-              href="/prep"
-              className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-              프렙 강좌
-            </Link>
             {user ? (
               <>
                 {isAdmin && (
@@ -239,15 +236,6 @@ export default function Navbar({
               onClick={closeMenu}
               className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
               프렌딩
-            </Link>
-          </li>
-          {/* 프렙 강좌 소개(정적 홍보 페이지) — 프렌딩과 같은 이유로 flat 링크 */}
-          <li className="border-rule border-b py-4">
-            <Link
-              href="/prep"
-              onClick={closeMenu}
-              className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-              프렙 강좌
             </Link>
           </li>
           {/* 커리큘럼 아코디언 */}
