@@ -1,5 +1,5 @@
-import { PREP_DEFAULT_WEEKDAYS } from "@/data/prep";
-import { kstDateMinToMs } from "@/lib/classtime";
+import { PREP_APPLY_CLOSE_MIN, PREP_APPLY_OPEN_MIN, PREP_DEFAULT_WEEKDAYS } from "@/data/prep";
+import { KST_OFFSET_MS, kstDateMinToMs } from "@/lib/classtime";
 
 // 프렙 회차 날짜 계산 — 개설 폼과 서버 검증이 같은 규칙을 쓰도록 한 곳에 모은다.
 // 순수 로직(server-only 아님), TZ 비종속: 날짜 문자열 산술만 하고 Date는 UTC로만 다룬다
@@ -38,6 +38,22 @@ const pad2 = (n: number): string => String(n).padStart(2, "0");
 // KST 기준 오늘(YYYY-MM-DD). Intl에 타임존을 넘기므로 브라우저 로컬 TZ와 무관하다.
 export function kstToday(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" });
+}
+
+// ── 수강신청 접수 시간창 ────────────────────────────────────────────────
+// ⚠️ authoritative는 RPC join_prep_course의 같은 판정이다(브라우저가 RPC를 직접 부를 수 있다).
+//    여기는 서버 액션의 선검사 + 배너의 사전 안내용이라 두 곳이 같은 경계를 써야 한다.
+
+// KST 자정 기준 분(0~1439). Intl 파싱 없이 산술만 — 이 파일의 TZ 비종속 규약을 따른다.
+export function kstMinuteOfDay(nowMs: number = Date.now()): number {
+  const dayMs = 24 * 60 * 60 * 1000;
+  return Math.floor(((((nowMs + KST_OFFSET_MS) % dayMs) + dayMs) % dayMs) / 60_000);
+}
+
+// 07:00 정각은 개시, 19:00 정각은 마감(반개구간) — SQL의 `hour not between 7 and 18`과 같은 결론.
+export function isPrepApplyOpen(nowMs: number = Date.now()): boolean {
+  const m = kstMinuteOfDay(nowMs);
+  return m >= PREP_APPLY_OPEN_MIN && m < PREP_APPLY_CLOSE_MIN;
 }
 
 // "9월 1일"

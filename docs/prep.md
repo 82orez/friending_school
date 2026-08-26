@@ -97,6 +97,16 @@
   ⚠️ **강좌 스냅샷이 필수인 이유**: 프렌더가 승인된 강좌를 고치면 `승인`이 풀려 공개 정책(`status='승인'`)에서 빠지고, 임베드 조회를 쓰면 **학생 마이페이지가 빈칸**이 된다.
   RLS는 **본인 select만**. 쓰기 정책 없음 → 신청=RPC, 취소·입금확인=서버 액션(service_role).
 - **공개 조회 정책 신설**: `prep_courses_select_public`·`prep_sessions_select_public`(둘 다 `status='승인'`). ⚠️ permissive OR이라 이 정책이 생긴 뒤로 **소유자 화면은 반드시 쿼리에서 `.eq("friender_id", …)`** 를 걸어야 한다(이미 적용).
+### 접수 시간창 (`20260826215339_prep_apply_time_window.sql`)
+
+**신청은 KST 07:00~19:00에만 받는다**(19:00 ~ 익일 07:00 마감). 접수 즉시 신청자 입금 안내 SMS + 관리자 메일 + 프렌더 SMS가 나가므로, 심야 접수는 곧 심야 문자 발송이고 입금 대조·응대가 불가능한 시간에 결제 동선이 열리는 것과 같다.
+
+- 경계는 **반개구간** — 07:00 정각 개시, 19:00 정각 마감. 앱은 `m >= PREP_APPLY_OPEN_MIN && m < PREP_APPLY_CLOSE_MIN`, SQL은 `hour not between 7 and 18`로 같은 결론을 낸다.
+- **authoritative는 RPC**의 검사다(`already` 뒤 · `phone_unverified` 앞 → 코드 **`closed`**). ⚠️ `join_prep_course`는 `authenticated`에 grant돼 브라우저가 직접 부를 수 있어 서버 액션 선검사만으로는 우회된다 → **상수가 SQL·앱 두 곳에 있다**(`NO_SHOW_GRACE_MIN`과 같은 사정, 바꿀 땐 함께). 검사 위치 근거: 이미 신청한 사람에게 `closed`는 혼란이고(→ `already` 뒤), 프로필을 고치고 와도 어차피 막히므로 프로필 안내를 먼저 띄우면 헛걸음이다(→ `phone_unverified` 앞).
+- 상수·문구 단일 소스 = `src/data/prep.ts`(`PREP_APPLY_OPEN_MIN`·`PREP_APPLY_CLOSE_MIN`·`PREP_APPLY_WINDOW_LABEL`·`PREP_APPLY_CLOSED_MSG`), 판정 = `src/lib/prep.ts`의 `isPrepApplyOpen()`/`kstMinuteOfDay()`(TZ 비종속 산술, `classtime.ts`가 `KST_OFFSET_MS`를 export). 액션 `applyPrepCourse`는 **`rateLimit` 앞**에서 선검사한다(알림이 나가지 않는 요청에 예산을 쓰지 않는다).
+- **UI는 배너를 숨기지 않는다** — 강좌 정보는 그대로 두고 상단에 "지금은 수강신청 시간이 아니에요 · 매일 오전 7시~오후 7시" 안내 + 「신청하기」·모달 신청 버튼 비활성. ⚠️ 숨기면 "강좌가 사라졌다"로 읽힌다. 열림 여부는 **서버가 `applyOpenInitial` prop으로 내려주고**(hydration mismatch 방지) 배너가 **1분 틱**으로 갱신한다(모달을 연 채 19:00을 넘겨도 자동으로 잠긴다).
+- ⚠️ **취소(`cancelPrepEnrollment`)는 시간 제한 없음** — 입금 전 취소는 사용자에게 불리하지 않은 동작이라 시간으로 막을 이유가 없다. 개설·심사·회차 입장도 무관.
+
 ### 중도 수강신청 (`20260826003601_prep_midjoin_enrollment.sql`)
 
 **강좌가 시작된 뒤에도 남은 회차만큼 신청을 받는다.** 예전에는 첫 회차가 지나면 목록에서 통째로 빠지고 RPC가 `started`로 거절했다 — 20회 과정이라 후반에 들어오려는 수요를 받을 방법이 아예 없었다.
@@ -110,7 +120,7 @@
 - ⏳ **입금 확인이 늦어져 그 사이 회차가 지나가는 경우는 재계산하지 않는다** — 금액은 신청 시점 고정이고(이미 입금한 금액과 어긋난다) 운영(관리자 취소·재신청)으로 흡수한다.
 - **개설·심사는 여전히 "시작 전"만 허용**한다(`validatePrepInput`·`requestPrepReview`·`approvePrepCourse`). 진행 중 강좌의 프렌더 수정 잠금(위 「수정·삭제」)도 그대로다 — 이번에 푼 것은 **신청 잠금뿐**이다.
 
-- **RPC `join_prep_course(p_course_id)`** — ⚠️ **인자가 강좌 id 하나뿐**인 것이 핵심이다. `authenticated`에 grant돼 브라우저가 직접 부를 수 있어, 이름·전화·가격을 인자로 받으면 ① 서버 액션의 전화 인증 게이트가 우회되고 ② 임의 번호가 스냅샷에 심어져 **확정 SMS가 남에게 간다**. 이름·전화는 함수가 `profiles`에서, 가격·일정은 잠근 강좌 행에서 직접 읽는다. 검사 순서: `unauthenticated` → `for update` 잠금 → `not_found`/`not_approved`/`own_course`/`already` → `phone_unverified` → **`profile_incomplete`**(성·이름·영어 이름 필수 — `20260824015631`, 신청 명단이 "(이름 없음)"으로 남으면 입금 대조·수업 운영이 안 된다) → `started`(첫 회차 ≤ 오늘 KST) → **`ended`(잔여 회차 0 — 예전 `started`)** → `full`(정원 대비 `status <> '취소'` 수) → insert(잔여 기준 스냅샷).
+- **RPC `join_prep_course(p_course_id)`** — ⚠️ **인자가 강좌 id 하나뿐**인 것이 핵심이다. `authenticated`에 grant돼 브라우저가 직접 부를 수 있어, 이름·전화·가격을 인자로 받으면 ① 서버 액션의 전화 인증 게이트가 우회되고 ② 임의 번호가 스냅샷에 심어져 **확정 SMS가 남에게 간다**. 이름·전화는 함수가 `profiles`에서, 가격·일정은 잠근 강좌 행에서 직접 읽는다. 검사 순서: `unauthenticated` → `for update` 잠금 → `not_found`/`not_approved`/`own_course`/`already` → **`closed`**(접수 시간창 — 위 절) → `phone_unverified` → **`profile_incomplete`**(성·이름·영어 이름 필수 — `20260824015631`, 신청 명단이 "(이름 없음)"으로 남으면 입금 대조·수업 운영이 안 된다) → `started`(첫 회차 ≤ 오늘 KST) → **`ended`(잔여 회차 0 — 예전 `started`)** → `full`(정원 대비 `status <> '취소'` 수) → insert(잔여 기준 스냅샷).
   ⚠️ 연습방의 노쇼 유예(`seatHeld`)는 **적용하지 않는다** — 20회차 과정이라 자리를 잡는 건 입장이 아니라 돈이다.
 - **액션** `src/app/prep/enroll-actions.ts`: `applyPrepCourse`(로그인 → `rateLimit('prep-apply:…', 10/10분)` → **세션 client로 RPC** → **신청자 SMS(무통장 입금 안내 — 계좌·예금주·금액, `PAYMENT_BANK`)** + 관리자 메일 + 프렌더 SMS, 모두 best-effort. ⚠️ 신청자 SMS를 **가장 먼저** 보낸다(뒤의 조회가 실패해도 입금 안내는 나가야 한다). 금액은 스냅샷이라 중도 신청이면 잔여 비례액이다) · `cancelPrepEnrollment`(`입금대기`만, **삭제가 아니라 `취소` 상태 변경** → **신청과 대칭으로 관리자 메일(`sendPrepCancellationNotification`) + 프렌더 SMS**. ⚠️ 알림 값은 **UPDATE의 `.select()`가 돌려준 취소된 행**에서 만든다 — 다시 읽으면 이미 `취소`라 `.neq("status","취소")` 조회에 안 걸린다. 안 보내면 관리자는 **오지 않을 입금을 기다리고** 프렌더는 자리가 빈 걸 모른다).
   admin(`src/app/admin/actions.ts`): `confirmPrepPayment(enrollmentId)`(`입금대기` CAS → `수강확정`+`paid_at` → 학생 SMS) · `cancelPrepEnrollmentAsAdmin(enrollmentId, note?)`(미입금 자리 회수·폐강 정리, 사유 SMS).

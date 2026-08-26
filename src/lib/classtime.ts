@@ -2,7 +2,8 @@
 // session_date(KST 날짜 YYYY-MM-DD) + 분(자정 기준)을 절대 시각(epoch ms)으로 변환.
 // 한국은 DST가 없어 KST=UTC+9 고정 오프셋으로 계산(앱 전반의 KST 문자열 관례와 일관).
 
-const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+// 고정 오프셋(DST 없음). 자정 기준 분 환산이 필요한 곳에서 복제하지 않도록 export한다(prep.ts의 kstMinuteOfDay).
+export const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 // 수업 시작 가능 시점: 시작 15분 전부터.
 export const ENTRY_LEAD_MS = 15 * 60 * 1000;

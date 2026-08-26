@@ -6,7 +6,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { todayKst } from "@/lib/booking";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { seatHeld } from "@/lib/room-time";
-import { prepChargeKrw, prepRemainingSessions } from "@/lib/prep";
+import { isPrepApplyOpen, prepChargeKrw, prepRemainingSessions } from "@/lib/prep";
 import FriendingRooms, { type HostProfile, type PublicRoom } from "@/components/friending/FriendingRooms";
 import PrepEnrollBanner, { type OpenPrepCourse } from "@/components/prep/PrepEnrollBanner";
 
@@ -253,7 +253,9 @@ export default async function FriendingPage() {
           </div>
         </section>
 
-        <PrepEnrollBanner courses={prepCourses} isLoggedIn={!!user} profileMissing={profileMissing} />
+        {/* 접수 시간창(KST 07:00~19:00)은 서버에서 계산해 초기값으로 넘긴다 — 배너가 1분 틱으로 갱신하되
+            첫 렌더 값이 서버·클라에서 갈리면 hydration mismatch가 난다. */}
+        <PrepEnrollBanner courses={prepCourses} isLoggedIn={!!user} profileMissing={profileMissing} applyOpenInitial={isPrepApplyOpen()} />
 
         {/* 유료 프렙 신청과 무료 연습방은 성격이 다른 영역이라 구분선으로 나눈다.
             ⚠️ 배너가 없으면(신청 가능한 강좌 0개) 히어로 바로 아래에 선만 남으므로 함께 숨긴다. */}

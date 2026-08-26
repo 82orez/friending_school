@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, X } from "lucide-react";
@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 import { ENROLLMENT_STATUS_BADGE, ENROLLMENT_STATUS_LABEL, type EnrollmentDisplayStatus } from "@/data/enrollment-status";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
-import { fmtDateKo, formatWon } from "@/lib/prep";
-import { PREP_MAX_CAPACITY, PREP_SESSION_COUNT } from "@/data/prep";
+import { fmtDateKo, formatWon, isPrepApplyOpen } from "@/lib/prep";
+import { PREP_APPLY_CLOSED_MSG, PREP_APPLY_WINDOW_LABEL, PREP_MAX_CAPACITY, PREP_SESSION_COUNT } from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { applyPrepCourse, cancelPrepEnrollment } from "@/app/prep/enroll-actions";
 import PrepHeroArt from "@/components/prep/PrepHeroArt";
@@ -83,13 +83,26 @@ export default function PrepEnrollBanner({
   courses,
   isLoggedIn,
   profileMissing,
+  applyOpenInitial,
 }: {
   courses: OpenPrepCourse[];
   isLoggedIn: boolean;
   /** 신청 자격에서 빠진 프로필 항목(휴대폰 인증·성·이름·영어 이름). 비어 있어야 신청할 수 있다. */
   profileMissing: string[];
+  /** 접수 시간창(KST 07:00~19:00) 안인지 — 서버가 계산한 첫 렌더 값(hydration mismatch 방지). */
+  applyOpenInitial: boolean;
 }) {
   const profileReady = profileMissing.length === 0;
+
+  // 접수 시간창 — 1분 틱으로 갱신해 배너를 열어 둔 채 19:00을 넘겨도 버튼이 자동으로 잠긴다
+  // (PrepSessionList의 틱과 같은 방식이되 초기값만 서버에서 받는다).
+  // ⚠️ 서버 authoritative는 RPC join_prep_course이고 여기는 표시 레이어일 뿐이다.
+  const [applyOpen, setApplyOpen] = useState(applyOpenInitial);
+  useEffect(() => {
+    setApplyOpen(isPrepApplyOpen()); // 캐시된 SSR 값 보정
+    const t = setInterval(() => setApplyOpen(isPrepApplyOpen()), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(courses[0]?.id ?? null);
@@ -162,6 +175,12 @@ export default function PrepEnrollBanner({
                   강좌 소개 보기
                 </Link>
               </p>
+              {/* 마감 시간대에도 강좌 정보는 그대로 두고 이유만 알린다 — 배너를 숨기면 '강좌가 사라졌다'로 읽힌다. */}
+              {!applyOpen && (
+                <p className="mt-2 inline-block rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white/85 backdrop-blur-[2px]">
+                  지금은 수강신청 시간이 아니에요 · 매일 {PREP_APPLY_WINDOW_LABEL}
+                </p>
+              )}
             </div>
 
             {!isLoggedIn && (
@@ -212,7 +231,11 @@ export default function PrepEnrollBanner({
                           setSelectedId(c.id);
                           setOpen(true);
                         }}
-                        className="text-ink shrink-0 rounded-full bg-white px-5 py-2 text-sm font-bold transition-opacity hover:opacity-90">
+                        // 접수 시간창 밖이면 잠근다. 라벨은 그대로 둔다(문구가 바뀌면 카드 폭이 흔들린다) —
+                        // 이유는 배너 상단 안내가 갖는다.
+                        disabled={!applyOpen}
+                        title={applyOpen ? undefined : PREP_APPLY_CLOSED_MSG}
+                        className="text-ink shrink-0 rounded-full bg-white px-5 py-2 text-sm font-bold transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
                         신청하기
                       </button>
                     ))}
@@ -347,6 +370,8 @@ export default function PrepEnrollBanner({
                   신청 후 위 계좌로 입금해 주세요. 관리자가 입금을 확인하면 수강이 확정됩니다.
                   {selected && isOngoing(selected) && ` 이미 시작한 강좌라 남은 ${selected.remainingCount}회분으로 계산된 금액입니다.`}
                 </p>
+                {/* 모달을 연 채 19:00을 넘길 수 있어 틱으로 자동 반영된다(신청 버튼도 함께 잠긴다). */}
+                {!applyOpen && <p className="text-brand mt-2 text-xs font-bold">{PREP_APPLY_CLOSED_MSG}</p>}
               </div>
             </div>
 
@@ -370,7 +395,7 @@ export default function PrepEnrollBanner({
                 <button
                   type="button"
                   onClick={() => selected && setConfirmTarget(selected)}
-                  disabled={pending || !selected || !!selected.myStatus || !profileReady}
+                  disabled={pending || !selected || !!selected.myStatus || !profileReady || !applyOpen}
                   className="bg-cta hover:bg-cta/90 inline-flex items-center gap-1.5 rounded-md px-4 py-2 text-sm font-bold text-white transition-colors disabled:opacity-50">
                   {pending && <Loader2 className="size-4 animate-spin" />}이 강좌 신청하기
                 </button>
