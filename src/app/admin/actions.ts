@@ -2022,6 +2022,7 @@ export async function setFrienderTier(userId: string, target: "friender" | "frie
 // 프렌더 화면과 admin 심사 목록이 함께 바뀐다(프렌더 쪽 prep-actions.ts의 revalidatePrep과 짝).
 function revalidatePrepConsumers(): void {
   revalidatePath("/admin/prep");
+  revalidatePath("/admin/prep-enrollments");
   revalidatePath("/friender", "layout");
 }
 

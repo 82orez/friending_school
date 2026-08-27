@@ -10,7 +10,7 @@ import { fmtDateKo, fmtDateShort, formatWon, frienderLabel } from "@/lib/prep";
 import { kstDateText } from "@/lib/kst";
 import { PREP_STATUSES, PREP_STATUS_BADGE, PREP_STATUS_LABEL, type PrepStatus } from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
-import { approvePrepCourse, cancelPrepEnrollmentAsAdmin, confirmPrepPayment, deletePrepCourseAsAdmin, rejectPrepCourse } from "@/app/admin/actions";
+import { approvePrepCourse, deletePrepCourseAsAdmin, rejectPrepCourse } from "@/app/admin/actions";
 import PrepSessionCalendar from "@/components/admin/PrepSessionCalendar";
 import PrepCourseInfoModal from "@/components/admin/PrepCourseInfoModal";
 import {
@@ -98,9 +98,7 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
   const [deleteTarget, setDeleteTarget] = useState<AdminPrepCourse | null>(null);
   const [reason, setReason] = useState(""); // 선택 입력 — 적으면 프렌더 SMS·화면에 사유로 붙는다
   const [busy, startBusy] = useTransition();
-  // 수강신청 처리 — 모달은 표시만 하고 액션은 여기서(프렙 UI 규약).
-  const [payTarget, setPayTarget] = useState<AdminPrepEnrollment | null>(null);
-  const [enrollCancelTarget, setEnrollCancelTarget] = useState<AdminPrepEnrollment | null>(null);
+  // 수강신청 처리(입금 확인·신청 취소)는 이 화면이 아니라 「프렙 수강신청」 탭(/admin/prep-enrollments)이 소유한다.
 
   const pending = rows.filter((r) => r.status === "신청").length;
   const approvedRows = rows.filter((r) => r.status === "승인");
@@ -119,42 +117,6 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
   const approvedList = useMemo(() => approvedRows.filter(matches), [approvedRows, matches]);
 
   // 다이얼로그를 닫으며 state를 비우므로 대상·사유를 먼저 스냅샷한다(FrienderRequestsManager와 같은 패턴).
-  // 입금 확인 — 성공하면 로컬 rows의 해당 신청만 갈아끼운다(재조회 없이 즉시 반영).
-  const patchEnrollment = (id: string, patch: Partial<AdminPrepEnrollment>) =>
-    setRows((prev) => prev.map((c) => ({ ...c, enrollments: c.enrollments.map((e) => (e.id === id ? { ...e, ...patch } : e)) })));
-
-  const confirmPay = () => {
-    const target = payTarget;
-    setPayTarget(null);
-    if (!target) return;
-    startBusy(async () => {
-      const res = await confirmPrepPayment(target.id);
-      if (res.ok) {
-        patchEnrollment(target.id, { status: "수강확정", paid_at: new Date().toISOString() });
-        toast.success("입금을 확인해 수강을 확정했습니다.");
-      } else {
-        toast.error(res.error ?? "오류가 발생했습니다.");
-      }
-    });
-  };
-
-  const confirmEnrollCancel = () => {
-    const target = enrollCancelTarget;
-    const note = reason.trim();
-    setEnrollCancelTarget(null);
-    setReason("");
-    if (!target) return;
-    startBusy(async () => {
-      const res = await cancelPrepEnrollmentAsAdmin(target.id, note);
-      if (res.ok) {
-        patchEnrollment(target.id, { status: "취소" });
-        toast.success("신청을 취소 처리했습니다.");
-      } else {
-        toast.error(res.error ?? "오류가 발생했습니다.");
-      }
-    });
-  };
-
   const confirmDelete = () => {
     const target = deleteTarget;
     const note = reason.trim();
@@ -248,74 +210,7 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
         className="mt-3"
       />
 
-      <PrepCourseInfoModal
-        course={infoTarget && (rows.find((c) => c.id === infoTarget.id) ?? infoTarget)}
-        busy={busy}
-        onConfirmPayment={setPayTarget}
-        onCancelEnrollment={(e) => {
-          setReason("");
-          setEnrollCancelTarget(e);
-        }}
-        onClose={closeInfo}
-      />
-
-      {/* 입금 확인 */}
-      <AlertDialog open={payTarget !== null} onOpenChange={(open) => !open && setPayTarget(null)}>
-        <AlertDialogContent className="z-[130]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>입금을 확인할까요?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {payTarget && (
-                <>
-                  <span className="text-ink font-semibold">{payTarget.student_name ?? "신청자"}</span>님의 수강이 확정되고 확정 문자가 발송됩니다.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmPay} className="bg-cta hover:bg-cta/90 border-transparent text-white">
-              입금 확인
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 신청 취소 */}
-      <AlertDialog open={enrollCancelTarget !== null} onOpenChange={(open) => !open && setEnrollCancelTarget(null)}>
-        <AlertDialogContent className="z-[130]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>이 신청을 취소 처리할까요?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {enrollCancelTarget && (
-                <>
-                  <span className="text-ink font-semibold">{enrollCancelTarget.student_name ?? "신청자"}</span>님의 신청이 취소되고 문자로 통보됩니다.
-                  자리는 다시 비워집니다.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="text-left">
-            <label className="flex flex-col gap-1">
-              <span className="text-muted-fg-faint text-xs font-semibold">사유 (선택 · 신청자에게 전달됩니다)</span>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                rows={2}
-                maxLength={500}
-                placeholder="예) 기한 내 미입금으로 취소합니다."
-                className="border-rule focus:border-accent-blue rounded-md border bg-white px-3 py-2 text-sm outline-none"
-              />
-            </label>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>닫기</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmEnrollCancel} variant="brand">
-              신청 취소
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <PrepCourseInfoModal course={infoTarget && (rows.find((c) => c.id === infoTarget.id) ?? infoTarget)} onClose={closeInfo} />
 
       {/* 삭제 확인 */}
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>

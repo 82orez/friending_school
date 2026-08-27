@@ -40,6 +40,7 @@ function revalidatePrepEnroll(): void {
   revalidatePath("/friending");
   revalidatePath("/mypage/enrollments");
   revalidatePath("/admin/prep");
+  revalidatePath("/admin/prep-enrollments");
   revalidatePath("/friender", "layout"); // 프렌더 목록의 신청자 수
 }
 

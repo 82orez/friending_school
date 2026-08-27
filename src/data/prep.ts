@@ -73,3 +73,18 @@ export const PREP_STATUS_BADGE: Record<PrepStatus, string> = {
 
 // 명시적 「승인 요청」으로만 '신청'이 되는 상태(승인은 수정 시 자동 복귀라 여기 없다).
 export const PREP_REQUESTABLE_STATUSES: PrepStatus[] = ["작성중", "거절"];
+
+// ── 수강신청 상태 ──────────────────────────────────────────────────────
+// DB enum prep_enrollment_status. ⚠️ prep_courses.status의 '신청'(개설 심사)과는 다른 축이다.
+export const PREP_ENROLLMENT_STATUSES = ["입금대기", "수강확정", "취소"] as const;
+export type PrepEnrollmentStatus = (typeof PREP_ENROLLMENT_STATUSES)[number];
+
+export const PREP_ENROLLMENT_LABEL: Record<PrepEnrollmentStatus, string> = { 입금대기: "입금 대기", 수강확정: "수강 확정", 취소: "취소" };
+
+// PrepCourseInfoModal이 하드코딩하던 색을 그대로 옮겼다(관리자 화면끼리 같은 색이어야 한다).
+// ⚠️ 학생용 ENROLLMENT_STATUS_BADGE(src/data/enrollment-status.ts)와는 계열이 다르다 — 그쪽은 정규 과정과 나란히 놓이는 화면이라 별개로 둔다.
+export const PREP_ENROLLMENT_BADGE: Record<PrepEnrollmentStatus, string> = {
+  입금대기: "bg-[#FFF7E6] text-[#B97400]",
+  수강확정: "bg-[#E1F5EE] text-[#0F6E56]",
+  취소: "bg-surface text-muted-fg",
+};

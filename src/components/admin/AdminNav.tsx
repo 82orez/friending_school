@@ -12,6 +12,7 @@ const ITEMS: { href: string; label: string }[] = [
   { href: "/admin/friender-requests", label: "🤝 프렌더 관리" },
   { href: "/admin/rooms", label: "🎧 연습방 관리" },
   { href: "/admin/prep", label: "📘 프렙 강좌" },
+  { href: "/admin/prep-enrollments", label: "🧾 프렙 수강신청" },
   { href: "/admin/centers", label: "🏫 센터 관리" },
   { href: "/admin/revenue", label: "📈 매출 현황" },
   { href: "/admin/profit", label: "📊 매출이익" },
@@ -25,7 +26,9 @@ const FOCUS = "focus-visible:ring-accent-blue/50 focus-visible:ring-2 focus-visi
 
 export default function AdminNav() {
   const pathname = usePathname();
-  const isActive = (href: string) => pathname.startsWith(href);
+  // ⚠️ 세그먼트 경계까지 봐야 한다 — 단순 startsWith면 /admin/prep-enrollments에서 「프렙 강좌」(/admin/prep)까지 함께 활성화된다.
+  //    /admin/classes/[id] 같은 중첩 라우트의 하이라이트 유지는 그대로다.
+  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <>
