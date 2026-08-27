@@ -37,16 +37,16 @@ export const PREP_DEFAULT_CAPACITY = PREP_MAX_CAPACITY;
 export const PREP_TOPIC_MAX = 100;
 
 // ── 수강신청 접수 시간창 ────────────────────────────────────────────────
-// KST 08:00~19:00에만 신청을 받는다(19:00부터 익일 08:00까지 마감).
+// KST 07:00~19:00에만 신청을 받는다(19:00부터 익일 07:00까지 마감).
 // 신청은 곧바로 신청자에게 입금 안내 SMS, 관리자 메일, 프렌더 SMS를 띄우므로
 // 심야 접수는 심야 문자 발송 + 응대 불가 시간대의 입금 대조를 뜻한다.
 // ⚠️ 같은 값이 RPC join_prep_course에도 하드코딩돼 있다 — RPC는 authenticated에 grant돼
 //    브라우저가 직접 부를 수 있어 자급해야 한다(NO_SHOW_GRACE_MIN과 같은 사정). 바꿀 땐 함께.
-export const PREP_APPLY_OPEN_MIN = 8 * 60;
+export const PREP_APPLY_OPEN_MIN = 7 * 60;
 export const PREP_APPLY_CLOSE_MIN = 19 * 60;
 
 // 배너 안내와 서버 액션 에러 문구가 어긋나지 않도록 문장도 여기 한 곳에 둔다.
-export const PREP_APPLY_WINDOW_LABEL = "오전 8시~오후 7시";
+export const PREP_APPLY_WINDOW_LABEL = "오전 7시~오후 7시";
 export const PREP_APPLY_CLOSED_MSG = `수강신청은 매일 ${PREP_APPLY_WINDOW_LABEL}에만 가능합니다.`;
 
 // ── 개설 심사 상태 ──────────────────────────────────────────────────────
