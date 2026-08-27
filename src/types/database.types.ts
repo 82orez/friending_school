@@ -610,6 +610,7 @@ export type Database = {
           note: string | null
           payment_id: string
           pg_tx_id: string | null
+          prep_enrollment_id: string | null
           raw: Json | null
           receipt_url: string | null
           status: string
@@ -627,6 +628,7 @@ export type Database = {
           note?: string | null
           payment_id: string
           pg_tx_id?: string | null
+          prep_enrollment_id?: string | null
           raw?: Json | null
           receipt_url?: string | null
           status?: string
@@ -644,6 +646,7 @@ export type Database = {
           note?: string | null
           payment_id?: string
           pg_tx_id?: string | null
+          prep_enrollment_id?: string | null
           raw?: Json | null
           receipt_url?: string | null
           status?: string
@@ -656,6 +659,13 @@ export type Database = {
             columns: ["enrollment_id"]
             isOneToOne: false
             referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_prep_enrollment_id_fkey"
+            columns: ["prep_enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "prep_enrollments"
             referencedColumns: ["id"]
           },
         ]

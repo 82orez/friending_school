@@ -89,7 +89,7 @@
 
 ## 수강신청 (`20260824001559_add_prep_enrollments.sql`)
 
-**신청 접수 + 무통장 입금 안내**까지가 이번 범위다 — 카드결제·자동 환불은 없다. 관리자가 입금을 확인하면 확정.
+**신청 접수 + 무통장 입금 안내**가 축이다 — 카드결제는 아직 없고, 관리자가 입금을 확인하면 확정. 확정 뒤의 되돌리기는 **환불**(아래 「결제 기록·환불」)이고 실제 송금은 수동이다.
 상태: **`입금대기` → `수강확정`**, 그리고 `취소`. ⚠️ `prep_courses.status`의 `신청`은 **개설 심사** 상태라 수강신청 쪽에서는 그 단어를 쓰지 않는다.
 
 - **`prep_enrollments`** — `id` PK + **부분 unique `(course_id, user_id) where status <> '취소'`**. ⚠️ 복합 PK를 쓰지 않은 이유: 돈이 걸려 **취소 이력을 남겨야** 하는데(입금 확인 기록이 환불 근거), 복합 PK에 `취소` 행이 남으면 **재신청이 영영 막힌다**(`enrollments`와 같은 선택, `friender_room_participants`의 delete 방식과 반대).
@@ -127,7 +127,17 @@
   admin(`src/app/admin/actions.ts`): `confirmPrepPayment(enrollmentId)`(`입금대기` CAS → `수강확정`+`paid_at` → 학생 SMS) · `cancelPrepEnrollmentAsAdmin(enrollmentId, note?)`(미입금 자리 회수·폐강 정리, 사유 SMS).
 - **가드(이제 실효)**: 신청자가 있으면 **프렌더·관리자 모두 강좌 삭제 금지**(cascade로 입금 기록까지 사라진다), **프렌더는 심사 대상 항목 수정도 금지**(승인이 풀려 목록에서 사라지고 이미 입금하려던 사람의 조건이 바뀐다), **정원을 신청자 수보다 작게 축소 금지**. 소개·회차 주제는 계속 수정 가능.
 - **상태 배지 문구·색은 `src/data/enrollment-status.ts` 공용**(`입금대기`→「결제 대기」·`수강확정`→「수강 확정」, 정규 과정과 같은 어휘·같은 색 — 「수강신청 내역」 한 탭에 두 섹션이 나란히 있어서다. 상세=`docs/enroll.md`). **UI**: `/friending` 상단 **`<PrepEnrollBanner>`** — **새벽 하늘 다크 배너**(`PrepHeroArt variant="banner"`를 `-z-10`으로 깔고 왼쪽이 진한 그라디언트 오버레이. ⚠️ 흰 카드였을 때 바로 위 프렌딩 히어로에 눌려 안 보였다. ⚠️ 어두운 판에서 남색 `bg-cta`는 묻히므로 **CTA는 흰 알약 + `text-ink`**). 강좌마다 **세부 정보(기간·시간·진행 방식·강사·수강료·신청 현황)를 반투명 카드에 펼쳐** 두고 카드별 「신청하기」가 그 강좌를 선택한 채 모달을 연다(모달 = 계좌 안내 + 최종 확인: `PAYMENT_BANK`·확인 `AlertDialog`, 비로그인은 `/login?next=/friending`, 프로필 미완(휴대폰 인증·성·이름·영어 이름)은 **빠진 항목을 나열해** 마이페이지로 안내(`profileMissing`)). ⚠️ 정원 상한(1000)은 사실상 무제한이라 `N/1000` 대신 "N명 신청"으로 표기(`seatLabel`) · **`/mypage/enrollments`(「수강신청 내역」 탭의 「프렙 강좌」 섹션)**(스냅샷 기반 내역·계좌 안내·취소) · **`/admin/prep-enrollments`(「프렙 수강신청」 탭)**(전 강좌 신청을 한 목록에서 검색·상태/강좌 필터·정렬·페이징 + 행에서 입금 확인·신청 취소 — 상세=`docs/admin.md`). ⚠️ **입금 확인·신청 취소의 소유자는 이 탭 하나다**: 한때 `/admin/prep`의 `PrepCourseInfoModal` 안 「수강신청」 섹션이 목록과 버튼을 통째로 들고 있었는데 강좌 단위로만 볼 수 있고 검색·정렬이 없어 신청이 늘면 모달 스크롤만 길어졌다 → 모달은 **요약(총 N명·입금대기·취소) + 딥링크 `?course=<id>`** 로 축소했고 `/admin/prep`에는 개설된 강좌 테이블의 「신청자」 컬럼만 남았다.
-- ⏳ **매출 미연동**: `payments`가 `enrollment_id` FK라 프렙 입금은 `/admin/revenue`에 잡히지 않는다(의도적 범위 밖).
+
+### 결제 기록·환불 (`20260827221909_prep_payments_link.sql`)
+
+**프렙 결제도 정규 과정과 같은 `payments` 행으로 남는다.** 예전엔 `prep_enrollments.status`만 바뀌어 **얼마를 받았고 얼마를 돌려줬는지가 어디에도 없었다** — 입금이 확인된 신청을 관리자가 「신청 취소」로 지우면 환불 기록이 통째로 사라졌다. 카드 결제를 붙일 때도 정규처럼 `payments`가 소스라 지금 연결해 둔다.
+
+- **컬럼**: `payments.prep_enrollment_id`(FK→`prep_enrollments`, **on delete set null**) + 인덱스. `payment_id`는 무통장 합성 **`prep-bank-{enrollmentId}`**(정규 `bank-{id}` 관례). 마이그레이션이 `paid_at is not null`인 기존 신청을 **백필**한다. ⚠️ `enrollment_id`/`prep_enrollment_id` **XOR check는 없다** — 둘 다 set null이라 원본이 지워지면 둘 다 null인 행이 정상이다.
+- **기록 시점**: `confirmPrepPayment`(입금 확인)이 상태 전환 성공 후 `recordPayment`(멱등 upsert) 호출 — 두 번 눌러도 행은 하나.
+- **환불 = `refundPrepEnrollment(enrollmentId, refundKrw, reason)`**(`src/app/admin/actions.ts`): `수강확정`만 대상 · **사유 필수**(학생 SMS 문구가 된다) · 금액은 `0 < n ≤ amount − cancelled_amount` · `payments`에 `cancelled_amount` 누적 + `status`=전액이면 `cancelled` 아니면 `partial_cancelled` · `prep_enrollments`는 `취소` + `admin_note='[환불] …'`(CAS `.eq("status","수강확정")`) · 학생 SMS(금액·사유·담당자 연락 안내). ⚠️ **부분 환불도 수강은 취소**된다(정규와 같은 판단) → 남은 금액의 추가 환불은 지원하지 않는다. ⚠️ 무통장이라 **실제 송금은 관리자가 계좌로 수동 처리**하고 여기서는 DB만 동기화한다 — 카드 결제가 붙으면 `payments` 갱신 앞에 `cancelPortonePayment`를 끼우는 자리다.
+- **`cancelPrepEnrollmentAsAdmin`은 `입금대기` 전용으로 좁혔다** — 확정 건이 취소 경로로 새면 돈의 기록 없이 사라진다.
+- **화면 표시는 파생**(DB enum은 3종 그대로): admin은 `취소`+환불 기록 → 「환불」(`PREP_REFUND_LABEL`/`PREP_REFUND_BADGE`, `src/data/prep.ts`), 학생 `/mypage/enrollments`는 **`환불됨`**(`ENROLLMENT_STATUS_*` 재사용 — 정규 환불 배지와 같은 어휘·색) + `환불 N원` 행. 두 화면 모두 `payments.cancelled_amount > 0`이 근거다.
+- ⚠️ **매출 대시보드는 여전히 프렙을 제외한다** — `loadRevenueRows`가 `.is("prep_enrollment_id", null)`로 거른다. 이 로더는 payments 전량을 `enrollments` 스냅샷과 병합해서, 프렙 행을 넣으면 과정·강사·테스트 여부가 빈 행이 매출/매출이익/CSV에 섞인다. 프렙 매출 연동은 이 필터를 걷어내면서 **과정 라벨·정산 축을 함께 설계할 때** 한다.
 
 ## 회차 입장·출결 (`20260824231642_prep_attendance.sql`)
 
@@ -157,4 +167,4 @@
 
 ## ⏳ 미구현 (다음 단계)
 
-**카드결제·환불**(지금은 무통장 + 관리자 입금 확인만)·**프렙 매출 집계**(`payments`가 `enrollment_id` FK라 미연동)·**관리자 「승인 해제」**(한 번 만들었다가 걷어냈다 — 지금은 승인 상태가 배지 말고 하는 일이 없고, 프렌더가 승인된 강좌를 수정하면 자동으로 `신청`으로 내려가는 경로가 이미 있어 중복이었다. 수강신청이 붙어 승인이 '판매 중'을 뜻하게 되면, **수강생이 있는 강좌를 삭제 대신 멈추는 수단**으로 그때 다시 넣는다)·연습방과의 **시간 겹침 검사**(지금은 공개·예약 동선이 없어 실제 충돌이 생기지 않는다 → 수강신청을 붙일 때 `roomsOverlap`을 확장해 함께 처리).
+**카드결제**(지금은 무통장 + 관리자 입금 확인만 — 환불은 `payments` 기반으로 붙었고, 카드가 들어오면 `refundPrepEnrollment`에 `cancelPortonePayment` 한 단계만 끼우면 된다)·**프렙 매출 집계**(`payments` 연결은 됐지만 `loadRevenueRows`가 프렙 행을 제외한다 — 과정 라벨·정산 축 설계가 남았다)·**부분 환불 후 잔액 추가 환불**(부분 환불도 수강은 취소로 가서 두 번째 환불 경로가 없다)·**관리자 「승인 해제」**(한 번 만들었다가 걷어냈다 — 지금은 승인 상태가 배지 말고 하는 일이 없고, 프렌더가 승인된 강좌를 수정하면 자동으로 `신청`으로 내려가는 경로가 이미 있어 중복이었다. 수강신청이 붙어 승인이 '판매 중'을 뜻하게 되면, **수강생이 있는 강좌를 삭제 대신 멈추는 수단**으로 그때 다시 넣는다)·연습방과의 **시간 겹침 검사**(지금은 공개·예약 동선이 없어 실제 충돌이 생기지 않는다 → 수강신청을 붙일 때 `roomsOverlap`을 확장해 함께 처리).

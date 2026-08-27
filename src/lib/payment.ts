@@ -235,6 +235,8 @@ export async function finalizeEnrollmentPayment(
 type RecordPaymentInput = {
   paymentId: string;
   enrollmentId?: string | null;
+  /** 프렙 수강신청 결제일 때의 대상. 정규 과정은 enrollmentId를 쓴다(둘은 배타적). */
+  prepEnrollmentId?: string | null;
   studentId?: string | null;
   amount?: number;
   currency?: string;
@@ -251,6 +253,7 @@ export async function recordPayment(admin: ReturnType<typeof createAdminClient>,
     {
       payment_id: input.paymentId,
       enrollment_id: input.enrollmentId ?? null,
+      prep_enrollment_id: input.prepEnrollmentId ?? null,
       student_id: input.studentId ?? null,
       amount: Number.isFinite(input.amount) ? input.amount : 0,
       currency: input.currency ?? "KRW",

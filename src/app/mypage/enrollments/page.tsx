@@ -38,11 +38,12 @@ export default async function MyPageEnrollments() {
   // 본인 결제 기록(payments) 조회 — enrollment_id별 최신 1건(결제 상세·영수증·환불 판별 공용, RLS payments_select_own).
   const { data: payRows } = await supabase
     .from("payments")
-    .select("enrollment_id, status, amount, currency, method, receipt_url, cancelled_amount, created_at")
+    .select("enrollment_id, prep_enrollment_id, status, amount, currency, method, receipt_url, cancelled_amount, created_at")
     .eq("student_id", user.id)
     .order("created_at", { ascending: false });
   type PayRow = {
     enrollment_id: string | null;
+    prep_enrollment_id: string | null;
     status: string;
     amount: number;
     currency: string;
@@ -95,7 +96,15 @@ export default async function MyPageEnrollments() {
       "id, course_id, course_title, start_min, duration_min, session_count, first_session_date, last_session_date, price_krw, status, paid_at, created_at",
     )
     .order("created_at", { ascending: false });
-  const prepEnrollments = (prepData ?? []) as unknown as MyPrepEnrollment[];
+  // 프렙 환불액 — 정규 과정의 '환불됨' 배지와 같은 판정을 스냅샷 행에도 붙인다(취소 + 환불 기록).
+  const prepRefundByEnrollment = new Map<string, number>();
+  for (const p of (payRows ?? []) as PayRow[]) {
+    if (p.prep_enrollment_id && (p.cancelled_amount ?? 0) > 0) prepRefundByEnrollment.set(p.prep_enrollment_id, p.cancelled_amount);
+  }
+  const prepEnrollments = ((prepData ?? []) as unknown as MyPrepEnrollment[]).map((e) => ({
+    ...e,
+    refundedKrw: prepRefundByEnrollment.get(e.id) ?? 0,
+  }));
 
   return (
     <div className="space-y-5">

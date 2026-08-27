@@ -96,3 +96,8 @@ export const PREP_ENROLLMENT_BADGE: Record<PrepEnrollmentStatus, string> = {
   수강확정: "bg-[#E1F5EE] text-[#0F6E56]",
   취소: "bg-surface text-muted-fg",
 };
+
+// **표시 전용** — DB 상태는 여전히 '취소'다(환불이어도 enum 값은 늘리지 않는다, 정규 과정과 같은 판단).
+// 취소 + payments에 환불 기록이 있으면 이 배지를 쓴다. 색은 학생 화면 「환불됨」(enrollment-status.ts)과 같은 호박색.
+export const PREP_REFUND_LABEL = "환불";
+export const PREP_REFUND_BADGE = "bg-[#FFF4E5] text-[#B45309]";

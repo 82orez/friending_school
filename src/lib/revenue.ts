@@ -15,6 +15,9 @@ export async function loadRevenueRows(admin: ReturnType<typeof createAdminClient
   const { data: payData } = await admin
     .from("payments")
     .select("payment_id, enrollment_id, student_id, amount, cancelled_amount, status, method, currency, receipt_url, note, created_at")
+    // ⚠️ 프렙 결제는 제외 — 이 로더는 payments 전량을 enrollments 스냅샷과 병합하는데, 프렙 행은
+    //    과정·강사·테스트 여부가 없어 빈 행으로 섞인다. 프렙 매출 연동은 별도 작업(docs/prep.md ⏳).
+    .is("prep_enrollment_id", null)
     .order("created_at", { ascending: false });
   const payments = (payData ?? []) as {
     payment_id: string;

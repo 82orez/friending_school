@@ -17,12 +17,27 @@ export default async function AdminPrepEnrollmentsPage({ searchParams }: { searc
     .order("created_at", { ascending: false })
     .limit(2000); // ⏳ 근접하면 cap을 올리지 말고 기간 필터를 붙일 것(rooms/page.tsx와 같은 정책)
 
-  type Raw = Omit<AdminPrepEnrollmentRow, "friender" | "courseLabel" | "isMidjoin"> & {
+  type Raw = Omit<AdminPrepEnrollmentRow, "friender" | "courseLabel" | "isMidjoin" | "paidKrw" | "refundedKrw"> & {
     prep_courses: { title: string; friender_name: string | null; friender_nickname: string | null; session_count: number } | null;
   };
+  const raws = (data ?? []) as unknown as Raw[];
 
-  const rows: AdminPrepEnrollmentRow[] = ((data ?? []) as unknown as Raw[]).map(({ prep_courses: c, ...e }) => ({
+  // 결제·환불 기록(payments) 병합 — 환불 가능액과 「환불」 배지의 근거다.
+  // ⚠️ 신청 스냅샷 price_krw가 아니라 **결제 원본**을 봐야 한다(부분 환불이면 남은 금액이 다르다).
+  const { data: payData } = await admin
+    .from("payments")
+    .select("prep_enrollment_id, amount, cancelled_amount")
+    .in("prep_enrollment_id", raws.map((r) => r.id).slice(0, 2000));
+  const payByEnrollment = new Map<string, { amount: number; cancelled: number }>();
+  for (const p of (payData ?? []) as { prep_enrollment_id: string | null; amount: number | null; cancelled_amount: number | null }[]) {
+    if (p.prep_enrollment_id) payByEnrollment.set(p.prep_enrollment_id, { amount: p.amount ?? 0, cancelled: p.cancelled_amount ?? 0 });
+  }
+
+  const rows: AdminPrepEnrollmentRow[] = raws.map(({ prep_courses: c, ...e }) => ({
     ...e,
+    // 결제 기록이 없는 건(미입금·백필 이전)은 스냅샷 금액을 결제액으로 본다 — 환불 액션도 같은 폴백을 쓴다.
+    paidKrw: payByEnrollment.get(e.id)?.amount ?? e.price_krw,
+    refundedKrw: payByEnrollment.get(e.id)?.cancelled ?? 0,
     // 강좌명은 신청 시점 스냅샷이 기본이지만, 강좌가 개명됐으면 현재 이름으로 고르는 편이 관리자에게 자연스럽다.
     courseLabel: c?.title ?? e.course_title,
     friender: c ? frienderLabel(c.friender_name, c.friender_nickname) : "-",

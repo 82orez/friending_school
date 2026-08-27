@@ -33,12 +33,12 @@ import {
 } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 import { todayKst } from "@/lib/booking";
-import { fmtDateKo, prepSmsTitle } from "@/lib/prep";
+import { fmtDateKo, formatWon, prepSmsTitle } from "@/lib/prep";
 import { createMakeupClass, weekdayOf, addDaysStr, type ClassForMakeup } from "@/lib/makeup";
 import { resolveCenterId } from "@/lib/center";
 import { logEnrollmentEvent } from "@/lib/events";
 import { notifyCenterManagerOfClass, notifyCenterManagerOfEnrollment } from "@/lib/center-notify";
-import { finalizeEnrollmentPayment, refundEnrollmentPayment } from "@/lib/payment";
+import { finalizeEnrollmentPayment, recordPayment, refundEnrollmentPayment } from "@/lib/payment";
 import { cancelPortonePayment } from "@/lib/portone";
 import { reassignClassCore } from "@/lib/reassign";
 import { loadSettlementRows } from "@/lib/settlements";
@@ -2167,11 +2167,30 @@ export async function confirmPrepPayment(enrollmentId: string, adminNote?: strin
     .update({ status: "수강확정", paid_at: new Date().toISOString(), admin_note: note ? note.slice(0, 500) : null })
     .eq("id", enrollmentId)
     .eq("status", "입금대기") // 두 번 눌러도 한 번만 처리된다.
-    .select("student_phone, course_title, first_session_date, start_min");
+    .select("id, user_id, price_krw, student_phone, course_title, first_session_date, start_min");
   if (error) return { ok: false, error: "저장 중 오류가 발생했습니다." };
   if (!data || data.length === 0) return { ok: false, error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
 
-  const row = data[0] as { student_phone: string | null; course_title: string; first_session_date: string | null; start_min: number };
+  const row = data[0] as {
+    id: string;
+    user_id: string;
+    price_krw: number;
+    student_phone: string | null;
+    course_title: string;
+    first_session_date: string | null;
+    start_min: number;
+  };
+
+  // 결제 기록 — 환불의 기준(결제액·누적 취소액)이 여기서 생긴다. 정규 무통장이 `bank-{id}`를 쓰는 것과 같은 합성 id.
+  // best-effort: recordPayment는 자체 로깅만 하고 예외를 던지지 않는다(기록 실패가 확정을 되돌리지 않는다).
+  await recordPayment(admin, {
+    paymentId: `prep-bank-${row.id}`,
+    prepEnrollmentId: row.id,
+    studentId: row.user_id,
+    amount: row.price_krw,
+    method: "bank",
+  });
+
   try {
     if (row.student_phone?.trim()) {
       const first = row.first_session_date ? ` 첫 수업: ${fmtDateKo(row.first_session_date)} ${fmtTime(row.start_min)}` : "";
@@ -2189,8 +2208,9 @@ export async function confirmPrepPayment(enrollmentId: string, adminNote?: strin
   return { ok: true };
 }
 
-// 관리자 신청 취소 — 미입금 자리를 비우거나(정원 점유) 폐강 전 정리에 쓴다.
-// 학생 자가 취소와 달리 '수강확정'도 취소할 수 있다(환불은 별도 수단으로 처리).
+// 관리자 신청 취소 — **미입금('입금대기') 전용**. 자리를 비우거나(정원 점유) 폐강 전 정리에 쓴다.
+// ⚠️ 입금이 확인된 '수강확정'은 여기로 오면 안 된다 — 돈이 오간 건을 기록 없이 취소하게 된다.
+//    확정 건은 refundPrepEnrollment(환불 금액·사유를 payments에 남긴다)로만 처리한다.
 export async function cancelPrepEnrollmentAsAdmin(enrollmentId: string, adminNote?: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
@@ -2201,10 +2221,12 @@ export async function cancelPrepEnrollmentAsAdmin(enrollmentId: string, adminNot
     .from("prep_enrollments")
     .update({ status: "취소", cancelled_at: new Date().toISOString(), admin_note: note ? note.slice(0, 500) : null })
     .eq("id", enrollmentId)
-    .neq("status", "취소")
+    .eq("status", "입금대기")
     .select("student_phone, course_title, status");
   if (error) return { ok: false, error: "저장 중 오류가 발생했습니다." };
-  if (!data || data.length === 0) return { ok: false, error: "이미 취소된 신청입니다. 목록을 새로고침해 주세요." };
+  if (!data || data.length === 0) {
+    return { ok: false, error: "입금 대기 상태의 신청만 취소할 수 있습니다. 입금이 확인된 건은 환불 처리해 주세요." };
+  }
 
   const row = data[0] as { student_phone: string | null; course_title: string };
   try {
@@ -2216,6 +2238,75 @@ export async function cancelPrepEnrollmentAsAdmin(enrollmentId: string, adminNot
     }
   } catch (err) {
     console.error("[prep] 신청 취소 SMS 발송 실패:", err);
+  }
+
+  revalidatePrepConsumers();
+  revalidatePath("/mypage/enrollments");
+  return { ok: true };
+}
+
+// 프렙 환불 — 입금이 확인된('수강확정') 신청을 돌려보낸다. 취소와 갈라 둔 이유는 **돈의 기록**이다:
+// payments에 취소액을 누적해 "얼마를 돌려줬는지"가 남아야 정산·문의 응대가 된다(정규 refundEnrollment와 같은 모델).
+// ⚠️ 지금은 무통장뿐이라 PG 취소 경로가 없다 — **실제 송금은 관리자가 계좌로 수동 처리**하고 여기서는 DB만 동기화한다.
+//    카드 결제가 붙으면 payments 갱신 **앞에** cancelPortonePayment(paymentId, {reason, amount})를 끼우는 자리다.
+// ⚠️ 부분 환불도 수강은 '취소'로 간다(정규와 같은 판단) → 남은 금액의 추가 환불은 지원하지 않는다.
+export async function refundPrepEnrollment(enrollmentId: string, refundKrw: number, reason: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!enrollmentId) return { ok: false, error: "잘못된 요청입니다." };
+  const note = String(reason ?? "").trim();
+  if (!note) return { ok: false, error: "환불 사유를 입력해 주세요." }; // 사유가 곧 학생 통보 문구다.
+  const amount = Math.floor(Number(refundKrw));
+  if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "환불 금액이 올바르지 않습니다." };
+
+  const admin = createAdminClient();
+  const { data: enr } = await admin
+    .from("prep_enrollments")
+    .select("id, user_id, price_krw, student_phone, course_title, status")
+    .eq("id", enrollmentId)
+    .maybeSingle();
+  if (!enr) return { ok: false, error: "신청을 찾을 수 없습니다." };
+  const e = enr as { id: string; user_id: string; price_krw: number; student_phone: string | null; course_title: string; status: string };
+  if (e.status !== "수강확정") return { ok: false, error: "입금이 확인된 신청만 환불할 수 있습니다. 목록을 새로고침해 주세요." };
+
+  // 결제 원본. 백필 이전 데이터나 기록 실패로 없을 수 있어 스냅샷 금액으로 즉석 기록한다.
+  const paymentId = `prep-bank-${e.id}`;
+  let { data: pay } = await admin.from("payments").select("payment_id, amount, cancelled_amount").eq("prep_enrollment_id", e.id).maybeSingle();
+  if (!pay) {
+    await recordPayment(admin, { paymentId, prepEnrollmentId: e.id, studentId: e.user_id, amount: e.price_krw, method: "bank" });
+    ({ data: pay } = await admin.from("payments").select("payment_id, amount, cancelled_amount").eq("prep_enrollment_id", e.id).maybeSingle());
+  }
+  if (!pay) return { ok: false, error: "결제 기록을 찾을 수 없습니다." };
+  const p = pay as { payment_id: string; amount: number; cancelled_amount: number };
+
+  const already = p.cancelled_amount ?? 0;
+  const remaining = (p.amount ?? 0) - already;
+  if (amount > remaining) return { ok: false, error: `환불 가능 금액은 ${formatWon(remaining)}입니다.` };
+
+  const total = already + amount;
+  const { error: payErr } = await admin
+    .from("payments")
+    .update({ status: total >= (p.amount ?? 0) ? "cancelled" : "partial_cancelled", cancelled_amount: total })
+    .eq("payment_id", p.payment_id);
+  if (payErr) return { ok: false, error: "환불 처리 중 오류가 발생했습니다." };
+
+  // 수강 상태 전환은 CAS — 두 번 눌러도 한 번만 처리된다(payments는 위에서 이미 갱신됐으므로 여기서 반려되면 금액만 누적된다).
+  const { data: updated, error } = await admin
+    .from("prep_enrollments")
+    .update({ status: "취소", cancelled_at: new Date().toISOString(), admin_note: `[환불] ${note}`.slice(0, 500) })
+    .eq("id", e.id)
+    .eq("status", "수강확정")
+    .select("id");
+  if (error || !updated || updated.length === 0) return { ok: false, error: "이미 처리된 신청입니다. 목록을 새로고침해 주세요." };
+
+  try {
+    if (e.student_phone?.trim()) {
+      await sendSms(
+        e.student_phone.trim(),
+        `[프렌딩 스쿨] '${prepSmsTitle(e.course_title)}' 프렙 강좌 수강이 취소되고 ${formatWon(amount)}이 환불 처리되었습니다. 사유: ${note.slice(0, 100)} 환불 계좌 확인을 위해 담당자가 연락드립니다.`,
+      );
+    }
+  } catch (err) {
+    console.error("[prep] 환불 SMS 발송 실패:", err);
   }
 
   revalidatePrepConsumers();

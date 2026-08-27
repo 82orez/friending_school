@@ -37,6 +37,8 @@ export type MyPrepEnrollment = {
   status: "입금대기" | "수강확정" | "취소";
   paid_at: string | null;
   created_at: string;
+  /** 환불 누적액(payments.cancelled_amount). 0이면 환불 이력 없음 — 취소 배지를 「환불됨」으로 가르는 근거. */
+  refundedKrw: number;
 };
 
 // DB enum → 표시 상태. 문구·색은 src/data/enrollment-status.ts가 갖는다
@@ -47,6 +49,10 @@ const DISPLAY_STATUS: Record<MyPrepEnrollment["status"], EnrollmentDisplayStatus
   수강확정: "수강확정",
   취소: "취소됨",
 };
+
+// 취소 + 환불 기록이면 「환불됨」. DB 상태는 둘 다 '취소'라 금액 기록으로만 갈린다.
+const displayStatus = (e: MyPrepEnrollment): EnrollmentDisplayStatus =>
+  e.status === "취소" && e.refundedKrw > 0 ? "환불됨" : DISPLAY_STATUS[e.status];
 
 export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrepEnrollment[] }) {
   const router = useRouter();
@@ -99,8 +105,9 @@ export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrep
                     시선이 오른쪽 끝과 왼쪽을 오간다(실제 피드백). 취소 버튼이 정규 행의 ▾ 자리를 쓴다. */}
                 <div className="flex items-center gap-3">
                   <p className="text-ink min-w-0 flex-1 truncate text-base font-bold">{e.course_title}</p>
-                  <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", ENROLLMENT_STATUS_BADGE[DISPLAY_STATUS[e.status]])}>
-                    {ENROLLMENT_STATUS_LABEL[DISPLAY_STATUS[e.status]]}
+                  {/* 환불 건은 정규 과정과 같은 파생 판정(취소 + 환불 기록) — 그냥 '취소됨'으로 두면 돈을 돌려받은 사실이 안 보인다. */}
+                  <span className={cn("shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", ENROLLMENT_STATUS_BADGE[displayStatus(e)])}>
+                    {ENROLLMENT_STATUS_LABEL[displayStatus(e)]}
                   </span>
                   {e.status === "입금대기" && (
                     <button
@@ -119,6 +126,7 @@ export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrep
                       ["기간", period],
                       ["시각", `${fmtTime(e.start_min)}~${fmtRoomEnd(e.start_min + e.duration_min)} (${e.duration_min}분)`],
                       ["수강료", formatWon(e.price_krw)],
+                      ...(e.refundedKrw > 0 ? ([["환불", `${formatWon(e.refundedKrw)} 환불 완료`]] as const) : []),
                     ] as const
                   ).map(([label, value]) => (
                     <Fragment key={label}>
