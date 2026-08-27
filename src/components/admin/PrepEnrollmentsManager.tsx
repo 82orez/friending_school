@@ -86,7 +86,9 @@ export default function PrepEnrollmentsManager({
   useEffect(() => setRows(initialRows), [initialRows]); // router.refresh() / revalidate 후 동기화
 
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<FilterKey>("전체");
+  // 기본은 '입금 대기' — 이 화면의 일은 입금 대조다(/admin/prep이 '신청'(심사 대기)으로 여는 것과 같은 이유).
+  // 강좌 딥링크(?course=)로 들어와도 같다: 진입 경로마다 기본 뷰가 달라지지 않는다.
+  const [filter, setFilter] = useState<FilterKey>("입금대기");
   const [courseId, setCourseId] = useState(initialCourseId);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" } | null>(null);
   const [page, setPage] = useState(1);
