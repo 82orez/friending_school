@@ -7,8 +7,9 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
-import { fmtDateKo, formatWon } from "@/lib/prep";
+import { fmtDateKo, formatWon, prepPaymentDeadlineLabel } from "@/lib/prep";
 import { PAYMENT_BANK } from "@/data/payment";
+import { PREP_PAYMENT_DEADLINE_MSG } from "@/data/prep";
 import { ENROLLMENT_STATUS_BADGE, ENROLLMENT_STATUS_LABEL, type EnrollmentDisplayStatus } from "@/data/enrollment-status";
 import { cancelPrepEnrollment } from "@/app/prep/enroll-actions";
 import {
@@ -133,7 +134,10 @@ export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrep
                     <p className="text-ink mt-1">
                       {PAYMENT_BANK.bank} {PAYMENT_BANK.account} · 예금주 {PAYMENT_BANK.holder}
                     </p>
+                    {/* 기한은 **신청일(created_at) 기준**이라 다음 날 다시 열어도 날짜가 따라 움직이지 않는다. */}
+                    <p className="text-ink mt-1 font-semibold">입금 기한 {prepPaymentDeadlineLabel(e.created_at)}</p>
                     <p className="text-muted-fg-faint mt-1 text-xs">입금이 확인되면 수강이 확정되고 문자로 알려 드립니다.</p>
+                    <p className="text-brand mt-1 text-xs font-bold">{PREP_PAYMENT_DEADLINE_MSG}</p>
                   </div>
                 )}
               </li>

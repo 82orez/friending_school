@@ -9,7 +9,7 @@ import { sendSms } from "@/lib/sms";
 import { rateLimit } from "@/lib/rate-limit";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
-import { fmtDateKo, formatWon, isPrepApplyOpen, prepSmsTitle } from "@/lib/prep";
+import { fmtDateKo, formatWon, isPrepApplyOpen, prepPaymentDeadlineLabel, prepSmsTitle } from "@/lib/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { PREP_APPLY_CLOSED_MSG } from "@/data/prep";
 import { PAYMENT_BANK } from "@/data/payment";
@@ -183,7 +183,7 @@ async function notifyPrepEnrollment(admin: any, courseId: string, userId: string
     // ⚠️ **기간·금액도 스냅샷에서 읽는다** — 중도 신청이면 강좌 원본의 정가·전체 일정과 다르다.
     const { data: mine } = await admin
       .from("prep_enrollments")
-      .select("student_name, student_phone, session_count, first_session_date, last_session_date, price_krw")
+      .select("student_name, student_phone, session_count, first_session_date, last_session_date, price_krw, created_at")
       .eq("course_id", courseId)
       .eq("user_id", userId)
       .neq("status", "취소")
@@ -195,6 +195,7 @@ async function notifyPrepEnrollment(admin: any, courseId: string, userId: string
       first_session_date?: string | null;
       last_session_date?: string | null;
       price_krw?: number | null;
+      created_at?: string | null;
     };
 
     const { data } = await admin
@@ -237,6 +238,8 @@ async function notifyPrepEnrollment(admin: any, courseId: string, userId: string
           `수업 ${period} ${fmtTime(c.start_min)}~${fmtRoomEnd(c.start_min + c.duration_min)}`,
           `입금액 ${formatWon(priceKrw)}`,
           `입금 계좌 ${PAYMENT_BANK.bank} ${PAYMENT_BANK.account} (예금주 ${PAYMENT_BANK.holder})`,
+          // 기한 기준은 **신청 행의 created_at**(방금 만든 스냅샷) — 발송 시각이 아니다.
+          `입금 기한 ${prepPaymentDeadlineLabel(student.created_at ?? new Date().toISOString())}까지 (미확인 시 신청 자동 취소)`,
           `입금자명은 신청자 성함으로 넣어 주세요. 입금이 확인되면 수강이 확정됩니다.`,
         ].join("\n"),
       );

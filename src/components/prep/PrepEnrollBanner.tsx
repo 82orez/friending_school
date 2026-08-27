@@ -10,7 +10,14 @@ import { ENROLLMENT_STATUS_BADGE, ENROLLMENT_STATUS_LABEL, type EnrollmentDispla
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
 import { fmtDateKo, formatWon, isPrepApplyOpen } from "@/lib/prep";
-import { PREP_APPLY_CLOSED_MSG, PREP_APPLY_WINDOW_LABEL, PREP_MAX_CAPACITY, PREP_SESSION_COUNT } from "@/data/prep";
+import {
+  PREP_APPLY_CLOSED_MSG,
+  PREP_APPLY_WINDOW_LABEL,
+  PREP_MAX_CAPACITY,
+  PREP_PAYMENT_DEADLINE_LABEL,
+  PREP_PAYMENT_DEADLINE_MSG,
+  PREP_SESSION_COUNT,
+} from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { applyPrepCourse, cancelPrepEnrollment } from "@/app/prep/enroll-actions";
 import PrepHeroArt from "@/components/prep/PrepHeroArt";
@@ -359,6 +366,8 @@ export default function PrepEnrollBanner({
                       ["예금주", PAYMENT_BANK.holder],
                       // ⚠️ 정가가 아니라 **청구액**(중도 신청이면 잔여 비례) — RPC가 스냅샷에 넣는 값과 같아야 한다.
                       ["금액", selected ? formatWon(selected.chargeKrw) : "-"],
+                      // 모달은 접수 시간창(07~19시) 안에서만 열리므로 기한의 "오늘"은 항상 신청일과 같다.
+                      ["입금 기한", `오늘 ${PREP_PAYMENT_DEADLINE_LABEL}까지`],
                     ] as const
                   ).map(([label, value]) => (
                     <Fragment key={label}>
@@ -371,6 +380,8 @@ export default function PrepEnrollBanner({
                   신청 후 위 계좌로 입금해 주세요. 관리자가 입금을 확인하면 수강이 확정됩니다.
                   {selected && isOngoing(selected) && ` 이미 시작한 강좌라 남은 ${selected.remainingCount}회분으로 계산된 금액입니다.`}
                 </p>
+                {/* 기한은 자리를 잡아 두고 입금하지 않는 신청을 막는 조건이라 안내가 아니라 경고로 보여 준다. */}
+                <p className="text-brand mt-2 text-xs font-bold">{PREP_PAYMENT_DEADLINE_MSG}</p>
                 {/* 모달을 연 채 19:00을 넘길 수 있어 틱으로 자동 반영된다(신청 버튼도 함께 잠긴다). */}
                 {!applyOpen && <p className="text-brand mt-2 text-xs font-bold">{PREP_APPLY_CLOSED_MSG}</p>}
               </div>
@@ -423,6 +434,8 @@ export default function PrepEnrollBanner({
                   )}
                   <br />
                   신청 후 안내된 계좌로 입금하시면, 관리자 확인 뒤 수강이 확정됩니다.
+                  <br />
+                  <span className="text-brand font-semibold">{PREP_PAYMENT_DEADLINE_MSG}</span>
                 </>
               )}
             </AlertDialogDescription>

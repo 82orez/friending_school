@@ -1,4 +1,4 @@
-import { PREP_APPLY_CLOSE_MIN, PREP_APPLY_OPEN_MIN, PREP_DEFAULT_WEEKDAYS } from "@/data/prep";
+import { PREP_APPLY_CLOSE_MIN, PREP_APPLY_OPEN_MIN, PREP_DEFAULT_WEEKDAYS, PREP_PAYMENT_DEADLINE_LABEL } from "@/data/prep";
 import { KST_OFFSET_MS, kstDateMinToMs } from "@/lib/classtime";
 
 // 프렙 회차 날짜 계산 — 개설 폼과 서버 검증이 같은 규칙을 쓰도록 한 곳에 모은다.
@@ -50,7 +50,7 @@ export function kstMinuteOfDay(nowMs: number = Date.now()): number {
   return Math.floor(((((nowMs + KST_OFFSET_MS) % dayMs) + dayMs) % dayMs) / 60_000);
 }
 
-// 08:00 정각은 개시, 19:00 정각은 마감(반개구간) — SQL의 `hour not between 8 and 18`과 같은 결론.
+// 07:00 정각은 개시, 19:00 정각은 마감(반개구간) — SQL의 `hour not between 7 and 18`과 같은 결론.
 export function isPrepApplyOpen(nowMs: number = Date.now()): boolean {
   const m = kstMinuteOfDay(nowMs);
   return m >= PREP_APPLY_OPEN_MIN && m < PREP_APPLY_CLOSE_MIN;
@@ -60,6 +60,15 @@ export function isPrepApplyOpen(nowMs: number = Date.now()): boolean {
 export function fmtDateKo(dateStr: string): string {
   const [, m, d] = dateStr.split("-").map(Number);
   return `${m}월 ${d}일`;
+}
+
+// "8월 28일 오후 9시" — 신청 시각(ISO)이 속한 **KST 날짜**의 입금 기한.
+// ⚠️ 기준은 조회 시점이 아니라 신청 행의 created_at이다 — 마이페이지를 다음 날 열어도 기한 날짜가 따라 움직이면 안 된다.
+// kstToday()와 같은 toLocaleDateString("en-CA", …) 방식이라 서버·클라 로컬 TZ와 무관하다.
+export function prepPaymentDeadlineLabel(createdAtIso: string): string {
+  const d = new Date(createdAtIso);
+  if (Number.isNaN(d.getTime())) return `신청 당일 ${PREP_PAYMENT_DEADLINE_LABEL}`;
+  return `${fmtDateKo(d.toLocaleDateString("en-CA", { timeZone: "Asia/Seoul" }))} ${PREP_PAYMENT_DEADLINE_LABEL}`;
 }
 
 const WEEKDAY_KO = ["일", "월", "화", "수", "목", "금", "토"];

@@ -49,6 +49,14 @@ export const PREP_APPLY_CLOSE_MIN = 19 * 60;
 export const PREP_APPLY_WINDOW_LABEL = "오전 7시~오후 7시";
 export const PREP_APPLY_CLOSED_MSG = `수강신청은 매일 ${PREP_APPLY_WINDOW_LABEL}에만 가능합니다.`;
 
+// ── 입금 기한 ───────────────────────────────────────────────────────────
+// 신청 당일 KST 21:00. 접수 시간창이 07:00~19:00이라 기한은 항상 신청 시점보다 뒤다(경계 예외 없음).
+// 입금하지 않는 신청이 `입금대기`로 남으면 정원(status <> '취소')을 계속 잡아먹기 때문에 조건을 신청 동선에 명시한다.
+// ⚠️ **판정·자동 취소는 미구현** — 기한이 지난 신청은 관리자가 /admin/prep-enrollments에서 직접 취소한다.
+//    문구와 동작이 어긋나지 않으려면 그 운영이 전제다(자동화 조건은 docs/prep.md).
+export const PREP_PAYMENT_DEADLINE_LABEL = "오후 9시";
+export const PREP_PAYMENT_DEADLINE_MSG = `신청일 당일 ${PREP_PAYMENT_DEADLINE_LABEL}까지 입금이 확인되지 않으면 신청이 자동으로 취소됩니다.`;
+
 // ── 개설 심사 상태 ──────────────────────────────────────────────────────
 // 작성중(초안) → 신청(심사 대기) → 승인 | 거절. DB enum prep_course_status와 같은 값이다.
 // ⚠️ 프렌더 화면(PrepManager)과 admin 화면(PrepCoursesManager)이 같은 라벨·색을 쓰도록 여기 한 곳에 둔다.
