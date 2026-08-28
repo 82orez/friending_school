@@ -108,7 +108,7 @@ export default function MyRoomReservations({ rooms, hosts }: { rooms: ReservedRo
 
   return (
     <div>
-      <h2 className="text-ink text-lg font-extrabold">프렌딩 예약</h2>
+      <h2 className="text-ink text-lg font-extrabold">무료 연습방 예약 현황</h2>
       <p className="text-muted-fg mt-1 text-sm">예약한 연습방을 확인하고 입장하거나 취소할 수 있습니다.</p>
 
       <Section title={`예정된 예약 (${upcoming.length})`} empty="예정된 예약이 없습니다." className="mt-4">
