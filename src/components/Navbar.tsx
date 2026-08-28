@@ -114,7 +114,7 @@ export default function Navbar({
           </Link>
         </div>
 
-        {/* 상시 노출 링크(프렌딩 프렙·필리핀 화상영어·액티비티·스쿨 소개) — 우측은 인증/역할 링크 전용이라 네비 중앙에 배치 */}
+        {/* 중앙 링크(프렌딩 프렙·필리핀 화상영어·액티비티는 상시, 스쿨 소개는 admin만) — 우측은 인증/역할 링크 전용이라 중앙에 배치 */}
         <div className="hidden items-center justify-center gap-4 md:flex lg:gap-6">
           <Link
             href="/prep"
@@ -131,11 +131,14 @@ export default function Navbar({
             className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             액티비티
           </Link>
-          <Link
-            href="/school"
-            className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-            스쿨 소개
-          </Link>
+          {/* 스쿨 소개는 admin 전용 노출(일반 사용자는 프렙·필리핀·액티비티 3탭만) */}
+          {isAdmin && (
+            <Link
+              href="/school"
+              className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              스쿨 소개
+            </Link>
+          )}
         </div>
 
         <div className="flex flex-1 items-center justify-end gap-3">
@@ -244,7 +247,7 @@ export default function Navbar({
           ✕
         </button>
         <ul className="list-none px-6">
-          {/* 상시 노출 flat 링크 4종 — 데스크톱 중앙 링크와 순서·대상 동일(프렙→필리핀→액티비티→스쿨 소개). 아코디언 아님 → 별도 state 없음 */}
+          {/* 상단 flat 링크 — 데스크톱 중앙 링크와 순서·노출 조건 동일(프렙→필리핀→액티비티→스쿨 소개(admin만)). 아코디언 아님 → 별도 state 없음 */}
           <li className="border-rule border-b py-4">
             <Link
               href="/prep"
@@ -269,14 +272,17 @@ export default function Navbar({
               액티비티
             </Link>
           </li>
-          <li className="border-rule border-b py-4">
-            <Link
-              href="/school"
-              onClick={closeMenu}
-              className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-              스쿨 소개
-            </Link>
-          </li>
+          {/* 스쿨 소개는 admin 전용 노출 — 데스크톱 중앙 링크와 동일 조건 */}
+          {isAdmin && (
+            <li className="border-rule border-b py-4">
+              <Link
+                href="/school"
+                onClick={closeMenu}
+                className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+                스쿨 소개
+              </Link>
+            </li>
+          )}
           {/* 커리큘럼 아코디언 */}
           <li className="border-rule border-b py-4">
             <button

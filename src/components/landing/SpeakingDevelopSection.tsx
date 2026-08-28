@@ -4,8 +4,8 @@ import { CoursePriceLine } from "@/components/CoursePrice";
 import { COURSE_CARDS } from "@/data/landing";
 import { cn } from "@/lib/utils";
 
-// 실전 스피킹 디벨롭 — 과정 카드 5종. /school(id="courses" 앵커)과 /philippines-english에서 공유.
-// ⚠️ /school#courses 앵커는 EnrollWizard·StudentEnrollments가 링크하므로 id를 넘기는 쪽에서 유지할 것.
+// 실전 스피킹 디벨롭 — 과정 카드 5종. /school(id="courses")과 /philippines-english에서 공유.
+// 과정 목록으로 보내는 링크(EnrollWizard·StudentEnrollments)는 이제 /philippines-english를 가리킨다.
 export default function SpeakingDevelopSection({ id, className }: { id?: string; className?: string }) {
   return (
     <section id={id} className={cn("pb-14", className)}>

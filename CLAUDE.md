@@ -4,7 +4,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 
 ## 개요
 
-**"청년을 세계로"** 워홀·해외진출 영어 통합 플랫폼(브랜드 "프렌딩 스쿨"). 구성: **프렌딩 홈 `/`**(프렙 수강신청 배너 + 무료 연습방 목록 — 사이트 첫 화면) + **스쿨 소개 랜딩 `/school`**(5섹션) + **필리핀 화상영어 `/philippines-english`**·**액티비티 `/activities`**(각각 히어로 + `/school` 4·5번 섹션 공유 컴포넌트 `SpeakingDevelopSection`/`ActivitySection`) + **과정 상세페이지 5종**(`/courses/[slug]`: workhol·kitchen·grammar1·grammar2·cosmetic — 회화 기초문법 1/2는 각각 독립 과정·독립 수강신청, 교재 키 basic1/basic2) + **전자책 뷰어 `/textbook/[course]`**(레지스트리 기반 교재 5종, 무료 미리보기 외 로그인) + **수강신청→마이페이지**(`/courses/[slug]/enroll` 강사 매칭형 수강신청 → `/mypage`) + **강사 지원**(`/teacher/apply`) + **강사 페이지**(`/teacher`: 프로필·사진·zoom·주간 가능시간·수강신청 승인/거절) + **프렌더**(`/friender`: 연습방·받은 후기, Plus는 **프렙 유료 강좌** 개설 — **관리자 승인 후 개설 완료**, 공개 소개 `/prep`, **수강신청은 홈 `/` 상단 배너**(무통장), **회차 Zoom 입장·출결은 「내 강의실」**) + **admin 대시보드**(`/admin`: 수강신청·화상수업·회원·강사 관리·**연습방 관리**·**프렙 수강신청**·센터·매출/매출이익/강사 정산·유튜브). Next.js 16(App Router, Turbopack) + React 19.2 + Tailwind v4. shadcn/ui(`base-nova`/`neutral`), Supabase SSR 인증(이메일 + 카카오 OAuth), 알림 메일(Resend) + SMS(Solapi).
+**"청년을 세계로"** 워홀·해외진출 영어 통합 플랫폼(브랜드 "프렌딩 스쿨"). 구성: **프렌딩 홈 `/`**(프렙 수강신청 배너 + 무료 연습방 목록 — 사이트 첫 화면) + **스쿨 소개 랜딩 `/school`**(5섹션, **admin 전용** — 라우트 가드 + 네비 탭 `isAdmin`) + **필리핀 화상영어 `/philippines-english`**·**액티비티 `/activities`**(각각 히어로 + `/school` 4·5번 섹션 공유 컴포넌트 `SpeakingDevelopSection`/`ActivitySection`) + **과정 상세페이지 5종**(`/courses/[slug]`: workhol·kitchen·grammar1·grammar2·cosmetic — 회화 기초문법 1/2는 각각 독립 과정·독립 수강신청, 교재 키 basic1/basic2) + **전자책 뷰어 `/textbook/[course]`**(레지스트리 기반 교재 5종, 무료 미리보기 외 로그인) + **수강신청→마이페이지**(`/courses/[slug]/enroll` 강사 매칭형 수강신청 → `/mypage`) + **강사 지원**(`/teacher/apply`) + **강사 페이지**(`/teacher`: 프로필·사진·zoom·주간 가능시간·수강신청 승인/거절) + **프렌더**(`/friender`: 연습방·받은 후기, Plus는 **프렙 유료 강좌** 개설 — **관리자 승인 후 개설 완료**, 공개 소개 `/prep`, **수강신청은 홈 `/` 상단 배너**(무통장), **회차 Zoom 입장·출결은 「내 강의실」**) + **admin 대시보드**(`/admin`: 수강신청·화상수업·회원·강사 관리·**연습방 관리**·**프렙 수강신청**·센터·매출/매출이익/강사 정산·유튜브). Next.js 16(App Router, Turbopack) + React 19.2 + Tailwind v4. shadcn/ui(`base-nova`/`neutral`), Supabase SSR 인증(이메일 + 카카오 OAuth), 알림 메일(Resend) + SMS(Solapi).
 
 ## 명령어
 
@@ -47,7 +47,7 @@ Claude Code 작업 지침. 이 파일은 매 세션 로드되므로 **항상 압
 - **Prettier**: `printWidth:150`, `endOfLine:"lf"`, `singleQuote:false`, `trailingComma:"all"`, `semi:true`, `tabWidth:2`, `prettier-plugin-tailwindcss`.
 - **버튼 커서 금지**: 전역 규칙 있음 → `cursor-pointer` 추가 금지(`disabled:cursor-not-allowed`만 허용).
 - **색상 토큰 우선**: hex arbitrary value 피하고 시맨틱 토큰 사용(토큰 목록=`docs/ui.md`).
-- **CTA/anchor**: 스쿨 소개 `/school#courses`, 과정 상세 `#apply-form` 등 anchor + `scroll-behavior:smooth`. `<a>` 버튼화는 `buttonVariants()`+`cn()`.
+- **CTA/anchor**: 과정 목록은 `/philippines-english`(스쿨 소개는 admin 전용 탭), 과정 상세 `#apply-form` 등 anchor + `scroll-behavior:smooth`. `<a>` 버튼화는 `buttonVariants()`+`cn()`.
 - **모바일 메뉴 a11y 회귀 주의**(`docs/landing.md`의 Navbar 항목 체인 유지).
 - **DB 변경은 항상 마이그레이션**: `db:new`→검토→`db:push`. **`db:push`는 destructive** — 직후 `/signup` 회귀 테스트(가입 성공 + `profiles` row + `raw_app_meta_data.role='student'`). 파일명 수동 명명 금지.
 - **⚠️ role은 `app_metadata`에만, `user_metadata` 절대 금지**(후자는 클라가 `updateUser({data})`로 수정 가능 → 권한 우회). role 읽기는 JWT `app_metadata.role` 또는 `profiles.role`만. role 부여 시 `admin.auth.admin.updateUserById(id,{app_metadata:{role}})` + `profiles` update 함께.

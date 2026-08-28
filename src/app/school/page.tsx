@@ -2,18 +2,28 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import ActivitySection from "@/components/landing/ActivitySection";
 import SectionIntro from "@/components/landing/SectionIntro";
 import SelfDevelop from "@/components/landing/SelfDevelop";
 import SpeakingDevelopSection from "@/components/landing/SpeakingDevelopSection";
 import { createClient } from "@/utils/supabase/server";
+import { isAdmin } from "@/lib/auth";
 import { VIDEOS, getYoutubeId, type Video } from "@/data/landing";
 
-export const metadata: Metadata = { title: "프렌딩 스쿨 소개 — 청년을 세계로" };
+// ⚠️ admin 전용 페이지(네비 탭도 isAdmin일 때만 노출) — 색인 금지.
+export const metadata: Metadata = { title: "프렌딩 스쿨 소개 — 청년을 세계로", robots: { index: false } };
 
 export default async function SchoolPage() {
-  // 유튜브 영상: admin 등록(노출=true) 우선, 비어있으면 mock VIDEOS로 fallback.
+  // admin 가드(`/admin` 레이아웃과 동일 패턴). 학생 동선의 "과정 보기"는 /philippines-english가 담당한다.
   const supabase = createClient(await cookies());
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login?next=/school");
+  if (!(await isAdmin(supabase, user.id))) redirect("/");
+
+  // 유튜브 영상: admin 등록(노출=true) 우선, 비어있으면 mock VIDEOS로 fallback.
   const { data: dbVideos } = await supabase
     .from("youtube_videos")
     .select("tag, url, title, description")
@@ -21,20 +31,15 @@ export default async function SchoolPage() {
     .order("sort_order", { ascending: true });
   const videos: Video[] = dbVideos && dbVideos.length > 0 ? (dbVideos as Video[]) : VIDEOS;
 
-  // 셀프디벨롭 교재 진행률: 로그인 시 reading_progress 조회 → 카드 완료/진행% 실연동.
+  // 셀프디벨롭 교재 진행률: reading_progress 조회 → 카드 완료/진행% 실연동.
   // 연동 course는 SelfDevelop의 LINKED_COURSE와 일치(확장 시 두 곳 함께 갱신).
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   let completedByCourse: Record<string, Record<number, boolean>> = {};
-  if (user) {
-    const { data } = await supabase
-      .from("reading_progress")
-      .select("course, unit, completed")
-      .eq("user_id", user.id)
-      .in("course", ["workhol", "kitchen", "grammar1", "grammar2", "cosmetic"]);
-    if (data) for (const r of data) (completedByCourse[r.course] ??= {})[r.unit] = r.completed;
-  }
+  const { data } = await supabase
+    .from("reading_progress")
+    .select("course, unit, completed")
+    .eq("user_id", user.id)
+    .in("course", ["workhol", "kitchen", "grammar1", "grammar2", "cosmetic"]);
+  if (data) for (const r of data) (completedByCourse[r.course] ??= {})[r.unit] = r.completed;
 
   return (
     <div className="bg-surface">
@@ -116,7 +121,7 @@ export default async function SchoolPage() {
         </div>
       </section>
 
-      {/* 4. 실전 스피킹 디벨롭 (과정 카드) — /philippines-english와 공유 컴포넌트. id="courses" 앵커 유지 필수. */}
+      {/* 4. 실전 스피킹 디벨롭 (과정 카드) — /philippines-english와 공유 컴포넌트 */}
       <SpeakingDevelopSection id="courses" />
 
       {/* 5. 액티비티 — /activities와 공유 컴포넌트 */}
