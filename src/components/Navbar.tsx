@@ -114,12 +114,17 @@ export default function Navbar({
           </Link>
         </div>
 
-        {/* 스쿨 소개(/school) — 프렌딩(홈 /)으로 갈린 뒤 유일한 상시 노출 링크라 네비 중앙에 단독 배치 */}
-        <div className="hidden items-center justify-center md:flex">
+        {/* 상시 노출 링크(스쿨 소개·필리핀 화상영어) — 우측은 인증/역할 링크 전용이라 네비 중앙에 배치 */}
+        <div className="hidden items-center justify-center gap-6 md:flex">
           <Link
             href="/school"
             className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             스쿨 소개
+          </Link>
+          <Link
+            href="/philippines-english"
+            className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+            필리핀 화상영어
           </Link>
         </div>
 
@@ -236,6 +241,15 @@ export default function Navbar({
               onClick={closeMenu}
               className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
               스쿨 소개
+            </Link>
+          </li>
+          {/* 필리핀 화상영어 — 데스크톱 중앙 링크와 동일한 flat 링크(아코디언 아님 → 별도 state 없음) */}
+          <li className="border-rule border-b py-4">
+            <Link
+              href="/philippines-english"
+              onClick={closeMenu}
+              className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              필리핀 화상영어
             </Link>
           </li>
           {/* 커리큘럼 아코디언 */}
