@@ -114,8 +114,13 @@ export default function Navbar({
           </Link>
         </div>
 
-        {/* 중앙 링크(프렌딩 프렙·필리핀 화상영어·액티비티는 상시, 스쿨 소개는 admin만) — 우측은 인증/역할 링크 전용이라 중앙에 배치 */}
+        {/* 중앙 링크(Home·프렌딩 프렙·필리핀 화상영어·액티비티는 상시, 스쿨 소개는 admin만) — 우측은 인증/역할 링크 전용이라 중앙에 배치 */}
         <div className="hidden items-center justify-center gap-4 md:flex lg:gap-6">
+          <Link
+            href="/"
+            className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+            Home
+          </Link>
           <Link
             href="/prep"
             className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
@@ -247,7 +252,15 @@ export default function Navbar({
           ✕
         </button>
         <ul className="list-none px-6">
-          {/* 상단 flat 링크 — 데스크톱 중앙 링크와 순서·노출 조건 동일(프렙→필리핀→액티비티→스쿨 소개(admin만)). 아코디언 아님 → 별도 state 없음 */}
+          {/* 상단 flat 링크 — 데스크톱 중앙 링크와 순서·노출 조건 동일(Home→프렙→필리핀→액티비티→스쿨 소개(admin만)). 아코디언 아님 → 별도 state 없음 */}
+          <li className="border-rule border-b py-4">
+            <Link
+              href="/"
+              onClick={closeMenu}
+              className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              Home
+            </Link>
+          </li>
           <li className="border-rule border-b py-4">
             <Link
               href="/prep"
