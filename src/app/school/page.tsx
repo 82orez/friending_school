@@ -2,29 +2,12 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { Calendar } from "lucide-react";
+import ActivitySection from "@/components/landing/ActivitySection";
+import SectionIntro from "@/components/landing/SectionIntro";
 import SelfDevelop from "@/components/landing/SelfDevelop";
 import SpeakingDevelopSection from "@/components/landing/SpeakingDevelopSection";
 import { createClient } from "@/utils/supabase/server";
-import { ACTIVITIES, VIDEOS, getYoutubeId, type Video } from "@/data/landing";
-import { cn } from "@/lib/utils";
-
-// 섹션 헤더 (그라디언트 라벨 + 제목 + 설명) — 랜딩 전 섹션 공통.
-function SectionIntro({ label, title, desc }: { label: string; title: React.ReactNode; desc?: React.ReactNode }) {
-  return (
-    <div className="mx-auto max-w-[1200px] px-5 pt-12 pb-7 text-center md:px-10">
-      <span className="bg-brand-gradient mb-2 inline-block rounded-full px-6 py-1.5 text-base font-bold text-white md:text-xl">{label}</span>
-      <h2 className="text-ink mt-1 mb-2.5 text-2xl leading-snug font-bold tracking-tight md:text-[32px]">{title}</h2>
-      {desc && <p className="text-muted-fg text-[15px] leading-relaxed md:text-base">{desc}</p>}
-    </div>
-  );
-}
-
-const ACTIVITY_BADGE: Record<string, string> = {
-  open: "bg-[#E1F5EE] text-[#0F6E56]",
-  plan: "bg-[#E6F1FB] text-[#0C447C]",
-  new: "bg-[#EAF3DE] text-[#27500A]",
-};
+import { VIDEOS, getYoutubeId, type Video } from "@/data/landing";
 
 export const metadata: Metadata = { title: "프렌딩 스쿨 소개 — 청년을 세계로" };
 
@@ -136,40 +119,8 @@ export default async function SchoolPage() {
       {/* 4. 실전 스피킹 디벨롭 (과정 카드) — /philippines-english와 공유 컴포넌트. id="courses" 앵커 유지 필수. */}
       <SpeakingDevelopSection id="courses" />
 
-      {/* 5. 액티비티 */}
-      <section className="pb-14">
-        <SectionIntro label="원어민 · 세대교감 액티비티" title="영어는 밖에서도 빨리 늘어요!" desc="국내에서도 많은 활동이 있어요. 함께해요." />
-        <div className="mx-auto max-w-[1200px] px-5 md:px-10">
-          <div className="flex flex-col gap-3.5 md:flex-row md:flex-wrap md:justify-center">
-            {ACTIVITIES.map((a) => (
-              <div
-                key={a.title}
-                className="border-rule w-full overflow-hidden rounded-2xl border bg-white transition-transform hover:-translate-y-0.5 md:w-[364px]">
-                <div className="relative h-[110px]">
-                  <Image src={a.image} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover" />
-                  <div className="absolute inset-0 bg-black/30" />
-                  <span
-                    className={cn(
-                      "absolute top-2.5 left-2.5 z-[1] rounded-full px-2.5 py-0.5 text-[11px] font-medium",
-                      ACTIVITY_BADGE[a.badgeVariant],
-                    )}>
-                    {a.badge}
-                  </span>
-                </div>
-                <div className="p-3.5">
-                  <p className="text-ink mb-1.5 text-base font-bold">{a.title}</p>
-                  <p className="text-muted-fg mb-3 text-[15px] leading-relaxed">{a.desc}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-fg-faint flex items-center gap-1 text-sm">
-                      <Calendar aria-hidden className="size-3.5" /> {a.date}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* 5. 액티비티 — /activities와 공유 컴포넌트 */}
+      <ActivitySection />
     </div>
   );
 }

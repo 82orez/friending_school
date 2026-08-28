@@ -114,8 +114,8 @@ export default function Navbar({
           </Link>
         </div>
 
-        {/* 상시 노출 링크(스쿨 소개·필리핀 화상영어·프렌딩 프렙) — 우측은 인증/역할 링크 전용이라 네비 중앙에 배치 */}
-        <div className="hidden items-center justify-center gap-6 md:flex">
+        {/* 상시 노출 링크(스쿨 소개·필리핀 화상영어·프렌딩 프렙·액티비티) — 우측은 인증/역할 링크 전용이라 네비 중앙에 배치 */}
+        <div className="hidden items-center justify-center gap-4 md:flex lg:gap-6">
           <Link
             href="/school"
             className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
@@ -130,6 +130,11 @@ export default function Navbar({
             href="/prep"
             className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             프렌딩 프렙
+          </Link>
+          <Link
+            href="/activities"
+            className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+            액티비티
           </Link>
         </div>
 
@@ -264,6 +269,15 @@ export default function Navbar({
               onClick={closeMenu}
               className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
               프렌딩 프렙
+            </Link>
+          </li>
+          {/* 액티비티(/activities) — 역시 flat 링크 */}
+          <li className="border-rule border-b py-4">
+            <Link
+              href="/activities"
+              onClick={closeMenu}
+              className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              액티비티
             </Link>
           </li>
           {/* 커리큘럼 아코디언 */}
