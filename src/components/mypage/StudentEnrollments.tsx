@@ -118,7 +118,7 @@ export default function StudentEnrollments({ enrollments }: { enrollments: Stude
         <div className="px-6 py-12 text-center">
           <p className="text-muted-fg text-sm">아직 수강신청 내역이 없어요.</p>
           <Link
-            href="/#courses"
+            href="/school#courses"
             className="bg-cta mt-4 inline-block rounded-full px-5 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90">
             과정 둘러보기
           </Link>

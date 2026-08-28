@@ -114,12 +114,12 @@ export default function Navbar({
           </Link>
         </div>
 
-        {/* 프렌딩 — 일반 회원 대상 핵심 동선이라 네비 중앙에 단독 노출(의도적 예외) */}
+        {/* 스쿨 소개(/school) — 프렌딩(홈 /)으로 갈린 뒤 유일한 상시 노출 링크라 네비 중앙에 단독 배치 */}
         <div className="hidden items-center justify-center md:flex">
           <Link
-            href="/friending"
+            href="/school"
             className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-            프렌딩
+            스쿨 소개
           </Link>
         </div>
 
@@ -229,13 +229,13 @@ export default function Navbar({
           ✕
         </button>
         <ul className="list-none px-6">
-          {/* 프렌딩(공개 방 목록) — 일반 회원 대상 핵심 동선이라 최상단 flat 링크 */}
+          {/* 스쿨 소개(과정·교재·액티비티 랜딩) — 프렌딩은 홈(/)이 되었으므로 최상단 flat 링크는 이쪽 */}
           <li className="border-rule border-b py-4">
             <Link
-              href="/friending"
+              href="/school"
               onClick={closeMenu}
               className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-              프렌딩
+              스쿨 소개
             </Link>
           </li>
           {/* 커리큘럼 아코디언 */}

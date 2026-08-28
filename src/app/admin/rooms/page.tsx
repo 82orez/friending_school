@@ -22,7 +22,7 @@ export default async function AdminRoomsPage() {
   // friender_room_participants는 _select_own뿐이라 세션 client로는 명단을 아예 못 본다(개설자 본인도 못 읽는다).
   const admin = createAdminClient();
 
-  // 날짜 필터 없이 최신순 전량(감사 목적) — "왜 이 방이 아직 /friending에 떠 있나"까지 봐야 해서
+  // 날짜 필터 없이 최신순 전량(감사 목적) — "왜 이 방이 아직 프렌딩 홈(/)에 떠 있나"까지 봐야 해서
   // 미래 방만 보는 창은 부적합하다. limit은 안전판이고, order가 desc라 넘칠 때도 최신 500개로 잘린다.
   // ⏳ 500건에 근접하면 cap을 올리지 말고 기간 선택 필터를 붙일 것.
   // ⚠️ 참가자는 .in("room_id", ids)가 아니라 임베드로 받는다 — 이 페이지는 전 프렌더 대상이라 id가

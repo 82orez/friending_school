@@ -58,7 +58,7 @@ export default async function MyPageRooms() {
     // 임베드 컬럼은 PostgREST로 정렬할 수 없어 여기서 정렬한다(가까운 순).
     .sort((a, b) => a.session_date.localeCompare(b.session_date) || a.start_min - b.start_min);
 
-  // 참여 인원 카운트 + 개설자 프로필은 /friending/page.tsx와 같은 이유로 service_role로 읽는다
+  // 참여 인원 카운트 + 개설자 프로필은 프렌딩 홈(src/app/page.tsx)와 같은 이유로 service_role로 읽는다
   // (참가자 RLS는 select_own뿐, profiles RLS는 본인 row만).
   const now = Date.now();
   const countByRoom = new Map<string, number>();
@@ -76,7 +76,7 @@ export default async function MyPageRooms() {
     }
 
     // ⚠️ email·phone·zoom_url은 select하지 않는다 — zoom_url은 방 입장의 사실상 열쇠라
-    //    HTML 페이로드에 실리면 안 된다(/friending과 동일 정책).
+    //    HTML 페이로드에 실리면 안 된다(프렌딩 홈(/)과 동일 정책).
     const { data: profs } = await admin
       .from("profiles")
       .select("id, avatar_url, nickname, first_name, last_name, bio, nationality, gender")

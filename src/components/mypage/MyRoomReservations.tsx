@@ -157,7 +157,7 @@ export default function MyRoomReservations({ rooms, hosts }: { rooms: ReservedRo
       <RoomInfoModal description={infoTarget} onClose={() => setInfoTarget(null)} />
       <RoomReviewModal target={reviewTarget} onClose={() => setReviewTarget(null)} />
 
-      {/* 예약 취소 확인 — /friending 카드의 다이얼로그와 같은 문구를 쓴다. */}
+      {/* 예약 취소 확인 — 프렌딩 홈(/) 카드의 다이얼로그와 같은 문구를 쓴다. */}
       <AlertDialog open={cancelTarget !== null} onOpenChange={(open) => !open && setCancelTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -280,7 +280,7 @@ function Row({
              배너가 약속한 **늦은 입장**과 **노쇼 기록**이 함께 사라진다.
           ⚠️ 이미 입장한 경우도 감춘다 — seatHeld는 enteredAt이 있으면 sticky하게 true라 !noShow만으로는
              안 걸러진다. 누르면 saveRoomReview가 요구하는 entered_at이 사라져 **후기 자격을 조용히 잃는다**.
-          /friending 카드의 CTA 상태 머신과 한 쌍이라 함께 바꿀 것. */}
+          프렌딩 홈(/) 카드의 CTA 상태 머신과 한 쌍이라 함께 바꿀 것. */}
       <div className="flex shrink-0 items-center gap-1.5">
         {enterable && (
           <EnterRoomButton

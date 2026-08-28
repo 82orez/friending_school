@@ -27,7 +27,7 @@ export default async function FrienderRoomsPage() {
   const rows = (data ?? []) as Omit<FrienderRoom, "participants" | "noShows">[];
 
   // 예약 인원 — 참가자 RLS는 select_own뿐이라 개설자도 자기 방 참가자를 세션 client로 못 읽는다.
-  // 카운트만 필요하므로 service_role로 집계한다(신원은 노출하지 않음, /friending과 동일 방식).
+  // 카운트만 필요하므로 service_role로 집계한다(신원은 노출하지 않음, 프렌딩 홈(/)과 동일 방식).
   const countByRoom = new Map<string, number>();
   const noShowByRoom = new Map<string, number>();
   if (rows.length > 0) {

@@ -37,7 +37,7 @@ const JOIN_ERROR: Record<string, string> = {
 };
 
 function revalidatePrepEnroll(): void {
-  revalidatePath("/friending");
+  revalidatePath("/");
   revalidatePath("/mypage/enrollments");
   revalidatePath("/admin/prep");
   revalidatePath("/admin/prep-enrollments");

@@ -2,12 +2,12 @@
 //
 // ⚠️ 파일 자산(.svg)이 아니라 **인라인 SVG**인 이유: next/image로 SVG를 서빙하려면
 //    next.config.ts에 images.dangerouslyAllowSVG를 켜야 한다. 장식용 그림 하나 때문에
-//    그 스위치를 켜지 않는다(/friending 히어로가 인라인 장식 SVG를 쓰는 선례).
+//    그 스위치를 켜지 않는다(프렌딩 홈(/) 히어로가 인라인 장식 SVG를 쓰는 선례).
 // 색은 globals.css 토큰 값과 같은 hex를 쓴다(SVG gradient는 CSS 변수 대신 리터럴이 안전).
 //
 // variant:
 //  - "hero"   : /prep 히어로용(높이 380~440px). 타일·시계까지 다 그린다.
-//  - "banner" : /friending 신청 배너용(높이 절반 이하). ⚠️ 타일·시계는 slice로 잘려 지저분해지므로
+//  - "banner" : 프렌딩 홈(/) 신청 배너용(높이 절반 이하). ⚠️ 타일·시계는 slice로 잘려 지저분해지므로
 //               하늘·해·능선·말풍선만 남기고 viewBox도 납작하게 쓴다.
 export default function PrepHeroArt({ className, variant = "hero" }: { className?: string; variant?: "hero" | "banner" }) {
   const banner = variant === "banner";

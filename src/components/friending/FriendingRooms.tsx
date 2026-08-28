@@ -397,7 +397,7 @@ function RoomCard({
 
         <div className="mt-2.5">
           {!isLoggedIn ? (
-            <Link href="/login?next=/friending" className={cn(pill, "bg-cta inline-block text-white hover:opacity-90")}>
+            <Link href="/login" className={cn(pill, "bg-cta inline-block text-white hover:opacity-90")}>
               로그인하고 예약
             </Link>
           ) : room.isMine && enterable ? (

@@ -198,7 +198,7 @@ export default function PrepPage() {
               {hero.cta}
             </Link>
             <p className="mt-5 text-sm text-white/85">
-              <Link href="/friending" className="font-bold text-white underline underline-offset-4 hover:opacity-90">
+              <Link href="/" className="font-bold text-white underline underline-offset-4 hover:opacity-90">
                 무료 연습방도 둘러보기
               </Link>
             </p>

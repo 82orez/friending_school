@@ -2317,10 +2317,10 @@ export async function refundPrepEnrollment(enrollmentId: string, refundKrw: numb
 /* ===== 프렌더 연습방 관리 (docs/friender.md) ===== */
 
 // 방이 사라지면 공개 목록·예약자 화면·개설자 화면이 모두 바뀐다.
-// (joinRoom/leaveRoom이 /friending·/mypage/rooms를 함께 revalidate하는 것과 같은 짝.)
+// (joinRoom/leaveRoom이 프렌딩 홈(/)·/mypage/rooms를 함께 revalidate하는 것과 같은 짝.)
 function revalidateRoomConsumers(): void {
   revalidatePath("/admin/rooms");
-  revalidatePath("/friending");
+  revalidatePath("/");
   revalidatePath("/mypage/rooms");
   revalidatePath("/friender", "layout");
 }

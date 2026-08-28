@@ -15,7 +15,7 @@ type SearchParams = Promise<{ error?: string; verified?: string; next?: string }
 
 export default async function LoginPage({ searchParams }: { searchParams: SearchParams }) {
   const { error, verified, next: rawNext } = await searchParams;
-  // 로그인 후 돌아갈 경로(예: /login?next=/friending). open redirect 방지 검증 필수.
+  // 로그인 후 돌아갈 경로(예: /login?next=/mypage). open redirect 방지 검증 필수.
   const next = safeNextPath(rawNext);
 
   const supabase = createClient(await cookies());

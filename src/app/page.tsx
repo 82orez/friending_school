@@ -1,57 +1,231 @@
 import Image from "next/image";
-import Link from "next/link";
 import { cookies } from "next/headers";
-import { Calendar } from "lucide-react";
-import SuccessBanner from "@/components/SuccessBanner";
-import SelfDevelop from "@/components/landing/SelfDevelop";
-import { CoursePriceLine } from "@/components/CoursePrice";
 import { createClient } from "@/utils/supabase/server";
-import { ACTIVITIES, COURSE_CARDS, VIDEOS, getYoutubeId, type Video } from "@/data/landing";
-import { cn } from "@/lib/utils";
+import { createAdminClient } from "@/utils/supabase/admin";
+import { todayKst } from "@/lib/booking";
+import { kstDateMinToMs } from "@/lib/classtime";
+import { seatHeld } from "@/lib/room-time";
+import { isPrepApplyOpen, prepChargeKrw, prepRemainingSessions } from "@/lib/prep";
+import SuccessBanner from "@/components/SuccessBanner";
+import FriendingRooms, { type HostProfile, type PublicRoom } from "@/components/friending/FriendingRooms";
+import PrepEnrollBanner, { type OpenPrepCourse } from "@/components/prep/PrepEnrollBanner";
 
-// 섹션 헤더 (그라디언트 라벨 + 제목 + 설명) — 랜딩 전 섹션 공통.
-function SectionIntro({ label, title, desc }: { label: string; title: React.ReactNode; desc?: React.ReactNode }) {
-  return (
-    <div className="mx-auto max-w-[1200px] px-5 pt-12 pb-7 text-center md:px-10">
-      <span className="bg-brand-gradient mb-2 inline-block rounded-full px-6 py-1.5 text-base font-bold text-white md:text-xl">{label}</span>
-      <h2 className="text-ink mt-1 mb-2.5 text-2xl leading-snug font-bold tracking-tight md:text-[32px]">{title}</h2>
-      {desc && <p className="text-muted-fg text-[15px] leading-relaxed md:text-base">{desc}</p>}
-    </div>
-  );
-}
+type RoomRow = {
+  id: string;
+  friender_id: string;
+  friender_name: string | null;
+  friender_nickname: string | null;
+  title: string;
+  description: string | null;
+  level: string;
+  capacity: number;
+  session_date: string;
+  start_min: number;
+  duration_min: number;
+};
 
-const ACTIVITY_BADGE: Record<string, string> = {
-  open: "bg-[#E1F5EE] text-[#0F6E56]",
-  plan: "bg-[#E6F1FB] text-[#0C447C]",
-  new: "bg-[#EAF3DE] text-[#27500A]",
+type ProfileRow = {
+  id: string;
+  avatar_url: string | null;
+  nickname: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  bio: string | null;
+  nationality: string | null;
+  gender: string | null;
 };
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ reset?: string; verified?: string; signup?: string }> }) {
+  // 비밀번호 재설정·이메일 인증 완료는 `/?reset=success`·`/?verified=success`로 돌아온다
+  // (reset-password/actions.ts · AuthHashHandler) — 배너는 홈이 소유한다.
   const { reset, verified, signup } = await searchParams;
-
-  // 유튜브 영상: admin 등록(노출=true) 우선, 비어있으면 mock VIDEOS로 fallback.
   const supabase = createClient(await cookies());
-  const { data: dbVideos } = await supabase
-    .from("youtube_videos")
-    .select("tag, url, title, description")
-    .eq("is_visible", true)
-    .order("sort_order", { ascending: true });
-  const videos: Video[] = dbVideos && dbVideos.length > 0 ? (dbVideos as Video[]) : VIDEOS;
-
-  // 셀프디벨롭 교재 진행률: 로그인 시 reading_progress 조회 → 카드 완료/진행% 실연동.
-  // 연동 course는 SelfDevelop의 LINKED_COURSE와 일치(확장 시 두 곳 함께 갱신).
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  let completedByCourse: Record<string, Record<number, boolean>> = {};
-  if (user) {
-    const { data } = await supabase
-      .from("reading_progress")
-      .select("course, unit, completed")
-      .eq("user_id", user.id)
-      .in("course", ["workhol", "kitchen", "grammar1", "grammar2", "cosmetic"]);
-    if (data) for (const r of data) (completedByCourse[r.course] ??= {})[r.unit] = r.completed;
+
+  // 공개 조회 — RLS friender_rooms_select_public이 anon에도 열려 있다.
+  const { data } = await supabase
+    .from("friender_rooms")
+    .select("id, friender_id, friender_name, friender_nickname, title, description, level, capacity, session_date, start_min, duration_min")
+    .gte("session_date", todayKst())
+    .order("session_date", { ascending: true })
+    .order("start_min", { ascending: true });
+
+  // 오늘이지만 이미 끝난 방은 SQL로 못 거른다(날짜 단위 필터) → 종료 시각 기준 JS 필터.
+  const now = Date.now();
+  const rows = ((data ?? []) as RoomRow[]).filter((r) => kstDateMinToMs(r.session_date, r.start_min + r.duration_min) > now);
+
+  // 참여 인원 집계 — 참가자 RLS는 select_own뿐이라 카운트는 service_role로 센다
+  // (참가자 신원은 공개하지 않고 숫자만 노출).
+  const countByRoom = new Map<string, number>();
+  // 개설자 프로필 — profiles_select_own RLS로 공개 조회가 막혀 있어 service_role로 읽는다.
+  // 스냅샷 컬럼을 두지 않고 매 요청 조회하는 이유: ① 사진·소개 수정이 즉시 반영돼야 하고
+  // ② cleanupOldAvatars가 옛 파일을 지워 스냅샷 avatar URL은 깨진다.
+  // 방마다 중복 직렬화되지 않도록 friender_id 기준 맵으로 모아 별도 prop으로 넘긴다.
+  const hosts: Record<string, HostProfile> = {};
+  if (rows.length > 0) {
+    const admin = createAdminClient();
+
+    const { data: parts } = await admin
+      .from("friender_room_participants")
+      .select("room_id, entered_at")
+      .in(
+        "room_id",
+        rows.map((r) => r.id),
+      );
+    // 노쇼(시작 + 유예까지 미입장)는 자리를 반환한 것으로 보고 카운트에서 뺀다.
+    const startMsByRoom = new Map(rows.map((r) => [r.id, kstDateMinToMs(r.session_date, r.start_min)]));
+    for (const p of (parts ?? []) as { room_id: string; entered_at: string | null }[]) {
+      if (!seatHeld(p.entered_at, startMsByRoom.get(p.room_id) ?? 0, now)) continue;
+      countByRoom.set(p.room_id, (countByRoom.get(p.room_id) ?? 0) + 1);
+    }
+
+    // ⚠️ email·phone·zoom_url은 의도적으로 select하지 않는다 — 공개 페이지라
+    //    HTML 페이로드에 남기지 않기 위함. 특히 zoom_url은 방 입장의 사실상 열쇠다.
+    const { data: profs } = await admin
+      .from("profiles")
+      .select("id, avatar_url, nickname, first_name, last_name, bio, nationality, gender")
+      .in("id", Array.from(new Set(rows.map((r) => r.friender_id))));
+    for (const p of (profs ?? []) as ProfileRow[]) {
+      hosts[p.id] = {
+        // 표시명 규칙: 닉네임 > 성+이름(공백 없이) > "프렌더".
+        name: p.nickname?.trim() || `${p.last_name ?? ""}${p.first_name ?? ""}`.trim() || "프렌더",
+        avatarUrl: p.avatar_url?.trim() || null,
+        nationality: p.nationality,
+        gender: p.gender,
+        bio: p.bio,
+      };
+    }
   }
+
+  // 내 참여 여부 + 내 입장 시각 — 본인 세션 client(RLS select_own).
+  // ⚠️ entered_at까지 읽는 이유: 카드 CTA가 "노쇼면 예약 취소를 감춘다"를 판정해야 하는데
+  //    그 판정은 본인 참가 행 없이는 불가능하다(/mypage/rooms의 같은 규칙과 한 쌍).
+  // ⚠️ service_role로 바꾸지 말 것 — 남의 entered_at은 공개 페이지 페이로드에 실리면 안 된다.
+  const enteredAtByRoom = new Map<string, string | null>();
+  if (user && rows.length > 0) {
+    const { data: mine } = await supabase.from("friender_room_participants").select("room_id, entered_at").eq("user_id", user.id);
+    for (const m of (mine ?? []) as { room_id: string; entered_at: string | null }[]) enteredAtByRoom.set(m.room_id, m.entered_at);
+  }
+
+  // ── 프렙 강좌(수강신청 배너) ──────────────────────────────────────────
+  // 공개 조회 — RLS prep_courses_select_public이 '승인'만 통과시킨다(비로그인 포함).
+  // ⚠️ 마이그레이션 적용 전에는 테이블·정책이 없어 에러가 나지만, data가 null이 되어
+  //    배너가 렌더되지 않을 뿐이다(페이지는 죽지 않는다). 이 성질을 일부러 유지한다.
+  const { data: prepData } = await supabase
+    .from("prep_courses")
+    .select(
+      "id, title, description, friender_name, friender_nickname, level, capacity, start_min, duration_min, price_krw, prep_sessions(session_date)",
+    )
+    .eq("status", "승인");
+
+  type PrepRow = {
+    id: string;
+    title: string;
+    description: string | null;
+    friender_name: string | null;
+    friender_nickname: string | null;
+    level: string;
+    capacity: number;
+    start_min: number;
+    duration_min: number;
+    price_krw: number;
+    prep_sessions: { session_date: string }[] | null;
+  };
+
+  // 중도 신청 — 시작된 강좌도 **남은 회차가 있으면** 계속 받는다(RPC의 ended 판정과 같은 기준).
+  // 잔여 회차·청구액 계산은 src/lib/prep.ts가 소유한다(RPC와 같은 공식).
+  const prepRows = ((prepData ?? []) as unknown as PrepRow[])
+    .map((c) => {
+      const dates = (c.prep_sessions ?? []).map((s) => s.session_date).sort();
+      return { ...c, dates, remaining: prepRemainingSessions(dates, c.start_min, c.duration_min) };
+    })
+    .filter((c) => c.remaining.length > 0)
+    .sort((a, b) => a.remaining[0].localeCompare(b.remaining[0]));
+
+  // 신청자 수는 신청자 RLS(select_own) 때문에 세션 client로 못 읽는다 → 카운트만 service_role
+  // (연습방 참여 인원과 같은 방식·같은 이유. 신원은 노출하지 않는다).
+  const prepCountByCourse = new Map<string, number>();
+  const myPrep = new Map<string, "입금대기" | "수강확정">();
+  if (prepRows.length > 0) {
+    const ids = prepRows.map((c) => c.id);
+    const { data: counts } = await createAdminClient()
+      .from("prep_enrollments")
+      .select("course_id, status")
+      .in("course_id", ids)
+      .neq("status", "취소");
+    for (const row of (counts ?? []) as { course_id: string; status: string }[]) {
+      prepCountByCourse.set(row.course_id, (prepCountByCourse.get(row.course_id) ?? 0) + 1);
+    }
+    if (user) {
+      const { data: mine } = await supabase.from("prep_enrollments").select("course_id, status").in("course_id", ids).neq("status", "취소");
+      for (const m of (mine ?? []) as { course_id: string; status: "입금대기" | "수강확정" }[]) myPrep.set(m.course_id, m.status);
+    }
+  }
+
+  const prepCourses: OpenPrepCourse[] = prepRows.map((c) => ({
+    id: c.id,
+    title: c.title,
+    description: c.description,
+    frienderName: c.friender_name?.trim() || c.friender_nickname?.trim() || "프렌더",
+    level: c.level,
+    capacity: c.capacity,
+    startMin: c.start_min,
+    durationMin: c.duration_min,
+    priceKrw: c.price_krw,
+    sessionCount: c.dates.length,
+    firstDate: c.dates[0],
+    lastDate: c.dates[c.dates.length - 1],
+    // 잔여(=실제로 사게 되는 것). 시작 전 강좌는 잔여 = 전체라 청구액도 정가 그대로다.
+    remainingCount: c.remaining.length,
+    remainingFirstDate: c.remaining[0],
+    chargeKrw: prepChargeKrw(c.price_krw, c.dates.length, c.remaining.length),
+    enrolled: prepCountByCourse.get(c.id) ?? 0,
+    myStatus: myPrep.get(c.id) ?? null,
+  }));
+
+  // 신청 자격(휴대폰 인증 + 성·이름·영어 이름)에서 빠진 항목 — 모달에서 미리 안내한다.
+  // ⚠️ 서버 RPC(join_prep_course)가 authoritative고 여기는 사전 안내 레이어일 뿐이다.
+  const profileMissing: string[] = [];
+  if (user) {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("phone_verified_at, first_name, last_name, english_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    const p = (prof ?? {}) as {
+      phone_verified_at?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+      english_name?: string | null;
+    };
+    if (!p.phone_verified_at) profileMissing.push("휴대폰 인증");
+    if (!p.last_name?.trim() || !p.first_name?.trim()) profileMissing.push("성·이름");
+    if (!p.english_name?.trim()) profileMissing.push("영어 이름");
+  }
+
+  const rooms: PublicRoom[] = rows.map((r) => ({
+    id: r.id,
+    frienderId: r.friender_id,
+    // 프로필 조회가 실패했거나 방금 탈퇴한 경우를 대비한 폴백 — 방 행의 이름 스냅샷을 쓴다.
+    fallbackName: r.friender_nickname?.trim() || r.friender_name?.trim() || "프렌더",
+    isMine: !!user && r.friender_id === user.id,
+    title: r.title,
+    description: r.description,
+    level: r.level,
+    capacity: r.capacity,
+    sessionDate: r.session_date,
+    startMin: r.start_min,
+    durationMin: r.duration_min,
+    participants: countByRoom.get(r.id) ?? 0,
+    joined: enteredAtByRoom.has(r.id),
+    enteredAt: enteredAtByRoom.get(r.id) ?? null,
+  }));
+
+  // 프렙 배너 노출 조건 = PrepEnrollBanner의 자체 가드(courses.length === 0 → null)와 같은 값.
+  // 히어로·구분선이 배너와 어긋나지 않도록 한 곳에서 뽑아 쓴다.
+  const showPrepBanner = prepCourses.length > 0;
 
   return (
     <div className="bg-surface">
@@ -59,163 +233,49 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       {verified === "success" && <SuccessBanner queryKey="verified" message="이메일 인증이 완료되어 자동으로 로그인되었습니다." />}
       {signup === "success" && <SuccessBanner queryKey="signup" message="프렌딩 스쿨에 오신 것을 환영합니다." />}
 
-      {/* 1. 히어로 */}
-      <section className="mx-auto max-w-[1200px] bg-[#222]">
-        <div className="relative flex min-h-[440px] items-center justify-center overflow-hidden text-center md:min-h-[520px]">
-          <Image src="/images/hero-bg.jpg" alt="" fill priority sizes="(max-width: 1200px) 100vw, 1200px" className="object-cover" />
-          <div className="absolute inset-0 bg-black/[0.52]" />
-          <div className="relative z-10 w-full px-6 py-24 md:px-16 md:py-32">
-            <h1 className="mb-4 text-[42px] leading-[1.1] font-bold tracking-[-2px] text-white md:text-[68px]">
-              청년을 <span className="text-brand-gradient">세계로</span>
-            </h1>
-            <p className="mb-3.5 text-xl leading-snug font-medium tracking-tight text-white/90 md:text-[30px]">영어, 이제 세상 밖에서 써보세요.</p>
-            <p className="text-base leading-relaxed text-white/70 md:text-lg">워홀·해외진출을 꿈꾸는 청년을 위한 실전 영어 플랫폼.</p>
-          </div>
-        </div>
-      </section>
+      <div className="mx-auto max-w-[1100px] px-5 py-8 md:py-12">
+        {/* 히어로 — v9 목업(mainhero_bg01) 이식. 이미지 위에 어둡게 깔고 카피를 올린다.
+            ⚠️ **프렙 배너가 없을 때만** 보여 준다: 둘 다 전폭 다크 비주얼이라 함께 두면 첫 화면이
+            배너 두 장으로 채워져 정작 강좌·연습방 목록이 접힌다. 배너가 있으면 그것이 페이지 헤더 역할을 한다. */}
+        {!showPrepBanner && (
+          <section className="relative isolate flex min-h-[140px] items-center justify-center overflow-hidden rounded-2xl md:min-h-[190px]">
+            <Image src="/images/friending-hero.jpg" alt="" fill sizes="(max-width: 1100px) 100vw, 1100px" priority className="-z-10 object-cover" />
+            <div aria-hidden className="absolute inset-0 -z-10 bg-black/45" />
+            {/* 말풍선 장식 — 목업 SVG 이식(비율 무시하고 늘려 배경처럼 깔림) */}
+            <svg
+              aria-hidden
+              viewBox="0 0 1200 300"
+              preserveAspectRatio="none"
+              className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full md:block">
+              <rect x="60" y="40" width="130" height="80" rx="24" fill="rgba(255,255,255,0.16)" />
+              <path d="M90 118 L78 142 L112 120 Z" fill="rgba(255,255,255,0.16)" />
+              <rect x="1000" y="170" width="110" height="70" rx="22" fill="rgba(255,255,255,0.14)" />
+              <path d="M1030 238 L1042 260 L1072 240 Z" fill="rgba(255,255,255,0.14)" />
+              <rect x="960" y="30" width="80" height="52" rx="18" fill="rgba(255,255,255,0.1)" />
+              <path d="M980 80 L972 98 L998 82 Z" fill="rgba(255,255,255,0.1)" />
+              <rect x="40" y="200" width="70" height="46" rx="16" fill="rgba(255,255,255,0.1)" />
+              <path d="M58 244 L50 262 L76 246 Z" fill="rgba(255,255,255,0.1)" />
+            </svg>
 
-      {/* 2. 셀프 디벨롭 */}
-      <section className="pb-10">
-        <SectionIntro
-          label="셀프 디벨롭 하기"
-          title="현지 영어, 무료로 배워보세요!"
-          desc="음성 파일이 포함된 무료 학습 교재, 지금 바로 시작해보세요."
-        />
-        <SelfDevelop isLoggedIn={!!user} completedByCourse={completedByCourse} />
-      </section>
-
-      {/* 3. 호주 현지생존기 (유튜브) */}
-      <section className="pb-14">
-        <SectionIntro
-          label="준의 호주 워홀 일자리 구하기"
-          title="호주에서 전달하는 생생한 생존기"
-          desc={
-            <>
-              준이 호주에서 직접 마주친 상황들, 영상으로 함께 확인해보세요.{" "}
-              <Link
-                href="/youtube"
-                className="bg-progress ml-1 inline-block rounded-full px-3 py-1 align-middle text-[13px] font-bold text-white transition-opacity hover:opacity-85">
-                전체보기
-              </Link>
-            </>
-          }
-        />
-        <div className="mx-auto max-w-[1200px] px-5 md:px-10">
-          <div className="flex flex-wrap justify-center gap-3.5">
-            {videos.map((v, i) => {
-              const id = getYoutubeId(v.url);
-              return (
-                <a
-                  key={`${v.url}-${i}`}
-                  href={v.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="border-rule block w-full shrink-0 overflow-hidden rounded-2xl border bg-white transition-transform hover:-translate-y-0.5 sm:w-[calc(50%-0.4375rem)] md:w-[calc(25%-0.65625rem)]">
-                  <div
-                    className="relative flex aspect-[9/16] items-center justify-center bg-[#222] bg-cover bg-center"
-                    style={id ? { backgroundImage: `url('https://img.youtube.com/vi/${id}/maxresdefault.jpg')` } : undefined}>
-                    <div className="flex size-10 items-center justify-center rounded-full border-[1.5px] border-white/50 bg-white/20">
-                      <svg viewBox="0 0 24 24" className="ml-0.5 size-4 fill-white" aria-hidden>
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    </div>
-                    {v.duration && (
-                      <span className="absolute right-2.5 bottom-2 rounded bg-black/60 px-1.5 py-0.5 text-[11px] text-white">{v.duration}</span>
-                    )}
-                  </div>
-                  <div className="p-3.5">
-                    {v.tag && (
-                      <span className="bg-accent-blue-soft text-accent-blue-ink mb-1.5 inline-block rounded-full px-2 py-0.5 text-sm">{v.tag}</span>
-                    )}
-                    <p className="text-ink mb-1 text-[15px] leading-snug font-medium">{v.title}</p>
-                    <p className="text-muted-fg-faint text-sm leading-relaxed">{v.description ?? v.desc}</p>
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* 4. 실전 스피킹 디벨롭 (과정 카드) */}
-      <section id="courses" className="pb-14">
-        <div className="mx-auto max-w-[1200px] px-5 md:px-10">
-          <div className="rounded-2xl bg-white px-5 py-10 md:px-10 md:py-12">
-            <div className="mb-8 text-center">
-              <span className="bg-brand-gradient mb-2 inline-block rounded-full px-6 py-1.5 text-base font-bold text-white md:text-xl">
-                실전 스피킹 디벨롭
-              </span>
-              <h2 className="text-ink mt-1 mb-2.5 text-2xl leading-snug font-bold tracking-tight md:text-[32px]">말이 트여야 세계가 열려요.</h2>
-              <p className="text-muted-fg text-[15px] md:text-base">원어민과 직접 부딪히며 실력을 키우세요.</p>
+            <div className="px-5 py-8 text-center md:px-16">
+              <p className="text-[12px] font-bold text-white/95 md:text-[15px]">친구와 친구가 만나 배우는, 프렌딩 스쿨</p>
+              <h1 className="mt-1.5 text-[22px] font-bold tracking-[-0.04em] text-white md:mt-2 md:text-[34px]">
+                스피킹은, <span className="underline decoration-white/60 underline-offset-[6px]">말한 만큼</span> 늘어요
+              </h1>
             </div>
+          </section>
+        )}
 
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 md:grid-cols-3">
-              {COURSE_CARDS.map((c) => (
-                <div
-                  key={c.slug}
-                  className="border-rule bg-surface flex flex-col overflow-hidden rounded-2xl border transition-transform hover:-translate-y-0.5">
-                  <div className="relative h-[100px]">
-                    <Image src={c.image} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover" />
-                    <div className="absolute inset-0 bg-black/20" />
-                  </div>
-                  <div className="flex flex-1 flex-col p-4">
-                    <p className="text-ink mb-1.5 text-base font-bold">{c.name}</p>
-                    <p className="text-muted-fg mb-2.5 text-[15px] leading-relaxed">{c.desc}</p>
-                    <CoursePriceLine className="mt-auto mb-3" />
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/courses/${c.slug}`}
-                        className="border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink flex-1 rounded-full border py-2 text-center text-[13px] transition-colors">
-                        상세보기
-                      </Link>
-                      <Link
-                        href={`/courses/${c.slug}#apply-form`}
-                        className="bg-cta flex-1 rounded-full py-2 text-center text-[13px] font-bold text-white transition-opacity hover:opacity-90">
-                        신청하기
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+        {/* 접수 시간창(KST 08:00~19:00)은 서버에서 계산해 초기값으로 넘긴다 — 배너가 1분 틱으로 갱신하되
+            첫 렌더 값이 서버·클라에서 갈리면 hydration mismatch가 난다. */}
+        <PrepEnrollBanner courses={prepCourses} isLoggedIn={!!user} profileMissing={profileMissing} applyOpenInitial={isPrepApplyOpen()} />
 
-      {/* 5. 액티비티 */}
-      <section className="pb-14">
-        <SectionIntro label="원어민 · 세대교감 액티비티" title="영어는 밖에서도 빨리 늘어요!" desc="국내에서도 많은 활동이 있어요. 함께해요." />
-        <div className="mx-auto max-w-[1200px] px-5 md:px-10">
-          <div className="flex flex-col gap-3.5 md:flex-row md:flex-wrap md:justify-center">
-            {ACTIVITIES.map((a) => (
-              <div
-                key={a.title}
-                className="border-rule w-full overflow-hidden rounded-2xl border bg-white transition-transform hover:-translate-y-0.5 md:w-[364px]">
-                <div className="relative h-[110px]">
-                  <Image src={a.image} alt="" fill sizes="(max-width: 768px) 100vw, 400px" className="object-cover" />
-                  <div className="absolute inset-0 bg-black/30" />
-                  <span
-                    className={cn(
-                      "absolute top-2.5 left-2.5 z-[1] rounded-full px-2.5 py-0.5 text-[11px] font-medium",
-                      ACTIVITY_BADGE[a.badgeVariant],
-                    )}>
-                    {a.badge}
-                  </span>
-                </div>
-                <div className="p-3.5">
-                  <p className="text-ink mb-1.5 text-base font-bold">{a.title}</p>
-                  <p className="text-muted-fg mb-3 text-[15px] leading-relaxed">{a.desc}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-fg-faint flex items-center gap-1 text-sm">
-                      <Calendar aria-hidden className="size-3.5" /> {a.date}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        {/* 유료 프렙 신청과 무료 연습방은 성격이 다른 영역이라 구분선으로 나눈다.
+            ⚠️ 배너가 없으면(신청 가능한 강좌 0개) 히어로 바로 아래에 선만 남으므로 함께 숨긴다. */}
+        {showPrepBanner && <div aria-hidden className="border-rule mt-8 border-t" />}
+
+        <FriendingRooms rooms={rooms} hosts={hosts} isLoggedIn={!!user} />
+      </div>
     </div>
   );
 }

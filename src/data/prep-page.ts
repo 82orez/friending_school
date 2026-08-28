@@ -13,7 +13,7 @@ export const PREP_PAGE = {
     title: "하루 40분,\n아침으로 여는 영어 스몰톡 훈련",
     lead: "가벼운 일상의 스몰톡을 위해 여럿이 함께 모여 준비하는 학습 과정입니다. 수업은 Zoom으로 진행합니다.",
     cta: "수강 신청하기",
-    ctaHref: "/friending",
+    ctaHref: "/",
   },
 
   // 히어로 아래 한 줄 요약 칩.

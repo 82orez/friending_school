@@ -58,7 +58,7 @@ type TimeState = "live" | "upcoming" | "past";
 type RoomRow = AdminRoom & { state: TimeState; reserved: number; noShows: number; startMs: number; endMs: number };
 
 const STATE_LABEL: Record<TimeState, string> = { live: "진행 중", upcoming: "예정", past: "지난" };
-// 라이브 초록은 대응 토큰이 없어 /friending과 같은 arbitrary hex 예외를 쓴다.
+// 라이브 초록은 대응 토큰이 없어 프렌딩 홈(/)과 같은 arbitrary hex 예외를 쓴다.
 const STATE_BADGE: Record<TimeState, string> = {
   live: "bg-[#eafff1] text-[#22c55e]",
   upcoming: "bg-accent-blue-soft text-accent-blue-ink",
@@ -120,11 +120,11 @@ export default function RoomsAdminManager({ rooms }: { rooms: AdminRoom[] }) {
         // ⚠️ 종료는 반드시 start_min + duration_min을 kstDateMinToMs에 넣어 절대 ms로 — 자정을 넘기는 방
         //    (23:30 + 120분 → 익일 01:30)을 session_date 비교로는 놓친다.
         const endMs = kstDateMinToMs(r.session_date, r.start_min + r.duration_min);
-        // 상태 판정은 /friending의 canEnter 기준을 따른다(실제 시작 기준 isLive가 아니라).
+        // 상태 판정은 프렌딩 홈(/)의 canEnter 기준을 따른다(실제 시작 기준 isLive가 아니라).
         // ⚠️ isLive로 나누면 "진행 중인데 입장은 못 하는" 15분 구간이 생겨 회원 화면과 어긋난다
-        //    (/friending이 같은 이유로 폐기한 방식). 지난 방 경계(now > endMs)는 /friender/rooms와 동일.
+        //    (프렌딩 홈(/)이 같은 이유로 폐기한 방식). 지난 방 경계(now > endMs)는 /friender/rooms와 동일.
         const state: TimeState = now > endMs ? "past" : canEnterClass(now, startMs, endMs) ? "live" : "upcoming";
-        // 노쇼(시작 + 유예까지 미입장)는 자리를 반환한 것으로 본다 — /friending·/mypage/rooms·
+        // 노쇼(시작 + 유예까지 미입장)는 자리를 반환한 것으로 본다 — 프렌딩 홈(/)·/mypage/rooms·
         // /friender/rooms·join_friender_room RPC가 모두 같은 규칙이라 카운트가 어긋나지 않는다.
         const reserved = r.participants.filter((p) => seatHeld(p.entered_at, startMs, now)).length;
         return { ...r, state, reserved, noShows: r.participants.length - reserved, startMs, endMs };

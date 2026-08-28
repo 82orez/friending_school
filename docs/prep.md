@@ -126,7 +126,7 @@
 - **액션** `src/app/prep/enroll-actions.ts`: `applyPrepCourse`(로그인 → `rateLimit('prep-apply:…', 10/10분)` → **세션 client로 RPC** → **신청자 SMS(무통장 입금 안내 — 계좌·예금주·금액, `PAYMENT_BANK`)** + 관리자 메일 + 프렌더 SMS, 모두 best-effort. ⚠️ 신청자 SMS를 **가장 먼저** 보낸다(뒤의 조회가 실패해도 입금 안내는 나가야 한다). 금액은 스냅샷이라 중도 신청이면 잔여 비례액이다) · `cancelPrepEnrollment`(`입금대기`만, **삭제가 아니라 `취소` 상태 변경** → **신청과 대칭으로 관리자 메일(`sendPrepCancellationNotification`) + 프렌더 SMS**. ⚠️ 알림 값은 **UPDATE의 `.select()`가 돌려준 취소된 행**에서 만든다 — 다시 읽으면 이미 `취소`라 `.neq("status","취소")` 조회에 안 걸린다. 안 보내면 관리자는 **오지 않을 입금을 기다리고** 프렌더는 자리가 빈 걸 모른다).
   admin(`src/app/admin/actions.ts`): `confirmPrepPayment(enrollmentId)`(`입금대기` CAS → `수강확정`+`paid_at` → 학생 SMS) · `cancelPrepEnrollmentAsAdmin(enrollmentId, note?)`(미입금 자리 회수·폐강 정리, 사유 SMS).
 - **가드(이제 실효)**: 신청자가 있으면 **프렌더·관리자 모두 강좌 삭제 금지**(cascade로 입금 기록까지 사라진다), **프렌더는 심사 대상 항목 수정도 금지**(승인이 풀려 목록에서 사라지고 이미 입금하려던 사람의 조건이 바뀐다), **정원을 신청자 수보다 작게 축소 금지**. 소개·회차 주제는 계속 수정 가능.
-- **상태 배지 문구·색은 `src/data/enrollment-status.ts` 공용**(`입금대기`→「결제 대기」·`수강확정`→「수강 확정」, 정규 과정과 같은 어휘·같은 색 — 「수강신청 내역」 한 탭에 두 섹션이 나란히 있어서다. 상세=`docs/enroll.md`). **UI**: `/friending` 상단 **`<PrepEnrollBanner>`** — **새벽 하늘 다크 배너**(`PrepHeroArt variant="banner"`를 `-z-10`으로 깔고 왼쪽이 진한 그라디언트 오버레이. ⚠️ 흰 카드였을 때 바로 위 프렌딩 히어로에 눌려 안 보였다. ⚠️ 어두운 판에서 남색 `bg-cta`는 묻히므로 **CTA는 흰 알약 + `text-ink`**). 강좌마다 **세부 정보(기간·시간·진행 방식·강사·수강료·신청 현황)를 반투명 카드에 펼쳐** 두고 카드별 「신청하기」가 그 강좌를 선택한 채 모달을 연다(모달 = 계좌 안내 + 최종 확인: `PAYMENT_BANK`·확인 `AlertDialog`, 비로그인은 `/login?next=/friending`, 프로필 미완(휴대폰 인증·성·이름·영어 이름)은 **빠진 항목을 나열해** 마이페이지로 안내(`profileMissing`)). ⚠️ 정원 상한(1000)은 사실상 무제한이라 `N/1000` 대신 "N명 신청"으로 표기(`seatLabel`) · **`/mypage/enrollments`(「수강신청 내역」 탭의 「프렙 강좌」 섹션)**(스냅샷 기반 내역·계좌 안내·취소) · **`/admin/prep-enrollments`(「프렙 수강신청」 탭)**(전 강좌 신청을 한 목록에서 검색·상태/강좌 필터·정렬·페이징 + 행에서 입금 확인·신청 취소 — 상세=`docs/admin.md`). ⚠️ **입금 확인·신청 취소의 소유자는 이 탭 하나다**: 한때 `/admin/prep`의 `PrepCourseInfoModal` 안 「수강신청」 섹션이 목록과 버튼을 통째로 들고 있었는데 강좌 단위로만 볼 수 있고 검색·정렬이 없어 신청이 늘면 모달 스크롤만 길어졌다 → 모달은 **요약(총 N명·입금대기·취소) + 딥링크 `?course=<id>`** 로 축소했고 `/admin/prep`에는 개설된 강좌 테이블의 「신청자」 컬럼만 남았다.
+- **상태 배지 문구·색은 `src/data/enrollment-status.ts` 공용**(`입금대기`→「결제 대기」·`수강확정`→「수강 확정」, 정규 과정과 같은 어휘·같은 색 — 「수강신청 내역」 한 탭에 두 섹션이 나란히 있어서다. 상세=`docs/enroll.md`). **UI**: 홈 `/` 상단 **`<PrepEnrollBanner>`** — **새벽 하늘 다크 배너**(`PrepHeroArt variant="banner"`를 `-z-10`으로 깔고 왼쪽이 진한 그라디언트 오버레이. ⚠️ 흰 카드였을 때 바로 위 프렌딩 히어로에 눌려 안 보였다. ⚠️ 어두운 판에서 남색 `bg-cta`는 묻히므로 **CTA는 흰 알약 + `text-ink`**). 강좌마다 **세부 정보(기간·시간·진행 방식·강사·수강료·신청 현황)를 반투명 카드에 펼쳐** 두고 카드별 「신청하기」가 그 강좌를 선택한 채 모달을 연다(모달 = 계좌 안내 + 최종 확인: `PAYMENT_BANK`·확인 `AlertDialog`, 비로그인은 `/login?next=프렌딩 홈(/)`, 프로필 미완(휴대폰 인증·성·이름·영어 이름)은 **빠진 항목을 나열해** 마이페이지로 안내(`profileMissing`)). ⚠️ 정원 상한(1000)은 사실상 무제한이라 `N/1000` 대신 "N명 신청"으로 표기(`seatLabel`) · **`/mypage/enrollments`(「수강신청 내역」 탭의 「프렙 강좌」 섹션)**(스냅샷 기반 내역·계좌 안내·취소) · **`/admin/prep-enrollments`(「프렙 수강신청」 탭)**(전 강좌 신청을 한 목록에서 검색·상태/강좌 필터·정렬·페이징 + 행에서 입금 확인·신청 취소 — 상세=`docs/admin.md`). ⚠️ **입금 확인·신청 취소의 소유자는 이 탭 하나다**: 한때 `/admin/prep`의 `PrepCourseInfoModal` 안 「수강신청」 섹션이 목록과 버튼을 통째로 들고 있었는데 강좌 단위로만 볼 수 있고 검색·정렬이 없어 신청이 늘면 모달 스크롤만 길어졌다 → 모달은 **요약(총 N명·입금대기·취소) + 딥링크 `?course=<id>`** 로 축소했고 `/admin/prep`에는 개설된 강좌 테이블의 「신청자」 컬럼만 남았다.
 
 ### 결제 기록·환불 (`20260827221909_prep_payments_link.sql`)
 
@@ -156,14 +156,14 @@
 
 ## 공개 소개 페이지 `/prep`
 
-예비 수강생용 **정적 홍보 페이지**(`src/app/prep/page.tsx`). ⚠️ **DB를 읽지 않는다** — 실제 강좌 카드·신청은 `/friending` 상단 배너가 담당하고 이 페이지의 CTA 2개가 그쪽으로 보낸다(`PREP_PAGE.hero.ctaHref`).
+예비 수강생용 **정적 홍보 페이지**(`src/app/prep/page.tsx`). ⚠️ **DB를 읽지 않는다** — 실제 강좌 카드·신청은 홈 `/` 상단 배너가 담당하고 이 페이지의 CTA 2개가 그쪽으로 보낸다(`PREP_PAGE.hero.ctaHref`).
 
 - 문구는 **`src/data/prep-page.ts`(`PREP_PAGE`)** 한 곳에 모았다(비개발자가 카피만 고칠 수 있게 — `landing.ts` 선례). ⚠️ 값 출처 구분: **회차 수는 `PREP_SESSION_COUNT`**(정책 고정), **수강료 20,000원·06:00~06:40은 이 강좌의 값**이라 리터럴(개설 폼 기본값 `PREP_DEFAULT_PRICE_KRW`와 우연히 같을 뿐 의미가 다르다). 금액은 `formatWon`.
-- 구성: 히어로(스펙 칩 4개 + **비활성 CTA**) → 이런 분께 3장 → 진행 방식 다크 박스 01~04 → **커리큘럼 예시 20강**(⚠️ 실제 주제는 프렌더가 정하므로 "예시" 배지 필수) → 강사·수강료 2열 → FAQ(`<details>`) → 마무리 CTA 밴드(`#E05A6A`, 과정 상세와 같은 색) + `/friending` 텍스트 링크.
-- **히어로 그림은 인라인 SVG `src/components/prep/PrepHeroArt.tsx`**(새벽 하늘·해·Zoom 타일·6:00 시계). ⚠️ 파일 `.svg`를 `next/image`로 쓰려면 `images.dangerouslyAllowSVG`를 켜야 해서 장식 하나 때문에 그 스위치를 켜지 않았다(`/friending` 히어로의 인라인 장식 SVG와 같은 선택). 색은 토큰과 같은 hex 리터럴(SVG gradient에 CSS 변수는 불안정).
+- 구성: 히어로(스펙 칩 4개 + **비활성 CTA**) → 이런 분께 3장 → 진행 방식 다크 박스 01~04 → **커리큘럼 예시 20강**(⚠️ 실제 주제는 프렌더가 정하므로 "예시" 배지 필수) → 강사·수강료 2열 → FAQ(`<details>`) → 마무리 CTA 밴드(`#E05A6A`, 과정 상세와 같은 색) + 홈 `/` 텍스트 링크.
+- **히어로 그림은 인라인 SVG `src/components/prep/PrepHeroArt.tsx`**(새벽 하늘·해·Zoom 타일·6:00 시계). ⚠️ 파일 `.svg`를 `next/image`로 쓰려면 `images.dangerouslyAllowSVG`를 켜야 해서 장식 하나 때문에 그 스위치를 켜지 않았다(홈 `/` 히어로의 인라인 장식 SVG와 같은 선택). 색은 토큰과 같은 hex 리터럴(SVG gradient에 CSS 변수는 불안정).
 - ⚠️ **`CoursePriceLine`을 쓰지 않는다** — 그 컴포넌트는 전역 21만원 상수 전용이고 프렙은 강좌마다 가격이 다르다.
 - 진입은 **Navbar 링크만**(데스크톱 인라인 + 모바일 flat) — 랜딩 과정 카드에는 넣지 않았다(카드가 `CoursePriceLine`으로 21만원을 그린다).
-- 수강신청이 열리면서 비활성 버튼 두 개는 **`/friending` 링크로 교체**됐다(히어로·마무리 밴드).
+- 수강신청이 열리면서 비활성 버튼 두 개는 **홈 `/` 링크로 교체**됐다(히어로·마무리 밴드).
 
 ## ⏳ 미구현 (다음 단계)
 
