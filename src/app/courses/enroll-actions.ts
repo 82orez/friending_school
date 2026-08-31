@@ -21,10 +21,10 @@ import {
   teacherHasAllSlots,
   type Slot,
 } from "@/lib/availability";
-import { loadEndedEnrollmentIds, todayKst } from "@/lib/booking";
+import { loadBookedSlotsByTeacher, loadStudentBusySlots, todayKst } from "@/lib/booking";
 
 // 학생 수강신청용 강사 카드(공개 안전 필드만 — 이메일/전화 등 PII 제외). slots는 클라이언트 라이브 필터용.
-// heldSlots: 다른 학생의 진행중 신청('신청'/'결제대기')이 잡고 있는 슬롯 — 하드 차단은 아니고, 겹치면 확인 단계에서 경고용.
+// slots는 이미 진행중 예약이 차감된 값 = 화면에 뜨는 강사는 그 시간에 실제로 비어 있다.
 export type EnrollTeacherCard = {
   id: string;
   name: string;
@@ -34,7 +34,6 @@ export type EnrollTeacherCard = {
   centerName: string | null;
   bio: string | null;
   slots: Slot[];
-  heldSlots: Slot[];
 };
 
 export type EnrollState = { error?: string; success?: boolean };
@@ -56,49 +55,8 @@ function normalizeSlots(raw: unknown): Slot[] {
   return out;
 }
 
-// enrollments.slots(jsonb)를 안전하게 Slot[]로 파싱.
-function parseSlots(raw: unknown): Slot[] {
-  if (!Array.isArray(raw)) return [];
-  return raw.filter(isValidSlot).map((s) => ({ day: Number(s.day), min: Number(s.min) }));
-}
-
-// 강사 id 목록의 진행중 enrollment 슬롯을 강사별로 두 종류로 union:
-//  - confirmed: '승인'(레거시)·'결제완료'(결제 확정) → 가용에서 차감(슬롯 숨김)·신청 하드 차단.
-//  - held: '신청'+'결제대기'(소프트 보류) → 차단하지 않고, 겹치면 경고용(heldSlots). excludeStudentId(본인)는 held에서 제외.
-async function loadEnrollmentSlotsByTeacher(
-  admin: ReturnType<typeof createAdminClient>,
-  teacherIds: string[],
-  excludeStudentId?: string,
-): Promise<{ confirmed: Map<string, Slot[]>; held: Map<string, Slot[]> }> {
-  const confirmed = new Map<string, Slot[]>();
-  const held = new Map<string, Slot[]>();
-  if (teacherIds.length === 0) return { confirmed, held };
-  // 종료된 '결제완료'(남은 예정 수업 없음)는 점유에서 제외 — 마지막 수업 다음날부터 슬롯 해제.
-  const ended = await loadEndedEnrollmentIds(admin, teacherIds);
-  const { data } = await admin
-    .from("enrollments")
-    .select("id, teacher_id, student_id, slots, status")
-    .in("teacher_id", teacherIds)
-    .in("status", ["신청", "승인", "결제대기", "결제완료"]);
-  for (const r of (data ?? []) as { id: string; teacher_id: string; student_id: string; slots: unknown; status: string }[]) {
-    if (r.status === "승인" || r.status === "결제완료") {
-      if (r.status === "결제완료" && ended.has(r.id)) continue; // 종료된 과정 → 차감 안 함
-      const list = confirmed.get(r.teacher_id) ?? [];
-      list.push(...parseSlots(r.slots));
-      confirmed.set(r.teacher_id, list);
-    } else {
-      // '신청'/'결제대기' — 본인 것은 held에서 제외(본인 신청을 "다른 학생"으로 오인 방지).
-      if (excludeStudentId && r.student_id === excludeStudentId) continue;
-      const list = held.get(r.teacher_id) ?? [];
-      list.push(...parseSlots(r.slots));
-      held.set(r.teacher_id, list);
-    }
-  }
-  return { confirmed, held };
-}
-
 // 전체 강사(공개 안전 필드 + 주간 슬롯)를 반환 — 위저드가 클라이언트에서 `teacherHasAllSlots`로 라이브 필터.
-// enroll 페이지(server component, 로그인+폰인증 가드 통과 후)에서 호출. currentUserId는 heldSlots 본인 제외용.
+// enroll 페이지(server component, 로그인+폰인증 가드 통과 후)에서 호출. currentUserId는 차감 본인 제외용.
 export async function loadEnrollTeachers(currentUserId?: string): Promise<EnrollTeacherCard[]> {
   const admin = createAdminClient();
   const { data: profiles, error: profErr } = await admin
@@ -135,8 +93,9 @@ export async function loadEnrollTeachers(currentUserId?: string): Promise<Enroll
     byTeacher.set(r.teacher_id, list);
   }
 
-  // 확정('승인')만 가용에서 차감(슬롯 숨김). '결제대기'/'신청'은 차감하지 않고 heldSlots로 노출(겹치면 경고).
-  const { confirmed, held } = await loadEnrollmentSlotsByTeacher(admin, ids, currentUserId);
+  // 진행중 신청 전부('신청'·'승인'·'결제대기'·'결제완료', 종료분 제외)를 가용에서 차감 = 같은 시간 중복 신청 차단.
+  // 본인 신청은 차감 제외 — 강사는 계속 보이고, 본인 충돌은 위저드의 myBusySlots 안내 + 아래 서버 가드가 처리.
+  const booked = await loadBookedSlotsByTeacher(admin, ids, currentUserId);
 
   return teachers.map((t) => ({
     id: t.id,
@@ -146,8 +105,7 @@ export async function loadEnrollTeachers(currentUserId?: string): Promise<Enroll
     gender: t.gender,
     centerName: t.center_id ? (centerNameById.get(t.center_id) ?? null) : null,
     bio: t.bio,
-    slots: subtractSlots(byTeacher.get(t.id) ?? [], confirmed.get(t.id) ?? []),
-    heldSlots: held.get(t.id) ?? [],
+    slots: subtractSlots(byTeacher.get(t.id) ?? [], booked.get(t.id) ?? []),
   }));
 }
 
@@ -225,20 +183,17 @@ export async function submitEnrollment(_prev: EnrollState, formData: FormData): 
 
   const { data: slotRows } = await admin.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", teacherId);
   const teacherSlots: Slot[] = (slotRows ?? []).map((r: { day_of_week: number; start_min: number }) => ({ day: r.day_of_week, min: r.start_min }));
-  // 유효 가용 = 강사 템플릿 − 확정('승인') 예약 슬롯. '결제대기'/'신청'은 하드 차단하지 않음(겹쳐도 신청 허용, 클라가 경고).
-  const { confirmed } = await loadEnrollmentSlotsByTeacher(admin, [teacherId]);
-  const effective = subtractSlots(teacherSlots, confirmed.get(teacherId) ?? []);
+  // 유효 가용 = 강사 템플릿 − 진행중 예약 전부(신청/승인/결제대기/결제완료, 종료분 제외) = 다른 학생과의 중복 하드 차단.
+  // ⚠️ user.id를 넘겨 본인 신청은 차감에서 제외 — 안 그러면 본인 충돌인데도 "더 이상 가능하지 않아요"(엉뚱한 문구)가
+  //    먼저 터져서 바로 아래 전용 문구가 죽는다.
+  const booked = await loadBookedSlotsByTeacher(admin, [teacherId], user.id);
+  const effective = subtractSlots(teacherSlots, booked.get(teacherId) ?? []);
   if (!teacherHasAllSlots(effective, slots)) {
     return { error: "선택한 시간이 더 이상 가능하지 않아요. 일정을 다시 선택해 주세요." };
   }
 
-  // 학생 본인 시간 충돌 차단 — 진행 중('신청'/'승인'/'결제대기') 신청과 겹치면 거절.
-  const { data: myRows } = await admin
-    .from("enrollments")
-    .select("slots")
-    .eq("student_id", user.id)
-    .in("status", ["신청", "승인", "결제대기", "결제완료"]);
-  const mySlots: Slot[] = (myRows ?? []).flatMap((r: { slots: unknown }) => parseSlots(r.slots));
+  // 학생 본인 시간 충돌 차단 — 진행중 신청과 겹치면 거절(종료된 '결제완료'는 해제되어 같은 시간 재수강 가능).
+  const mySlots = await loadStudentBusySlots(admin, user.id);
   if (slotsOverlap(slots, mySlots)) {
     return { error: "이미 같은 시간에 신청한 수업이 있어요. 일정을 다시 선택해 주세요." };
   }

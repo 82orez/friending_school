@@ -3,7 +3,9 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 import { getCourse } from "@/data/courses";
+import { loadStudentBusySlots } from "@/lib/booking";
 import { loadEnrollTeachers } from "@/app/courses/enroll-actions";
 import EnrollWizard from "@/components/course/EnrollWizard";
 
@@ -32,6 +34,9 @@ export default async function EnrollPage({ params }: { params: Promise<{ slug: s
 
   // 전체 강사(공개 안전 필드 + 슬롯) 미리 로드 → 위저드가 클라에서 라이브 필터.
   const teachers = ready ? await loadEnrollTeachers(user.id) : [];
+  // 본인이 이미 잡고 있는 시간 — 확인 단계에서 "이미 같은 시간에 신청한 수업이 있어요" 안내 + 제출 차단용.
+  // service_role: 종료 판정이 classes를 teacher_id로 조회해 학생 세션 client로는 오판한다(`loadStudentBusySlots` 주석).
+  const myBusySlots = ready ? await loadStudentBusySlots(createAdminClient(), user.id) : [];
 
   return (
     <div className="bg-surface min-h-screen">
@@ -48,6 +53,7 @@ export default async function EnrollPage({ params }: { params: Promise<{ slug: s
             courseEnglishTitle={course.englishTitle}
             coursePrice={course.price}
             teachers={teachers}
+            myBusySlots={myBusySlots}
           />
         ) : !phoneVerified ? (
           <div className="border-brand/30 bg-brand/5 mx-auto max-w-[560px] rounded-2xl border p-8 text-center">

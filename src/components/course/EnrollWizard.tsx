@@ -31,12 +31,14 @@ export default function EnrollWizard({
   courseEnglishTitle,
   coursePrice,
   teachers,
+  myBusySlots,
 }: {
   courseSlug: string;
   courseTitle: string;
   courseEnglishTitle: string;
   coursePrice: string;
   teachers: EnrollTeacherCard[];
+  myBusySlots: Slot[];
 }) {
   const [step, setStep] = useState(1);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -61,8 +63,9 @@ export default function EnrollWizard({
   const matches = useMemo(() => (slots.length === 0 ? [] : teachers.filter((t) => teacherHasAllSlots(t.slots, slots))), [teachers, slots]);
   // 일정 변경으로 선택 강사가 매칭에서 빠지면 자동 무효(다음 버튼 비활성).
   const selectedTeacher = matches.find((t) => t.id === teacherId) ?? null;
-  // 선택한 시간이 다른 학생의 진행중 신청('신청'/'결제대기')과 겹치면 경고(하드 차단 아님 — 확인 후 신청 가능).
-  const overlapWarning = !!selectedTeacher && slotsOverlap(slots, selectedTeacher.heldSlots);
+  // 다른 학생의 진행중 신청은 애초에 강사 목록에서 차감돼 뜨지 않는다(loadEnrollTeachers). 남는 충돌은 "본인 일정"뿐 —
+  // 본인 신청은 차감 제외라 강사가 계속 보이므로 여기서 잡아 안내 + 제출 차단(서버 가드가 최종 차단선).
+  const selfConflict = slotsOverlap(slots, myBusySlots);
 
   // 시작일은 신청한 요일 중 하나여야 함(주간 반복 수업의 첫 수업일). day: 0=일, JS getDay와 동일.
   const allowedDays = useMemo(() => new Set(slots.map((s) => s.day)), [slots]);
@@ -280,10 +283,10 @@ export default function EnrollWizard({
               ))}
             </dl>
 
-            {overlapWarning && (
+            {selfConflict && (
               <p className="mt-4 flex items-start gap-2 rounded-lg bg-[#FFF7E6] px-3.5 py-3 text-sm font-medium text-[#B97400]">
                 <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-                <span>이 시간대에 다른 학생이 먼저 수강신청을 한 상태입니다. 해당 수강신청이 확정되면 이번 수강신청은 취소될 수 있습니다.</span>
+                <span>이미 같은 시간에 신청한 수업이 있어요. 1단계로 돌아가 다른 시간을 선택해 주세요.</span>
               </p>
             )}
 
@@ -300,7 +303,7 @@ export default function EnrollWizard({
               <input type="hidden" name="startDate" value={startDate} />
               <input type="hidden" name="slots" value={JSON.stringify(slots)} />
               <div className="flex justify-end">
-                <Button type="button" variant="brand" disabled={pending} onClick={() => setConfirmOpen(true)}>
+                <Button type="button" variant="brand" disabled={pending || selfConflict} onClick={() => setConfirmOpen(true)}>
                   {pending ? (
                     <>
                       <Loader2 className="animate-spin" />
@@ -318,9 +321,7 @@ export default function EnrollWizard({
                 <AlertDialogHeader>
                   <AlertDialogTitle>이대로 수강신청할까요?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    {overlapWarning
-                      ? "이 시간대에 다른 학생이 먼저 수강신청을 한 상태입니다. 해당 수강신청이 확정되면 이번 수강신청은 취소될 수 있습니다. 수강 신청하시겠습니까?"
-                      : `${selectedTeacher?.name} 강사님께 ${courseTitle} 신청이 전달됩니다. 결과는 문자로 안내드려요.`}
+                    {`${selectedTeacher?.name} 강사님께 ${courseTitle} 신청이 전달됩니다. 결과는 문자로 안내드려요.`}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

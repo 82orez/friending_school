@@ -89,3 +89,56 @@ export async function loadTeacherBookedSlots(client: SupabaseLike, teacherId: st
   const ended = await loadEndedEnrollmentIds(client, [teacherId]);
   return deriveBookedSlots(rows.filter((r) => !(r.status === "결제완료" && ended.has(r.id))));
 }
+
+// 강사 여러 명의 예약 슬롯을 강사별로 union — 수강신청 매칭(가용 차감)용 순수 Slot[](tier/label 불필요).
+// excludeStudentId를 주면 그 학생 본인의 신청은 차감에서 제외한다(본인이 잡은 시간에도 강사가 계속 보이게 —
+// 본인 충돌은 loadStudentBusySlots + submitEnrollment의 전용 문구가 따로 처리한다).
+export async function loadBookedSlotsByTeacher(client: SupabaseLike, teacherIds: string[], excludeStudentId?: string): Promise<Map<string, Slot[]>> {
+  const byTeacher = new Map<string, Slot[]>();
+  if (teacherIds.length === 0) return byTeacher;
+  const { data } = await client
+    .from("enrollments")
+    .select("id, teacher_id, student_id, slots, status")
+    .in("teacher_id", teacherIds)
+    .in("status", ACTIVE_BOOKING_STATUSES as unknown as string[]);
+  const rows = (data ?? []) as { id: string; teacher_id: string; student_id: string; slots: unknown; status: string }[];
+  if (rows.length === 0) return byTeacher;
+  // 종료된 '결제완료'(남은 예정 수업 없음)는 점유에서 제외 — 마지막 수업 다음날부터 슬롯 해제.
+  const ended = await loadEndedEnrollmentIds(client, teacherIds);
+  for (const r of rows) {
+    if (r.status === "결제완료" && ended.has(r.id)) continue;
+    if (excludeStudentId && r.student_id === excludeStudentId) continue;
+    const list = byTeacher.get(r.teacher_id) ?? [];
+    list.push(...parseSlots(r.slots));
+    byTeacher.set(r.teacher_id, list);
+  }
+  return byTeacher;
+}
+
+// 학생 본인이 이미 잡고 있는 시간(강사 무관 통합) — 같은 시간 중복 신청 차단용.
+// ⚠️ service_role 전용: loadEndedEnrollmentIds가 classes를 teacher_id로 조회하는데 학생 세션 client는
+// 남의 수업 행을 못 읽어 '남은 예정 수업 없음'으로 오판 → 진행중 과정이 종료로 잘못 해제된다.
+export async function loadStudentBusySlots(client: SupabaseLike, studentId: string): Promise<Slot[]> {
+  const { data } = await client
+    .from("enrollments")
+    .select("id, teacher_id, slots, status")
+    .eq("student_id", studentId)
+    .in("status", ACTIVE_BOOKING_STATUSES as unknown as string[]);
+  const rows = (data ?? []) as { id: string; teacher_id: string; slots: unknown; status: string }[];
+  if (rows.length === 0) return [];
+  // 종료 판정은 강사 단위 조회라 본인 '결제완료' 행의 teacher_id만 모아 넘긴다(초과 조회지만 교차 참조는 본인 행 id만).
+  const paidTeacherIds = Array.from(new Set(rows.filter((r) => r.status === "결제완료").map((r) => r.teacher_id)));
+  const ended = paidTeacherIds.length > 0 ? await loadEndedEnrollmentIds(client, paidTeacherIds) : new Set<string>();
+  const out: Slot[] = [];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    if (r.status === "결제완료" && ended.has(r.id)) continue; // 끝난 과정 시간대는 재수강 신청 가능
+    for (const s of parseSlots(r.slots)) {
+      const k = `${s.day}-${s.min}`;
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(s);
+    }
+  }
+  return out;
+}
