@@ -71,7 +71,13 @@ export default function AvailabilityModal({ initialSlots, bookedSlots }: { initi
             {initialSlots.length > 0
               ? `${initialSlots.length} time slot${initialSlots.length === 1 ? "" : "s"} marked.`
               : "No availability set yet. Add the times you can teach."}
-            {!!bookedSlots?.length && <span className="font-medium text-[#1E7E34]"> · {bookedSlots.length} booked</span>}
+            {/* 진행중 신청(신청/결제대기/확정)이 걸린 슬롯 = 편집 잠금 — "booked"는 결제 건만으로 오해돼 locked으로 표기. */}
+            {!!bookedSlots?.length && (
+              <span className="font-medium text-[#1E7E34]">
+                {" "}
+                · {bookedSlots.length} slot{bookedSlots.length === 1 ? "" : "s"} locked
+              </span>
+            )}
           </p>
         </div>
         <Button ref={triggerRef} type="button" variant="brand" onClick={() => setOpen(true)}>

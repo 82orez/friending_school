@@ -123,17 +123,22 @@ export function summarizeWeekdays(slots: Slot[], ko = true): string {
     .join("/");
 }
 
-// 예약 슬롯(가용 그리드 오버레이용) — confirmed='승인'/'결제완료'(하드 확정), pending='결제대기'.
-export type BookedSlot = { day: number; min: number; tier: "confirmed" | "pending"; label?: string };
+// 예약 슬롯(가용 그리드 오버레이용) — confirmed='승인'/'결제완료'(하드 확정), pending='결제대기', requested='신청'(승인 대기).
+// 세 tier 모두 강사 가용 그리드에서 **잠금** 대상(해제하려면 requested는 거절, 그 외는 관리자 문의).
+export type BookedSlot = { day: number; min: number; tier: "confirmed" | "pending" | "requested"; label?: string };
+
+// 같은 슬롯에 여러 신청이 겹칠 때 표시 우선순위(높을수록 우선). 그리드·인쇄 공용 규칙.
+export const TIER_RANK: Record<BookedSlot["tier"], number> = { confirmed: 3, pending: 2, requested: 1 };
 
 // enrollment 행 목록 → 예약 슬롯. 강사 본인 그리드·admin 그리드 공용(파생 로직 단일 소스).
-// confirmed 우선(같은 슬롯이 pending+confirmed면 confirmed), label은 툴팁용 학생 표시명.
+// 랭크 높은 tier 우선(confirmed > pending > requested), label은 툴팁용 학생 표시명.
 export function deriveBookedSlots(
   rows: { slots: unknown; status: string; student_name?: string | null; student_english_name?: string | null }[],
 ): BookedSlot[] {
   const m = new Map<string, BookedSlot>();
   for (const r of rows) {
-    const tier: BookedSlot["tier"] | null = r.status === "승인" || r.status === "결제완료" ? "confirmed" : r.status === "결제대기" ? "pending" : null;
+    const tier: BookedSlot["tier"] | null =
+      r.status === "승인" || r.status === "결제완료" ? "confirmed" : r.status === "결제대기" ? "pending" : r.status === "신청" ? "requested" : null;
     if (!tier) continue;
     const label = r.student_english_name || r.student_name || "Student";
     for (const s of (Array.isArray(r.slots) ? r.slots : []) as { day?: unknown; min?: unknown }[]) {
@@ -141,7 +146,8 @@ export function deriveBookedSlots(
       const min = Number(s?.min);
       if (!Number.isInteger(day) || !Number.isInteger(min)) continue;
       const k = slotKey(day, min);
-      if (m.get(k)?.tier === "confirmed") continue; // confirmed 우선
+      const cur = m.get(k);
+      if (cur && TIER_RANK[cur.tier] >= TIER_RANK[tier]) continue; // 랭크 높은 tier 우선
       m.set(k, { day, min, tier, label });
     }
   }

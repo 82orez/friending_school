@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { updateTeacherAvailability, type AvailabilitySlot } from "@/app/teacher/actions";
-import type { BookedSlot } from "@/lib/availability";
+import { TIER_RANK, type BookedSlot } from "@/lib/availability";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -37,6 +37,24 @@ type Slot = { day: number; min: number };
 // 예약 슬롯 타입은 공유 모델(`@/lib/availability`)에 — 기존 import 경로 호환 위해 재export.
 export type { BookedSlot } from "@/lib/availability";
 
+// tier별 셀 색·툴팁·범례·잠금 안내 문구(단일 소스). 세 tier 모두 편집 잠금 대상.
+const TIER_BG: Record<BookedSlot["tier"], string> = {
+  confirmed: "bg-[#1E7E34]", // 초록 — 승인/결제완료
+  pending: "bg-[#6B4AD4]/55", // 보라 — 결제대기
+  requested: "bg-[#D97706]/55", // 앰버 — 신청(승인 대기)
+};
+const TIER_LABEL: Record<BookedSlot["tier"], string> = {
+  confirmed: "Booked",
+  pending: "Awaiting payment",
+  requested: "Awaiting your approval",
+};
+// 잠긴 셀을 눌렀을 때 안내 — '신청'은 거절이 해제 경로, 그 외는 강사에게 취소 권한이 없어 관리자 문의.
+const lockMessage = (tier: BookedSlot["tier"], who: string) =>
+  tier === "requested"
+    ? `Booked by ${who} — awaiting your approval. Decline the request in Enrollment Requests to free this slot.`
+    : `This slot is booked by ${who}. Contact the admin to release it.`;
+const LOCK_TOAST_INTERVAL_MS = 3000; // 연속 클릭/드래그 시작 시 토스트 폭주 방지
+
 export default function AvailabilityGrid({
   initialSlots,
   bookedSlots,
@@ -48,22 +66,21 @@ export default function AvailabilityGrid({
   readOnly?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
 }) {
-  // 예약 슬롯 맵(키→tier)·키 집합. 예약 셀은 색 표시 + 편집 잠금 + 가용에서 못 빼게 유지.
-  const bookedTier = useMemo(() => {
-    const m = new Map<string, BookedSlot["tier"]>();
+  // 예약 슬롯 맵(키→BookedSlot). 예약 셀은 색 표시 + 편집 잠금 + 가용에서 못 빼게 유지.
+  // ⚠️ tier와 label(툴팁·토스트의 학생명)을 한 맵에서 함께 고르기 — 따로 고르면 겹친 슬롯에서 A의 이름 + B의 tier가 섞인다.
+  const bookedByKey = useMemo(() => {
+    const m = new Map<string, BookedSlot>();
     for (const b of bookedSlots ?? []) {
       const k = slotKey(b.day, b.min);
-      if (m.get(k) === "confirmed") continue; // confirmed 우선
-      m.set(k, b.tier);
+      const cur = m.get(k);
+      if (cur && TIER_RANK[cur.tier] >= TIER_RANK[b.tier]) continue; // 랭크 높은 tier 우선
+      m.set(k, b);
     }
     return m;
   }, [bookedSlots]);
-  const bookedLabel = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const b of bookedSlots ?? []) if (b.label && !m.has(slotKey(b.day, b.min))) m.set(slotKey(b.day, b.min), b.label);
-    return m;
-  }, [bookedSlots]);
-  const bookedKeys = useMemo(() => new Set(bookedTier.keys()), [bookedTier]);
+  const bookedKeys = useMemo(() => new Set(bookedByKey.keys()), [bookedByKey]);
+  // 범례는 실제로 존재하는 tier만 노출.
+  const presentTiers = useMemo(() => new Set(Array.from(bookedByKey.values(), (b) => b.tier)), [bookedByKey]);
 
   // 예약 슬롯은 항상 가용에 포함(저장 시 누락 방지 — 가용 밖 예약은 self-heal).
   const initialKeys = () => new Set<string>([...initialSlots.map((s) => slotKey(s.day, s.min)), ...Array.from(bookedKeys)]);
@@ -76,6 +93,7 @@ export default function AvailabilityGrid({
 
   const draggingRef = useRef(false);
   const dragModeRef = useRef<"add" | "remove">("add");
+  const lastLockToastRef = useRef(0);
 
   // 드래그 종료(그리드 밖에서 떼도).
   useEffect(() => {
@@ -105,7 +123,17 @@ export default function AvailabilityGrid({
   };
 
   const onCellDown = (day: number, min: number) => {
-    if (readOnly || bookedKeys.has(slotKey(day, min))) return; // 예약 셀은 잠금
+    if (readOnly) return;
+    const booked = bookedByKey.get(slotKey(day, min));
+    if (booked) {
+      // 예약 셀은 잠금 — 왜 안 되는지·어떻게 풀어야 하는지 안내(드래그 경로는 무음, 여기서만).
+      const now = Date.now();
+      if (now - lastLockToastRef.current > LOCK_TOAST_INTERVAL_MS) {
+        lastLockToastRef.current = now;
+        toast.info(lockMessage(booked.tier, booked.label || "a student"));
+      }
+      return;
+    }
     dragModeRef.current = selected.has(slotKey(day, min)) ? "remove" : "add";
     draggingRef.current = true;
     applyCell(day, min);
@@ -176,8 +204,9 @@ export default function AvailabilityGrid({
                 {DISPLAY_DAYS.map((day) => {
                   const key = slotKey(day, min);
                   const on = selected.has(key);
-                  const tier = bookedTier.get(key);
-                  const title = tier ? `${bookedLabel.get(key) ?? "Booked"} · ${tier === "confirmed" ? "Booked" : "Awaiting payment"}` : undefined;
+                  const booked = bookedByKey.get(key);
+                  const tier = booked?.tier;
+                  const title = booked ? `${booked.label || "Student"} · ${TIER_LABEL[booked.tier]}` : undefined;
                   return (
                     <div
                       key={day}
@@ -188,15 +217,13 @@ export default function AvailabilityGrid({
                       className={cn(
                         "border-rule-faint h-7 flex-1 border-l first:border-l-0",
                         !readOnly && !tier && "touch-none",
-                        tier === "confirmed"
-                          ? "cursor-not-allowed bg-[#1E7E34]"
-                          : tier === "pending"
-                            ? "cursor-not-allowed bg-[#6B4AD4]/55"
-                            : on
-                              ? readOnly
-                                ? "bg-accent-blue/40"
-                                : "bg-progress"
-                              : !readOnly && "hover:bg-progress/10 bg-white",
+                        tier
+                          ? cn("cursor-not-allowed", TIER_BG[tier])
+                          : on
+                            ? readOnly
+                              ? "bg-accent-blue/40"
+                              : "bg-progress"
+                            : !readOnly && "hover:bg-progress/10 bg-white",
                       )}
                     />
                   );
@@ -238,12 +265,14 @@ export default function AvailabilityGrid({
           <span className="inline-flex items-center gap-1.5">
             <span className={cn("inline-block size-3 rounded-sm", readOnly ? "bg-accent-blue/40" : "bg-progress")} /> Available
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block size-3 rounded-sm bg-[#1E7E34]" /> Booked{!readOnly && " (locked)"}
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block size-3 rounded-sm bg-[#6B4AD4]/55" /> Awaiting payment
-          </span>
+          {(["confirmed", "pending", "requested"] as const)
+            .filter((t) => presentTiers.has(t))
+            .map((t) => (
+              <span key={t} className="inline-flex items-center gap-1.5">
+                <span className={cn("inline-block size-3 rounded-sm", TIER_BG[t])} /> {TIER_LABEL[t]}
+                {!readOnly && " (locked)"}
+              </span>
+            ))}
         </div>
       )}
 

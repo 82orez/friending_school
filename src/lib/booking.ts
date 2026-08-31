@@ -1,6 +1,6 @@
 import "server-only";
 
-import { isValidSlot, lessonEndDate, lessonEndMin, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
+import { deriveBookedSlots, isValidSlot, lessonEndDate, lessonEndMin, TOTAL_SESSIONS, type BookedSlot, type Slot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
 
 // 슬롯 점유 종료 판정 공유 헬퍼. 슬롯을 점유로 취급하는 모든 지점(가용 차감·승인 충돌·그리드 표시)이 공용.
@@ -70,4 +70,22 @@ export async function loadEndedEnrollmentIds(admin: SupabaseLike, teacherIds: st
   }
 
   return ended;
+}
+
+// 슬롯 점유로 취급하는 enrollment 상태(진행중 전부). '거절'/'취소'는 제외.
+export const ACTIVE_BOOKING_STATUSES = ["신청", "승인", "결제대기", "결제완료"] as const;
+
+// 강사 1명의 예약 슬롯(가용 그리드 오버레이 + 잠금 판정) — 조회·종료필터·파생을 한 곳으로.
+// 강사 프로필 page(세션 client)와 updateTeacherAvailability 서버 가드(service_role) 공용 단일 소스.
+export async function loadTeacherBookedSlots(client: SupabaseLike, teacherId: string): Promise<BookedSlot[]> {
+  const { data } = await client
+    .from("enrollments")
+    .select("id, slots, status, student_name, student_english_name")
+    .eq("teacher_id", teacherId)
+    .in("status", ACTIVE_BOOKING_STATUSES as unknown as string[]);
+  const rows = (data ?? []) as { id: string; slots: unknown; status: string; student_name: string | null; student_english_name: string | null }[];
+  if (rows.length === 0) return [];
+  // 종료된 '결제완료'(남은 예정 수업 없음)는 점유에서 제외 — 마지막 수업 다음날부터 슬롯 해제.
+  const ended = await loadEndedEnrollmentIds(client, [teacherId]);
+  return deriveBookedSlots(rows.filter((r) => !(r.status === "결제완료" && ended.has(r.id))));
 }

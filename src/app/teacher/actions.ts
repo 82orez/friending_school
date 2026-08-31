@@ -10,8 +10,8 @@ import { getOrigin } from "@/lib/origin";
 import { getCourse } from "@/data/courses";
 import { sendSms } from "@/lib/sms";
 import { sendEnrollmentApprovedToAdmin, sendEnrollmentRejectedToAdmin } from "@/lib/mailer";
-import { isValidSlot, slotsOverlap, summarizeSlots, lessonEndDate, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
-import { loadEndedEnrollmentIds } from "@/lib/booking";
+import { isValidSlot, slotsOverlap, subtractSlots, summarizeSlots, lessonEndDate, TOTAL_SESSIONS, type Slot } from "@/lib/availability";
+import { loadEndedEnrollmentIds, loadTeacherBookedSlots } from "@/lib/booking";
 import { logEnrollmentEvent } from "@/lib/events";
 import { notifyCenterManagerOfEnrollment } from "@/lib/center-notify";
 
@@ -88,6 +88,25 @@ export async function updateTeacherAvailability(slots: AvailabilitySlot[]): Prom
   }
 
   const admin = createAdminClient();
+
+  // 예약 슬롯 가드 — 진행중 수강신청(신청/승인/결제대기/결제완료)이 걸린 슬롯은 해제 불가.
+  // 클라(AvailabilityGrid)가 잠그지만 우회·모달 열어둔 사이 새 신청 도착 케이스가 있어 서버가 authoritative.
+  // 해제하려면 '신청'은 먼저 거절, 그 외(결제대기/결제완료)는 관리자 문의.
+  const booked = await loadTeacherBookedSlots(admin, userId);
+  const submitted: Slot[] = rows.map((r) => ({ day: r.day_of_week, min: r.start_min }));
+  const missing = subtractSlots(
+    booked.map(({ day, min }) => ({ day, min })),
+    submitted,
+  );
+  if (missing.length > 0) {
+    const tierByKey = new Map(booked.map((b) => [`${b.day}-${b.min}`, b.tier]));
+    const onlyRequested = missing.every((s) => tierByKey.get(`${s.day}-${s.min}`) === "requested");
+    const how = onlyRequested
+      ? "Decline the enrollment request first in Enrollment Requests."
+      : "Please contact the admin to release confirmed slots.";
+    return { error: `Booked slots can't be removed: ${summarizeSlots(missing, false, " / ")}. ${how}` };
+  }
+
   // 1) 본인 슬롯 전체 삭제.
   const { error: delErr } = await admin.from("teacher_availability").delete().eq("teacher_id", userId);
   if (delErr) return { error: "Something went wrong while saving." };

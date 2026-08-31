@@ -1,20 +1,22 @@
 // 강사 주간 가능 시간(availability)을 A4 세로 한 페이지 인쇄용 HTML로 렌더 → 전용 창에서 window.print().
 // 브라우저 "다른 이름으로 PDF 저장"으로 PDF화(새 의존성 없음). 그리드 상수는 @/lib/availability 단일 소스 재사용.
-import { DAY_LABELS, DISPLAY_DAYS, ROW_MINS, fmtTime, slotKey, type BookedSlot, type Slot } from "@/lib/availability";
+import { DAY_LABELS, DISPLAY_DAYS, ROW_MINS, TIER_RANK, fmtTime, slotKey, type BookedSlot, type Slot } from "@/lib/availability";
 
-type CellState = "confirmed" | "pending" | "available" | null;
+type CellState = BookedSlot["tier"] | "available" | null;
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-// 슬롯 키 → 상태 맵. 예약(confirmed>pending)이 가용보다 우선(AvailabilityGrid와 동일 규칙).
+// 슬롯 키 → 상태 맵. 예약(confirmed>pending>requested)이 가용보다 우선(AvailabilityGrid와 동일 규칙).
 function buildStateMap(slots: Slot[], bookedSlots: BookedSlot[]): Map<string, CellState> {
   const m = new Map<string, CellState>();
   for (const s of slots) m.set(slotKey(s.day, s.min), "available");
   for (const b of bookedSlots) {
     const k = slotKey(b.day, b.min);
-    if (m.get(k) === "confirmed") continue; // confirmed 우선
+    const cur = m.get(k);
+    // available은 항상 최하위, 예약끼리는 랭크 비교.
+    if (cur && cur !== "available" && TIER_RANK[cur] >= TIER_RANK[b.tier]) continue;
     m.set(k, b.tier);
   }
   return m;
@@ -24,6 +26,7 @@ const CELL_BG: Record<Exclude<CellState, null>, string> = {
   available: "#cfe0ff", // 연한 파랑
   confirmed: "#1E7E34", // 초록
   pending: "#8a6fdd", // 보라
+  requested: "#e0a23c", // 앰버 — 신청(승인 대기)
 };
 
 export function buildTimetablePrintHtml({
@@ -57,6 +60,7 @@ export function buildTimetablePrintHtml({
         <span><i style="background:${CELL_BG.available}"></i>가능</span>
         <span><i style="background:${CELL_BG.confirmed}"></i>예약 확정</span>
         <span><i style="background:${CELL_BG.pending}"></i>결제 대기</span>
+        <span><i style="background:${CELL_BG.requested}"></i>승인 대기</span>
       </div>`
     : `<div class="legend"><span><i style="background:${CELL_BG.available}"></i>가능 시간</span></div>`;
 
