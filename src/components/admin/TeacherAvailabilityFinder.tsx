@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { subtractSlots } from "@/lib/availability";
 import CurrentTeacherTable from "@/components/admin/CurrentTeacherTable";
 import type { CurrentTeacher } from "@/components/admin/TeacherRequestsManager";
 
@@ -77,7 +78,9 @@ export default function TeacherAvailabilityFinder({ teachers, onView }: { teache
     for (let m = startMin; m < endMin; m += SLOT_MIN) requiredMins.push(m);
     const days = Array.from(selectedDays);
     return teachers.filter((t) => {
-      const set = new Set(t.slots.map((s) => slotKey(s.day, s.min)));
+      // ⚠️ t.slots는 주간 가용 "템플릿"이라 이미 학생 수업이 잡힌 시간도 포함한다 → 예약(bookedSlots)을 차감해야
+      //    안내 문구대로 "해당 시간 전체가 비어 있는 강사"가 된다.
+      const set = new Set(subtractSlots(t.slots, t.bookedSlots).map((s) => slotKey(s.day, s.min)));
       // 선택한 모든 요일(AND)에서, 범위 내 모든 슬롯이 존재해야 함.
       return days.every((day) => requiredMins.every((min) => set.has(slotKey(day, min))));
     });

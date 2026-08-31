@@ -23,6 +23,9 @@ import {
   enumerateLessonSessions,
   isValidSlot,
   teacherHasAllSlots,
+  subtractSlots,
+  slotsOverlap,
+  dowOf,
   fmtTime,
   summarizeSlots,
   lessonEndMin,
@@ -32,7 +35,7 @@ import {
   type Slot,
 } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
-import { todayKst } from "@/lib/booking";
+import { loadBookedSlotsByTeacher, loadStudentBusySlots, todayKst } from "@/lib/booking";
 import { fmtDateKo, formatWon, prepSmsTitle } from "@/lib/prep";
 import { createMakeupClass, weekdayOf, addDaysStr, type ClassForMakeup } from "@/lib/makeup";
 import { resolveCenterId } from "@/lib/center";
@@ -1676,6 +1679,23 @@ export async function createTestEnrollment(input: {
   // 학생 스냅샷(없어도 허용 — 테스트 우회). 한국 관례 성+이름 붙임.
   const { data: student } = await admin.from("profiles").select("first_name, last_name, english_name, phone").eq("id", studentId).maybeSingle();
   const studentName = student ? [student.last_name, student.first_name].filter(Boolean).join("").trim() || null : null;
+
+  // 예약 무결성 — 학생 경로(submitEnrollment)와 동일 규칙을 서버에서 적용(클라 필터만 믿으면 중복 예약이 만들어진다).
+  // ① 시작일 요일이 선택 요일 중 하나여야 함 — 아니면 결제확정 시 생성되는 첫 수업일이 어긋난다.
+  if (!slots.some((s) => s.day === dowOf(startDate))) {
+    return { ok: false, error: "시작일은 선택한 수업 요일 중 하나여야 합니다." };
+  }
+  // ② 강사 주간 가용 − 진행중 예약(본인 제외) ⊇ 요청 슬롯.
+  const { data: availRows } = await admin.from("teacher_availability").select("day_of_week, start_min").eq("teacher_id", teacherId);
+  const teacherSlots: Slot[] = (availRows ?? []).map((r: { day_of_week: number; start_min: number }) => ({ day: r.day_of_week, min: r.start_min }));
+  const booked = await loadBookedSlotsByTeacher(admin, [teacherId], studentId);
+  if (!teacherHasAllSlots(subtractSlots(teacherSlots, booked.get(teacherId) ?? []), slots)) {
+    return { ok: false, error: "강사의 주간 가용시간이 아니거나 이미 예약된 시간입니다. 일정을 다시 선택해 주세요." };
+  }
+  // ③ 학생 본인 시간 충돌.
+  if (slotsOverlap(slots, await loadStudentBusySlots(admin, studentId))) {
+    return { ok: false, error: "해당 학생이 이미 같은 시간에 신청한 수업이 있습니다. 일정을 다시 선택해 주세요." };
+  }
 
   const { data: inserted, error: insErr } = await admin
     .from("enrollments")

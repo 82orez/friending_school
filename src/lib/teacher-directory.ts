@@ -7,13 +7,14 @@ import {
   summarizeWeekdays,
   scheduleDateRange,
   isValidSlot,
+  subtractSlots,
   dowOf,
   TOTAL_SESSIONS,
   type BookedSlot,
   type Slot,
 } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
-import { loadEndedEnrollmentIds } from "@/lib/booking";
+import { ACTIVE_BOOKING_STATUSES, loadBookedSlotsByTeacher, loadEndedEnrollmentIds } from "@/lib/booking";
 import type { CurrentTeacher, TeacherClassItem, TeacherCoverItem } from "@/components/admin/TeacherRequestsManager";
 import type { AdminSession } from "@/components/admin/ClassWeekGrid";
 import type { CenterTeacher } from "@/components/center/ReassignModal";
@@ -91,7 +92,8 @@ export function buildCoverSessions(rows: TeacherClassRow[], teacherIds: string[]
 }
 
 // 센터 스코프 강사 디렉토리 — admin teacher-requests 페이지의 CurrentTeacher 조립을 재사용(센터 소속 강사만).
-// 프로필·주간 가용·진행 중 강좌(승인/결제대기/결제완료, 종료분 제외) 집계 포함. 가드(requireCenterManager) 후 service_role로 호출.
+// 프로필·주간 가용·진행 중 강좌 집계 포함. 가드(requireCenterManager) 후 service_role로 호출.
+// 점유(bookedSlots)는 진행중 전부, 「수업 보기」 목록은 '신청' 제외 — 종료된 '결제완료'는 양쪽 다 해제.
 export async function loadCenterTeachers(admin: ReturnType<typeof createAdminClient>, centerIds: string[]): Promise<CurrentTeacher[]> {
   if (centerIds.length === 0) return [];
 
@@ -140,7 +142,8 @@ export async function loadCenterTeachers(admin: ReturnType<typeof createAdminCli
       "id, teacher_id, course, course_title, course_english_title, slots, status, start_date, total_sessions, student_name, student_english_name",
     )
     .in("teacher_id", teacherIds)
-    .in("status", ["승인", "결제대기", "결제완료"]);
+    // ⚠️ 한 쿼리 두 용도: 그리드 오버레이는 '신청'까지 점유(강사 화면과 일치), 아래 「수업 보기」 목록에서는 '신청'을 걸러낸다.
+    .in("status", ACTIVE_BOOKING_STATUSES as unknown as string[]);
   const ended = await loadEndedEnrollmentIds(admin, teacherIds);
   const rowsByTeacher = new Map<string, NonNullable<typeof enrollRows>>();
   for (const r of enrollRows ?? []) {
@@ -183,25 +186,28 @@ export async function loadCenterTeachers(admin: ReturnType<typeof createAdminCli
   const coverByTeacher = buildCoverSessions(classRows, teacherIds, nameById);
 
   rowsByTeacher.forEach((rs, tid) => {
-    const items: TeacherClassItem[] = rs.map((r) => {
-      const agg = aggByEnrollment.get(r.id);
-      return {
-        enrollmentId: r.id,
-        course: r.course,
-        courseTitle: r.course_title,
-        courseEnglishTitle: r.course_english_title,
-        studentName: r.student_name,
-        studentEnglishName: r.student_english_name,
-        status: r.status,
-        slots: (r.slots ?? []) as { day: number; min: number }[],
-        startDate: r.start_date,
-        totalSessions: r.total_sessions ?? TOTAL_SESSIONS,
-        total: agg?.total ?? 0,
-        done: agg?.done ?? 0,
-        nextDate: agg?.nextDate ?? null,
-        nextMin: agg?.nextMin ?? null,
-      };
-    });
+    // '신청'은 그리드 점유 표시 전용 — 아직 강사 승인 전이라 「수업 보기」 목록에는 넣지 않는다.
+    const items: TeacherClassItem[] = rs
+      .filter((r) => r.status !== "신청")
+      .map((r) => {
+        const agg = aggByEnrollment.get(r.id);
+        return {
+          enrollmentId: r.id,
+          course: r.course,
+          courseTitle: r.course_title,
+          courseEnglishTitle: r.course_english_title,
+          studentName: r.student_name,
+          studentEnglishName: r.student_english_name,
+          status: r.status,
+          slots: (r.slots ?? []) as { day: number; min: number }[],
+          startDate: r.start_date,
+          totalSessions: r.total_sessions ?? TOTAL_SESSIONS,
+          total: agg?.total ?? 0,
+          done: agg?.done ?? 0,
+          nextDate: agg?.nextDate ?? null,
+          nextMin: agg?.nextMin ?? null,
+        };
+      });
     items.sort((a, b) => {
       const an = a.nextDate ?? "9999-99-99";
       const bn = b.nextDate ?? "9999-99-99";
@@ -363,6 +369,10 @@ export async function loadCenterTeacherCards(admin: ReturnType<typeof createAdmi
     slotsByTeacher.set(s.teacher_id, list);
   }
 
+  // 진행중 예약을 차감해 "실제로 비어 있는" 슬롯만 노출 — ReassignModal이 이 slots로 대체 후보를 거른다.
+  // (서버 reassignClassCore는 classes 충돌만 보므로, 아직 classes가 없는 신청/승인/결제대기 건은 여기서만 걸러진다.)
+  const booked = await loadBookedSlotsByTeacher(admin, teacherIds);
+
   return teacherRows
     .map((t) => ({
       id: t.id,
@@ -370,7 +380,7 @@ export async function loadCenterTeacherCards(admin: ReturnType<typeof createAdmi
       nationality: t.nationality,
       gender: t.gender,
       avatarUrl: t.avatar_url,
-      slots: slotsByTeacher.get(t.id) ?? [],
+      slots: subtractSlots(slotsByTeacher.get(t.id) ?? [], booked.get(t.id) ?? []),
     }))
     .sort((a, b) => a.name.localeCompare(b.name, "ko"));
 }

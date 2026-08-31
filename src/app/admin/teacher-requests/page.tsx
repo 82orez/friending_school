@@ -8,7 +8,7 @@ import TeacherRequestsManager, {
 import { buildCoverSessions, teacherClassesOrFilter, TEACHER_CLASS_SELECT, type TeacherClassRow } from "@/lib/teacher-directory";
 import { deriveBookedSlots, lessonEndMin, TOTAL_SESSIONS, type BookedSlot } from "@/lib/availability";
 import { kstDateMinToMs } from "@/lib/classtime";
-import { loadEndedEnrollmentIds } from "@/lib/booking";
+import { ACTIVE_BOOKING_STATUSES, loadEndedEnrollmentIds } from "@/lib/booking";
 import { FOREIGN_CURRENCIES, ratesFromSettings } from "@/data/currencies";
 import type { RateRow } from "@/lib/rates";
 
@@ -66,7 +66,9 @@ export default async function AdminTeacherRequestsPage() {
     }
   }
 
-  // 현재 강사별 예약(가용 그리드 오버레이용) + 진행 중인 수업 목록 — 승인 후 전부(승인/결제대기/결제완료) 조회 후 강사별 파생.
+  // 현재 강사별 예약(가용 그리드 오버레이용) + 진행 중인 수업 목록 — 진행중 전부(신청/승인/결제대기/결제완료) 조회 후 강사별 파생.
+  // ⚠️ 한 쿼리를 두 용도로 쓴다: 그리드 오버레이는 '신청'까지 점유로 봐야 강사 화면과 일치하고(ACTIVE_BOOKING_STATUSES),
+  //    「수업 보기」 목록은 아직 승인도 안 된 신청을 수업으로 세면 안 되므로 아래에서 '신청'을 걸러낸다.
   const bookedByTeacher = new Map<string, BookedSlot[]>();
   const classesByTeacher = new Map<string, TeacherClassItem[]>();
   const coverByTeacher = new Map<string, TeacherCoverItem[]>();
@@ -75,7 +77,7 @@ export default async function AdminTeacherRequestsPage() {
       .from("enrollments")
       .select("id, teacher_id, course, course_title, slots, status, start_date, total_sessions, student_name, student_english_name")
       .in("teacher_id", teacherIds)
-      .in("status", ["승인", "결제대기", "결제완료"]);
+      .in("status", ACTIVE_BOOKING_STATUSES as unknown as string[]);
     // 종료된 '결제완료'(남은 예정 수업 없음)는 그리드 오버레이·수업 목록에서 제외.
     const ended = await loadEndedEnrollmentIds(admin, teacherIds);
     const rowsByTeacher = new Map<string, NonNullable<typeof enrollRows>>();
@@ -117,24 +119,27 @@ export default async function AdminTeacherRequestsPage() {
     buildCoverSessions(classRows, teacherIds, nameById).forEach((v, k) => coverByTeacher.set(k, v));
 
     rowsByTeacher.forEach((rows, tid) => {
-      const items: TeacherClassItem[] = rows.map((r) => {
-        const agg = aggByEnrollment.get(r.id);
-        return {
-          enrollmentId: r.id,
-          course: r.course,
-          courseTitle: r.course_title,
-          studentName: r.student_name,
-          studentEnglishName: r.student_english_name,
-          status: r.status,
-          slots: (r.slots ?? []) as { day: number; min: number }[],
-          startDate: r.start_date,
-          totalSessions: r.total_sessions ?? TOTAL_SESSIONS,
-          total: agg?.total ?? 0,
-          done: agg?.done ?? 0,
-          nextDate: agg?.nextDate ?? null,
-          nextMin: agg?.nextMin ?? null,
-        };
-      });
+      // '신청'은 그리드 점유 표시 전용 — 아직 강사 승인 전이라 「수업 보기」 목록에는 넣지 않는다.
+      const items: TeacherClassItem[] = rows
+        .filter((r) => r.status !== "신청")
+        .map((r) => {
+          const agg = aggByEnrollment.get(r.id);
+          return {
+            enrollmentId: r.id,
+            course: r.course,
+            courseTitle: r.course_title,
+            studentName: r.student_name,
+            studentEnglishName: r.student_english_name,
+            status: r.status,
+            slots: (r.slots ?? []) as { day: number; min: number }[],
+            startDate: r.start_date,
+            totalSessions: r.total_sessions ?? TOTAL_SESSIONS,
+            total: agg?.total ?? 0,
+            done: agg?.done ?? 0,
+            nextDate: agg?.nextDate ?? null,
+            nextMin: agg?.nextMin ?? null,
+          };
+        });
       // 다음 수업일 오름차순(없으면 뒤), 그다음 시작일.
       items.sort((a, b) => {
         const an = a.nextDate ?? "9999-99-99";
