@@ -109,3 +109,12 @@ export const PREP_ENROLLMENT_BADGE: Record<PrepEnrollmentStatus, string> = {
 // 취소 + payments에 환불 기록이 있으면 이 배지를 쓴다. 색은 학생 화면 「환불됨」(enrollment-status.ts)과 같은 호박색.
 export const PREP_REFUND_LABEL = "환불";
 export const PREP_REFUND_BADGE = "bg-[#FFF4E5] text-[#B45309]";
+
+// ── 강좌 게시판 ────────────────────────────────────────────────────────
+// 본문 길이는 **DB check와 같은 값**이다(prep_board_posts/_comments) — 바꿀 땐 마이그레이션과 함께.
+// 클라 maxLength와 서버 slice가 같은 상수를 보게 하려고 여기 한 곳에 둔다.
+export const PREP_BOARD_POST_MAX = 1000;
+export const PREP_BOARD_COMMENT_MAX = 300;
+
+// 일반 글 「더보기」 단위. 공지는 개설 프렌더만 쓸 수 있어 폭증 위험이 없으므로 페이징하지 않는다.
+export const PREP_BOARD_PAGE_SIZE = 20;

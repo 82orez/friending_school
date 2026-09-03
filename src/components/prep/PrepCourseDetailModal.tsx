@@ -12,6 +12,7 @@ import { roomLevelLabelKo } from "@/data/room-levels";
 import { PAYMENT_BANK } from "@/data/payment";
 import { PREP_APPLY_CLOSED_MSG, PREP_GUIDE, PREP_PAYMENT_DEADLINE_LABEL, PREP_PAYMENT_DEADLINE_MSG } from "@/data/prep";
 import type { HostProfile } from "@/components/friending/FriendingRooms";
+import PrepCourseBoard from "@/components/prep/PrepCourseBoard";
 import {
   gradientOf,
   hostLabel,
@@ -340,15 +341,10 @@ export default function PrepCourseDetailModal({
             </section>
           )}
 
-          {/* ⑦ 게시판 — 자리만. 공지·질문은 다음 단계(테이블·알림이 함께 필요하다). */}
-          {show("board") && (
-            <section className="bg-surface rounded-xl p-4">
-              <h3 className="text-ink mb-2 text-[13px] font-extrabold">게시판</h3>
-              <p className="text-muted-fg-faint text-[13px] leading-relaxed">
-                강좌 게시판은 준비 중이에요. 곧 강좌별 공지와 질문을 이곳에 남길 수 있습니다.
-              </p>
-            </section>
-          )}
+          {/* ⑦ 게시판 — ⚠️ 여기만 `show("board")`가 아니라 `tab === "board"`다(「전체」 탭에서 제외).
+              마운트가 곧 데이터 로드라 탭을 눌러야 요청이 나가고, 길이를 예측할 수 없는 상호작용
+              영역이라 「전체」의 훑어보기 흐름을 끊지 않게 한다. key로 강좌가 바뀌면 상태를 버린다. */}
+          {tab === "board" && <PrepCourseBoard key={course.id} courseId={course.id} isLoggedIn={isLoggedIn} />}
         </div>
 
         <div className="border-rule flex flex-wrap justify-end gap-2 border-t px-5 py-4">
