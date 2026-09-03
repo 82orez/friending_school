@@ -82,7 +82,7 @@ function StatCard({ label, value, sub, tone }: { label: string; value: string; s
   );
 }
 
-// 프렙 수강신청 관리 — 무통장 입금 확인이 관리자 몫이라 강좌를 넘나들며 처리할 화면이 필요하다.
+// 샤우팅 수강신청 관리 — 무통장 입금 확인이 관리자 몫이라 강좌를 넘나들며 처리할 화면이 필요하다.
 // 액션은 기존 서버 액션(confirmPrepPayment · cancelPrepEnrollmentAsAdmin)을 그대로 쓴다.
 export default function PrepEnrollmentsManager({
   rows: initialRows,
@@ -170,7 +170,7 @@ export default function PrepEnrollmentsManager({
 
   const patchRow = (id: string, patch: Partial<AdminPrepEnrollmentRow>) => setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
-  // 다이얼로그를 닫으며 state를 비우므로 대상·사유를 먼저 스냅샷한다(프렙 관리 화면 공통 패턴).
+  // 다이얼로그를 닫으며 state를 비우므로 대상·사유를 먼저 스냅샷한다(샤우팅 관리 화면 공통 패턴).
   const confirmPay = () => {
     const target = payTarget;
     setPayTarget(null);
@@ -229,9 +229,9 @@ export default function PrepEnrollmentsManager({
 
   return (
     <div>
-      <h1 className="text-ink text-2xl font-extrabold">프렙 수강신청 관리</h1>
+      <h1 className="text-ink text-2xl font-extrabold">샤우팅 수강신청 관리</h1>
       <p className="text-muted-fg mt-1 text-sm">
-        전 강좌의 프렙 수강신청입니다. 무통장 입금을 확인해 수강을 확정하고, 미입금 건은 취소·입금된 건은 환불 처리합니다.
+        전 강좌의 샤우팅 수강신청입니다. 무통장 입금을 확인해 수강을 확정하고, 미입금 건은 취소·입금된 건은 환불 처리합니다.
       </p>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -552,7 +552,7 @@ export default function PrepEnrollmentsManager({
       <p className="text-muted-fg-faint mt-4 text-xs">
         강좌 자체의 심사·삭제는{" "}
         <Link href="/admin/prep" className="text-accent-blue-ink underline">
-          프렙 강좌
+          샤우팅 강좌
         </Link>{" "}
         탭에서 합니다.
       </p>

@@ -7,9 +7,9 @@ import { PREP_PAGE } from "@/data/prep-page";
 import { formatWon } from "@/lib/prep";
 import PrepHeroArt from "@/components/prep/PrepHeroArt";
 
-export const metadata: Metadata = { title: "프렙 강좌 — 프렌딩 스쿨" };
+export const metadata: Metadata = { title: "샤우팅 강좌 — 프렌딩 스쿨" };
 
-// 프렙 공개 소개 페이지. 문구는 전부 src/data/prep-page.ts에서 온다.
+// 샤우팅 공개 소개 페이지. 문구는 전부 src/data/prep-page.ts에서 온다.
 // ⚠️ DB를 읽지 않는 **정적 홍보 페이지**다 — prep_courses는 아직 공개 RLS 정책이 없고,
 //    실제 개설 강좌 목록은 수강신청 동선과 함께 붙인다(docs/prep.md).
 export default function PrepPage() {

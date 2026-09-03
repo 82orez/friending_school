@@ -56,6 +56,46 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   const now = Date.now();
   const rows = ((data ?? []) as RoomRow[]).filter((r) => kstDateMinToMs(r.session_date, r.start_min + r.duration_min) > now);
 
+  // ── 샤우팅 강좌(수강신청 배너) ──────────────────────────────────────────
+  // ⚠️ 연습방보다 **먼저** 조회한다 — 아래 profiles 배치 조회가 방 개설자와 강좌 프렌더를
+  //    한 번의 .in()으로 함께 읽기 때문이다(카드·상세 모달이 아바타·소개를 쓴다).
+  // 공개 조회 — RLS prep_courses_select_public이 '승인'만 통과시킨다(비로그인 포함).
+  // ⚠️ 마이그레이션 적용 전에는 테이블·정책이 없어 에러가 나지만, data가 null이 되어
+  //    배너가 렌더되지 않을 뿐이다(페이지는 죽지 않는다). 이 성질을 일부러 유지한다.
+  const { data: prepData } = await supabase
+    .from("prep_courses")
+    .select(
+      "id, friender_id, title, description, friender_name, friender_nickname, level, capacity, start_min, duration_min, price_krw, prep_sessions(session_no, session_date, topic)",
+    )
+    .eq("status", "승인");
+
+  type PrepRow = {
+    id: string;
+    friender_id: string;
+    title: string;
+    description: string | null;
+    friender_name: string | null;
+    friender_nickname: string | null;
+    level: string;
+    capacity: number;
+    start_min: number;
+    duration_min: number;
+    price_krw: number;
+    prep_sessions: { session_no: number; session_date: string; topic: string | null }[] | null;
+  };
+
+  // 중도 신청 — 시작된 강좌도 **남은 회차가 있으면** 계속 받는다(RPC의 ended 판정과 같은 기준).
+  // 잔여 회차·청구액 계산은 src/lib/prep.ts가 소유한다(RPC와 같은 공식).
+  const prepRows = ((prepData ?? []) as unknown as PrepRow[])
+    .map((c) => {
+      // 커리큘럼 탭이 회차 번호 순으로 읽으므로 여기서 한 번만 정렬해 둔다.
+      const sessions = (c.prep_sessions ?? []).slice().sort((a, b) => a.session_no - b.session_no);
+      const dates = sessions.map((s) => s.session_date).sort();
+      return { ...c, sessions, dates, remaining: prepRemainingSessions(dates, c.start_min, c.duration_min) };
+    })
+    .filter((c) => c.remaining.length > 0)
+    .sort((a, b) => a.remaining[0].localeCompare(b.remaining[0]));
+
   // 참여 인원 집계 — 참가자 RLS는 select_own뿐이라 카운트는 service_role로 센다
   // (참가자 신원은 공개하지 않고 숫자만 노출).
   const countByRoom = new Map<string, number>();
@@ -63,8 +103,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   // 스냅샷 컬럼을 두지 않고 매 요청 조회하는 이유: ① 사진·소개 수정이 즉시 반영돼야 하고
   // ② cleanupOldAvatars가 옛 파일을 지워 스냅샷 avatar URL은 깨진다.
   // 방마다 중복 직렬화되지 않도록 friender_id 기준 맵으로 모아 별도 prop으로 넘긴다.
+  // ⚠️ 방이 없어도 강좌가 있으면 프로필을 읽어야 한다(강좌 카드의 아바타·프렌더 소개).
   const hosts: Record<string, HostProfile> = {};
-  if (rows.length > 0) {
+  if (rows.length > 0 || prepRows.length > 0) {
     const admin = createAdminClient();
 
     const { data: parts } = await admin
@@ -86,7 +127,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
     const { data: profs } = await admin
       .from("profiles")
       .select("id, avatar_url, nickname, first_name, last_name, bio, nationality, gender")
-      .in("id", Array.from(new Set(rows.map((r) => r.friender_id))));
+      // 방 개설자 + 강좌 프렌더를 한 번에 — 같은 사람이 둘 다 하는 경우가 흔하다.
+      .in("id", Array.from(new Set([...rows.map((r) => r.friender_id), ...prepRows.map((c) => c.friender_id)])));
     for (const p of (profs ?? []) as ProfileRow[]) {
       hosts[p.id] = {
         // 표시명 규칙: 닉네임 > 성+이름(공백 없이) > "프렌더".
@@ -108,41 +150,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
     const { data: mine } = await supabase.from("friender_room_participants").select("room_id, entered_at").eq("user_id", user.id);
     for (const m of (mine ?? []) as { room_id: string; entered_at: string | null }[]) enteredAtByRoom.set(m.room_id, m.entered_at);
   }
-
-  // ── 프렙 강좌(수강신청 배너) ──────────────────────────────────────────
-  // 공개 조회 — RLS prep_courses_select_public이 '승인'만 통과시킨다(비로그인 포함).
-  // ⚠️ 마이그레이션 적용 전에는 테이블·정책이 없어 에러가 나지만, data가 null이 되어
-  //    배너가 렌더되지 않을 뿐이다(페이지는 죽지 않는다). 이 성질을 일부러 유지한다.
-  const { data: prepData } = await supabase
-    .from("prep_courses")
-    .select(
-      "id, title, description, friender_name, friender_nickname, level, capacity, start_min, duration_min, price_krw, prep_sessions(session_date)",
-    )
-    .eq("status", "승인");
-
-  type PrepRow = {
-    id: string;
-    title: string;
-    description: string | null;
-    friender_name: string | null;
-    friender_nickname: string | null;
-    level: string;
-    capacity: number;
-    start_min: number;
-    duration_min: number;
-    price_krw: number;
-    prep_sessions: { session_date: string }[] | null;
-  };
-
-  // 중도 신청 — 시작된 강좌도 **남은 회차가 있으면** 계속 받는다(RPC의 ended 판정과 같은 기준).
-  // 잔여 회차·청구액 계산은 src/lib/prep.ts가 소유한다(RPC와 같은 공식).
-  const prepRows = ((prepData ?? []) as unknown as PrepRow[])
-    .map((c) => {
-      const dates = (c.prep_sessions ?? []).map((s) => s.session_date).sort();
-      return { ...c, dates, remaining: prepRemainingSessions(dates, c.start_min, c.duration_min) };
-    })
-    .filter((c) => c.remaining.length > 0)
-    .sort((a, b) => a.remaining[0].localeCompare(b.remaining[0]));
 
   // 신청자 수는 신청자 RLS(select_own) 때문에 세션 client로 못 읽는다 → 카운트만 service_role
   // (연습방 참여 인원과 같은 방식·같은 이유. 신원은 노출하지 않는다).
@@ -166,15 +173,20 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
   const prepCourses: OpenPrepCourse[] = prepRows.map((c) => ({
     id: c.id,
+    frienderId: c.friender_id,
     title: c.title,
     description: c.description,
-    frienderName: c.friender_name?.trim() || c.friender_nickname?.trim() || "프렌더",
+    // hosts 조회가 실패했거나 프렌더가 방금 탈퇴한 경우의 폴백.
+    // ⚠️ 공개 화면은 **닉네임 우선**이다(연습방 카드와 같은 규칙) — 본명 우선은 admin 화면의 규칙.
+    frienderName: c.friender_nickname?.trim() || c.friender_name?.trim() || "프렌더",
     level: c.level,
     capacity: c.capacity,
     startMin: c.start_min,
     durationMin: c.duration_min,
     priceKrw: c.price_krw,
     sessionCount: c.dates.length,
+    // 커리큘럼(주 단위) 탭용 — 회차 번호·날짜·주제. topic은 초안 단계 강좌에서 비어 있을 수 있다.
+    sessions: c.sessions.map((s) => ({ no: s.session_no, date: s.session_date, topic: s.topic })),
     firstDate: c.dates[0],
     lastDate: c.dates[c.dates.length - 1],
     // 잔여(=실제로 사게 되는 것). 시작 전 강좌는 잔여 = 전체라 청구액도 정가 그대로다.
@@ -223,7 +235,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
     enteredAt: enteredAtByRoom.get(r.id) ?? null,
   }));
 
-  // 프렙 배너 노출 조건 = PrepEnrollBanner의 자체 가드(courses.length === 0 → null)와 같은 값.
+  // 샤우팅 배너 노출 조건 = PrepEnrollBanner의 자체 가드(courses.length === 0 → null)와 같은 값.
   // 히어로·구분선이 배너와 어긋나지 않도록 한 곳에서 뽑아 쓴다.
   const showPrepBanner = prepCourses.length > 0;
 
@@ -235,7 +247,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
       <div className="mx-auto max-w-[1100px] px-5 py-8 md:py-12">
         {/* 히어로 — v9 목업(mainhero_bg01) 이식. 이미지 위에 어둡게 깔고 카피를 올린다.
-            ⚠️ **프렙 배너가 없을 때만** 보여 준다: 둘 다 전폭 다크 비주얼이라 함께 두면 첫 화면이
+            ⚠️ **샤우팅 배너가 없을 때만** 보여 준다: 둘 다 전폭 다크 비주얼이라 함께 두면 첫 화면이
             배너 두 장으로 채워져 정작 강좌·연습방 목록이 접힌다. 배너가 있으면 그것이 페이지 헤더 역할을 한다. */}
         {!showPrepBanner && (
           <section className="relative isolate flex min-h-[140px] items-center justify-center overflow-hidden rounded-2xl md:min-h-[190px]">
@@ -268,9 +280,15 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
 
         {/* 접수 시간창(KST 08:00~19:00)은 서버에서 계산해 초기값으로 넘긴다 — 배너가 1분 틱으로 갱신하되
             첫 렌더 값이 서버·클라에서 갈리면 hydration mismatch가 난다. */}
-        <PrepEnrollBanner courses={prepCourses} isLoggedIn={!!user} profileMissing={profileMissing} applyOpenInitial={isPrepApplyOpen()} />
+        <PrepEnrollBanner
+          courses={prepCourses}
+          hosts={hosts}
+          isLoggedIn={!!user}
+          profileMissing={profileMissing}
+          applyOpenInitial={isPrepApplyOpen()}
+        />
 
-        {/* 유료 프렙 신청과 무료 연습방은 성격이 다른 영역이라 구분선으로 나눈다.
+        {/* 유료 샤우팅 신청과 무료 연습방은 성격이 다른 영역이라 구분선으로 나눈다.
             ⚠️ 배너가 없으면(신청 가능한 강좌 0개) 히어로 바로 아래에 선만 남으므로 함께 숨긴다. */}
         {showPrepBanner && <div aria-hidden className="border-rule mt-8 border-t" />}
 

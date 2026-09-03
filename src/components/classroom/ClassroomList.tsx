@@ -153,9 +153,9 @@ export default function ClassroomList({
 }: {
   classes: ClassItem[];
   isTeacher: boolean;
-  // 프렙 강좌(학생 전용) — ⚠️ /teacher/classroom은 넘기지 않는다(강사 경로엔 프렙이 없음을 타입으로 보장).
+  // 샤우팅 강좌(학생 전용) — ⚠️ /teacher/classroom은 넘기지 않는다(강사 경로엔 샤우팅이 없음을 타입으로 보장).
   // 정규 과정과 **같은 컴포넌트가 선택 상태를 소유**해야 한다: 형제로 두면 정규 상세를 보는 중에도
-  // 프렙 카드가 아래에 남는다(실제로 겪은 문제).
+  // 샤우팅 카드가 아래에 남는다(실제로 겪은 문제).
   prepCourses?: PrepCourseSessions[];
 }) {
   // 강사 화면은 영문, 학생 화면은 한국어.
@@ -249,14 +249,14 @@ export default function ClassroomList({
 
       {landingView === "weekly" ? (
         <>
-          {/* ⚠️ 주간 타임그리드는 ClassItem 전용이라 프렙이 빠진다. 빠졌다는 사실은 그리드를 훑고
+          {/* ⚠️ 주간 타임그리드는 ClassItem 전용이라 샤우팅이 빠진다. 빠졌다는 사실은 그리드를 훑고
               "왜 없지?"가 된 **뒤**에 알면 늦으므로 그리드 **위**에 두고, 어느 강좌가 빠졌는지
               이름까지 말한 뒤 그 자리에서 「과정별」로 넘어갈 수 있게 한다. */}
           {prepCourses.length > 0 && (
             <div className="border-accent-blue/30 bg-accent-blue-soft flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border px-4 py-3">
               <Info aria-hidden className="text-accent-blue-ink size-4 shrink-0" />
               <p className="text-accent-blue-ink min-w-0 flex-1 text-sm font-semibold">
-                주간 시간표에는 <span className="font-extrabold">필리핀 화상영어 과정만</span> 표시됩니다. 프렙 강좌{" "}
+                주간 시간표에는 <span className="font-extrabold">필리핀 화상영어 과정만</span> 표시됩니다. 샤우팅 강좌{" "}
                 <span className="font-extrabold">
                   「{prepCourses[0].courseTitle}」{prepCourses.length > 1 ? ` 외 ${prepCourses.length - 1}개` : ""}
                 </span>
@@ -286,7 +286,7 @@ export default function ClassroomList({
           )}
           {prepCourses.length > 0 && (
             <section>
-              {showHeadings && <h2 className="text-ink mb-3 text-sm font-extrabold">프렙 강좌</h2>}
+              {showHeadings && <h2 className="text-ink mb-3 text-sm font-extrabold">샤우팅 강좌</h2>}
               <div className="grid gap-4 sm:grid-cols-2">
                 {prepCourses.map((c) => (
                   <PrepCourseCard key={c.courseId} course={c} now={now} onSelect={() => setSelectedPrepId(c.courseId)} />

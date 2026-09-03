@@ -177,9 +177,9 @@ export async function sendFrienderApplicationNotification(to: string[], data: Fr
   }
 }
 
-/* ===== 프렙 강좌 개설 승인 요청 알림 (관리자 대상) ===== */
+/* ===== 샤우팅 강좌 개설 승인 요청 알림 (관리자 대상) ===== */
 
-// 프렌더 Plus가 프렙 강좌 심사를 요청하면 관리자에게 보낸다(docs/prep.md의 상태 기계).
+// 프렌더 Plus가 샤우팅 강좌 심사를 요청하면 관리자에게 보낸다(docs/prep.md의 상태 기계).
 // 승인이 해제된 재요청(승인된 강좌를 수정한 경우)도 같은 함수를 쓰고 제목·머리말만 갈린다.
 export type PrepReviewEmailData = {
   frienderName: string;
@@ -220,28 +220,28 @@ function buildPrepReviewHtml(d: PrepReviewEmailData): string {
         )}</td><td style="padding:8px 12px;color:#1a1a1a;border-bottom:1px solid #eee;white-space:pre-wrap">${escapeHtml(v)}</td></tr>`,
     )
     .join("");
-  const heading = d.isResubmit ? "프렙 강좌가 수정되어 다시 심사가 필요합니다" : "새 프렙 강좌 승인 요청이 접수되었습니다";
+  const heading = d.isResubmit ? "샤우팅 강좌가 수정되어 다시 심사가 필요합니다" : "새 샤우팅 강좌 승인 요청이 접수되었습니다";
   return `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
     <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">${escapeHtml(heading)}</h2>
     <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(d.frienderName)}</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
-    <p style="font-size:12px;color:#999;margin:16px 0 0">프렌딩 스쿨 관리자 알림 · 관리자 페이지 「프렙 강좌」 탭에서 승인/거절할 수 있습니다.</p>
+    <p style="font-size:12px;color:#999;margin:16px 0 0">프렌딩 스쿨 관리자 알림 · 관리자 페이지 「샤우팅 강좌」 탭에서 승인/거절할 수 있습니다.</p>
   </div>`;
 }
 
 function buildPrepReviewText(d: PrepReviewEmailData): string {
-  const heading = d.isResubmit ? "프렙 강좌가 수정되어 다시 심사가 필요합니다." : "새 프렙 강좌 승인 요청이 접수되었습니다.";
+  const heading = d.isResubmit ? "샤우팅 강좌가 수정되어 다시 심사가 필요합니다." : "새 샤우팅 강좌 승인 요청이 접수되었습니다.";
   return [heading, "", ...prepReviewRows(d).map(([k, v]) => `${k}: ${v}`)].join("\n");
 }
 
 /**
- * 관리자들에게 프렙 강좌 승인 요청 알림 메일 발송. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ * 관리자들에게 샤우팅 강좌 승인 요청 알림 메일 발송. best-effort — 호출 측에서 try/catch로 감쌀 것.
  * 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않고 로그만 남긴다.
  */
 export async function sendPrepCourseReviewRequestNotification(to: string[], data: PrepReviewEmailData): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn("[mailer] RESEND_API_KEY 미설정 — 프렙 승인요청 알림 메일 생략");
+    console.warn("[mailer] RESEND_API_KEY 미설정 — 샤우팅 승인요청 알림 메일 생략");
     return;
   }
   if (to.length === 0) {
@@ -255,7 +255,7 @@ export async function sendPrepCourseReviewRequestNotification(to: string[], data
       from: FROM,
       to,
       replyTo: data.email || undefined,
-      subject: `[프렙 ${data.isResubmit ? "재승인요청" : "승인요청"}] ${data.frienderName} · ${data.title}`,
+      subject: `[샤우팅 ${data.isResubmit ? "재승인요청" : "승인요청"}] ${data.frienderName} · ${data.title}`,
       html: buildPrepReviewHtml(data),
       text: buildPrepReviewText(data),
     });
@@ -265,9 +265,9 @@ export async function sendPrepCourseReviewRequestNotification(to: string[], data
   }
 }
 
-/* ===== 프렙 강좌 수강신청 알림 (관리자 대상) ===== */
+/* ===== 샤우팅 강좌 수강신청 알림 (관리자 대상) ===== */
 
-// 일반 회원이 프렙 강좌를 신청하면 관리자에게 보낸다. 무통장 입금 확인이 관리자 몫이라
+// 일반 회원이 샤우팅 강좌를 신청하면 관리자에게 보낸다. 무통장 입금 확인이 관리자 몫이라
 // "누가 어느 강좌에 얼마를 넣어야 하는지"가 한눈에 보여야 한다(docs/prep.md의 수강신청 항목).
 export type PrepEnrollmentEmailData = {
   courseTitle: string;
@@ -310,25 +310,25 @@ function buildPrepEnrollmentHtml(d: PrepEnrollmentEmailData): string {
     )
     .join("");
   return `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
-    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">프렙 강좌 수강신청이 접수되었습니다</h2>
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">샤우팅 강좌 수강신청이 접수되었습니다</h2>
     <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(d.studentName)} · ${escapeHtml(d.courseTitle)}</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
-    <p style="font-size:12px;color:#999;margin:16px 0 0">프렌딩 스쿨 관리자 알림 · 입금이 확인되면 관리자 페이지 「프렙 강좌」 탭에서 수강 확정 처리해 주세요.</p>
+    <p style="font-size:12px;color:#999;margin:16px 0 0">프렌딩 스쿨 관리자 알림 · 입금이 확인되면 관리자 페이지 「샤우팅 강좌」 탭에서 수강 확정 처리해 주세요.</p>
   </div>`;
 }
 
 function buildPrepEnrollmentText(d: PrepEnrollmentEmailData): string {
-  return ["프렙 강좌 수강신청이 접수되었습니다.", "", ...prepEnrollmentRows(d).map(([k, v]) => `${k}: ${v}`)].join("\n");
+  return ["샤우팅 강좌 수강신청이 접수되었습니다.", "", ...prepEnrollmentRows(d).map(([k, v]) => `${k}: ${v}`)].join("\n");
 }
 
 /**
- * 관리자들에게 프렙 수강신청 알림 메일 발송. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ * 관리자들에게 샤우팅 수강신청 알림 메일 발송. best-effort — 호출 측에서 try/catch로 감쌀 것.
  * 키 미설정/수신자 없음/발송 실패 시에도 throw하지 않고 로그만 남긴다.
  */
 export async function sendPrepEnrollmentNotification(to: string[], data: PrepEnrollmentEmailData): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn("[mailer] RESEND_API_KEY 미설정 — 프렙 수강신청 알림 메일 생략");
+    console.warn("[mailer] RESEND_API_KEY 미설정 — 샤우팅 수강신청 알림 메일 생략");
     return;
   }
   if (to.length === 0) {
@@ -342,7 +342,7 @@ export async function sendPrepEnrollmentNotification(to: string[], data: PrepEnr
       from: FROM,
       to,
       replyTo: data.studentEmail || undefined,
-      subject: `[프렙 수강신청] ${data.studentName} · ${data.courseTitle}`,
+      subject: `[샤우팅 수강신청] ${data.studentName} · ${data.courseTitle}`,
       html: buildPrepEnrollmentHtml(data),
       text: buildPrepEnrollmentText(data),
     });
@@ -352,7 +352,7 @@ export async function sendPrepEnrollmentNotification(to: string[], data: PrepEnr
   }
 }
 
-/* ===== 프렙 강좌 수강신청 취소 알림 (관리자 대상) ===== */
+/* ===== 샤우팅 강좌 수강신청 취소 알림 (관리자 대상) ===== */
 
 // 학생이 입금 전 신청을 스스로 취소하면 관리자에게 보낸다.
 // ⚠️ 관리자가 **오지 않을 입금을 기다리는 것**을 막는 게 목적이다(자리도 함께 비워진다).
@@ -396,7 +396,7 @@ function buildPrepCancellationHtml(d: PrepCancellationEmailData): string {
     )
     .join("");
   return `<div style="font-family:'Apple SD Gothic Neo',Arial,sans-serif;max-width:560px;margin:0 auto">
-    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">프렙 강좌 수강신청이 취소되었습니다</h2>
+    <h2 style="font-size:18px;color:#1a1a1a;margin:0 0 4px">샤우팅 강좌 수강신청이 취소되었습니다</h2>
     <p style="font-size:14px;color:#666;margin:0 0 16px">${escapeHtml(d.studentName)} · ${escapeHtml(d.courseTitle)}</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #eee;border-radius:8px;overflow:hidden">${tr}</table>
     <p style="font-size:12px;color:#999;margin:16px 0 0">프렌딩 스쿨 관리자 알림 · 신청자가 입금 전에 직접 취소했습니다. 이 건의 입금은 기다리지 않으셔도 됩니다.</p>
@@ -404,16 +404,16 @@ function buildPrepCancellationHtml(d: PrepCancellationEmailData): string {
 }
 
 function buildPrepCancellationText(d: PrepCancellationEmailData): string {
-  return ["프렙 강좌 수강신청이 취소되었습니다.", "", ...prepCancellationRows(d).map(([k, v]) => `${k}: ${v}`)].join("\n");
+  return ["샤우팅 강좌 수강신청이 취소되었습니다.", "", ...prepCancellationRows(d).map(([k, v]) => `${k}: ${v}`)].join("\n");
 }
 
 /**
- * 관리자들에게 프렙 수강신청 취소 알림 메일 발송. best-effort — 호출 측에서 try/catch로 감쌀 것.
+ * 관리자들에게 샤우팅 수강신청 취소 알림 메일 발송. best-effort — 호출 측에서 try/catch로 감쌀 것.
  */
 export async function sendPrepCancellationNotification(to: string[], data: PrepCancellationEmailData): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn("[mailer] RESEND_API_KEY 미설정 — 프렙 수강신청 취소 알림 메일 생략");
+    console.warn("[mailer] RESEND_API_KEY 미설정 — 샤우팅 수강신청 취소 알림 메일 생략");
     return;
   }
   if (to.length === 0) {
@@ -427,7 +427,7 @@ export async function sendPrepCancellationNotification(to: string[], data: PrepC
       from: FROM,
       to,
       replyTo: data.studentEmail || undefined,
-      subject: `[프렙 신청취소] ${data.studentName} · ${data.courseTitle}`,
+      subject: `[샤우팅 신청취소] ${data.studentName} · ${data.courseTitle}`,
       html: buildPrepCancellationHtml(data),
       text: buildPrepCancellationText(data),
     });

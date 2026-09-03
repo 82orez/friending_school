@@ -14,7 +14,7 @@ import { roomLevelLabelKo } from "@/data/room-levels";
 import { PREP_APPLY_CLOSED_MSG } from "@/data/prep";
 import { PAYMENT_BANK } from "@/data/payment";
 
-// 프렙 수강신청 — 일반 회원 동선이라 역할 가드가 없다(로그인만 확인).
+// 샤우팅 수강신청 — 일반 회원 동선이라 역할 가드가 없다(로그인만 확인).
 // 신청=RPC(정원·중복·시작 여부·전화 인증을 원자적으로 검사), 취소=service_role 상태 변경.
 
 export type PrepEnrollResult = { ok: boolean; error?: string };
@@ -166,7 +166,7 @@ async function notifyPrepCancellation(admin: any, courseId: string, row: Cancell
     if (fphone) {
       await sendSms(
         fphone,
-        `[프렌딩 스쿨] '${prepSmsTitle(c.title)}' 프렙 강좌의 수강신청 1건이 취소되었습니다. (입금 전 취소 · 남은 신청 ${remaining}/${c.capacity}명)`,
+        `[프렌딩 스쿨] '${prepSmsTitle(c.title)}' 샤우팅 강좌의 수강신청 1건이 취소되었습니다. (입금 전 취소 · 남은 신청 ${remaining}/${c.capacity}명)`,
       );
     }
   } catch (err) {
@@ -234,7 +234,7 @@ async function notifyPrepEnrollment(admin: any, courseId: string, userId: string
       await sendSms(
         sphone,
         [
-          `[프렌딩 스쿨] '${prepSmsTitle(c.title)}' 프렙 강좌 신청이 접수되었습니다.`,
+          `[프렌딩 스쿨] '${prepSmsTitle(c.title)}' 샤우팅 강좌 신청이 접수되었습니다.`,
           `수업 ${period} ${fmtTime(c.start_min)}~${fmtRoomEnd(c.start_min + c.duration_min)}`,
           `입금액 ${formatWon(priceKrw)}`,
           `입금 계좌 ${PAYMENT_BANK.bank} ${PAYMENT_BANK.account} (예금주 ${PAYMENT_BANK.holder})`,
@@ -272,7 +272,7 @@ async function notifyPrepEnrollment(admin: any, courseId: string, userId: string
     if (fphone) {
       await sendSms(
         fphone,
-        `[프렌딩 스쿨] '${prepSmsTitle(c.title)}' 프렙 강좌에 새 수강신청이 있습니다. (${count ?? 1}/${c.capacity}명 · ${formatWon(priceKrw)} · 입금 확인 후 확정)`,
+        `[프렌딩 스쿨] '${prepSmsTitle(c.title)}' 샤우팅 강좌에 새 수강신청이 있습니다. (${count ?? 1}/${c.capacity}명 · ${formatWon(priceKrw)} · 입금 확인 후 확정)`,
       );
     }
   } catch (err) {

@@ -122,7 +122,7 @@ export default function PrepManager({
 
   return (
     <div>
-      <h2 className="text-ink text-lg font-extrabold">프렙 강좌</h2>
+      <h2 className="text-ink text-lg font-extrabold">샤우팅 강좌</h2>
       <p className="text-muted-fg mt-1 text-sm">
         월 {PREP_SESSION_COUNT}회 정규 과정을 개설합니다. 기본 수업일은 매주 월~금이고, 필요하면 캘린더에서 일자를 바꿀 수 있어요.
         <br />

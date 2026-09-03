@@ -2037,7 +2037,7 @@ export async function setFrienderTier(userId: string, target: "friender" | "frie
   return { ok: true };
 }
 
-/* ===== 프렙 강좌 개설 심사 (docs/prep.md) ===== */
+/* ===== 샤우팅 강좌 개설 심사 (docs/prep.md) ===== */
 
 // 프렌더 화면과 admin 심사 목록이 함께 바뀐다(프렌더 쪽 prep-actions.ts의 revalidatePrep과 짝).
 function revalidatePrepConsumers(): void {
@@ -2066,7 +2066,7 @@ async function notifyPrepReviewResult(admin: any, frienderId: string, text: stri
   await notifyUserBySms(admin, frienderId, text, "[prep] 심사 결과");
 }
 
-// 프렙 강좌 승인 — 상태 '신청'만 처리한다. 승인되면 개설 완료다.
+// 샤우팅 강좌 승인 — 상태 '신청'만 처리한다. 승인되면 개설 완료다.
 export async function approvePrepCourse(id: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
@@ -2099,14 +2099,14 @@ export async function approvePrepCourse(id: string): Promise<ActionResult> {
   await notifyPrepReviewResult(
     admin,
     course.friender_id,
-    `[프렌딩 스쿨] '${prepSmsTitle(course.title)}' 프렙 강좌가 승인되었습니다. 예정된 일정대로 진행해 주세요.`,
+    `[프렌딩 스쿨] '${prepSmsTitle(course.title)}' 샤우팅 강좌가 승인되었습니다. 예정된 일정대로 진행해 주세요.`,
   );
 
   revalidatePrepConsumers();
   return { ok: true };
 }
 
-// 프렙 강좌 거절 — 사유 필수(프렌더가 무엇을 고쳐야 할지 알 유일한 경로). 수정 후 재요청할 수 있다.
+// 샤우팅 강좌 거절 — 사유 필수(프렌더가 무엇을 고쳐야 할지 알 유일한 경로). 수정 후 재요청할 수 있다.
 export async function rejectPrepCourse(id: string, adminNote: string): Promise<ActionResult> {
   if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
   if (!id) return { ok: false, error: "잘못된 요청입니다." };
@@ -2128,7 +2128,7 @@ export async function rejectPrepCourse(id: string, adminNote: string): Promise<A
   await notifyPrepReviewResult(
     admin,
     row.friender_id,
-    `[프렌딩 스쿨] '${prepSmsTitle(row.title)}' 프렙 강좌가 승인되지 않았습니다. 사유: ${note.slice(0, 120)} 내용을 수정해 다시 요청하실 수 있습니다.`,
+    `[프렌딩 스쿨] '${prepSmsTitle(row.title)}' 샤우팅 강좌가 승인되지 않았습니다. 사유: ${note.slice(0, 120)} 내용을 수정해 다시 요청하실 수 있습니다.`,
   );
 
   revalidatePrepConsumers();
@@ -2161,7 +2161,7 @@ export async function deletePrepCourseAsAdmin(id: string, adminNote?: string): P
   await notifyPrepReviewResult(
     admin,
     course.friender_id,
-    `[프렌딩 스쿨] '${prepSmsTitle(course.title)}' 프렙 강좌가 관리자에 의해 삭제되었습니다.${note ? ` 사유: ${note.slice(0, 120)}` : ""}`,
+    `[프렌딩 스쿨] '${prepSmsTitle(course.title)}' 샤우팅 강좌가 관리자에 의해 삭제되었습니다.${note ? ` 사유: ${note.slice(0, 120)}` : ""}`,
   );
 
   revalidatePrepConsumers();
@@ -2253,7 +2253,7 @@ export async function cancelPrepEnrollmentAsAdmin(enrollmentId: string, adminNot
     if (row.student_phone?.trim()) {
       await sendSms(
         row.student_phone.trim(),
-        `[프렌딩 스쿨] '${prepSmsTitle(row.course_title)}' 프렙 강좌 수강신청이 취소되었습니다.${note ? ` 사유: ${note.slice(0, 120)}` : ""}`,
+        `[프렌딩 스쿨] '${prepSmsTitle(row.course_title)}' 샤우팅 강좌 수강신청이 취소되었습니다.${note ? ` 사유: ${note.slice(0, 120)}` : ""}`,
       );
     }
   } catch (err) {
@@ -2265,7 +2265,7 @@ export async function cancelPrepEnrollmentAsAdmin(enrollmentId: string, adminNot
   return { ok: true };
 }
 
-// 프렙 환불 — 입금이 확인된('수강확정') 신청을 돌려보낸다. 취소와 갈라 둔 이유는 **돈의 기록**이다:
+// 샤우팅 환불 — 입금이 확인된('수강확정') 신청을 돌려보낸다. 취소와 갈라 둔 이유는 **돈의 기록**이다:
 // payments에 취소액을 누적해 "얼마를 돌려줬는지"가 남아야 정산·문의 응대가 된다(정규 refundEnrollment와 같은 모델).
 // ⚠️ 지금은 무통장뿐이라 PG 취소 경로가 없다 — **실제 송금은 관리자가 계좌로 수동 처리**하고 여기서는 DB만 동기화한다.
 //    카드 결제가 붙으면 payments 갱신 **앞에** cancelPortonePayment(paymentId, {reason, amount})를 끼우는 자리다.
@@ -2322,7 +2322,7 @@ export async function refundPrepEnrollment(enrollmentId: string, refundKrw: numb
     if (e.student_phone?.trim()) {
       await sendSms(
         e.student_phone.trim(),
-        `[프렌딩 스쿨] '${prepSmsTitle(e.course_title)}' 프렙 강좌 수강이 취소되고 ${formatWon(amount)}이 환불 처리되었습니다. 사유: ${note.slice(0, 100)} 환불 계좌 확인을 위해 담당자가 연락드립니다.`,
+        `[프렌딩 스쿨] '${prepSmsTitle(e.course_title)}' 샤우팅 강좌 수강이 취소되고 ${formatWon(amount)}이 환불 처리되었습니다. 사유: ${note.slice(0, 100)} 환불 계좌 확인을 위해 담당자가 연락드립니다.`,
       );
     }
   } catch (err) {
@@ -2345,7 +2345,7 @@ function revalidateRoomConsumers(): void {
   revalidatePath("/friender", "layout");
 }
 
-// SMS에 넣을 방 제목 — 길면 잘라 문자 길이를 지킨다(프렙 제목과 같은 규칙).
+// SMS에 넣을 방 제목 — 길면 잘라 문자 길이를 지킨다(샤우팅 제목과 같은 규칙).
 function roomSmsTitle(title: string): string {
   return title.length > 30 ? `${title.slice(0, 30)}…` : title;
 }

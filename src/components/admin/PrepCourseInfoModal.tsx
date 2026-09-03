@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import PrepSessionCalendar from "@/components/admin/PrepSessionCalendar";
 import type { AdminPrepCourse } from "@/components/admin/PrepCoursesManager";
 
-// 개설된 프렙 강좌 상세(읽기 전용). FrienderInfoModal의 패널 스켈레톤을 이식했다.
+// 개설된 샤우팅 강좌 상세(읽기 전용). FrienderInfoModal의 패널 스켈레톤을 이식했다.
 // 심사 목록 아코디언과 달리 여기서는 프렌더 연락처까지 함께 본다(폐강·일정 문의가 강좌 단위로 생긴다).
 export default function PrepCourseInfoModal({ course, onClose }: { course: AdminPrepCourse | null; onClose: () => void }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -107,7 +107,7 @@ export default function PrepCourseInfoModal({ course, onClose }: { course: Admin
             </div>
           )}
 
-          {/* 수강신청 — 요약만 보여 주고 처리는 「프렙 수강신청」 탭에서 한다.
+          {/* 수강신청 — 요약만 보여 주고 처리는 「샤우팅 수강신청」 탭에서 한다.
               ⚠️ 한때 이 카드가 신청자 목록과 입금 확인·취소 버튼을 통째로 들고 있었는데, 신청이 늘면
               모달(max-h-[90vh]) 안에서 검색도 정렬도 없이 스크롤만 길어졌다 → 전용 탭으로 이관. */}
           <div className="border-rule mt-4 rounded-xl border p-3">

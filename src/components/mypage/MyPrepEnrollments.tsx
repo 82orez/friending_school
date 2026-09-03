@@ -43,7 +43,7 @@ export type MyPrepEnrollment = {
 
 // DB enum → 표시 상태. 문구·색은 src/data/enrollment-status.ts가 갖는다
 // (정규 과정 섹션과 같은 탭에 있어 같은 뜻이면 같은 배지여야 한다).
-// ⚠️ '입금대기'는 화면에 「결제 대기」로 뜬다 — 프렙은 무통장만 있지만 어휘를 하나로 맞춘다.
+// ⚠️ '입금대기'는 화면에 「결제 대기」로 뜬다 — 샤우팅은 무통장만 있지만 어휘를 하나로 맞춘다.
 const DISPLAY_STATUS: Record<MyPrepEnrollment["status"], EnrollmentDisplayStatus> = {
   입금대기: "결제대기",
   수강확정: "수강확정",
@@ -80,15 +80,15 @@ export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrep
     <section className="border-rule overflow-hidden rounded-2xl border bg-white">
       <div className="border-rule flex items-center gap-2 border-b px-6 py-5">
         <span aria-hidden>📘</span>
-        <h2 className="text-ink text-base font-bold">프렙 강좌</h2>
+        <h2 className="text-ink text-base font-bold">샤우팅 강좌</h2>
         <span className="text-muted-fg-faint ml-auto text-sm">{enrollments.length}건</span>
       </div>
 
       {enrollments.length === 0 ? (
         <div className="px-6 py-12 text-center">
-          <p className="text-muted-fg text-sm">신청한 프렙 강좌가 없어요.</p>
+          <p className="text-muted-fg text-sm">신청한 샤우팅 강좌가 없어요.</p>
           <Link href="/prep" className="text-accent-blue-ink mt-3 inline-block text-sm font-bold underline underline-offset-2">
-            프렙 강좌 소개 보기
+            샤우팅 강좌 소개 보기
           </Link>
         </div>
       ) : (

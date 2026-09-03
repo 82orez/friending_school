@@ -84,7 +84,7 @@ function StatCard({ label, value, sub, accent }: { label: string; value: string 
   );
 }
 
-// 프렙 강좌 심사 — FrienderRequestsManager의 축소판(신청 목록 아코디언 + 승인/거절).
+// 샤우팅 강좌 심사 — FrienderRequestsManager의 축소판(신청 목록 아코디언 + 승인/거절).
 // 결과는 서버 액션이 프렌더에게 SMS로 통보한다.
 export default function PrepCoursesManager({ courses }: { courses: AdminPrepCourse[] }) {
   const [rows, setRows] = useState(courses);
@@ -98,7 +98,7 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
   const [deleteTarget, setDeleteTarget] = useState<AdminPrepCourse | null>(null);
   const [reason, setReason] = useState(""); // 선택 입력 — 적으면 프렌더 SMS·화면에 사유로 붙는다
   const [busy, startBusy] = useTransition();
-  // 수강신청 처리(입금 확인·신청 취소)는 이 화면이 아니라 「프렙 수강신청」 탭(/admin/prep-enrollments)이 소유한다.
+  // 수강신청 처리(입금 확인·신청 취소)는 이 화면이 아니라 「샤우팅 수강신청」 탭(/admin/prep-enrollments)이 소유한다.
 
   const pending = rows.filter((r) => r.status === "신청").length;
   const approvedRows = rows.filter((r) => r.status === "승인");
@@ -137,7 +137,7 @@ export default function PrepCoursesManager({ courses }: { courses: AdminPrepCour
 
   return (
     <div>
-      <h1 className="text-ink text-2xl font-extrabold">프렙 강좌</h1>
+      <h1 className="text-ink text-2xl font-extrabold">샤우팅 강좌</h1>
       <p className="text-muted-fg mt-1 text-sm">
         위에서 프렌더 Plus가 올린 개설 요청을 승인/거절하고, 아래 「개설된 강좌」에서 운영 중인 강좌를 관리합니다. 처리 결과는 프렌더에게 SMS로
         전달됩니다.

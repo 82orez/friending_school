@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 const TABS: { href: string; label: string; plusOnly?: boolean }[] = [
   { href: "/friender", label: "프로필" },
   { href: "/friender/rooms", label: "방 관리" },
-  { href: "/friender/prep", label: "프렙 강좌", plusOnly: true },
+  { href: "/friender/prep", label: "샤우팅 강좌", plusOnly: true },
   { href: "/friender/reviews", label: "받은 후기" },
 ];
 
