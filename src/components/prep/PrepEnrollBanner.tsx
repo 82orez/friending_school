@@ -15,7 +15,7 @@ import { roomLevelLabelKo } from "@/data/room-levels";
 import { applyPrepCourse, cancelPrepEnrollment } from "@/app/prep/enroll-actions";
 import PrepHeroArt from "@/components/prep/PrepHeroArt";
 import PrepCourseDetailModal from "@/components/prep/PrepCourseDetailModal";
-import { gradientOf, hostLabel, isOngoing, priceLabel, seatLabel, weekdaysLabel, type OpenPrepCourse } from "@/components/prep/course-display";
+import { gradientOf, hostLabel, isOngoing, periodLabel, priceLabel, type OpenPrepCourse } from "@/components/prep/course-display";
 import type { HostProfile } from "@/components/friending/FriendingRooms";
 import {
   AlertDialog,
@@ -209,17 +209,28 @@ export default function PrepEnrollBanner({
                     ⚠️ 소개가 없어도 자리를 비워 둬 카드마다 CTA 높이가 어긋나지 않게 한다. */}
                 <p className="text-muted-fg mt-1 line-clamp-2 min-h-[2.6em] text-[13px] leading-relaxed">{c.description?.trim() ?? ""}</p>
 
+                {/* 난이도 pill은 빨강 계열(`brand`/`progress` 토큰)로 카드에서 가장 먼저 눈에 띄게 한다. */}
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   <span className="text-accent-blue-ink bg-accent-blue-soft/60 rounded-full px-2.5 py-0.5 text-[11.5px] font-bold">
                     매월 {PREP_SESSION_COUNT}회
                   </span>
-                  <span className="text-muted-fg bg-surface rounded-full px-2.5 py-0.5 text-[11.5px] font-bold">{roomLevelLabelKo(c.level)}</span>
+                  <span className="text-progress bg-brand/10 rounded-full px-2.5 py-0.5 text-[11.5px] font-bold">{roomLevelLabelKo(c.level)}</span>
                 </div>
 
-                <p className="text-muted-fg-faint mt-2 text-[13px] font-semibold">
-                  {seatLabel(c)} · {weekdaysLabel(c.sessions.map((s) => s.date))} · {fmtTime(c.startMin)}~{fmtRoomEnd(c.startMin + c.durationMin)}
-                </p>
-                <p className="text-ink mt-1 text-[13px] font-bold break-words">{priceLabel(c)}</p>
+                {/* 비교 항목은 한 줄 요약 대신 dl 리스트 — 강좌가 여럿일 때 기간·시간·수업일·수강료가
+                    카드마다 같은 자리에 와야 눈으로 훑을 수 있다(신청 현황은 비교에 쓰이지 않아 뺐다). */}
+                <dl className="mt-2.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[13px]">
+                  <dt className="text-muted-fg-faint font-semibold">기간</dt>
+                  <dd className="text-ink font-semibold break-words">{periodLabel(c)}</dd>
+                  <dt className="text-muted-fg-faint font-semibold">시간</dt>
+                  <dd className="text-ink font-semibold">
+                    {fmtTime(c.startMin)}~{fmtRoomEnd(c.startMin + c.durationMin)}
+                  </dd>
+                  <dt className="text-muted-fg-faint font-semibold">수업일</dt>
+                  <dd className="text-ink font-semibold break-words">매월 평일 기준 {PREP_SESSION_COUNT}회</dd>
+                  <dt className="text-muted-fg-faint font-semibold">수강료</dt>
+                  <dd className="text-ink font-bold break-words">{priceLabel(c)}</dd>
+                </dl>
 
                 {/* CTA — 카드는 비교용 요약까지만. 조건 상세·신청은 모달이 맡는다. */}
                 <div className="mt-3 flex items-center gap-2">
