@@ -36,6 +36,14 @@ export type OpenPrepCourse = {
   myStatus: "입금대기" | "수강확정" | null;
 };
 
+// 샤우팅의 프렌더 표시명은 **「이름(닉네임)」** — 유료 강좌라 누가 여는지 본명까지 밝힌다
+// (닉네임만 쓰는 연습방 카드·HostProfileModal과 다른 점. 카드와 모달 헤더가 함께 쓴다).
+// 닉네임이 없으면 host.name이 곧 본명이라 괄호를 붙이지 않고, hosts 조회가 비면 스냅샷 폴백.
+export const hostLabel = (host: { name: string; realName: string | null } | null, fallback: string): string => {
+  if (!host) return fallback;
+  return host.realName && host.realName !== host.name ? `${host.realName}(${host.name})` : host.name;
+};
+
 export const seatLabel = (c: OpenPrepCourse): string =>
   // 정원 상한(1000)은 사실상 '제한 없음'이라 N/1000으로 보여 주면 이상하다.
   c.capacity >= PREP_MAX_CAPACITY ? `${c.enrolled}명 신청` : `${c.enrolled}/${c.capacity}명`;

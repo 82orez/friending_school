@@ -12,7 +12,16 @@ import { roomLevelLabelKo } from "@/data/room-levels";
 import { PAYMENT_BANK } from "@/data/payment";
 import { PREP_APPLY_CLOSED_MSG, PREP_GUIDE, PREP_PAYMENT_DEADLINE_LABEL, PREP_PAYMENT_DEADLINE_MSG } from "@/data/prep";
 import type { HostProfile } from "@/components/friending/FriendingRooms";
-import { gradientOf, isOngoing, periodLabel, priceLabel, seatLabel, weekdaysLabel, type OpenPrepCourse } from "@/components/prep/course-display";
+import {
+  gradientOf,
+  hostLabel,
+  isOngoing,
+  periodLabel,
+  priceLabel,
+  seatLabel,
+  weekdaysLabel,
+  type OpenPrepCourse,
+} from "@/components/prep/course-display";
 
 /**
  * 샤우팅 강좌 세부정보 모달 — 카드의 「세부정보 보기」가 연다.
@@ -25,7 +34,7 @@ import { gradientOf, isOngoing, periodLabel, priceLabel, seatLabel, weekdaysLabe
 type Cat = "intro" | "guide" | "board";
 const TABS: { key: "all" | Cat; label: string }[] = [
   { key: "all", label: "전체" },
-  { key: "intro", label: "소개" },
+  { key: "intro", label: "수업 소개" },
   { key: "guide", label: "이용안내" },
   { key: "board", label: "게시판" },
 ];
@@ -106,7 +115,7 @@ export default function PrepCourseDetailModal({
   if (!course) return null;
 
   const profileReady = profileMissing.length === 0;
-  const hostName = host?.name ?? course.frienderName;
+  const hostName = hostLabel(host, course.frienderName); // 「이름(닉네임)」 — 강좌 카드와 같은 헬퍼
   const show = (cat: Cat) => tab === "all" || tab === cat;
 
   return (
@@ -201,7 +210,7 @@ export default function PrepCourseDetailModal({
           {/* ① 강좌 소개 */}
           {show("intro") && course.description?.trim() && (
             <section className="bg-surface rounded-xl p-4">
-              <h3 className="text-ink mb-2 text-[13px] font-extrabold">소개</h3>
+              <h3 className="text-ink mb-2 text-[13px] font-extrabold">수업 소개</h3>
               <p className="text-muted-fg text-sm leading-relaxed break-words whitespace-pre-wrap">{course.description}</p>
             </section>
           )}

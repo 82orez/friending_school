@@ -95,7 +95,7 @@ export default function MyRoomReservations({ rooms, hosts }: { rooms: ReservedRo
   };
 
   const hostOf = (r: ReservedRoom): HostProfile =>
-    hosts[r.frienderId] ?? { name: r.fallbackName, avatarUrl: null, nationality: null, gender: null, bio: null };
+    hosts[r.frienderId] ?? { name: r.fallbackName, realName: null, avatarUrl: null, nationality: null, gender: null, bio: null };
 
   if (rooms.length === 0) {
     return (

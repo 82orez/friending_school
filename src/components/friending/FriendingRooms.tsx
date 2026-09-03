@@ -29,7 +29,10 @@ import {
 // 개설자 공개 프로필 — 방마다 중복 직렬화하지 않도록 friender_id 기준 맵으로 받는다.
 // ⚠️ 공개 페이지라 연락처(email·phone·zoom_url)는 서버 select 단계에서 제외된다.
 export type HostProfile = {
+  /** 표시명 — 닉네임 우선(연습방 카드 규칙). */
   name: string;
+  /** 본명(성+이름). 샤우팅 강좌 카드가 「이름(닉네임)」으로 쓴다. 없으면 null. */
+  realName: string | null;
   avatarUrl: string | null;
   nationality: string | null;
   gender: string | null;
@@ -199,7 +202,7 @@ export default function FriendingRooms({
                 <RoomCard
                   key={r.id}
                   room={r}
-                  host={hosts[r.frienderId] ?? { name: r.fallbackName, avatarUrl: null, nationality: null, gender: null, bio: null }}
+                  host={hosts[r.frienderId] ?? { name: r.fallbackName, realName: null, avatarUrl: null, nationality: null, gender: null, bio: null }}
                   isLoggedIn={isLoggedIn}
                   onOpenHost={setHostTarget}
                   onOpenInfo={setInfoTarget}

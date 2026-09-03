@@ -15,7 +15,7 @@ import { roomLevelLabelKo } from "@/data/room-levels";
 import { applyPrepCourse, cancelPrepEnrollment } from "@/app/prep/enroll-actions";
 import PrepHeroArt from "@/components/prep/PrepHeroArt";
 import PrepCourseDetailModal from "@/components/prep/PrepCourseDetailModal";
-import { gradientOf, isOngoing, priceLabel, seatLabel, weekdaysLabel, type OpenPrepCourse } from "@/components/prep/course-display";
+import { gradientOf, hostLabel, isOngoing, priceLabel, seatLabel, weekdaysLabel, type OpenPrepCourse } from "@/components/prep/course-display";
 import type { HostProfile } from "@/components/friending/FriendingRooms";
 import {
   AlertDialog,
@@ -156,7 +156,7 @@ export default function PrepEnrollBanner({
         <ul className="mt-3 grid list-none gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((c) => {
             const host = hosts[c.frienderId] ?? null;
-            const hostName = host?.name ?? c.frienderName;
+            const hostName = hostLabel(host, c.frienderName); // 「이름(닉네임)」 — 상세 모달 헤더와 같은 헬퍼
             return (
               <li key={c.id} className="border-rule flex flex-col rounded-2xl border bg-white p-4">
                 {/* 개설 프렌더 — 누구의 강좌인지가 먼저다(레퍼런스 강사 카드). */}

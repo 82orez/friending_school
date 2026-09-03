@@ -133,6 +133,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
       hosts[p.id] = {
         // 표시명 규칙: 닉네임 > 성+이름(공백 없이) > "프렌더".
         name: p.nickname?.trim() || `${p.last_name ?? ""}${p.first_name ?? ""}`.trim() || "프렌더",
+        realName: `${p.last_name ?? ""}${p.first_name ?? ""}`.trim() || null,
         avatarUrl: p.avatar_url?.trim() || null,
         nationality: p.nationality,
         gender: p.gender,

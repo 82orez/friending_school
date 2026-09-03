@@ -84,6 +84,7 @@ export default async function MyPageRooms() {
     for (const p of (profs ?? []) as ProfileRow[]) {
       hosts[p.id] = {
         name: p.nickname?.trim() || `${p.last_name ?? ""}${p.first_name ?? ""}`.trim() || "프렌더",
+        realName: `${p.last_name ?? ""}${p.first_name ?? ""}`.trim() || null,
         avatarUrl: p.avatar_url?.trim() || null,
         nationality: p.nationality,
         gender: p.gender,
