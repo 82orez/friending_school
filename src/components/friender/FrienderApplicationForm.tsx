@@ -312,7 +312,7 @@ export default function FrienderApplicationForm({
 
       <div className="grid gap-1.5">
         <Label htmlFor="fa-intro">
-          회원들에게 자신을 소개하기 <span className="text-brand">*</span>
+          회원들에게 자신을 소개하기(프로필) <span className="text-brand">*</span>
         </Label>
         <Textarea
           id="fa-intro"

@@ -292,7 +292,7 @@ export default function FrienderProfileForm({ userId, email, initial }: { userId
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="bio">회원들에게 자신을 소개하기 {editing && <span className="text-brand">*</span>}</Label>
+            <Label htmlFor="bio">회원들에게 자신을 소개하기(프로필) {editing && <span className="text-brand">*</span>}</Label>
             <Textarea
               id="bio"
               name="bio"
