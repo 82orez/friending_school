@@ -179,23 +179,25 @@ export default function PrepCourseDetailModal({
           </button>
         </div>
 
-        <div className="flex flex-col gap-3 overflow-auto px-5 py-4">
-          {/* 탭 — sticky라 스크롤 중에도 이동할 수 있다(레퍼런스 .fd-tab-row). */}
-          <div className="sticky top-0 z-[1] -mx-5 flex gap-1.5 bg-white px-5 pb-1">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTab(t.key)}
-                className={cn(
-                  "flex-1 rounded-full py-2 text-[13px] font-bold transition-colors",
-                  tab === t.key ? "bg-ink text-white" : "bg-surface text-muted-fg hover:text-ink",
-                )}>
-                {t.label}
-              </button>
-            ))}
-          </div>
+        {/* 탭 — 헤더·푸터와 같은 **고정 행**이다(스크롤 영역 바깥).
+            ⚠️ 한때 스크롤 영역 안의 `sticky top-0`이었는데, 스크롤·오버스크롤 중 카드가 탭 위아래로 비쳐 보였다
+               (배경이 탭 줄 높이만 덮어서). 밖으로 빼면 겹칠 여지 자체가 없고 항상 눌리는 위치에 남는다. */}
+        <div className="border-rule flex shrink-0 gap-1.5 border-b px-5 py-3">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={cn(
+                "flex-1 rounded-full py-2 text-[13px] font-bold transition-colors",
+                tab === t.key ? "bg-ink text-white" : "bg-surface text-muted-fg hover:text-ink",
+              )}>
+              {t.label}
+            </button>
+          ))}
+        </div>
 
+        <div className="flex flex-col gap-3 overflow-auto px-5 py-4">
           {!profileReady && isLoggedIn && (
             <div className="border-brand/30 bg-brand/5 rounded-xl border px-4 py-3 text-sm">
               <p className="text-brand font-bold">신청 전에 프로필을 완성해 주세요</p>
