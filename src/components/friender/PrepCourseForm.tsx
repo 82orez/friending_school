@@ -7,7 +7,7 @@ import { ko as koLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd } from "@/lib/room-time";
-import { addDays, buildWeekdaySessions, fmtDateKo, fmtDateShort, formatWon, kstToday, toLocalDate } from "@/lib/prep";
+import { addDays, buildWeekdaySessions, fmtDateKo, fmtDateShort, formatWon, kstToday, monthsSpannedOf, toLocalDate } from "@/lib/prep";
 import {
   type PrepStatus,
   PREP_DEFAULT_CAPACITY,
@@ -182,6 +182,9 @@ export default function PrepCourseForm({
   };
 
   const selectedDates = useMemo(() => dates.map(toLocalDate), [dates]);
+  // 회차가 걸친 달을 모두 그린다 — 평일 20회는 대개 두 달에 걸치는데 한 달만 그리면 나머지 회차가 보이지 않는다
+  // (시작된 강좌는 캘린더가 disabled라 월 이동 버튼까지 죽어 아예 볼 방법이 없었다). admin 심사 캘린더와 같은 규칙.
+  const monthsSpanned = useMemo(() => monthsSpannedOf(dates), [dates]);
   const startMin = startMinOf(form);
   const filledTopics = useMemo(() => topics.filter((t) => t.trim()).length, [topics]);
   // form.priceKrw는 숫자만 담는다(표시할 때만 콤마를 붙인다). 빈칸은 미입력으로 보고 제출을 막는다.
@@ -470,6 +473,7 @@ export default function PrepCourseForm({
             selected={selectedDates}
             onSelect={started ? undefined : onSelectDates}
             defaultMonth={selectedDates[0]}
+            numberOfMonths={monthsSpanned}
             disabled={started ? true : { before: toLocalDate(minDate) }}
             locale={koLocale}
             weekStartsOn={0}

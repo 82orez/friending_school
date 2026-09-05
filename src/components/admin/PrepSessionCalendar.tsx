@@ -1,7 +1,7 @@
 "use client";
 
 import { ko as koLocale } from "date-fns/locale";
-import { toLocalDate } from "@/lib/prep";
+import { monthsSpannedOf, toLocalDate } from "@/lib/prep";
 import { Calendar } from "@/components/ui/calendar";
 
 /**
@@ -18,9 +18,9 @@ export default function PrepSessionCalendar({ dates, className }: { dates: strin
   // ⚠️ 문자열을 new Date로 파싱하면 UTC라 KST에서 하루 앞 칸이 칠해진다 → toLocalDate 필수.
   const sessionDates = dates.map(toLocalDate);
   const first = sessionDates[0];
-  const last = sessionDates[sessionDates.length - 1];
   // 수업일이 있는 달만 그린다 — 20 평일은 최대 27일 span이라 1~2개월이고, 그 사이 달은 반드시 수업이 있다.
-  const monthsSpanned = last.getFullYear() * 12 + last.getMonth() - (first.getFullYear() * 12 + first.getMonth()) + 1;
+  // 계산은 개설 폼과 공용(`monthsSpannedOf`) — 같은 일정이 두 화면에서 다른 달 수로 그려지면 안 된다.
+  const monthsSpanned = monthsSpannedOf(dates);
 
   return (
     <div inert className={`pointer-events-none ${className ?? ""}`}>

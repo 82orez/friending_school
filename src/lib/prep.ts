@@ -106,6 +106,17 @@ export function toLocalDate(dateStr: string): Date {
   return new Date(y, m - 1, d);
 }
 
+// 회차 일자(YYYY-MM-DD)가 걸친 **달 수** — 캘린더 `numberOfMonths`용. 빈 배열이면 1.
+// 평일 20회는 26~27일 span이라 대개 1~2개월이고, 그 사이 달에는 반드시 수업이 있다.
+// ⚠️ Date를 만들지 않는다 — 문자열에서 연·월만 잘라 센다(UTC 파싱이 끼면 KST에서 월 경계가 밀린다).
+// 개설 폼(PrepCourseForm)과 admin 심사 캘린더(PrepSessionCalendar)가 같은 달을 그리도록 공용한다.
+export function monthsSpannedOf(dates: string[]): number {
+  if (dates.length === 0) return 1;
+  const idx = (k: string) => Number(k.slice(0, 4)) * 12 + Number(k.slice(5, 7)) - 1;
+  const all = dates.map(idx);
+  return Math.max(...all) - Math.min(...all) + 1;
+}
+
 // 시작일부터 평일(월~금)만 골라 count개. 시작일이 주말이면 다음 평일부터 센다.
 // 무한 루프 방지를 위해 탐색 상한을 둔다(count의 3배 일수면 주말을 감안해도 충분).
 export function buildWeekdaySessions(startDate: string, count: number): string[] {
