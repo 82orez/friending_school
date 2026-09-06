@@ -53,7 +53,7 @@ export default function PrepEnrollBanner({
   isLoggedIn: boolean;
   /** 신청 자격에서 빠진 프로필 항목(휴대폰 인증·성·이름·영어 이름). 비어 있어야 신청할 수 있다. */
   profileMissing: string[];
-  /** 접수 시간창(KST 07:00~19:00) 안인지 — 서버가 계산한 첫 렌더 값(hydration mismatch 방지). */
+  /** 접수 시간창(KST 10:00~19:00) 안인지 — 서버가 계산한 첫 렌더 값(hydration mismatch 방지). */
   applyOpenInitial: boolean;
 }) {
   // 접수 시간창 — 1분 틱으로 갱신해 화면을 열어 둔 채 19:00을 넘겨도 버튼이 자동으로 잠긴다
