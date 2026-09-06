@@ -7,6 +7,7 @@ import { kstDateMinToMs } from "@/lib/classtime";
 import { seatHeld } from "@/lib/room-time";
 import { isPrepApplyOpen, prepChargeKrw, prepRemainingSessions } from "@/lib/prep";
 import SuccessBanner from "@/components/SuccessBanner";
+import HeroBubbles from "@/components/HeroBubbles";
 import FriendingRooms, { type HostProfile, type PublicRoom } from "@/components/friending/FriendingRooms";
 import PrepEnrollBanner, { type OpenPrepCourse } from "@/components/prep/PrepEnrollBanner";
 
@@ -254,21 +255,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
           <section className="relative isolate flex min-h-[140px] items-center justify-center overflow-hidden rounded-2xl md:min-h-[190px]">
             <Image src="/images/friending-hero.jpg" alt="" fill sizes="(max-width: 1100px) 100vw, 1100px" priority className="-z-10 object-cover" />
             <div aria-hidden className="absolute inset-0 -z-10 bg-black/45" />
-            {/* 말풍선 장식 — 목업 SVG 이식(비율 무시하고 늘려 배경처럼 깔림) */}
-            <svg
-              aria-hidden
-              viewBox="0 0 1200 300"
-              preserveAspectRatio="none"
-              className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full md:block">
-              <rect x="60" y="40" width="130" height="80" rx="24" fill="rgba(255,255,255,0.16)" />
-              <path d="M90 118 L78 142 L112 120 Z" fill="rgba(255,255,255,0.16)" />
-              <rect x="1000" y="170" width="110" height="70" rx="22" fill="rgba(255,255,255,0.14)" />
-              <path d="M1030 238 L1042 260 L1072 240 Z" fill="rgba(255,255,255,0.14)" />
-              <rect x="960" y="30" width="80" height="52" rx="18" fill="rgba(255,255,255,0.1)" />
-              <path d="M980 80 L972 98 L998 82 Z" fill="rgba(255,255,255,0.1)" />
-              <rect x="40" y="200" width="70" height="46" rx="16" fill="rgba(255,255,255,0.1)" />
-              <path d="M58 244 L50 262 L76 246 Z" fill="rgba(255,255,255,0.1)" />
-            </svg>
+            {/* 말풍선 장식 — 목업 SVG 이식. 샤우팅 배너 히어로와 공용(`HeroBubbles`). */}
+            <HeroBubbles className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full md:block" />
 
             <div className="px-5 py-8 text-center md:px-16">
               <p className="text-[12px] font-bold text-white/95 md:text-[15px]">친구와 친구가 만나 배우는, 프렌딩 스쿨</p>

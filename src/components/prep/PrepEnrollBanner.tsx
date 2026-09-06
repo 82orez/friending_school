@@ -13,7 +13,7 @@ import { fmtDateKo, formatWon, isPrepApplyOpen } from "@/lib/prep";
 import { PREP_APPLY_WINDOW_LABEL, PREP_PAYMENT_DEADLINE_MSG, PREP_SESSION_COUNT } from "@/data/prep";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { applyPrepCourse, cancelPrepEnrollment } from "@/app/prep/enroll-actions";
-import PrepHeroArt from "@/components/prep/PrepHeroArt";
+import HeroBubbles from "@/components/HeroBubbles";
 import PrepCourseDetailModal from "@/components/prep/PrepCourseDetailModal";
 import { gradientOf, hostLabel, isOngoing, periodLabel, priceLabel, type OpenPrepCourse } from "@/components/prep/course-display";
 import type { HostProfile } from "@/components/friending/FriendingRooms";
@@ -109,40 +109,44 @@ export default function PrepEnrollBanner({
 
   return (
     <>
-      {/* 히어로 — 배경은 /prep 소개 페이지와 같은 새벽 일러스트(banner variant).
+      {/* 히어로 — v14 목업 shouting.html의 `.lesson-hero` 이식(사진 + 어두운 오버레이 + 가운데 2줄).
+          프렌딩 홈 히어로(src/app/page.tsx)와 **같은 스켈레톤**이다 — 같은 목업의 형제 히어로이고
+          `showPrepBanner`로 둘 중 하나만 뜨므로 두 히어로가 한 규칙으로 정렬돼야 한다.
+          ⚠️ `isolate` + `-z-10` 조합이라 카피 블록에 `relative z-10`을 따로 주지 않는다.
           ⚠️ 위 여백 없음: 프렌딩 홈(/)은 이 영역이 뜰 때 자체 히어로를 숨기므로 항상 컨테이너 첫 자식이다. */}
-      <section className="relative isolate overflow-hidden rounded-2xl bg-[#1b2450]">
-        <PrepHeroArt variant="banner" className="absolute inset-0 -z-10 h-full w-full" />
-        {/* 왼쪽만 진하게 — 오른쪽 해·하늘을 살려 두려고 단색 대신 그라디언트 오버레이를 쓴다. */}
-        <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-black/75 via-black/55 to-black/25" />
+      <section className="relative isolate flex min-h-[140px] items-center justify-center overflow-hidden rounded-2xl bg-[#1b2450] md:min-h-[190px]">
+        {/* 강좌가 있으면 이 히어로가 홈 첫 화면 LCP다 → priority. bg-[#1b2450]은 로드 전/실패 시 대체 배경. */}
+        <Image src="/images/hero-shouting.jpg" alt="" fill sizes="(max-width: 1100px) 100vw, 1100px" priority className="-z-10 object-cover" />
+        <div aria-hidden className="absolute inset-0 -z-10 bg-black/45" />
+        <HeroBubbles className="pointer-events-none absolute inset-0 -z-10 hidden h-full w-full md:block" />
 
-        <div className="flex flex-col gap-3 px-5 py-6 md:flex-row md:items-center md:justify-between md:px-7 md:py-7">
-          <div className="min-w-0">
-            <span className="inline-block rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-bold text-white backdrop-blur-[2px]">
-              매일 함께 외치는, 샤우팅 · 매월 {PREP_SESSION_COUNT}회
-            </span>
-            <h2 className="mt-2 text-lg font-extrabold text-white md:text-2xl">소리 내어 말하면 입이 트여요</h2>
-            <p className="mt-1 text-sm text-white/80">
-              지금 신청할 수 있는 강좌 {courses.length}개{mine.length > 0 && <span className="font-bold text-white"> · 내 신청 {mine.length}건</span>}
-              <span className="text-white/50"> · </span>
-              <Link href="/prep" className="font-semibold text-white underline underline-offset-2 hover:opacity-90">
-                강좌 소개 보기
-              </Link>
-            </p>
-            {/* 마감 시간대에도 강좌 정보는 그대로 두고 이유만 알린다 — 숨기면 '강좌가 사라졌다'로 읽힌다. */}
-            {!applyOpen && (
-              <p className="mt-2 inline-block rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white/85 backdrop-blur-[2px]">
-                지금은 수강신청 시간이 아니에요 · 매일 {PREP_APPLY_WINDOW_LABEL}
-              </p>
-            )}
-          </div>
-
-          {!isLoggedIn && (
-            <Link
-              href="/login"
-              className="text-ink shrink-0 rounded-full bg-white px-6 py-2.5 text-center text-sm font-bold transition-opacity hover:opacity-90">
-              로그인하고 신청
+        <div className="px-5 py-8 text-center md:px-16">
+          <p className="text-[12px] font-bold text-white/95 md:text-[15px]">매일 함께 외치는, 샤우팅</p>
+          <h2 className="mt-1.5 text-[22px] font-bold tracking-[-0.04em] text-white md:mt-2 md:text-[34px]">소리 내어 말하면 입이 트여요</h2>
+          {/* 회차 수는 알약 배지가 사라지며 이 줄로 옮겼다(레퍼런스 아이브로우는 카피 한 줄뿐이라). */}
+          <p className="mt-2 text-sm text-white/80">
+            매월 {PREP_SESSION_COUNT}회<span className="text-white/50"> · </span>
+            지금 신청할 수 있는 강좌 {courses.length}개{mine.length > 0 && <span className="font-bold text-white"> · 내 신청 {mine.length}건</span>}
+            <span className="text-white/50"> · </span>
+            <Link href="/prep" className="font-semibold text-white underline underline-offset-2 hover:opacity-90">
+              강좌 소개 보기
             </Link>
+          </p>
+          {/* 마감 시간대에도 강좌 정보는 그대로 두고 이유만 알린다 — 숨기면 '강좌가 사라졌다'로 읽힌다. */}
+          {!applyOpen && (
+            <p className="mt-3 inline-block rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white/85 backdrop-blur-[2px]">
+              지금은 수강신청 시간이 아니에요 · 매일 {PREP_APPLY_WINDOW_LABEL}
+            </p>
+          )}
+          {/* ⚠️ 어두운 판에서 남색 bg-cta는 묻힌다 → 히어로 안의 CTA는 흰 알약 + text-ink. */}
+          {!isLoggedIn && (
+            <div className="mt-4">
+              <Link
+                href="/login"
+                className="text-ink inline-block rounded-full bg-white px-6 py-2.5 text-center text-sm font-bold transition-opacity hover:opacity-90">
+                로그인하고 신청
+              </Link>
+            </div>
           )}
         </div>
       </section>
