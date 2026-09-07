@@ -24,7 +24,8 @@ export async function reassignClassCore(
   input: {
     classId: string;
     newTeacherId: string;
-    actor: { id: string; role: "admin" | "center_manager" };
+    // `name`은 감사 로그 표시용(admin이 여러 명일 때 누가 대체했는지) — 없으면 역할만 남는다.
+    actor: { id: string; role: "admin" | "center_manager"; name?: string | null };
     constrainCenterIds?: string[];
   },
 ): Promise<{ ok: boolean; error?: string }> {
@@ -196,6 +197,7 @@ export async function reassignClassCore(
     classId: cls.id,
     eventType: "class_reassigned",
     actorId: input.actor.id,
+    actorName: input.actor.name ?? null,
     actorRole: input.actor.role,
     course: cls.course,
     courseTitle: cls.course_title,

@@ -72,7 +72,8 @@ export async function generateClassesForEnrollment(admin: ReturnType<typeof crea
 // (system=웹훅은 서명+결제 재조회로 이미 authoritative라 소유권 skip). ⚠️ "use server" 아닌 server-only 모듈이라 클라가 직접 호출 불가.
 export async function finalizeEnrollmentPayment(
   enrollmentId: string,
-  actor: { id: string; role: "admin" | "student" | "system" },
+  // `name`은 감사 로그 표시용(admin이 여러 명일 때 누가 처리했는지) — 없으면 역할만 남는다.
+  actor: { id: string; role: "admin" | "student" | "system"; name?: string | null },
   opts?: { amount?: number; note?: string }, // 무통장(admin) 확정 시 실입금액·메모(정가 이하 할인 등). 카드/웹훅은 미전달.
 ): Promise<PaymentResult> {
   const admin = createAdminClient();
@@ -209,6 +210,7 @@ export async function finalizeEnrollmentPayment(
     enrollmentId,
     eventType: "payment_confirmed",
     actorId: actor.role === "system" ? null : actor.id, // system=웹훅은 auth.users FK가 없어 null
+    actorName: actor.name ?? null,
     actorRole: actor.role,
     course: enr.course,
     courseTitle: enr.course_title,
@@ -375,23 +377,84 @@ export async function settlePortonePayment(paymentId: string, actor: { id: strin
   return { ok: false, error: fin.error };
 }
 
+// 판별 유니온이 아니라 `PaymentResult`/`ActionResult`와 같은 평평한 모양 — `strict:false`라 유니온 narrowing이 불안정하다.
+export type BumpCancelledResult = { ok: boolean; total?: number; error?: string };
+
+/**
+ * `payments.cancelled_amount` 누적을 **CAS로** 올린다(관리자 여러 명이 같은 건을 동시에 환불할 때의 레이스 방지).
+ *
+ * ⚠️ 예전에는 읽은 값 + 이번 환불액을 그대로 덮어썼다 — 두 관리자가 같은 결제를 동시에 환불하면
+ *    둘 다 `cancelled_amount=0`을 읽어 **나중 write가 이기고 한쪽 환불이 기록에서 사라졌다**
+ *    (카드는 PortOne이 2차 취소를 막아 주지만 무통장은 PG 관문이 없어 그대로 통과).
+ *
+ * `expected`와 실제 값이 다르면 = 그 사이 누가 갱신한 것 → **최신값으로 한 번 재시도**해서 누적이 수렴하게 한다.
+ * 단순 반려가 아니라 재시도인 이유: 호출측이 PG 취소를 이미 끝낸 뒤라(돈은 나갔다) 여기서 포기하면 DB만 뒤처진다.
+ * 재시도까지 실패하면(3자 동시 조작) 그때는 반려하고 사람이 확인하게 한다.
+ */
+export async function bumpCancelledAmount(
+  admin: ReturnType<typeof createAdminClient>,
+  input: { paymentId: string; expected: number; delta: number; amount: number },
+): Promise<BumpCancelledResult> {
+  let expected = input.expected;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const total = expected + input.delta;
+    // 재시도로 잔여가 줄어 초과가 된 경우 — 실제로 환불 가능한 금액을 넘겼다.
+    if (total > input.amount) {
+      return {
+        ok: false,
+        error: `다른 관리자가 먼저 환불해 환불 가능 금액이 ${(input.amount - expected).toLocaleString("ko-KR")}원으로 줄었습니다.`,
+      };
+    }
+    const { data, error } = await admin
+      .from("payments")
+      .update({ status: total >= input.amount ? "cancelled" : "partial_cancelled", cancelled_amount: total })
+      .eq("payment_id", input.paymentId)
+      .eq("cancelled_amount", expected) // ← CAS. 그 사이 값이 바뀌었으면 0행.
+      .select("payment_id");
+    if (error) return { ok: false, error: "환불 처리 중 오류가 발생했습니다." };
+    if (data && data.length > 0) return { ok: true, total };
+
+    const { data: fresh } = await admin.from("payments").select("cancelled_amount").eq("payment_id", input.paymentId).maybeSingle();
+    if (!fresh) return { ok: false, error: "결제 기록을 찾을 수 없습니다." };
+    expected = Number((fresh as { cancelled_amount: number }).cancelled_amount ?? 0);
+  }
+  return { ok: false, error: "다른 관리자가 동시에 환불을 처리했습니다. 목록을 새로고침한 뒤 다시 시도해 주세요." };
+}
+
 type RefundSyncInput = {
   payment: { payment_id: string; enrollment_id?: string | null; amount?: number };
   totalCancelledAmount: number; // PortOne 기준 누적 취소금액(절대값 — 멱등)
+  // 갱신 직전에 읽은 `cancelled_amount`. 주면 CAS(`bumpCancelledAmount`)로 누적하고, 생략하면 절대값 set.
+  // ⚠️ PortOne 취소 웹훅은 **생략**해야 한다 — 그쪽 누적값이 authoritative이고 재전송 멱등성이 CAS보다 우선이다.
+  expectedCancelledAmount?: number;
   reason: string;
-  actor: { id: string; role: "admin" | "system" };
+  actor: { id: string; role: "admin" | "system"; name?: string | null };
 };
 
 // 환불 후 DB 동기화 코어(admin 환불·취소 웹훅 공용) — PortOne 취소는 호출측에서 이미 수행됨.
 // 멱등: totalCancelledAmount는 절대값으로 set, enrollment 취소는 CAS(결제완료→취소)라 재호출 시 no-op.
 export async function refundEnrollmentPayment(admin: ReturnType<typeof createAdminClient>, input: RefundSyncInput): Promise<PaymentResult> {
-  const { payment, totalCancelledAmount, reason, actor } = input;
-  const isFull = totalCancelledAmount >= (payment.amount ?? 0);
+  const { payment, totalCancelledAmount, expectedCancelledAmount, reason, actor } = input;
+  // 실제로 DB에 남은 누적 취소금액 — CAS가 재시도하면 요청값과 달라질 수 있어 이벤트 로그·전액 판정은 이 값을 쓴다.
+  let effectiveTotal = totalCancelledAmount;
 
-  await admin
-    .from("payments")
-    .update({ status: isFull ? "cancelled" : "partial_cancelled", cancelled_amount: totalCancelledAmount })
-    .eq("payment_id", payment.payment_id);
+  if (expectedCancelledAmount != null) {
+    // 관리자 환불 — CAS로 누적(동시 환불 시 한쪽이 사라지지 않게).
+    const bumped = await bumpCancelledAmount(admin, {
+      paymentId: payment.payment_id,
+      expected: expectedCancelledAmount,
+      delta: totalCancelledAmount - expectedCancelledAmount,
+      amount: payment.amount ?? 0,
+    });
+    if (!bumped.ok) return { ok: false, error: bumped.error };
+    effectiveTotal = bumped.total ?? totalCancelledAmount;
+  } else {
+    // 웹훅 — PortOne 누적값이 authoritative라 절대값 set(재전송 멱등).
+    await admin
+      .from("payments")
+      .update({ status: totalCancelledAmount >= (payment.amount ?? 0) ? "cancelled" : "partial_cancelled", cancelled_amount: totalCancelledAmount })
+      .eq("payment_id", payment.payment_id);
+  }
 
   const enrollmentId = payment.enrollment_id;
   if (!enrollmentId) return { ok: true }; // enrollment 없는 결제 — payments만 갱신.
@@ -463,12 +526,13 @@ export async function refundEnrollmentPayment(admin: ReturnType<typeof createAdm
       enrollmentId,
       eventType: "payment_refunded",
       actorId: actor.role === "system" ? null : actor.id,
+      actorName: actor.name ?? null,
       actorRole: actor.role,
       course: enr?.course,
       courseTitle: enr?.course_title,
       studentName: enr?.student_name,
       teacherName: enr?.teacher_name,
-      detail: { refundAmount: totalCancelledAmount, reason, full: isFull },
+      detail: { refundAmount: effectiveTotal, reason, full: effectiveTotal >= (payment.amount ?? 0) },
     });
   }
 

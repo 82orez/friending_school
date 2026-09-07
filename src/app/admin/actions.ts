@@ -41,7 +41,7 @@ import { createMakeupClass, weekdayOf, addDaysStr, type ClassForMakeup } from "@
 import { resolveCenterId } from "@/lib/center";
 import { logEnrollmentEvent } from "@/lib/events";
 import { notifyCenterManagerOfClass, notifyCenterManagerOfEnrollment } from "@/lib/center-notify";
-import { finalizeEnrollmentPayment, recordPayment, refundEnrollmentPayment } from "@/lib/payment";
+import { bumpCancelledAmount, finalizeEnrollmentPayment, recordPayment, refundEnrollmentPayment } from "@/lib/payment";
 import { cancelPortonePayment } from "@/lib/portone";
 import { reassignClassCore } from "@/lib/reassign";
 import { loadSettlementRows } from "@/lib/settlements";
@@ -59,6 +59,16 @@ async function requireAdmin(): Promise<string | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
   return (await isAdmin(supabase, user.id)) ? user.id : null;
+}
+
+// 감사 로그(`enrollment_events.actor_name`)에 남길 실행 관리자 이름.
+// ⚠️ admin이 여러 명이면 EventTimeline이 그리는 "관리자" 라벨만으로는 **누가 했는지 구분되지 않는다**
+//    (actor_id는 늘 기록되지만 화면에 없다) → 이름을 함께 남겨 타임라인에서 바로 읽히게 한다.
+// 조회 실패·이름 미입력이면 null(로그는 계속 남는다 — best-effort).
+async function adminActorName(admin: ReturnType<typeof createAdminClient>, adminId: string): Promise<string | null> {
+  const { data } = await admin.from("profiles").select("last_name, first_name").eq("id", adminId).maybeSingle();
+  const p = data as { last_name?: string | null; first_name?: string | null } | null;
+  return `${p?.last_name ?? ""}${p?.first_name ?? ""}`.trim() || null;
 }
 
 /* ===== 유튜브 관리 ===== */
@@ -913,6 +923,7 @@ export async function adminCancelEnrollment(id: string, note: string): Promise<A
     enrollmentId,
     eventType: "enrollment_cancelled",
     actorId: adminId,
+    actorName: await adminActorName(admin, adminId),
     actorRole: "admin",
     course: enr.course,
     courseTitle: enr.course_title,
@@ -955,7 +966,7 @@ export async function confirmPayment(id: string, opts?: { amount?: number; note?
   }
   const note = (opts?.note ?? "").trim().slice(0, 500) || undefined;
 
-  return finalizeEnrollmentPayment(enrollmentId, { id: adminId, role: "admin" }, { amount, note });
+  return finalizeEnrollmentPayment(enrollmentId, { id: adminId, role: "admin", name: await adminActorName(admin, adminId) }, { amount, note });
 }
 
 // 무통장 결제 실입금액·메모 사후 재조정(확정 후 정정) — 매출(payments.amount/note)에 직접 반영.
@@ -996,6 +1007,7 @@ export async function adjustBankPayment(paymentId: string, opts: { amount: numbe
     enrollmentId: pay.enrollment_id,
     eventType: "payment_adjusted",
     actorId: adminId,
+    actorName: await adminActorName(admin, adminId),
     actorRole: "admin",
     course: enr?.course,
     courseTitle: enr?.course_title,
@@ -1041,12 +1053,13 @@ export async function refundPayment(enrollmentId: string, opts: { reason: string
     if (!cancel.ok) return { ok: false, error: cancel.error ?? "환불 처리에 실패했습니다." };
   }
 
-  const totalCancelled = (payment.cancelled_amount ?? 0) + refundAmount;
+  const already = payment.cancelled_amount ?? 0;
   return refundEnrollmentPayment(admin, {
     payment: { payment_id: payment.payment_id, enrollment_id: payment.enrollment_id, amount: payment.amount },
-    totalCancelledAmount: totalCancelled,
+    totalCancelledAmount: already + refundAmount,
+    expectedCancelledAmount: already, // CAS — 관리자 두 명이 동시에 환불해도 누적이 덮어써지지 않게.
     reason,
-    actor: { id: adminId, role: "admin" },
+    actor: { id: adminId, role: "admin", name: await adminActorName(admin, adminId) },
   });
 }
 
@@ -1085,6 +1098,7 @@ export async function adminSetClassConducted(classId: string, override: boolean 
     classId: cls.id,
     eventType: "conducted_overridden",
     actorId: adminId,
+    actorName: await adminActorName(admin, adminId),
     actorRole: "admin",
     course: cls.course,
     courseTitle: cls.course_title,
@@ -1172,6 +1186,7 @@ export async function adminCancelClass(classId: string, reason: "student" | "com
     classId: cls.id,
     eventType: reason === "cancel" ? "class_cancelled" : "class_postponed",
     actorId: adminId,
+    actorName: await adminActorName(admin, adminId),
     actorRole: "admin",
     course: cls.course,
     courseTitle: cls.course_title,
@@ -1192,7 +1207,8 @@ export async function adminCancelClass(classId: string, reason: "student" | "com
 export async function adminReassignClass(classId: string, newTeacherId: string): Promise<ActionResult> {
   const adminId = await requireAdmin();
   if (!adminId) return { ok: false, error: "권한이 없습니다." };
-  return reassignClassCore(createAdminClient(), { classId, newTeacherId, actor: { id: adminId, role: "admin" } });
+  const admin = createAdminClient();
+  return reassignClassCore(admin, { classId, newTeacherId, actor: { id: adminId, role: "admin", name: await adminActorName(admin, adminId) } });
 }
 
 // 남은 수업 전체 주간 일정 일괄 변경(admin) — 담당 강사 유지, 요일·시간만.
@@ -1352,6 +1368,7 @@ export async function adminRescheduleRemaining(enrollmentId: string, slots: Slot
     enrollmentId: id,
     eventType: "remaining_rescheduled",
     actorId: adminId,
+    actorName: await adminActorName(admin, adminId),
     actorRole: "admin",
     course: enr.course,
     courseTitle: enr.course_title,
@@ -1565,6 +1582,7 @@ export async function adminReassignRemaining(enrollmentId: string, newTeacherId:
     enrollmentId: id,
     eventType: "remaining_reassigned",
     actorId: adminId,
+    actorName: await adminActorName(admin, adminId),
     actorRole: "admin",
     course: enr.course,
     courseTitle: enr.course_title,
@@ -2302,12 +2320,9 @@ export async function refundPrepEnrollment(enrollmentId: string, refundKrw: numb
   const remaining = (p.amount ?? 0) - already;
   if (amount > remaining) return { ok: false, error: `환불 가능 금액은 ${formatWon(remaining)}입니다.` };
 
-  const total = already + amount;
-  const { error: payErr } = await admin
-    .from("payments")
-    .update({ status: total >= (p.amount ?? 0) ? "cancelled" : "partial_cancelled", cancelled_amount: total })
-    .eq("payment_id", p.payment_id);
-  if (payErr) return { ok: false, error: "환불 처리 중 오류가 발생했습니다." };
+  // 금액 누적도 CAS — 관리자 두 명이 같은 신청을 동시에 환불하면 예전엔 나중 write가 이겨 한쪽이 사라졌다.
+  const bumped = await bumpCancelledAmount(admin, { paymentId: p.payment_id, expected: already, delta: amount, amount: p.amount ?? 0 });
+  if (!bumped.ok) return { ok: false, error: bumped.error };
 
   // 수강 상태 전환은 CAS — 두 번 눌러도 한 번만 처리된다(payments는 위에서 이미 갱신됐으므로 여기서 반려되면 금액만 누적된다).
   const { data: updated, error } = await admin
