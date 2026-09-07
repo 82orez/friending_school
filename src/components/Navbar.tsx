@@ -114,17 +114,12 @@ export default function Navbar({
           </Link>
         </div>
 
-        {/* 중앙 링크(Home·샤우팅·필리핀 화상영어·액티비티는 상시, 스쿨 소개는 admin만) — 우측은 인증/역할 링크 전용이라 중앙에 배치 */}
+        {/* 중앙 링크(Home·필리핀 화상영어·액티비티는 상시, 스쿨 소개는 admin만) — 우측은 인증/역할 링크 전용이라 중앙에 배치 */}
         <div className="hidden items-center justify-center gap-4 md:flex lg:gap-6">
           <Link
             href="/"
             className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             Home
-          </Link>
-          <Link
-            href="/prep"
-            className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-            샤우팅
           </Link>
           <Link
             href="/philippines-english"
@@ -136,7 +131,7 @@ export default function Navbar({
             className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-sm font-bold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
             액티비티
           </Link>
-          {/* 스쿨 소개는 admin 전용 노출(일반 사용자는 샤우팅·필리핀·액티비티 3탭만) */}
+          {/* 스쿨 소개는 admin 전용 노출(일반 사용자는 Home·필리핀·액티비티 3탭만) */}
           {isAdmin && (
             <Link
               href="/school"
@@ -252,21 +247,13 @@ export default function Navbar({
           ✕
         </button>
         <ul className="list-none px-6">
-          {/* 상단 flat 링크 — 데스크톱 중앙 링크와 순서·노출 조건 동일(Home→샤우팅→필리핀→액티비티→스쿨 소개(admin만)). 아코디언 아님 → 별도 state 없음 */}
+          {/* 상단 flat 링크 — 데스크톱 중앙 링크와 순서·노출 조건 동일(Home→필리핀→액티비티→스쿨 소개(admin만)). 아코디언 아님 → 별도 state 없음 */}
           <li className="border-rule border-b py-4">
             <Link
               href="/"
               onClick={closeMenu}
               className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
               Home
-            </Link>
-          </li>
-          <li className="border-rule border-b py-4">
-            <Link
-              href="/prep"
-              onClick={closeMenu}
-              className="text-ink-soft hover:text-accent-blue-ink focus-visible:ring-accent-blue/50 rounded text-[15px] font-bold no-underline transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-              샤우팅
             </Link>
           </li>
           <li className="border-rule border-b py-4">

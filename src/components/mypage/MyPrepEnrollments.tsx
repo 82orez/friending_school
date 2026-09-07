@@ -1,7 +1,6 @@
 "use client";
 
 import { Fragment, useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -87,9 +86,6 @@ export default function MyPrepEnrollments({ enrollments }: { enrollments: MyPrep
       {enrollments.length === 0 ? (
         <div className="px-6 py-12 text-center">
           <p className="text-muted-fg text-sm">신청한 샤우팅 강좌가 없어요.</p>
-          <Link href="/prep" className="text-accent-blue-ink mt-3 inline-block text-sm font-bold underline underline-offset-2">
-            샤우팅 강좌 소개 보기
-          </Link>
         </div>
       ) : (
         <ul className="list-none">

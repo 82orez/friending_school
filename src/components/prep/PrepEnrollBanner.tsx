@@ -127,10 +127,6 @@ export default function PrepEnrollBanner({
           <p className="mt-2 text-sm text-white/80">
             매월 {PREP_SESSION_COUNT}회<span className="text-white/50"> · </span>
             지금 신청할 수 있는 강좌 {courses.length}개{mine.length > 0 && <span className="font-bold text-white"> · 내 신청 {mine.length}건</span>}
-            <span className="text-white/50"> · </span>
-            <Link href="/prep" className="font-semibold text-white underline underline-offset-2 hover:opacity-90">
-              강좌 소개 보기
-            </Link>
           </p>
           {/* 마감 시간대에도 강좌 정보는 그대로 두고 이유만 알린다 — 숨기면 '강좌가 사라졌다'로 읽힌다. */}
           {!applyOpen && (
