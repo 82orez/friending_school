@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { ENROLLMENT_STATUS_BADGE, ENROLLMENT_STATUS_LABEL, type EnrollmentDisplayStatus } from "@/data/enrollment-status";
 import { cancelEnrollment, confirmPortonePayment } from "@/app/mypage/actions";
 import { summarizeSlots, lessonEndDate, type Slot } from "@/lib/availability";
-import { PAYMENT_BANK } from "@/data/payment";
+import { CARD_PAYMENT_ENABLED, PAYMENT_BANK } from "@/data/payment";
 import { formatPrice } from "@/data/currencies";
 import {
   AlertDialog,
@@ -157,6 +157,10 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
 
   // PortOne V2 카드 결제 — 결제창(자체 확인 단계) → 성공 시 서버 재검증(confirmPortonePayment) → 결제완료.
   const payWithCard = () => {
+    if (!CARD_PAYMENT_ENABLED) {
+      toast.error("카드 결제는 현재 준비 중입니다.");
+      return;
+    }
     const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID;
     const channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY;
     if (!storeId || !channelKey) {
@@ -285,24 +289,34 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
                   ] as const
                 ).map((m) => {
                   const active = payMethod === m.key;
+                  // 카드는 PG사 심사 중이라 선택 자체를 막는다(CARD_PAYMENT_ENABLED 단일 토글).
+                  const blocked = m.key === "card" && !CARD_PAYMENT_ENABLED;
                   return (
                     <button
                       key={m.key}
                       type="button"
                       onClick={() => setPayMethod(m.key)}
+                      disabled={blocked}
                       aria-pressed={active}
                       className={cn(
-                        "flex h-11 items-center justify-center gap-1.5 rounded-lg border text-sm font-bold transition-colors",
+                        "flex h-11 flex-col items-center justify-center gap-0 rounded-lg border text-sm leading-tight font-bold transition-colors",
                         active
                           ? "border-accent-blue bg-accent-blue-soft text-accent-blue-ink"
                           : "border-rule text-muted-fg hover:border-accent-blue hover:text-accent-blue-ink bg-white",
+                        "disabled:border-rule disabled:bg-surface disabled:text-muted-fg-faint disabled:hover:border-rule disabled:hover:text-muted-fg-faint disabled:cursor-not-allowed",
                       )}>
-                      <span aria-hidden>{m.icon}</span>
-                      {m.label}
+                      <span className="flex items-center gap-1.5">
+                        <span aria-hidden>{m.icon}</span>
+                        {m.label}
+                      </span>
+                      {blocked && <span className="text-[11px] font-semibold">준비 중</span>}
                     </button>
                   );
                 })}
               </div>
+              {!CARD_PAYMENT_ENABLED && (
+                <p className="text-muted-fg-faint mt-2 text-xs leading-relaxed">카드 결제는 준비 중입니다. 무통장 입금을 이용해 주세요.</p>
+              )}
 
               {payMethod === "bank" && (
                 <div className="mt-3 rounded-xl border border-[#6B4AD4]/30 bg-[#F3EEFD] px-4 py-3.5">
@@ -326,7 +340,7 @@ function EnrollmentRow({ row, onUpdated }: { row: StudentEnrollment; onUpdated: 
                 </div>
               )}
 
-              {payMethod === "card" && (
+              {CARD_PAYMENT_ENABLED && payMethod === "card" && (
                 <div className="border-rule mt-3 rounded-xl border bg-white px-4 py-3.5">
                   <div className="flex items-center justify-between gap-4 text-sm">
                     <span className="text-muted-fg">결제 금액</span>

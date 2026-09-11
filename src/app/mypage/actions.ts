@@ -15,6 +15,7 @@ import { sendEnrollmentCancellationToTeacher, sendEnrollmentCancelledToAdmin } f
 import { logEnrollmentEvent } from "@/lib/events";
 import { notifyCenterManagerOfEnrollment } from "@/lib/center-notify";
 import { settlePortonePayment } from "@/lib/payment";
+import { CARD_PAYMENT_ENABLED } from "@/data/payment";
 
 export type StudentActionState = { ok?: boolean; error?: string; transient?: boolean };
 
@@ -186,6 +187,8 @@ export async function cancelEnrollment(enrollmentId: string): Promise<StudentAct
 // 서버 authoritative 검증(status=PAID·금액·통화) → payments 기록 → '결제완료' 확정 → 과오납(중복결제) 자동 환불까지 수행.
 // 소유권·상태 재검증은 finalize가 authoritative(중복/재요청 안전). 금액은 절대 클라 신뢰 금지.
 export async function confirmPortonePayment(enrollmentId: string, paymentId: string): Promise<StudentActionState> {
+  // PG사 심사 중 — 클라 UI가 막혀 있어도 서버가 authoritative(우회 방어). 심사 완료 시 src/data/payment.ts 상수만 true.
+  if (!CARD_PAYMENT_ENABLED) return { error: "카드 결제는 현재 준비 중입니다." };
   const supabase = createClient(await cookies());
   const {
     data: { user },
