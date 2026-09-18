@@ -2421,3 +2421,66 @@ export async function deleteRoomAsAdmin(roomId: string, adminNote?: string): Pro
   revalidateRoomConsumers();
   return { ok: true };
 }
+
+// ⚠️ 시리즈 키는 PostgREST의 .or() 필터 문자열에 그대로 들어간다 → 형식을 먼저 검증해 필터 주입을 막는다
+//    (room-actions.ts의 isUuid와 같은 규칙).
+function isRoomSeriesKey(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+// 연습방 시리즈 통째 강제 삭제 (관리자) — deleteRoomAsAdmin의 시리즈판.
+// ⚠️ 프렌더 본인의 deleteRoomSeries는 예약자가 있는 회차가 하나라도 있으면 거부하지만, 이 액션은 그 구멍을
+//    메우는 용도라 **예약자가 있어도 삭제**하고 대신 문자로 통보한다.
+// ⚠️ 시리즈 키 = series_id ?? 단발 방의 id(seriesKeyOf). friender_id로 스코프하지 않는다.
+// ⚠️ 통보는 회차별이 아니라 **1인 1통** — 한 회원이 여러 회차를 예약했어도 문자는 한 번만 간다.
+export async function deleteRoomSeriesAsAdmin(seriesKey: string, adminNote?: string): Promise<ActionResult> {
+  if (!(await requireAdmin())) return { ok: false, error: "권한이 없습니다." };
+  if (!seriesKey || !isRoomSeriesKey(seriesKey)) return { ok: false, error: "잘못된 요청입니다." };
+  const note = (adminNote ?? "").trim();
+
+  const admin = createAdminClient();
+  const { data: cur } = await admin
+    .from("friender_rooms")
+    .select("id, friender_id, title, session_date, start_min, duration_min")
+    .or(`series_id.eq.${seriesKey},and(id.eq.${seriesKey},series_id.is.null)`)
+    .order("session_date", { ascending: true });
+  const rooms = (cur ?? []) as { id: string; friender_id: string; title: string; session_date: string; start_min: number; duration_min: number }[];
+  if (rooms.length === 0) return { ok: false, error: "연습방을 찾을 수 없습니다. 목록을 새로고침해 주세요." };
+  const ids = rooms.map((r) => r.id);
+
+  // 예약자는 room_id cascade로 사라지므로 삭제 전에 읽는다. **아직 끝나지 않은 회차**의 예약자만 통보 대상.
+  const now = Date.now();
+  const openIds = new Set(rooms.filter((r) => kstDateMinToMs(r.session_date, r.start_min + r.duration_min) > now).map((r) => r.id));
+  const { data: partsData } = await admin.from("friender_room_participants").select("room_id, user_id").in("room_id", ids);
+  const notifyIds = Array.from(
+    new Set(((partsData ?? []) as { room_id: string; user_id: string }[]).filter((p) => openIds.has(p.room_id)).map((p) => p.user_id)),
+  );
+
+  const { data: deleted, error } = await admin.from("friender_rooms").delete().in("id", ids).select("id");
+  if (error) return { ok: false, error: "삭제 중 오류가 발생했습니다." };
+  if (!deleted || deleted.length === 0) return { ok: false, error: "연습방을 찾을 수 없습니다. 목록을 새로고침해 주세요." };
+
+  // 게시판 정리 — series_key는 FK가 아니라 cascade가 없다(deleteRoomSeries와 같은 best-effort).
+  const { error: boardError } = await admin.from("friender_room_board_posts").delete().eq("series_key", seriesKey);
+  if (boardError) console.error("[deleteRoomSeriesAsAdmin] 게시판 정리 실패", boardError);
+
+  // 대표 이름은 마지막 회차 기준(일괄 수정이 미시작 회차에만 반영되므로 — 프렌더 방 관리 화면과 같은 규칙).
+  const last = rooms[rooms.length - 1];
+  const title = roomSmsTitle(last.title);
+  const reason = note ? ` 사유: ${note.slice(0, 120)}` : "";
+
+  await notifyUserBySms(
+    admin,
+    last.friender_id,
+    `[프렌딩 스쿨] '${title}' 연습방(${rooms.length}회차 전체)이 관리자에 의해 삭제되었습니다.${reason}`,
+    "[rooms] 프렌더 시리즈 삭제 안내",
+  );
+
+  if (notifyIds.length > 0) {
+    const text = `[프렌딩 스쿨] 예약하신 '${title}' 연습방이 취소되어 남은 예약이 모두 취소되었습니다.${reason}`;
+    await Promise.allSettled(notifyIds.map((id) => notifyUserBySms(admin, id, text, "[rooms] 예약자 시리즈 취소 안내")));
+  }
+
+  revalidateRoomConsumers();
+  return { ok: true };
+}
