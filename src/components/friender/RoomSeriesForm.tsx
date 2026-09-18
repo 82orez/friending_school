@@ -108,6 +108,9 @@ export default function RoomSeriesForm({
   }));
   const [dates, setDates] = useState<string[]>([]);
   const [topics, setTopics] = useState<Record<string, string>>({});
+  // 날짜를 옮기는 동안 주인을 잃은 주제들(뺀 순서 = 앞에서부터). 개수가 고정이라 "빼기"는 곧 "옮기기"의 절반이고,
+  // 두 클릭(빼기 → 넣기)에 걸쳐 일어나므로 그 사이를 이 대기열이 잇는다.
+  const [orphanTopics, setOrphanTopics] = useState<{ date: string; topic: string }[]>([]);
   const [bulk, setBulk] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -122,9 +125,12 @@ export default function RoomSeriesForm({
   );
 
   // 시작일·요일·기간 중 무엇이 바뀌든 회차를 다시 만든다(캘린더 수동 조정은 그 뒤에 덮어쓴다).
+  // ⚠️ 대기열도 비운다 — 수동 배치를 통째로 버리는 동작이라, 남겨 두면 옛 주제가 엉뚱한 새 날짜에 붙는다.
+  //    살아남은 날짜의 주제가 그대로 남는 건 `topics`가 날짜 키라서 자동으로 따라오는 기존 규약.
   const regen = (next: Fields) => {
     setForm(next);
     setDates(buildBase(next.startDate, next.weekdays, next.weeks));
+    setOrphanTopics([]);
   };
   const set = (patch: Partial<Fields>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -144,10 +150,40 @@ export default function RoomSeriesForm({
     [form.startDate, form.weekdays, maxDate],
   );
 
+  // 회차 날짜 교체의 단일 창구 — 캘린더 토글과 「되돌리기」가 모두 여기를 지난다.
+  // **주제 이관**: 회차 수가 고정이라 빼기·넣기는 한 쌍의 "옮기기"다. 뺀 날짜의 주제를 대기열에 담아 뒀다가
+  // 새로 고른 날짜가 비어 있으면 붙여 준다 — ①원래 자기 날짜가 대기열에 있으면 그걸 되찾고(되돌리기·실수 복구)
+  // ②없으면 **가장 먼저 뺀 것부터**(FIFO). 두 개를 빼고 두 개를 넣으면 뺀 순서대로 짝이 맞는다.
+  const applyDates = (nextKeys: string[]) => {
+    const keys = Array.from(new Set(nextKeys)).sort();
+    const removed = dates.filter((d) => !keys.includes(d));
+    const added = keys.filter((d) => !dates.includes(d));
+    if (removed.length === 0 && added.length === 0) return;
+
+    const nextTopics = { ...topics };
+    const queue = [...orphanTopics];
+    for (const d of removed) {
+      const topic = topics[d] ?? "";
+      delete nextTopics[d];
+      if (topic.trim()) queue.push({ date: d, topic });
+    }
+    for (const d of added) {
+      if (queue.length === 0) break;
+      if ((nextTopics[d] ?? "").trim()) continue; // 이미 주제가 있는 날짜면 건드리지 않는다
+      const own = queue.findIndex((o) => o.date === d);
+      const i = own >= 0 ? own : 0;
+      nextTopics[d] = queue[i].topic;
+      queue.splice(i, 1);
+    }
+
+    setDates(keys);
+    setTopics(nextTopics);
+    setOrphanTopics(queue);
+  };
+
   const onSelectDates = (next: Date[] | undefined) => {
     // 비활성 날짜는 캘린더가 콜백을 주지 않지만, 같은 술어를 한 번 더 건다(기존 `k >= today` 필터의 자리).
-    const keys = (next ?? []).map(toKey).filter(isPickable);
-    setDates(Array.from(new Set(keys)).sort());
+    applyDates((next ?? []).map(toKey).filter(isPickable));
   };
 
   const selectedDates = useMemo(() => dates.map(toLocalDate), [dates]);
@@ -404,7 +440,7 @@ export default function RoomSeriesForm({
             </p>
             {/* 개수가 같아도 날짜가 바뀐 상태를 잡아야 한다(둘 다 오름차순이라 문자열 비교로 충분). */}
             {dates.join(",") !== baseDates.join(",") && (
-              <Button type="button" variant="outline" size="sm" disabled={lock} onClick={() => setDates(baseDates)}>
+              <Button type="button" variant="outline" size="sm" disabled={lock} onClick={() => applyDates(baseDates)}>
                 기본 일정으로 되돌리기
               </Button>
             )}
