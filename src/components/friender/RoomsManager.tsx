@@ -365,7 +365,11 @@ function SeriesCard({
 
   const remaining = sessions.filter((r) => endMsOf(r) > now);
   const ended = remaining.length === 0;
-  const live = sessions.some((r) => canEnterClass(now, startMsOf(r), endMsOf(r)));
+  // 지금 들어갈 수 있는 회차 — **카드 머리의 입장 버튼**과 「진행 중」 배지, 회차 목록 자동 펼침이
+  // 모두 이 하나를 본다. 회차 행에도 같은 버튼이 있지만 그 목록이 기본 접힘이라, 개설자가
+  // 자기 방에 들어갈 길을 못 찾는 일이 있었다(실제 겪음) → 카드 위로 끌어올린다.
+  const enterableSession = sessions.find((r) => canEnterClass(now, startMsOf(r), endMsOf(r))) ?? null;
+  const live = enterableSession !== null;
   const totalReserved = sessions.reduce((sum, r) => sum + r.participants, 0);
   // 정원 하한 — 아직 시작하지 않은 회차 중 가장 많이 예약된 인원.
   const maxReserved = Math.max(0, ...sessions.filter((r) => startMsOf(r) > now).map((r) => r.participants));
@@ -423,6 +427,15 @@ function SeriesCard({
         </div>
 
         <div className="flex shrink-0 items-center gap-1.5">
+          {/* 입장 — 회차 행에도 있지만 그 목록이 접혀 있어, 시간창이 열리면 카드 머리에서 바로 들어가게 한다. */}
+          {enterableSession && (
+            <EnterRoomButton
+              roomId={enterableSession.id}
+              label="입장"
+              disabled={pending}
+              className="bg-cta mr-1 shrink-0 rounded-md px-3 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+            />
+          )}
           <Tooltip>
             <TooltipTrigger
               type="button"
@@ -463,8 +476,10 @@ function SeriesCard({
         </div>
       </div>
 
-      {/* 회차 목록 — 회차가 많아 기본은 접어 둔다(PrepManager의 커리큘럼 <details> 선례). */}
-      <details className="group mt-3">
+      {/* 회차 목록 — 회차가 많아 기본은 접어 두되, **입장 시간창이 열리면 자동으로 펼친다**.
+          ⚠️ React는 `open`이 **바뀔 때만** DOM에 쓴다 → 그 사이 사용자가 직접 접은 건 유지되고,
+             1분 틱마다 다시 열리지 않는다(시간창 진입/종료 순간에만 열고 닫힌다). */}
+      <details open={live} className="group mt-3">
         <summary className="text-accent-blue-ink border-rule hover:bg-surface list-none rounded-lg border px-3 py-2 text-xs font-bold transition-colors">
           회차 {sessions.length}개 보기 · 예약 현황
         </summary>
