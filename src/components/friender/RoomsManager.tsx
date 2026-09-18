@@ -1,20 +1,24 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Loader2, Pencil, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime, formatDateKo } from "@/lib/availability";
 import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
-import { fmtRoomEnd, roomsOverlap } from "@/lib/room-time";
+import { fmtRoomEnd, roomsOverlap, type RoomSlot } from "@/lib/room-time";
+import { addDays, fmtDateKo, fmtDateShort, kstToday } from "@/lib/date-kst";
+import { weekdaysLabelOf } from "@/lib/room-series";
+import { ROOM_TOPIC_MAX } from "@/data/room-series";
 import EnterRoomButton from "@/components/friending/EnterRoomButton";
 import RoomInfoModal from "@/components/friending/RoomInfoModal";
-import { ROOM_LEVELS, DEFAULT_ROOM_LEVEL, roomLevelLabelKo } from "@/data/room-levels";
-import { createRoom, deleteRoom, updateRoom, type RoomInput } from "@/app/friender/actions";
+import RoomSeriesForm, { type ExistingRoomSlot, type RoomSeriesFormValues } from "@/components/friender/RoomSeriesForm";
+import RoomSeriesEditModal, { type EditableSeries, type RoomSeriesPatchValues } from "@/components/friender/RoomSeriesEditModal";
+import { roomLevelLabelKo } from "@/data/room-levels";
+import { createRoomSeries, deleteRoom, deleteRoomSeries, updateRoomSeries, updateRoomSession } from "@/app/friender/room-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
@@ -27,122 +31,93 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-export type FrienderRoom = {
+// 프렌더 방 관리 — 연습방은 **주간 스케줄 시리즈** 단위로 개설하고, 목록도 시리즈 카드로 묶어 보여준다
+// (샤우팅 PrepManager의 "내 강좌" 구조). 서버 액션 호출·toast·router.refresh()는 여기서만 한다.
+
+export type FrienderRoomSession = {
   id: string;
-  title: string;
-  description: string | null;
-  level: string;
-  capacity: number;
   session_date: string; // KST YYYY-MM-DD
   start_min: number;
   duration_min: number;
+  topic: string | null;
   participants: number; // 자리를 잡고 있는 예약 인원(노쇼 제외, 서버가 service_role로 집계)
   noShows: number; // 시작 + 유예까지 미입장이라 자리가 반환된 예약 수
 };
 
-// 개설 가능 시간대 00:00~23:50(10분 간격, 24시간). 시·분을 각각 고르게 나눠 둔 이유는
-// 10분 단위면 단일 드롭다운이 144개가 돼 스크롤 부담이 크기 때문(24개 + 6개로 분할).
-// 강사 그리드(EnrollScheduleField, 06:00~)의 하한을 따르지 않는다 — 연습방은 해외 회원과의
-// 시차 대응이 필요해 새벽 시간대가 열려 있어야 한다. 서버·DB도 이미 0~1439를 허용한다.
+export type FrienderRoomSeries = {
+  key: string; // series_id ?? 단발 방의 id
+  title: string;
+  description: string | null;
+  level: string;
+  capacity: number;
+  sessions: FrienderRoomSession[]; // 날짜 오름차순
+};
+
+// 회차 개별 수정 — 시작 시각은 10분 단위, 시·분 분리(개설 폼과 같은 규칙).
 const START_STEP = 10;
 const START_HOURS: number[] = [];
 for (let h = 0; h < 24; h++) START_HOURS.push(h);
 const START_MINUTES: number[] = [];
 for (let m = 0; m < 60; m += START_STEP) START_MINUTES.push(m);
-const LAST_START_MIN = 24 * 60 - START_STEP; // 23:50
-
-// 진행 시간 20분~2시간, 10분 단위(서버 ROOM_DURATIONS·DB check와 동일 범위).
 const DURATIONS: number[] = [];
 for (let d = 20; d <= 120; d += 10) DURATIONS.push(d);
-
 const MAX_AHEAD_DAYS = 90;
 
 const pad2 = (n: number): string => String(n).padStart(2, "0");
 
-// YYYY-MM-DD (KST) + n일. 서버 validateRoomInput의 범위와 동일.
-const kstDateStr = (offsetDays = 0): string => {
-  const d = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-  d.setDate(d.getDate() + offsetDays);
-  return d.toLocaleDateString("en-CA");
-};
-
-// 기본 개설 날짜 = 오늘. 단 오늘 남은 슬롯이 없으면(23:50 지남) 내일로 넘긴다
-// — 서버가 '시작 시각이 미래'인지 검증하므로 오늘을 고르면 무슨 시각을 넣어도 반려된다.
-const defaultSessionDate = (): string => {
-  const kstNow = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-  // +1분: 정각에 열면 '지금'이 아니라 그 다음 슬롯이 기준(서버는 now 초과만 허용).
-  const next = Math.ceil((kstNow.getHours() * 60 + kstNow.getMinutes() + 1) / START_STEP) * START_STEP;
-  return next > LAST_START_MIN ? kstDateStr(1) : kstDateStr();
-};
-
-const DEFAULT_DURATION = 40;
-
-// ⚠️ 시작 시각은 기본값을 두지 않는다(시·분 모두 null에서 출발).
-// 실제 약속 시각이라 기본값이 채워져 있으면 ①확인 없이 그대로 제출되기 쉽고
-// ②기존 방과 겹치는 시각이 자동으로 잡혀 폼이 열리자마자 경고가 뜬다(실제 겪음).
-type Fields = {
-  title: string;
-  description: string;
-  level: string;
-  capacity: string;
+type SessionFields = {
   sessionDate: string;
   startHour: number | null;
   startMinute: number | null;
   durationMin: number;
+  topic: string;
 };
 
-// 시·분이 모두 선택됐을 때만 저장 가능한 값이 된다(둘 중 하나만 고른 상태 = 미선택).
-const startMinOf = (f: Fields): number | null => (f.startHour === null || f.startMinute === null ? null : f.startHour * 60 + f.startMinute);
+const startMinOf = (f: SessionFields): number | null => (f.startHour === null || f.startMinute === null ? null : f.startHour * 60 + f.startMinute);
 
-const emptyForm = (): Fields => ({
-  title: "",
-  description: "",
-  level: DEFAULT_ROOM_LEVEL,
-  capacity: "4",
-  sessionDate: defaultSessionDate(),
-  startHour: null,
-  startMinute: null,
-  durationMin: DEFAULT_DURATION,
-});
-
-const toInput = (f: Fields): RoomInput => ({
-  title: f.title,
-  description: f.description,
-  level: f.level,
-  capacity: Number(f.capacity),
-  sessionDate: f.sessionDate,
-  startMin: startMinOf(f) ?? 0, // 호출부(canCreate/canSave)가 미선택을 이미 막는다
-  durationMin: f.durationMin,
-});
-
-export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoom[]; hasZoomUrl: boolean }) {
+export default function RoomsManager({ series, hasZoomUrl }: { series: FrienderRoomSeries[]; hasZoomUrl: boolean }) {
   const router = useRouter();
-  const [form, setForm] = useState<Fields>(emptyForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFields, setEditFields] = useState<Fields>(emptyForm); // startEdit이 즉시 덮어쓰므로 기본값이면 충분
-  const [deleteTarget, setDeleteTarget] = useState<FrienderRoom | null>(null);
-  const [confirmCreate, setConfirmCreate] = useState(false);
+  const [createKey, setCreateKey] = useState(0); // 개설 성공 후 폼을 재마운트해 비운다(PrepManager 방식)
+  const [editSeries, setEditSeries] = useState<EditableSeries | null>(null);
+  const [deleteSeriesTarget, setDeleteSeriesTarget] = useState<FrienderRoomSeries | null>(null);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editFields, setEditFields] = useState<SessionFields | null>(null);
+  const [deleteSessionTarget, setDeleteSessionTarget] = useState<{ id: string; label: string } | null>(null);
   const [infoTarget, setInfoTarget] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const minDate = useMemo(() => kstDateStr(0), []);
-  const maxDate = useMemo(() => kstDateStr(MAX_AHEAD_DAYS), []);
+  const today = useMemo(() => kstToday(), []);
+  const maxDate = useMemo(() => addDays(today, MAX_AHEAD_DAYS), [today]);
 
-  // 1분 틱 — 입장 시간창 진입을 감지하고(버튼 자동 노출) 예정/지난 분리도 실시간 갱신한다.
+  // 1분 틱 — 입장 시간창 진입을 감지하고(버튼 자동 노출) 진행/종료 구분도 실시간 갱신한다.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 60_000);
     return () => clearInterval(t);
   }, []);
-  const { upcoming, past } = useMemo(() => {
-    const up: FrienderRoom[] = [];
-    const pa: FrienderRoom[] = [];
-    for (const r of rooms) {
-      (kstDateMinToMs(r.session_date, r.start_min + r.duration_min) > now ? up : pa).push(r);
-    }
-    // 예정은 가까운 순, 지난 방은 최근 순(서버가 내림차순으로 주므로 예정만 뒤집는다).
-    return { upcoming: up.reverse(), past: pa };
-  }, [rooms, now]);
+
+  // 겹침 사전 경고용 — 내 회차 전부를 평평하게 편다(개설 폼과 회차 수정이 함께 쓴다).
+  const allRooms: ExistingRoomSlot[] = useMemo(
+    () =>
+      series.flatMap((s) =>
+        s.sessions.map((r) => ({ id: r.id, title: s.title, sessionDate: r.session_date, startMin: r.start_min, durationMin: r.duration_min })),
+      ),
+    [series],
+  );
+
+  // 남은 회차가 있는 시리즈를 위로. 같은 그룹 안에서는 첫 회차가 이른 순.
+  const sorted = useMemo(() => {
+    const endOf = (s: FrienderRoomSeries) => {
+      const last = s.sessions[s.sessions.length - 1];
+      return last ? kstDateMinToMs(last.session_date, last.start_min + last.duration_min) : 0;
+    };
+    return [...series].sort((a, b) => {
+      const aLive = endOf(a) > now ? 0 : 1;
+      const bLive = endOf(b) > now ? 0 : 1;
+      if (aLive !== bLive) return aLive - bLive;
+      return (a.sessions[0]?.session_date ?? "").localeCompare(b.sessions[0]?.session_date ?? "");
+    });
+  }, [series, now]);
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, success?: string, after?: () => void) => {
     startTransition(async () => {
@@ -157,60 +132,86 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
     });
   };
 
-  const startEdit = (r: FrienderRoom) => {
-    setEditingId(r.id);
+  const submitCreate = (values: RoomSeriesFormValues) => {
+    run(
+      () => createRoomSeries(values),
+      "연습방을 개설했습니다.",
+      () => setCreateKey((k) => k + 1),
+    );
+  };
+
+  const submitSeriesPatch = (values: RoomSeriesPatchValues) => {
+    const target = editSeries;
+    if (!target) return;
+    run(
+      () => updateRoomSeries(target.key, values),
+      "연습방 정보를 수정했습니다.",
+      () => setEditSeries(null),
+    );
+  };
+
+  const startEditSession = (r: FrienderRoomSession) => {
+    setEditingSessionId(r.id);
     setEditFields({
-      title: r.title,
-      description: r.description ?? "",
-      level: r.level,
-      capacity: String(r.capacity),
       sessionDate: r.session_date,
       startHour: Math.floor(r.start_min / 60),
       startMinute: r.start_min % 60,
       durationMin: r.duration_min,
+      topic: r.topic ?? "",
     });
   };
 
-  const confirmCreateRoom = () => {
-    setConfirmCreate(false); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
-    if (!canCreate) return; // 다이얼로그가 열려 있는 동안 상태가 바뀐 경우(1분 틱·겹침 등) 방어.
+  const saveSession = (id: string) => {
+    if (!editFields) return;
+    const startMin = startMinOf(editFields);
+    if (startMin === null) return;
     run(
-      () => createRoom(toInput(form)),
-      "방을 개설했습니다.",
-      () => setForm(emptyForm()), // 시작 시각은 기본값이 없어 초기화해도 겹침이 생기지 않는다
+      () =>
+        updateRoomSession(id, {
+          sessionDate: editFields.sessionDate,
+          startMin,
+          durationMin: editFields.durationMin,
+          topic: editFields.topic,
+        }),
+      "회차를 수정했습니다.",
+      () => {
+        setEditingSessionId(null);
+        setEditFields(null);
+      },
     );
   };
 
-  const confirmDelete = () => {
-    const target = deleteTarget;
-    setDeleteTarget(null); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
+  const confirmDeleteSession = () => {
+    const target = deleteSessionTarget;
+    setDeleteSessionTarget(null); // base-nova는 AlertDialogAction이 자동으로 닫지 않는다.
     if (!target) return;
-    run(() => deleteRoom(target.id), "방을 삭제했습니다.");
+    run(() => deleteRoom(target.id), "회차를 삭제했습니다.");
   };
 
-  // 시간 겹침 사전 경고 — 본인 방이 rooms prop에 전부 있어 추가 쿼리 없이 판정된다.
-  // 서버 findOverlappingRoom이 authoritative고 여기는 제출 전에 알려주는 UX 레이어일 뿐
-  // (<input min> ↔ validateRoomInput 관계와 동일).
-  const conflictOf = (f: Fields, excludeId?: string): FrienderRoom | undefined => {
-    const startMin = startMinOf(f);
-    if (startMin === null) return undefined; // 시각 미선택 = 판정할 구간이 없음
-    const slot = { sessionDate: f.sessionDate, startMin, durationMin: f.durationMin };
-    return rooms.find(
-      (r) => r.id !== excludeId && roomsOverlap(slot, { sessionDate: r.session_date, startMin: r.start_min, durationMin: r.duration_min }),
-    );
+  const confirmDeleteSeries = () => {
+    const target = deleteSeriesTarget;
+    setDeleteSeriesTarget(null);
+    if (!target) return;
+    run(() => deleteRoomSeries(target.key), "연습방을 삭제했습니다.");
   };
 
-  const createConflict = useMemo(() => conflictOf(form), [form, rooms]);
-  const editConflict = useMemo(() => (editingId ? conflictOf(editFields, editingId) : undefined), [editFields, editingId, rooms]);
-
-  const canCreate = hasZoomUrl && !!form.title.trim() && startMinOf(form) !== null && !pending && !createConflict;
+  // 회차 수정 시 겹침 사전 경고(자기 자신 제외).
+  const editConflict = useMemo(() => {
+    if (!editFields || !editingSessionId) return null;
+    const startMin = startMinOf(editFields);
+    if (startMin === null) return null;
+    const slot: RoomSlot = { sessionDate: editFields.sessionDate, startMin, durationMin: editFields.durationMin };
+    return allRooms.find((r) => r.id !== editingSessionId && roomsOverlap(slot, r)) ?? null;
+  }, [editFields, editingSessionId, allRooms]);
 
   // 툴팁은 현재 이 화면에서만 쓰여 로컬로 감싼다(다른 화면에도 퍼지면 루트 layout으로 올릴 것).
   return (
     <TooltipProvider>
       <div>
         <h2 className="text-ink text-lg font-extrabold">방 관리</h2>
-        <p className="text-muted-fg mt-1 text-sm">Zoom으로 진행할 연습방을 개설합니다. 회원이 방을 클릭하면 내 Zoom 주소로 연결됩니다.</p>
+        <p className="text-muted-fg mt-1 text-sm">
+          Zoom으로 진행할 연습방을 개설합니다. 요일과 기간을 고르면 회차가 한 번에 만들어지고, 회원은 회차별로 예약합니다.
+        </p>
 
         {!hasZoomUrl && (
           <div className="border-brand/30 bg-brand/5 text-brand mt-4 rounded-xl border px-4 py-3 text-sm font-semibold">
@@ -220,146 +221,91 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
 
         {/* 개설 폼 */}
         <div className="border-rule mt-4 rounded-xl border bg-white p-5">
-          <h3 className="text-ink text-sm font-extrabold">새 방 개설</h3>
-          <RoomFields fields={form} onChange={setForm} minDate={minDate} maxDate={maxDate} disabled={!hasZoomUrl || pending} />
-          {createConflict && <ConflictNotice room={createConflict} />}
-          <div className="mt-4 flex justify-end">
-            <Button type="button" variant="brand" disabled={!canCreate} onClick={() => setConfirmCreate(true)}>
-              {pending && <Loader2 className="animate-spin" />}방 개설하기
-            </Button>
+          <h3 className="text-ink text-sm font-extrabold">새 연습방 개설</h3>
+          <RoomSeriesForm key={createKey} pending={pending} existingRooms={allRooms} disabled={!hasZoomUrl} onSubmit={submitCreate} />
+        </div>
+
+        {/* 내 연습방 */}
+        <h3 className="text-ink mt-8 text-sm font-extrabold">내 연습방 ({series.length})</h3>
+        {sorted.length === 0 ? (
+          <div className="border-rule mt-2 rounded-xl border bg-white">
+            <p className="text-muted-fg px-6 py-10 text-center text-sm">개설한 연습방이 없습니다.</p>
           </div>
-        </div>
-
-        {/* 예정된 방 */}
-        <h3 className="text-ink mt-8 text-sm font-extrabold">예정된 방 ({upcoming.length})</h3>
-        <div className="border-rule mt-2 overflow-hidden rounded-xl border bg-white">
-          {upcoming.length === 0 ? (
-            <p className="text-muted-fg px-6 py-10 text-center text-sm">예정된 방이 없습니다.</p>
-          ) : (
-            <ul className="list-none">
-              {upcoming.map((r) =>
-                editingId === r.id ? (
-                  <li key={r.id} className="border-rule bg-surface border-b p-5 last:border-b-0">
-                    <RoomFields
-                      fields={editFields}
-                      onChange={setEditFields}
-                      minDate={minDate}
-                      maxDate={maxDate}
-                      disabled={pending}
-                      lockSchedule={r.participants > 0}
-                      minCapacity={Math.max(1, r.participants)}
-                    />
-                    {editConflict && <ConflictNotice room={editConflict} />}
-                    <div className="mt-4 flex justify-end gap-2">
-                      <Button type="button" variant="outline" disabled={pending} onClick={() => setEditingId(null)}>
-                        취소
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="brand"
-                        disabled={pending || !editFields.title.trim() || startMinOf(editFields) === null || !!editConflict}
-                        onClick={() =>
-                          run(
-                            () => updateRoom(r.id, toInput(editFields)),
-                            "방을 수정했습니다.",
-                            () => setEditingId(null),
-                          )
-                        }>
-                        {pending && <Loader2 className="animate-spin" />}
-                        저장
-                      </Button>
-                    </div>
-                  </li>
-                ) : (
-                  <RoomRow
-                    key={r.id}
-                    room={r}
-                    pending={pending}
-                    enterable={canEnterClass(
-                      now,
-                      kstDateMinToMs(r.session_date, r.start_min),
-                      kstDateMinToMs(r.session_date, r.start_min + r.duration_min),
-                    )}
-                    onOpenInfo={setInfoTarget}
-                    onEdit={() => startEdit(r)}
-                    onDelete={() => setDeleteTarget(r)}
-                  />
-                ),
-              )}
-            </ul>
-          )}
-        </div>
-
-        {/* 지난 방 */}
-        {past.length > 0 && (
-          <>
-            <h3 className="text-ink mt-8 text-sm font-extrabold">지난 방 ({past.length})</h3>
-            <div className="border-rule mt-2 overflow-hidden rounded-xl border bg-white">
-              <ul className="list-none">
-                {past.map((r) => (
-                  <RoomRow key={r.id} room={r} pending={pending} isPast onOpenInfo={setInfoTarget} onDelete={() => setDeleteTarget(r)} />
-                ))}
-              </ul>
-            </div>
-          </>
+        ) : (
+          <ul className="mt-2 list-none space-y-3">
+            {sorted.map((s) => (
+              <SeriesCard
+                key={s.key}
+                series={s}
+                now={now}
+                pending={pending}
+                today={today}
+                maxDate={maxDate}
+                editingSessionId={editingSessionId}
+                editFields={editFields}
+                editConflict={editConflict}
+                onEditFields={setEditFields}
+                onStartEditSession={startEditSession}
+                onCancelEditSession={() => {
+                  setEditingSessionId(null);
+                  setEditFields(null);
+                }}
+                onSaveSession={saveSession}
+                onDeleteSession={(id, label) => setDeleteSessionTarget({ id, label })}
+                onOpenInfo={setInfoTarget}
+                onEditSeries={setEditSeries}
+                onDeleteSeries={setDeleteSeriesTarget}
+              />
+            ))}
+          </ul>
         )}
 
         {/* 방 소개글 전문 */}
         <RoomInfoModal description={infoTarget} onClose={() => setInfoTarget(null)} />
 
-        {/* 개설 확인 — 기본값이 미리 채워져 있어 값을 확인하지 않고 제출하기 쉽다. */}
-        <AlertDialog open={confirmCreate} onOpenChange={setConfirmCreate}>
+        {/* 시리즈 공통값 수정 */}
+        <RoomSeriesEditModal series={editSeries} pending={pending} onClose={() => setEditSeries(null)} onSubmit={submitSeriesPatch} />
+
+        {/* 회차 삭제 확인 */}
+        <AlertDialog open={deleteSessionTarget !== null} onOpenChange={(open) => !open && setDeleteSessionTarget(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>이 내용으로 방을 개설할까요?</AlertDialogTitle>
-              <AlertDialogDescription>개설하면 「프렌딩」에 바로 공개되고 회원이 참여할 수 있습니다.</AlertDialogDescription>
-            </AlertDialogHeader>
-
-            {/* ⚠️ AlertDialogDescription은 <p>라 dl을 그 안에 넣을 수 없다 — 형제로 배치한다. */}
-            <dl className="border-rule mt-1 grid grid-cols-[5rem_1fr] gap-x-3 gap-y-2 border-t pt-4 text-sm">
-              {(
-                [
-                  ["주제", form.title.trim()],
-                  ["개설 날짜", formatDateKo(form.sessionDate)],
-                  ["시간", `${fmtTime(startMinOf(form) ?? 0)}~${fmtRoomEnd((startMinOf(form) ?? 0) + form.durationMin)} (${form.durationMin}분)`],
-                  ["난이도", roomLevelLabelKo(form.level)],
-                  ["제한 인원", `${form.capacity}명`],
-                  ["방 소개", form.description.trim() || "없음"],
-                ] as const
-              ).map(([label, value]) => (
-                <Fragment key={label}>
-                  <dt className="text-muted-fg-faint">{label}</dt>
-                  <dd className="text-ink line-clamp-2 font-semibold break-words">{value}</dd>
-                </Fragment>
-              ))}
-            </dl>
-
-            <AlertDialogFooter>
-              <AlertDialogCancel>취소</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmCreateRoom} variant="brand">
-                개설하기
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {/* 삭제 확인 */}
-        <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>방을 삭제하시겠습니까?</AlertDialogTitle>
+              <AlertDialogTitle>이 회차를 삭제하시겠습니까?</AlertDialogTitle>
               <AlertDialogDescription>
-                {deleteTarget && (
+                {deleteSessionTarget && (
                   <>
-                    <span className="text-ink font-semibold">{deleteTarget.title}</span> 방을 삭제합니다. 되돌릴 수 없습니다.
+                    <span className="text-ink font-semibold">{deleteSessionTarget.label}</span> 회차를 삭제합니다. 되돌릴 수 없습니다.
                   </>
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>취소</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDelete} variant="brand">
+              <AlertDialogAction onClick={confirmDeleteSession} variant="brand">
                 삭제
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* 시리즈 전체 삭제 확인 */}
+        <AlertDialog open={deleteSeriesTarget !== null} onOpenChange={(open) => !open && setDeleteSeriesTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>연습방을 통째로 삭제하시겠습니까?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {deleteSeriesTarget && (
+                  <>
+                    <span className="text-ink font-semibold">{deleteSeriesTarget.title}</span>의 {deleteSeriesTarget.sessions.length}개 회차를 모두
+                    삭제합니다. 예약한 회원이 있는 회차가 하나라도 있으면 삭제할 수 없습니다.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteSeries} variant="brand">
+                전체 삭제
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -369,59 +315,329 @@ export default function RoomsManager({ rooms, hasZoomUrl }: { rooms: FrienderRoo
   );
 }
 
-// 시간 겹침 안내 — Zoom URL 미등록 배너와 같은 톤.
-function ConflictNotice({ room }: { room: FrienderRoom }) {
+/* ===== 시리즈 카드 ===== */
+
+function SeriesCard({
+  series,
+  now,
+  pending,
+  today,
+  maxDate,
+  editingSessionId,
+  editFields,
+  editConflict,
+  onEditFields,
+  onStartEditSession,
+  onCancelEditSession,
+  onSaveSession,
+  onDeleteSession,
+  onOpenInfo,
+  onEditSeries,
+  onDeleteSeries,
+}: {
+  series: FrienderRoomSeries;
+  now: number;
+  pending: boolean;
+  today: string;
+  maxDate: string;
+  editingSessionId: string | null;
+  editFields: SessionFields | null;
+  editConflict: ExistingRoomSlot | null;
+  onEditFields: (f: SessionFields) => void;
+  onStartEditSession: (r: FrienderRoomSession) => void;
+  onCancelEditSession: () => void;
+  onSaveSession: (id: string) => void;
+  onDeleteSession: (id: string, label: string) => void;
+  onOpenInfo: (description: string) => void;
+  onEditSeries: (s: EditableSeries) => void;
+  onDeleteSeries: (s: FrienderRoomSeries) => void;
+}) {
+  const sessions = series.sessions;
+  const first = sessions[0];
+  const last = sessions[sessions.length - 1];
+  const description = series.description?.trim() ?? "";
+
+  const endMsOf = (r: FrienderRoomSession) => kstDateMinToMs(r.session_date, r.start_min + r.duration_min);
+  const startMsOf = (r: FrienderRoomSession) => kstDateMinToMs(r.session_date, r.start_min);
+
+  const remaining = sessions.filter((r) => endMsOf(r) > now);
+  const ended = remaining.length === 0;
+  const live = sessions.some((r) => canEnterClass(now, startMsOf(r), endMsOf(r)));
+  const totalReserved = sessions.reduce((sum, r) => sum + r.participants, 0);
+  // 정원 하한 — 아직 시작하지 않은 회차 중 가장 많이 예약된 인원.
+  const maxReserved = Math.max(0, ...sessions.filter((r) => startMsOf(r) > now).map((r) => r.participants));
+
+  // 시각이 회차마다 다를 수 있다(회차 개별 수정) — 다르면 대표 시각 대신 "회차별 상이"로 알린다.
+  const sameTime = sessions.every((r) => r.start_min === first.start_min && r.duration_min === first.duration_min);
+  const timeLabel = sameTime ? `${fmtTime(first.start_min)}~${fmtRoomEnd(first.start_min + first.duration_min)}` : "회차별 상이";
+
+  const badge = ended
+    ? { label: "종료", cls: "bg-surface text-muted-fg" }
+    : live
+      ? { label: "진행 중", cls: "bg-[#eafff1] text-[#22c55e]" }
+      : { label: "예정", cls: "bg-cta/10 text-cta" };
+
+  const iconBtn = "border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border p-2 transition-colors disabled:opacity-60";
+
   return (
-    <p className="border-brand/30 bg-brand/5 text-brand mt-3 rounded-lg border px-3 py-2 text-xs font-semibold">
-      이미 같은 시간에 개설한 방이 있어요. ({room.title} · {fmtTime(room.start_min)}~{fmtRoomEnd(room.start_min + room.duration_min)})
-    </p>
+    <li className={cn("border-rule rounded-xl border bg-white p-5", ended && "opacity-70")}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", badge.cls)}>{badge.label}</span>
+            <h4 className="text-ink truncate text-base font-extrabold">{series.title}</h4>
+          </div>
+          <p className="text-muted-fg mt-1 text-xs">
+            {first ? `${fmtDateKo(first.session_date)} ~ ${fmtDateKo(last.session_date)}` : "-"} ·{" "}
+            {weekdaysLabelOf(sessions.map((r) => r.session_date))} · {timeLabel}
+          </p>
+          <p className="text-muted-fg-faint mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+            <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(series.level)}</span>
+            <span>총 {sessions.length}회차</span>
+            <span>남은 {remaining.length}회차</span>
+            <span className={cn("inline-flex items-center gap-1", totalReserved > 0 && "text-cta font-bold")}>
+              <Users aria-hidden className="size-3" />
+              누적 예약 {totalReserved}명 · 정원 {series.capacity}명
+            </span>
+          </p>
+          {/* 소개는 모달로 — 카드마다 문단 길이가 달라 목록이 들쭉날쭉해진다(프렌딩·마이페이지와 같은 규칙). */}
+          <button
+            type="button"
+            disabled={!description}
+            aria-haspopup="dialog"
+            title={description ? undefined : "등록된 소개가 없어요"}
+            onClick={() => onOpenInfo(description)}
+            className={cn(
+              "focus-visible:ring-accent-blue/50 mt-1 inline-flex items-center gap-0.5 rounded text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:outline-none",
+              description ? "text-accent-blue-ink hover:underline" : "text-muted-fg-faint/60 cursor-default",
+            )}>
+            <ChevronRight aria-hidden className="size-3" />방 소개글 보기
+          </button>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Tooltip>
+            <TooltipTrigger
+              type="button"
+              disabled={pending || remaining.length === 0}
+              aria-label="연습방 정보 수정"
+              onClick={() =>
+                onEditSeries({
+                  key: series.key,
+                  title: series.title,
+                  description: series.description,
+                  level: series.level,
+                  capacity: series.capacity,
+                  remaining: remaining.length,
+                  maxReserved,
+                })
+              }
+              className={cn(iconBtn, remaining.length === 0 && "disabled:pointer-events-auto disabled:cursor-not-allowed")}>
+              <Pencil aria-hidden className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>{remaining.length === 0 ? "남은 회차가 없어요" : "이름·소개·난이도·정원 수정"}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              type="button"
+              disabled={pending || totalReserved > 0}
+              aria-label="연습방 전체 삭제"
+              onClick={() => onDeleteSeries(series)}
+              // 비활성 버튼은 기본적으로 hover 이벤트가 죽어 툴팁이 안 뜬다 → pointer-events를 되살린다.
+              className={cn(
+                iconBtn,
+                "border-brand/40 text-brand hover:bg-brand/5",
+                totalReserved > 0 && "disabled:pointer-events-auto disabled:cursor-not-allowed",
+              )}>
+              <Trash2 aria-hidden className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>{totalReserved > 0 ? "예약자가 있는 회차가 있어 전체 삭제할 수 없어요" : "전체 삭제"}</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+
+      {/* 회차 목록 — 회차가 많아 기본은 접어 둔다(PrepManager의 커리큘럼 <details> 선례). */}
+      <details className="group mt-3">
+        <summary className="text-accent-blue-ink border-rule hover:bg-surface list-none rounded-lg border px-3 py-2 text-xs font-bold transition-colors">
+          회차 {sessions.length}개 보기 · 예약 현황
+        </summary>
+        <ul className="border-rule mt-2 list-none overflow-hidden rounded-lg border">
+          {sessions.map((r, i) =>
+            editingSessionId === r.id && editFields ? (
+              <li key={r.id} className="border-rule bg-surface border-b p-4 last:border-b-0">
+                <SessionFieldsEditor
+                  fields={editFields}
+                  onChange={onEditFields}
+                  today={today}
+                  maxDate={maxDate}
+                  disabled={pending}
+                  lockSchedule={r.participants > 0 || r.noShows > 0}
+                />
+                {editConflict && (
+                  <p className="border-brand/30 bg-brand/5 text-brand mt-3 rounded-lg border px-3 py-2 text-xs font-semibold">
+                    이미 같은 시간에 개설한 방이 있어요. ({editConflict.title} · {fmtTime(editConflict.startMin)}~
+                    {fmtRoomEnd(editConflict.startMin + editConflict.durationMin)})
+                  </p>
+                )}
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button type="button" variant="outline" size="sm" disabled={pending} onClick={onCancelEditSession}>
+                    취소
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="brand"
+                    size="sm"
+                    disabled={pending || startMinOf(editFields) === null || !!editConflict}
+                    onClick={() => onSaveSession(r.id)}>
+                    {pending && <Loader2 className="animate-spin" />}
+                    저장
+                  </Button>
+                </div>
+              </li>
+            ) : (
+              <SessionRow
+                key={r.id}
+                session={r}
+                index={i}
+                total={sessions.length}
+                capacity={series.capacity}
+                pending={pending}
+                isPast={endMsOf(r) <= now}
+                started={startMsOf(r) <= now}
+                enterable={canEnterClass(now, startMsOf(r), endMsOf(r))}
+                onEdit={() => onStartEditSession(r)}
+                onDelete={() => onDeleteSession(r.id, `${i + 1}회차 · ${formatDateKo(r.session_date)}`)}
+              />
+            ),
+          )}
+        </ul>
+      </details>
+    </li>
   );
 }
 
-// 개설/수정 공용 입력 묶음. 날짜+시작 분을 분리 저장(datetime-local은 브라우저 로컬 시간이라 KST 스케줄에 부적합).
-function RoomFields({
+/* ===== 회차 행 ===== */
+
+function SessionRow({
+  session,
+  index,
+  total,
+  capacity,
+  pending,
+  isPast,
+  started,
+  enterable,
+  onEdit,
+  onDelete,
+}: {
+  session: FrienderRoomSession;
+  index: number;
+  total: number;
+  capacity: number;
+  pending: boolean;
+  isPast: boolean;
+  started: boolean;
+  enterable: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const iconBtn = "border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border p-2 transition-colors disabled:opacity-60";
+  const hasGuests = session.participants > 0 || session.noShows > 0; // 예약이 들어온 회차는 한눈에 구분되게 강조
+
+  return (
+    <li
+      className={cn(
+        "border-rule flex flex-wrap items-center gap-3 border-b px-4 py-3 last:border-b-0",
+        // 좌측 액센트 + 옅은 배경(pl은 테두리 두께만큼 줄여 텍스트 시작선을 맞춘다).
+        hasGuests && "border-l-cta bg-cta/[0.04] border-l-4 pl-3",
+        isPast && "opacity-60",
+      )}>
+      <div className="min-w-0 flex-1">
+        <p className="text-ink text-sm font-bold">
+          <span className="text-muted-fg-faint font-semibold">
+            {index + 1}/{total}회차
+          </span>{" "}
+          · {fmtDateShort(session.session_date)} · {fmtTime(session.start_min)}~{fmtRoomEnd(session.start_min + session.duration_min)}
+        </p>
+        <p className="text-muted-fg mt-0.5 truncate text-xs">{session.topic?.trim() || "주제 미정"}</p>
+        <p className="text-muted-fg-faint mt-0.5 flex flex-wrap items-center gap-x-2 text-xs">
+          <span className={cn("inline-flex items-center gap-1", session.participants > 0 && "text-cta font-bold")}>
+            <Users aria-hidden className="size-3" />
+            {session.participants}/{capacity}명
+          </span>
+          {/* 노쇼 — 시작 후 유예까지 미입장이라 자리를 반환한 예약. 신원은 알 수 없어 수만 보여준다. */}
+          {session.noShows > 0 && <span className="bg-rule/60 text-muted-fg rounded-full px-2 py-0.5 font-bold">미입장 {session.noShows}</span>}
+        </p>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-1.5">
+        {/* 입장 — 시간창(시작 15분 전~종료) 안에서만. */}
+        {enterable && (
+          <EnterRoomButton
+            roomId={session.id}
+            label="입장"
+            disabled={pending}
+            className="bg-cta mr-1 shrink-0 rounded-md px-3 py-1.5 text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+          />
+        )}
+        {!started && (
+          <Tooltip>
+            <TooltipTrigger type="button" onClick={onEdit} disabled={pending} aria-label="회차 수정" className={iconBtn}>
+              <Pencil aria-hidden className="size-4" />
+            </TooltipTrigger>
+            <TooltipContent>회차 수정</TooltipContent>
+          </Tooltip>
+        )}
+        <Tooltip>
+          <TooltipTrigger
+            type="button"
+            onClick={onDelete}
+            disabled={pending || session.participants > 0 || session.noShows > 0}
+            aria-label="회차 삭제"
+            className={cn(
+              iconBtn,
+              "border-brand/40 text-brand hover:bg-brand/5",
+              hasGuests && "disabled:pointer-events-auto disabled:cursor-not-allowed",
+            )}>
+            <Trash2 aria-hidden className="size-4" />
+          </TooltipTrigger>
+          <TooltipContent>{hasGuests ? "예약자가 있어 삭제할 수 없어요" : "회차 삭제"}</TooltipContent>
+        </Tooltip>
+      </div>
+    </li>
+  );
+}
+
+/* ===== 회차 개별 수정 입력 ===== */
+
+// 날짜 + 시작 분을 분리해 다룬다(datetime-local은 브라우저 로컬 시간이라 KST 스케줄에 부적합).
+function SessionFieldsEditor({
   fields,
   onChange,
-  minDate,
+  today,
   maxDate,
   disabled,
   lockSchedule,
-  minCapacity = 1,
 }: {
-  fields: Fields;
-  onChange: (f: Fields) => void;
-  minDate: string;
+  fields: SessionFields;
+  onChange: (f: SessionFields) => void;
+  today: string;
   maxDate: string;
   disabled?: boolean;
-  // 예약자가 있는 방 — 날짜·시각·진행 시간만 잠근다(주제·난이도·정원·소개는 계속 수정 가능).
+  // 예약자가 있는 회차 — 날짜·시각·진행 시간만 잠근다(주제는 계속 수정 가능).
   lockSchedule?: boolean;
-  minCapacity?: number;
 }) {
-  const set = (patch: Partial<Fields>) => onChange({ ...fields, ...patch });
+  const set = (patch: Partial<SessionFields>) => onChange({ ...fields, ...patch });
   const selectClass = "border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none disabled:opacity-60";
 
   return (
-    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <label className="flex flex-col gap-1 sm:col-span-2">
-        <span className="text-muted-fg-faint text-xs font-semibold">
-          오늘의 주제 <span className="text-brand">*</span>
-        </span>
-        <Input
-          value={fields.title}
-          onChange={(e) => set({ title: e.target.value })}
-          disabled={disabled}
-          maxLength={100}
-          placeholder="예) 카페에서 주문하기"
-          className="h-10"
-        />
-      </label>
-
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label className="flex flex-col gap-1">
-        <span className="text-muted-fg-faint text-xs font-semibold">개설 날짜</span>
+        <span className="text-muted-fg-faint text-xs font-semibold">수업 날짜</span>
         <input
           type="date"
           value={fields.sessionDate}
-          min={minDate}
+          min={today}
           max={maxDate}
           disabled={disabled || lockSchedule}
           onChange={(e) => set({ sessionDate: e.target.value })}
@@ -430,14 +646,9 @@ function RoomFields({
       </label>
 
       <div className="grid grid-cols-2 gap-3">
-        {/* 시·분 두 컨트롤이라 <label>로 감싸지 않는다(라벨이 첫 select에만 걸림) — 각각 aria-label을 준다. */}
+        {/* 시·분 두 컨트롤이라 <label>로 감싸지 않는다 — 각각 aria-label을 준다. */}
         <div className="flex flex-col gap-1">
-          {/* 시·분 두 칸에 걸친 제목이라 가운데 정렬(다른 단일 필드 라벨은 좌측 정렬 유지). */}
-          <span className="text-muted-fg-faint text-center text-xs font-semibold">
-            시작 시각 <span className="text-brand">*</span>
-          </span>
-          {/* 기본값 없음 — 미선택은 value="" 플레이스홀더로 표현한다(강사 지원 폼의 센터 select와 같은 방식).
-              옵션은 숫자만 두고 두 select 사이에 ':'을 넣어 08:30처럼 읽히게 한다. */}
+          <span className="text-muted-fg-faint text-center text-xs font-semibold">시작 시각</span>
           <div className="flex items-center gap-1.5">
             <select
               aria-label="시작 시각 (시)"
@@ -486,148 +697,23 @@ function RoomFields({
         </label>
       </div>
 
-      <label className="flex flex-col gap-1">
-        <span className="text-muted-fg-faint text-xs font-semibold">난이도</span>
-        <select value={fields.level} disabled={disabled} onChange={(e) => set({ level: e.target.value })} className={selectClass}>
-          {ROOM_LEVELS.map((l) => (
-            <option key={l.value} value={l.value}>
-              {l.ko}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="flex flex-col gap-1">
-        <span className="text-muted-fg-faint text-xs font-semibold">제한 인원 (1~100명)</span>
-        {/* h-10: shadcn Input 기본 h-8이라 옆 칸 select(selectClass)와 높이가 어긋난다. */}
-        <Input
-          type="number"
-          min={minCapacity}
-          max={100}
-          value={fields.capacity}
-          disabled={disabled}
-          onChange={(e) => set({ capacity: e.target.value })}
-          className="h-10"
-        />
-      </label>
-
       <label className="flex flex-col gap-1 sm:col-span-2">
-        <span className="text-muted-fg-faint text-xs font-semibold">방 소개 (선택)</span>
-        <Textarea
-          value={fields.description}
-          onChange={(e) => set({ description: e.target.value })}
+        <span className="text-muted-fg-faint text-xs font-semibold">회차 주제 (선택)</span>
+        <Input
+          value={fields.topic}
+          onChange={(e) => set({ topic: e.target.value })}
           disabled={disabled}
-          rows={3}
-          maxLength={1000}
-          placeholder="어떤 방인지 간단히 소개해 주세요."
+          maxLength={ROOM_TOPIC_MAX}
+          placeholder="이 회차에서 나눌 주제"
+          className="h-10"
         />
       </label>
 
       {lockSchedule && (
         <p className="text-muted-fg bg-surface border-rule rounded-lg border px-3 py-2 text-xs font-semibold sm:col-span-2">
-          예약한 회원이 있어 일정(날짜·시각·진행 시간)은 변경할 수 없어요. 주제·소개·난이도는 수정할 수 있습니다.
+          예약한 회원이 있어 일정(날짜·시각·진행 시간)은 변경할 수 없어요. 회차 주제는 수정할 수 있습니다.
         </p>
       )}
     </div>
-  );
-}
-
-function RoomRow({
-  room,
-  pending,
-  isPast,
-  enterable,
-  onOpenInfo,
-  onEdit,
-  onDelete,
-}: {
-  room: FrienderRoom;
-  pending?: boolean;
-  isPast?: boolean;
-  enterable?: boolean;
-  onOpenInfo: (description: string) => void;
-  onEdit?: () => void;
-  onDelete: () => void;
-}) {
-  const iconBtn = "border-rule text-muted-fg hover:bg-surface shrink-0 rounded-md border p-2 transition-colors disabled:opacity-60";
-  const description = room.description?.trim() ?? "";
-  const hasGuests = room.participants > 0; // 예약이 들어온 방은 한눈에 구분되게 강조한다
-
-  return (
-    <li
-      className={cn(
-        "border-rule flex flex-wrap items-center gap-3 border-b px-4 py-3.5 last:border-b-0 md:px-6",
-        // 좌측 액센트 + 옅은 배경(px는 테두리 두께만큼 줄여 텍스트 시작선을 맞춘다).
-        hasGuests && "border-l-cta bg-cta/[0.04] border-l-4 pl-3 md:pl-5",
-        isPast && "opacity-60",
-      )}>
-      <div className="min-w-0 flex-1">
-        <p className="text-ink truncate text-sm font-bold">{room.title}</p>
-        <p className="text-muted-fg mt-0.5 text-xs">
-          {formatDateKo(room.session_date)} · {fmtTime(room.start_min)}~{fmtRoomEnd(room.start_min + room.duration_min)}
-        </p>
-        <p className="text-muted-fg-faint mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-          <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(room.level)}</span>
-          <span className={cn("inline-flex items-center gap-1", hasGuests && "text-cta font-bold")}>
-            <Users aria-hidden className="size-3" />
-            {room.participants}/{room.capacity}명
-          </span>
-          {/* 노쇼 — 시작 후 유예까지 미입장이라 자리를 반환한 예약. 신원은 알 수 없어 수만 보여준다. */}
-          {room.noShows > 0 && <span className="bg-rule/60 text-muted-fg rounded-full px-2 py-0.5 font-bold">미입장 {room.noShows}</span>}
-        </p>
-        {/* 소개는 모달로 — 행마다 문단 길이가 달라 목록이 들쭉날쭉해진다(프렌딩·마이페이지와 같은 규칙). */}
-        <button
-          type="button"
-          disabled={!description}
-          aria-haspopup="dialog"
-          title={description ? undefined : "등록된 소개가 없어요"}
-          onClick={() => onOpenInfo(description)}
-          className={cn(
-            "focus-visible:ring-accent-blue/50 mt-1 inline-flex items-center gap-0.5 rounded text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:outline-none",
-            description ? "text-accent-blue-ink hover:underline" : "text-muted-fg-faint/60 cursor-default",
-          )}>
-          <ChevronRight aria-hidden className="size-3" />방 소개글 보기
-        </button>
-      </div>
-
-      {/* 아이콘만으로는 기능을 알기 어려워 툴팁을 붙인다. TooltipTrigger는 기본이 <button>이라
-          type/onClick/disabled/aria-*가 그대로 전달된다(별도 래핑 불필요). */}
-      <div className="flex shrink-0 items-center gap-1.5">
-        {/* 입장 — 시간창(시작 15분 전~종료) 안에서만. */}
-        {enterable && (
-          <EnterRoomButton
-            roomId={room.id}
-            label="입장"
-            disabled={pending}
-            className="bg-cta mr-1 shrink-0 rounded-md px-3 py-1.5 text-xs font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-          />
-        )}
-        {onEdit && (
-          <Tooltip>
-            <TooltipTrigger type="button" onClick={onEdit} disabled={pending} aria-label="수정" className={iconBtn}>
-              <Pencil aria-hidden className="size-4" />
-            </TooltipTrigger>
-            <TooltipContent>수정</TooltipContent>
-          </Tooltip>
-        )}
-        <Tooltip>
-          <TooltipTrigger
-            type="button"
-            onClick={onDelete}
-            disabled={pending || hasGuests}
-            aria-label="삭제"
-            // 비활성 버튼은 기본적으로 hover 이벤트가 죽어 툴팁이 안 뜬다 → pointer-events를 되살린다
-            // (TeacherProfileForm의 LOCKED 패턴과 동일).
-            className={cn(
-              iconBtn,
-              "border-brand/40 text-brand hover:bg-brand/5",
-              hasGuests && "disabled:pointer-events-auto disabled:cursor-not-allowed",
-            )}>
-            <Trash2 aria-hidden className="size-4" />
-          </TooltipTrigger>
-          <TooltipContent>{hasGuests ? "예약자가 있어 삭제할 수 없어요" : "삭제"}</TooltipContent>
-        </Tooltip>
-      </div>
-    </li>
   );
 }

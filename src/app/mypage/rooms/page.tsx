@@ -16,6 +16,7 @@ type RoomRow = {
   description: string | null;
   level: string;
   capacity: number;
+  topic: string | null;
   session_date: string;
   start_min: number;
   duration_min: number;
@@ -32,7 +33,8 @@ type ProfileRow = {
   gender: string | null;
 };
 
-const ROOM_COLUMNS = "id, friender_id, friender_name, friender_nickname, title, description, level, capacity, session_date, start_min, duration_min";
+const ROOM_COLUMNS =
+  "id, friender_id, friender_name, friender_nickname, title, description, level, capacity, topic, session_date, start_min, duration_min";
 
 export default async function MyPageRooms() {
   const supabase = createClient(await cookies());
@@ -110,6 +112,7 @@ export default async function MyPageRooms() {
     description: r.description,
     level: r.level,
     capacity: r.capacity,
+    topic: r.topic,
     sessionDate: r.session_date,
     startMin: r.start_min,
     durationMin: r.duration_min,

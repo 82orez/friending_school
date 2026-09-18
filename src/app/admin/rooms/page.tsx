@@ -3,6 +3,7 @@ import RoomsAdminManager, { type AdminRoom, type AdminRoomParticipant } from "@/
 
 type RoomRow = {
   id: string;
+  series_id: string | null;
   friender_id: string;
   friender_name: string | null;
   friender_nickname: string | null;
@@ -10,6 +11,7 @@ type RoomRow = {
   description: string | null;
   level: string;
   capacity: number;
+  topic: string | null;
   session_date: string;
   start_min: number;
   duration_min: number;
@@ -31,7 +33,7 @@ export default async function AdminRoomsPage() {
   const { data } = await admin
     .from("friender_rooms")
     .select(
-      "id, friender_id, friender_name, friender_nickname, title, description, level, capacity, session_date, start_min, duration_min, created_at, friender_room_participants(user_id, user_name, entered_at, created_at)",
+      "id, series_id, friender_id, friender_name, friender_nickname, title, description, level, capacity, topic, session_date, start_min, duration_min, created_at, friender_room_participants(user_id, user_name, entered_at, created_at)",
     )
     .order("session_date", { ascending: false })
     .order("start_min", { ascending: false })

@@ -39,10 +39,12 @@ export type AdminRoom = {
   friender_nickname: string | null;
   friender_phone: string | null; // profiles 최신값(연락용)
   friender_email: string;
-  title: string;
+  series_id: string | null; // 같은 시리즈로 개설된 회차 묶음(null이면 전환 이전 단발 방)
+  title: string; // 시리즈 이름
   description: string | null;
   level: string;
   capacity: number;
+  topic: string | null; // 회차 주제(선택)
   session_date: string; // KST YYYY-MM-DD
   start_min: number;
   duration_min: number;
@@ -146,7 +148,14 @@ export default function RoomsAdminManager({ rooms }: { rooms: AdminRoom[] }) {
       if (filter !== "all" && r.state !== filter) return false;
       if (!q) return true;
       // 참가자 이름까지 대상 — "이 회원이 어느 방에 들어갔나"를 이 탭에서 답할 수 있어야 한다.
-      const haystack = [r.title, r.friender_name ?? "", r.friender_nickname ?? "", r.friender_email, ...r.participants.map((p) => p.user_name ?? "")]
+      const haystack = [
+        r.title,
+        r.topic ?? "",
+        r.friender_name ?? "",
+        r.friender_nickname ?? "",
+        r.friender_email,
+        ...r.participants.map((p) => p.user_name ?? ""),
+      ]
         .join(" ")
         .toLowerCase();
       return haystack.includes(q);
@@ -277,7 +286,11 @@ export default function RoomsAdminManager({ rooms }: { rooms: AdminRoom[] }) {
                           {fmtTime(r.start_min)}~{fmtRoomEnd(r.start_min + r.duration_min)} ({r.duration_min}분)
                         </span>
                       </td>
-                      <td className="text-ink max-w-[240px] truncate px-4 py-3.5 align-middle font-semibold">{r.title}</td>
+                      <td className="text-ink max-w-[240px] px-4 py-3.5 align-middle font-semibold">
+                        <span className="block truncate">{r.title}</span>
+                        {/* 회차 주제 — 시리즈 연습방은 회차마다 다르다. 이름만으로는 어느 회차인지 못 가린다. */}
+                        {r.topic?.trim() && <span className="text-muted-fg-faint block truncate text-xs font-normal">{r.topic.trim()}</span>}
+                      </td>
                       <td className="text-muted-fg px-4 py-3.5 align-middle whitespace-nowrap">
                         {frienderLabel(r.friender_name, r.friender_nickname)}
                       </td>

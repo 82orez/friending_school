@@ -1,0 +1,29 @@
+// 프렌더 무료 연습방 "시리즈" 정책 상수 단일 소스 — 개설 폼·서버 검증·표시가 모두 참조한다.
+// (난이도는 room-levels.ts, 진행 시간·정원·제목 길이는 room-actions.ts의 기존 상수를 그대로 쓴다.)
+
+// 운영 기간(주). 프렌더가 고르고, 기본은 4주.
+export const ROOM_MIN_WEEKS = 1;
+export const ROOM_MAX_WEEKS = 8;
+export const ROOM_DEFAULT_WEEKS = 4;
+
+export const ROOM_WEEK_OPTIONS: number[] = [];
+for (let w = ROOM_MIN_WEEKS; w <= ROOM_MAX_WEEKS; w++) ROOM_WEEK_OPTIONS.push(w);
+
+// 주간 스케줄 요일. JS getDay() 기준(0=일 … 6=토) — prep의 PREP_DEFAULT_WEEKDAYS와 같은 축.
+// ⚠️ 기본 선택값을 두지 않는다(시작 시각과 같은 이유) — 실제 약속 요일이라 확인 없이 제출되면 안 된다.
+export const ROOM_WEEKDAYS = [
+  { value: 0, ko: "일" },
+  { value: 1, ko: "월" },
+  { value: 2, ko: "화" },
+  { value: 3, ko: "수" },
+  { value: 4, ko: "목" },
+  { value: 5, ko: "금" },
+  { value: 6, ko: "토" },
+] as const;
+
+// 한 번에 개설할 수 있는 회차 수 상한 = 8주 × 매일 = 56. 서버가 재검증한다.
+// (기존 개설 상한 ROOM_MAX_AHEAD_DAYS=90일 안에 들어가므로 그 상수는 그대로 둔다.)
+export const ROOM_MAX_SESSIONS = ROOM_MAX_WEEKS * 7;
+
+// 회차별 주제 — 무료 연습방이라 **비워 둬도 개설된다**(샤우팅은 20개 전부 필수).
+export const ROOM_TOPIC_MAX = 100;

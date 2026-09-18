@@ -60,6 +60,7 @@ export default function AdminRoomDetailModal({
     ["일자", formatDateKo(room.session_date)],
     // ⚠️ 종료 시각은 fmtRoomEnd로 — 자정을 넘기는 방(23:30 + 120분)이 25:30으로 새는 것을 막는다.
     ["시각", `${fmtTime(room.start_min)}~${fmtRoomEnd(room.start_min + room.duration_min)} (${room.duration_min}분)`],
+    ["회차 주제", room.topic?.trim() || "-"],
     ["난이도", roomLevelLabelKo(room.level)],
     ["제한 인원", `${room.capacity}명`],
     ["개설 일시", kstDateTimeText(room.created_at)],

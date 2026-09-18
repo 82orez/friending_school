@@ -8,11 +8,13 @@ import { seatHeld } from "@/lib/room-time";
 import { isPrepApplyOpen, prepChargeKrw, prepRemainingSessions } from "@/lib/prep";
 import SuccessBanner from "@/components/SuccessBanner";
 import HeroBubbles from "@/components/HeroBubbles";
-import FriendingRooms, { type HostProfile, type PublicRoom } from "@/components/friending/FriendingRooms";
+import { seriesKeyOf } from "@/lib/room-series";
+import FriendingRooms, { type HostProfile, type PublicRoomSeries, type PublicRoomSession } from "@/components/friending/FriendingRooms";
 import PrepEnrollBanner, { type OpenPrepCourse } from "@/components/prep/PrepEnrollBanner";
 
 type RoomRow = {
   id: string;
+  series_id: string | null;
   friender_id: string;
   friender_name: string | null;
   friender_nickname: string | null;
@@ -20,10 +22,14 @@ type RoomRow = {
   description: string | null;
   level: string;
   capacity: number;
+  topic: string | null;
   session_date: string;
   start_min: number;
   duration_min: number;
 };
+
+const ROOM_COLUMNS =
+  "id, series_id, friender_id, friender_name, friender_nickname, title, description, level, capacity, topic, session_date, start_min, duration_min";
 
 type ProfileRow = {
   id: string;
@@ -46,16 +52,28 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
   } = await supabase.auth.getUser();
 
   // 공개 조회 — RLS friender_rooms_select_public이 anon에도 열려 있다.
+  // ⚠️ **2단계로 읽는다**: ① 아직 끝나지 않은 회차로 '살아 있는 시리즈'를 가려내고
+  //    ② 그 시리즈의 **전 회차**(지난 회차 포함)를 다시 읽는다. 상세 모달이 커리큘럼을 통째로
+  //    보여주고, 회차 번호(n/N)의 분모도 전체 회차라야 맞기 때문이다.
   const { data } = await supabase
     .from("friender_rooms")
-    .select("id, friender_id, friender_name, friender_nickname, title, description, level, capacity, session_date, start_min, duration_min")
+    .select(ROOM_COLUMNS)
     .gte("session_date", todayKst())
     .order("session_date", { ascending: true })
     .order("start_min", { ascending: true });
 
   // 오늘이지만 이미 끝난 방은 SQL로 못 거른다(날짜 단위 필터) → 종료 시각 기준 JS 필터.
   const now = Date.now();
-  const rows = ((data ?? []) as RoomRow[]).filter((r) => kstDateMinToMs(r.session_date, r.start_min + r.duration_min) > now);
+  const liveRows = ((data ?? []) as RoomRow[]).filter((r) => kstDateMinToMs(r.session_date, r.start_min + r.duration_min) > now);
+
+  const byId = new Map<string, RoomRow>(liveRows.map((r) => [r.id, r]));
+  // series_id가 null인 행(전환 이전 단발 방)은 이미 전부 들어와 있다 — 보충할 것이 없다.
+  const liveSeriesIds = Array.from(new Set(liveRows.map((r) => r.series_id).filter((v): v is string => !!v)));
+  if (liveSeriesIds.length > 0) {
+    const { data: full } = await supabase.from("friender_rooms").select(ROOM_COLUMNS).in("series_id", liveSeriesIds);
+    for (const r of (full ?? []) as RoomRow[]) byId.set(r.id, r);
+  }
+  const rows = Array.from(byId.values()).sort((a, b) => a.session_date.localeCompare(b.session_date) || a.start_min - b.start_min);
 
   // ── 샤우팅 강좌(수강신청 배너) ──────────────────────────────────────────
   // ⚠️ 연습방보다 **먼저** 조회한다 — 아래 profiles 배치 조회가 방 개설자와 강좌 프렌더를
@@ -219,23 +237,50 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
     if (!p.english_name?.trim()) profileMissing.push("영어 이름");
   }
 
-  const rooms: PublicRoom[] = rows.map((r) => ({
-    id: r.id,
-    frienderId: r.friender_id,
-    // 프로필 조회가 실패했거나 방금 탈퇴한 경우를 대비한 폴백 — 방 행의 이름 스냅샷을 쓴다.
-    fallbackName: r.friender_nickname?.trim() || r.friender_name?.trim() || "프렌더",
-    isMine: !!user && r.friender_id === user.id,
-    title: r.title,
-    description: r.description,
-    level: r.level,
-    capacity: r.capacity,
-    sessionDate: r.session_date,
-    startMin: r.start_min,
-    durationMin: r.duration_min,
-    participants: countByRoom.get(r.id) ?? 0,
-    joined: enteredAtByRoom.has(r.id),
-    enteredAt: enteredAtByRoom.get(r.id) ?? null,
-  }));
+  // 회차를 시리즈로 묶는다 — 전환 이전 단발 방은 series_id가 null이라 자기 id가 곧 키(1회차 시리즈).
+  // ⚠️ 공통값(이름·소개·난이도·정원)은 **마지막 회차**를 대표로 쓴다: 시리즈 일괄 수정이 아직
+  //    시작하지 않은 회차에만 반영되므로, 지난 회차에는 옛 이름이 남아 있을 수 있다.
+  const bySeries = new Map<string, { row: RoomRow; sessions: PublicRoomSession[] }>();
+  for (const r of rows) {
+    const session: PublicRoomSession = {
+      id: r.id,
+      sessionDate: r.session_date,
+      startMin: r.start_min,
+      durationMin: r.duration_min,
+      topic: r.topic,
+      participants: countByRoom.get(r.id) ?? 0,
+      joined: enteredAtByRoom.has(r.id),
+      enteredAt: enteredAtByRoom.get(r.id) ?? null,
+    };
+    const key = seriesKeyOf(r);
+    const found = bySeries.get(key);
+    if (found) {
+      found.sessions.push(session);
+      found.row = r; // rows가 날짜 오름차순이라 마지막 회차가 남는다
+    } else {
+      bySeries.set(key, { row: r, sessions: [session] });
+    }
+  }
+
+  const series: PublicRoomSeries[] = Array.from(bySeries.entries())
+    .map(([key, { row, sessions }]) => ({
+      key,
+      frienderId: row.friender_id,
+      // 프로필 조회가 실패했거나 방금 탈퇴한 경우를 대비한 폴백 — 방 행의 이름 스냅샷을 쓴다.
+      fallbackName: row.friender_nickname?.trim() || row.friender_name?.trim() || "프렌더",
+      isMine: !!user && row.friender_id === user.id,
+      title: row.title,
+      description: row.description,
+      level: row.level,
+      capacity: row.capacity,
+      sessions,
+    }))
+    // 가장 가까운 '남은 회차'가 이른 시리즈부터 — 카드 순서가 곧 임박 순이다.
+    .sort((a, b) => {
+      const nextOf = (x: PublicRoomSeries) =>
+        x.sessions.find((s) => kstDateMinToMs(s.sessionDate, s.startMin + s.durationMin) > now)?.sessionDate ?? "9999-12-31";
+      return nextOf(a).localeCompare(nextOf(b));
+    });
 
   // 샤우팅 배너 노출 조건 = PrepEnrollBanner의 자체 가드(courses.length === 0 → null)와 같은 값.
   // 히어로·구분선이 배너와 어긋나지 않도록 한 곳에서 뽑아 쓴다.
@@ -281,7 +326,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ r
             ⚠️ 배너가 없으면(신청 가능한 강좌 0개) 히어로 바로 아래에 선만 남으므로 함께 숨긴다. */}
         {showPrepBanner && <div aria-hidden className="border-rule mt-8 border-t" />}
 
-        <FriendingRooms rooms={rooms} hosts={hosts} isLoggedIn={!!user} />
+        <FriendingRooms series={series} hosts={hosts} isLoggedIn={!!user} />
       </div>
     </div>
   );

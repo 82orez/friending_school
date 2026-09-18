@@ -2366,7 +2366,7 @@ function roomSmsTitle(title: string): string {
 }
 
 // 연습방 강제 삭제 (관리자).
-// ⚠️ 프렌더 본인의 deleteRoom(src/app/friender/actions.ts)은 **예약자가 1명이라도 있으면 거부**한다
+// ⚠️ 프렌더 본인의 deleteRoom(src/app/friender/room-actions.ts)은 **예약자가 1명이라도 있으면 거부**한다
 //    — cascade로 예약자의 마이페이지 기록까지 사라지는데 알릴 방법이 없었기 때문이다.
 //    그래서 문제 방(부적절한 주제·소개, 자격 해제된 프렌더가 남긴 방 등)은 아무도 못 내리는 상태였다.
 //    이 액션은 정확히 그 구멍을 메우는 것이 목적이라 **예약자가 있어도 삭제한다**. 대신 프렌더 쪽이

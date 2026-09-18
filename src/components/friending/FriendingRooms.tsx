@@ -2,19 +2,19 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Loader2, Users } from "lucide-react";
+import { ChevronRight, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
-import { fmtRoomEnd, isNoShow } from "@/lib/room-time";
+import { fmtRoomEnd } from "@/lib/room-time";
+import { fmtDateKo, fmtDateShort } from "@/lib/date-kst";
+import { weekdaysLabelOf } from "@/lib/room-series";
 import { roomLevelLabelKo } from "@/data/room-levels";
 import { joinRoom, leaveRoom } from "@/app/friending/actions";
-import EnterRoomButton from "@/components/friending/EnterRoomButton";
 import HostProfileModal from "@/components/friending/HostProfileModal";
-import RoomInfoModal from "@/components/friending/RoomInfoModal";
+import RoomSeriesDetailModal from "@/components/friending/RoomSeriesDetailModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,8 +39,21 @@ export type HostProfile = {
   bio: string | null;
 };
 
-export type PublicRoom = {
+// 회차 = 예전의 방 한 개. 예약·입장·노쇼가 전부 여기 붙는다(테이블도 그대로 friender_rooms 행).
+export type PublicRoomSession = {
   id: string;
+  sessionDate: string; // KST YYYY-MM-DD
+  startMin: number;
+  durationMin: number;
+  topic: string | null;
+  participants: number;
+  joined: boolean;
+  enteredAt: string | null; // 내 입장 시각(RLS select_own) — 노쇼 판정용. 미예약이면 null
+};
+
+// 시리즈 = 같은 series_id로 한 번에 개설된 회차 묶음(전환 이전 단발 방은 1회차 시리즈).
+export type PublicRoomSeries = {
+  key: string;
   frienderId: string;
   fallbackName: string; // hosts 조회 실패 시 쓰는 방 행의 이름 스냅샷
   isMine: boolean;
@@ -48,17 +61,12 @@ export type PublicRoom = {
   description: string | null;
   level: string;
   capacity: number;
-  sessionDate: string; // KST YYYY-MM-DD
-  startMin: number;
-  durationMin: number;
-  participants: number;
-  joined: boolean;
-  enteredAt: string | null; // 내 입장 시각(RLS select_own) — 노쇼 판정용. 미예약이면 null
+  sessions: PublicRoomSession[]; // 날짜 오름차순. **지난 회차도 포함**(커리큘럼을 보여준다)
 };
 
 const PAGE_STEP = 12;
 
-// 아바타 그라디언트 — v9 목업 프리셋. 방 id 해시로 고정 배정(리렌더에도 안 바뀜).
+// 아바타 그라디언트 — v9 목업 프리셋. 시리즈 키 해시로 고정 배정(리렌더에도 안 바뀜).
 const AVATAR_GRADIENTS = [
   "linear-gradient(135deg,#3ecfb2,#6366f1)",
   "linear-gradient(135deg,#6366f1,#a855f7)",
@@ -71,20 +79,16 @@ const gradientOf = (id: string): string => {
   return AVATAR_GRADIENTS[h % AVATAR_GRADIENTS.length];
 };
 
-// "8월 21일" — 날짜 그룹 헤더/카드 표기용(로케일 함수 대신 직접 조립: 하이드레이션 안전).
-const fmtMonthDay = (dateStr: string): string => {
-  const [, m, d] = dateStr.split("-").map(Number);
-  return `${m}월 ${d}일`;
-};
+const EMPTY_HOST: HostProfile = { name: "", realName: null, avatarUrl: null, nationality: null, gender: null, bio: null };
 
-type Group = { key: string; label: string; rooms: PublicRoom[] };
+type Group = { key: string; label: string; items: PublicRoomSeries[] };
 
 export default function FriendingRooms({
-  rooms,
+  series,
   hosts,
   isLoggedIn,
 }: {
-  rooms: PublicRoom[];
+  series: PublicRoomSeries[];
   hosts: Record<string, HostProfile>;
   isLoggedIn: boolean;
 }) {
@@ -92,10 +96,10 @@ export default function FriendingRooms({
   const [visible, setVisible] = useState(PAGE_STEP);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [joinTarget, setJoinTarget] = useState<PublicRoom | null>(null);
-  const [leaveTarget, setLeaveTarget] = useState<PublicRoom | null>(null);
+  const [joinTarget, setJoinTarget] = useState<PublicRoomSession | null>(null);
+  const [leaveTarget, setLeaveTarget] = useState<PublicRoomSession | null>(null);
   const [hostTarget, setHostTarget] = useState<HostProfile | null>(null);
-  const [infoTarget, setInfoTarget] = useState<string | null>(null);
+  const [detailKey, setDetailKey] = useState<string | null>(null);
 
   // 1분 틱 — 진행 중/입장창 상태를 시간에 따라 갱신.
   const [now, setNow] = useState(() => Date.now());
@@ -105,28 +109,26 @@ export default function FriendingRooms({
   }, []);
 
   // 입장 시간창(시작 15분 전~종료) — 섹션 분류와 입장 버튼 노출이 같은 기준이라 서로 어긋나지 않는다.
-  const canEnter = (r: PublicRoom) =>
-    canEnterClass(now, kstDateMinToMs(r.sessionDate, r.startMin), kstDateMinToMs(r.sessionDate, r.startMin + r.durationMin));
+  const canEnterSession = (s: PublicRoomSession) =>
+    canEnterClass(now, kstDateMinToMs(s.sessionDate, s.startMin), kstDateMinToMs(s.sessionDate, s.startMin + s.durationMin));
+  const isLive = (x: PublicRoomSeries) => x.sessions.some(canEnterSession);
 
-  // 노쇼(시작 + 유예까지 미입장) — 자리가 이미 반환됐으므로 취소 버튼을 감춘다.
-  // 판정은 /mypage/rooms·/friender/rooms·/admin/rooms와 같은 seatHeld 규칙(src/lib/room-time.ts).
-  const noShowOf = (r: PublicRoom) => isNoShow(r.enteredAt, kstDateMinToMs(r.sessionDate, r.startMin), now);
+  const liveCount = useMemo(() => series.filter(isLive).length, [series, now]);
 
-  const liveCount = useMemo(() => rooms.filter(canEnter).length, [rooms, now]);
-
-  // 상태로 그룹 — 지금 들어갈 수 있는 방이 있는지가 이 화면의 첫 질문이다.
-  // 날짜는 카드마다 "8월 22일 · 08:00~08:20"으로 적혀 있어 따로 묶지 않는다.
-  // 섹션 내부 순서는 서버 정렬(session_date, start_min 오름차순)을 그대로 쓴다.
+  // 상태로 그룹 — 지금 들어갈 수 있는 회차가 있는지가 이 화면의 첫 질문이다.
   const groups = useMemo<Group[]>(() => {
-    const live: PublicRoom[] = [];
-    const waiting: PublicRoom[] = [];
-    for (const r of rooms.slice(0, visible)) (canEnter(r) ? live : waiting).push(r);
+    const live: PublicRoomSeries[] = [];
+    const waiting: PublicRoomSeries[] = [];
+    for (const x of series.slice(0, visible)) (isLive(x) ? live : waiting).push(x);
 
     const out: Group[] = [];
-    if (live.length) out.push({ key: "live", label: "진행 중", rooms: live });
-    if (waiting.length) out.push({ key: "waiting", label: "예정", rooms: waiting });
+    if (live.length) out.push({ key: "live", label: "진행 중", items: live });
+    if (waiting.length) out.push({ key: "waiting", label: "예정", items: waiting });
     return out;
-  }, [rooms, visible, now]);
+  }, [series, visible, now]);
+
+  // 상세 모달은 최신 데이터를 보도록 key로만 들고 있는다(router.refresh() 후 새 prop이 반영된다).
+  const detail = useMemo(() => series.find((x) => x.key === detailKey) ?? null, [series, detailKey]);
 
   const run = (roomId: string, fn: () => Promise<{ ok: boolean; error?: string }>, success: string) => {
     setPendingId(roomId);
@@ -156,7 +158,7 @@ export default function FriendingRooms({
     run(target.id, () => leaveRoom(target.id), "예약을 취소했습니다.");
   };
 
-  if (rooms.length === 0) {
+  if (series.length === 0) {
     return (
       <div className="border-rule mt-8 rounded-xl border bg-white px-6 py-16 text-center">
         <p className="text-ink text-sm font-bold">지금 열려 있는 방이 없어요.</p>
@@ -175,7 +177,7 @@ export default function FriendingRooms({
         </h2>
         <p className="text-muted-fg flex items-center gap-1.5 text-[13px] font-bold">
           <LiveDot active={liveCount > 0} />
-          열린 방 {rooms.length}개
+          열린 방 {series.length}개
         </p>
       </div>
 
@@ -195,23 +197,17 @@ export default function FriendingRooms({
             <h3 className={cn("flex items-center gap-1.5 text-sm font-extrabold", isLiveSection ? "text-[#22c55e]" : "text-ink")}>
               {isLiveSection && <LiveDot active />}
               {g.label}
-              <span className="text-muted-fg font-bold">{g.rooms.length}</span>
+              <span className="text-muted-fg font-bold">{g.items.length}</span>
             </h3>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {g.rooms.map((r) => (
-                <RoomCard
-                  key={r.id}
-                  room={r}
-                  host={hosts[r.frienderId] ?? { name: r.fallbackName, realName: null, avatarUrl: null, nationality: null, gender: null, bio: null }}
-                  isLoggedIn={isLoggedIn}
+              {g.items.map((x) => (
+                <SeriesCard
+                  key={x.key}
+                  series={x}
+                  host={hosts[x.frienderId] ?? { ...EMPTY_HOST, name: x.fallbackName }}
+                  now={now}
                   onOpenHost={setHostTarget}
-                  onOpenInfo={setInfoTarget}
-                  enterable={canEnter(r)}
-                  noShow={noShowOf(r)}
-                  busy={pending && pendingId === r.id}
-                  disabled={pending}
-                  onJoin={() => setJoinTarget(r)}
-                  onLeave={() => setLeaveTarget(r)}
+                  onOpenDetail={() => setDetailKey(x.key)}
                 />
               ))}
             </div>
@@ -219,7 +215,7 @@ export default function FriendingRooms({
         );
       })}
 
-      {visible < rooms.length && (
+      {visible < series.length && (
         <button
           type="button"
           onClick={() => setVisible((v) => v + PAGE_STEP)}
@@ -231,21 +227,31 @@ export default function FriendingRooms({
       {/* 개설자 공개 프로필 */}
       <HostProfileModal host={hostTarget} onClose={() => setHostTarget(null)} />
 
-      {/* 방 소개 전문 */}
-      <RoomInfoModal description={infoTarget} onClose={() => setInfoTarget(null)} />
+      {/* 시리즈 상세 — 회차 목록과 회차별 예약을 맡는다(액션은 여기서 콜백으로 받아 실행). */}
+      <RoomSeriesDetailModal
+        series={detail}
+        host={detail ? (hosts[detail.frienderId] ?? { ...EMPTY_HOST, name: detail.fallbackName }) : EMPTY_HOST}
+        isLoggedIn={isLoggedIn}
+        now={now}
+        pendingId={pendingId}
+        disabled={pending}
+        onJoin={setJoinTarget}
+        onLeave={setLeaveTarget}
+        onClose={() => setDetailKey(null)}
+      />
 
-      {/* 예약 확인 — 카드에서 바로 실행되던 것을 한 단계 거치게 한다. */}
+      {/* 예약 확인 — 회차에서 바로 실행되던 것을 한 단계 거치게 한다. */}
       <AlertDialog open={joinTarget !== null} onOpenChange={(open) => !open && setJoinTarget(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="z-[130]">
           <AlertDialogHeader>
-            <AlertDialogTitle>이 방을 예약할까요?</AlertDialogTitle>
+            <AlertDialogTitle>이 회차를 예약할까요?</AlertDialogTitle>
             <AlertDialogDescription>
               {joinTarget && (
                 <>
-                  <span className="text-ink font-semibold">{joinTarget.title}</span> · {fmtMonthDay(joinTarget.sessionDate)}{" "}
-                  {fmtTime(joinTarget.startMin)}~{fmtRoomEnd(joinTarget.startMin + joinTarget.durationMin)}
+                  <span className="text-ink font-semibold">{fmtDateKo(joinTarget.sessionDate)}</span> {fmtTime(joinTarget.startMin)}~
+                  {fmtRoomEnd(joinTarget.startMin + joinTarget.durationMin)}
                   <br />
-                  {canEnter(joinTarget)
+                  {canEnterSession(joinTarget)
                     ? "지금 진행 중인 방이라 바로 입장할 수 있어요."
                     : "시작 15분 전부터 입장할 수 있어요. 예약은 언제든 취소할 수 있습니다."}
                 </>
@@ -263,20 +269,15 @@ export default function FriendingRooms({
 
       {/* 예약 취소 확인 */}
       <AlertDialog open={leaveTarget !== null} onOpenChange={(open) => !open && setLeaveTarget(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="z-[130]">
           <AlertDialogHeader>
             <AlertDialogTitle>예약을 취소하시겠습니까?</AlertDialogTitle>
             <AlertDialogDescription>
-              {leaveTarget && (
-                <>
-                  <span className="text-ink font-semibold">{leaveTarget.title}</span> 방의 예약이 취소됩니다. 자리가 남아 있으면 다시 예약할 수
-                  있어요.
-                </>
-              )}
+              {leaveTarget && <>{fmtDateShort(leaveTarget.sessionDate)} 회차의 예약이 취소됩니다. 자리가 남아 있으면 다시 예약할 수 있어요.</>}
             </AlertDialogDescription>
           </AlertDialogHeader>
           {/* 임박 경고 — ⚠️ AlertDialogDescription은 <p>라 그 바깥 형제로 둔다. */}
-          {leaveTarget && canEnter(leaveTarget) && (
+          {leaveTarget && canEnterSession(leaveTarget) && (
             <p className="border-brand/30 bg-brand/5 text-brand rounded-lg border px-3 py-2 text-sm font-semibold">
               곧 시작하는 방입니다. 개설자가 인원을 기다리고 있을 수 있어요.
             </p>
@@ -303,148 +304,105 @@ function LiveDot({ active }: { active: boolean }) {
   );
 }
 
-function RoomCard({
-  room,
+// 시리즈 카드 — 비교 항목이 카드마다 같은 자리에 오도록 dl로 적는다(샤우팅 강좌 카드와 같은 규칙).
+// 예약·입장은 카드가 아니라 「세부정보 보기」 모달의 회차 행이 맡는다.
+function SeriesCard({
+  series,
   host,
-  isLoggedIn,
-  enterable,
-  noShow,
-  busy,
-  disabled,
-  onJoin,
-  onLeave,
+  now,
   onOpenHost,
-  onOpenInfo,
+  onOpenDetail,
 }: {
-  room: PublicRoom;
+  series: PublicRoomSeries;
   host: HostProfile;
-  isLoggedIn: boolean;
-  enterable: boolean;
-  noShow: boolean;
-  busy: boolean;
-  disabled: boolean;
-  onJoin: () => void;
-  onLeave: () => void;
+  now: number;
   onOpenHost: (host: HostProfile) => void;
-  onOpenInfo: (description: string) => void;
+  onOpenDetail: () => void;
 }) {
-  const full = room.participants >= room.capacity;
-  const pill = "shrink-0 rounded-full px-4 py-2 text-sm font-bold transition-colors disabled:opacity-60";
-  const levelLabel = roomLevelLabelKo(room.level);
-  const when = `${fmtMonthDay(room.sessionDate)} · ${fmtTime(room.startMin)}~${fmtRoomEnd(room.startMin + room.durationMin)}`;
-  const description = room.description?.trim() ?? "";
+  const sessions = series.sessions;
+  const first = sessions[0];
+  const last = sessions[sessions.length - 1];
+  const remaining = sessions.filter((s) => kstDateMinToMs(s.sessionDate, s.startMin + s.durationMin) > now);
+  const myCount = remaining.filter((s) => s.joined).length;
+  const sameTime = sessions.every((s) => s.startMin === first.startMin && s.durationMin === first.durationMin);
 
   return (
-    <div className="border-rule flex items-start gap-2.5 rounded-2xl border bg-white p-3.5">
-      {/* 아바타 — 등록된 프로필 사진 우선, 없으면 이니셜+그라디언트 원으로 폴백 */}
-      {host.avatarUrl ? (
-        <Image
-          src={host.avatarUrl}
-          alt={`${host.name}님 프로필 사진`}
-          width={36}
-          height={36}
-          className="border-rule size-9 shrink-0 rounded-full border object-cover"
-        />
-      ) : (
-        <span
-          aria-hidden
-          style={{ background: gradientOf(room.id) }}
-          className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white">
-          {host.name.slice(0, 1)}
-        </span>
-      )}
-
-      <div className="min-w-0 flex-1">
-        <p className="text-ink flex items-center gap-1.5 text-[15px] font-bold">
-          <button
-            type="button"
-            onClick={() => onOpenHost(host)}
-            aria-haspopup="dialog"
-            className="focus-visible:ring-accent-blue/50 hover:text-accent-blue-ink min-w-0 truncate rounded font-bold transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
-            {host.name}님
-          </button>
+    <div className="border-rule flex flex-col rounded-2xl border bg-white p-3.5">
+      <div className="flex items-start gap-2.5">
+        {/* 아바타 — 등록된 프로필 사진 우선, 없으면 이니셜+그라디언트 원으로 폴백 */}
+        {host.avatarUrl ? (
+          <Image
+            src={host.avatarUrl}
+            alt={`${host.name}님 프로필 사진`}
+            width={36}
+            height={36}
+            className="border-rule size-9 shrink-0 rounded-full border object-cover"
+          />
+        ) : (
           <span
-            title="프렌더"
             aria-hidden
-            className="inline-flex size-3.5 shrink-0 items-center justify-center rounded-[50%_50%_50%_3px] bg-[#DC52B8] text-[8px] font-bold text-white">
-            F
+            style={{ background: gradientOf(series.key) }}
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white">
+            {host.name.slice(0, 1)}
           </span>
-        </p>
+        )}
 
-        <p className="text-ink mt-1 line-clamp-1 text-sm font-semibold">{room.title}</p>
-
-        <p className="text-muted-fg mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
-          <span className="inline-flex items-center gap-1">
-            <Users aria-hidden className="size-3" />
-            {room.participants}/{room.capacity}명
-          </span>
-          <span>{when}</span>
-          <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 text-[11px] font-bold">{levelLabel}</span>
-        </p>
-
-        {/* 소개는 모달로 — 문단을 조건부로 렌더하면 카드마다 CTA 높이가 달라진다(버튼은 항상 렌더, 소개 없으면 비활성). */}
-        <div className="mt-1.5">
-          <button
-            type="button"
-            disabled={!description}
-            aria-haspopup="dialog"
-            title={description ? undefined : "등록된 소개가 없어요"}
-            onClick={() => onOpenInfo(description)}
-            className={cn(
-              "focus-visible:ring-accent-blue/50 inline-flex items-center gap-0.5 rounded text-xs font-bold transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-              description ? "text-accent-blue-ink hover:underline" : "text-muted-fg-faint/60 cursor-default",
-            )}>
-            <ChevronRight aria-hidden className="size-3" />방 소개글 보기
-          </button>
-        </div>
-
-        <div className="mt-2.5">
-          {!isLoggedIn ? (
-            <Link href="/login" className={cn(pill, "bg-cta inline-block text-white hover:opacity-90")}>
-              로그인하고 예약
-            </Link>
-          ) : room.isMine && enterable ? (
-            // 개설자도 시간창 안에서는 입장 — 안내 다이얼로그는 참가자 대상 문구라 건너뛴다.
-            <EnterRoomButton roomId={room.id} className={cn(pill, "bg-cta text-white")} />
-          ) : room.isMine ? (
-            <button type="button" disabled className={cn(pill, "bg-rule text-muted-fg cursor-default")}>
-              내 방
+        <div className="min-w-0 flex-1">
+          <p className="text-ink flex items-center gap-1.5 text-[15px] font-bold">
+            <button
+              type="button"
+              onClick={() => onOpenHost(host)}
+              aria-haspopup="dialog"
+              className="focus-visible:ring-accent-blue/50 hover:text-accent-blue-ink min-w-0 truncate rounded font-bold transition-colors hover:underline focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none">
+              {host.name}님
             </button>
-          ) : room.joined && enterable ? (
-            // ⚠️ 입장창 안이어도 취소를 막지 않는다 — 안 오면 어차피 노쇼로 자리가 반환되므로
-            //    (유예 NO_SHOW_GRACE_MIN분) 감춰 봐야 자리가 그만큼 늦게 열릴 뿐이다.
-            //    임박 경고는 확인 다이얼로그가 담당. /mypage/rooms 행과 한 쌍이라 함께 바꿀 것.
-            //    취소는 부차 동작이라 pill이 아닌 텍스트 버튼(입장이 주 CTA인 위계를 유지).
-            <div className="flex items-center gap-3">
-              <EnterRoomButton roomId={room.id} withGuide className={cn(pill, "bg-cta text-white")} disabled={disabled} />
-              {/* 취소는 되돌릴 자리가 실제로 있을 때만 — 노쇼(자리 이미 반환)·입장 완료면 감춘다.
-                  /mypage/rooms 행과 같은 조건(`!enteredAt && !noShow`). 이유는 그쪽 주석 참조. */}
-              {!room.enteredAt && !noShow && (
-                <button
-                  type="button"
-                  onClick={onLeave}
-                  disabled={disabled}
-                  className="text-muted-fg hover:text-ink shrink-0 text-xs font-bold underline underline-offset-2 transition-colors disabled:opacity-60">
-                  예약 취소
-                </button>
-              )}
-            </div>
-          ) : room.joined ? (
-            <button type="button" onClick={onLeave} disabled={disabled} className={cn(pill, "border-rule text-muted-fg hover:bg-surface border")}>
-              예약 취소
-            </button>
-          ) : full ? (
-            <button type="button" disabled className={cn(pill, "bg-rule text-muted-fg-faint cursor-default")}>
-              마감
-            </button>
-          ) : (
-            <button type="button" onClick={onJoin} disabled={disabled} className={cn(pill, "bg-cta inline-flex items-center gap-1.5 text-white")}>
-              {busy && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
-              예약하기
-            </button>
-          )}
+            <span
+              title="프렌더"
+              aria-hidden
+              className="inline-flex size-3.5 shrink-0 items-center justify-center rounded-[50%_50%_50%_3px] bg-[#DC52B8] text-[8px] font-bold text-white">
+              F
+            </span>
+          </p>
+          <p className="text-ink mt-1 line-clamp-2 text-sm font-semibold">{series.title}</p>
         </div>
       </div>
+
+      <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
+        <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5">
+          총 {sessions.length}회차 · {weekdaysLabelOf(sessions.map((s) => s.sessionDate))}
+        </span>
+        <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5">{roomLevelLabelKo(series.level)}</span>
+      </p>
+
+      <dl className="text-muted-fg mt-2 grid grid-cols-[3.5rem_1fr] gap-x-2 gap-y-1 text-[13px]">
+        <dt className="text-muted-fg-faint">기간</dt>
+        <dd className="text-ink font-semibold">
+          {fmtDateKo(first.sessionDate)} ~ {fmtDateKo(last.sessionDate)}
+        </dd>
+        <dt className="text-muted-fg-faint">시간</dt>
+        <dd className="text-ink font-semibold">
+          {sameTime ? `${fmtTime(first.startMin)}~${fmtRoomEnd(first.startMin + first.durationMin)}` : "회차별 상이"}
+        </dd>
+        <dt className="text-muted-fg-faint">남은 회차</dt>
+        <dd className="text-ink font-semibold">{remaining.length}회차</dd>
+        <dt className="text-muted-fg-faint">내 예약</dt>
+        <dd className={cn("font-semibold", myCount > 0 ? "text-cta" : "text-ink")}>
+          <span className="inline-flex items-center gap-1">
+            <Users aria-hidden className="size-3" />
+            {myCount > 0 ? `${myCount}개 회차` : "없음"}
+          </span>
+        </dd>
+      </dl>
+
+      {/* CTA는 카드마다 같은 높이에 오도록 mt-auto로 바닥에 붙인다. */}
+      <button
+        type="button"
+        onClick={onOpenDetail}
+        aria-haspopup="dialog"
+        className="border-rule text-accent-blue-ink hover:bg-surface mt-3 inline-flex w-full items-center justify-center gap-0.5 rounded-full border py-2 text-sm font-bold transition-colors">
+        세부정보 보기
+        <ChevronRight aria-hidden className="size-3.5" />
+      </button>
     </div>
   );
 }

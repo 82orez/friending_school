@@ -525,9 +525,11 @@ export type Database = {
           friender_nickname: string | null
           id: string
           level: string
+          series_id: string | null
           session_date: string
           start_min: number
           title: string
+          topic: string | null
           updated_at: string
         }
         Insert: {
@@ -540,9 +542,11 @@ export type Database = {
           friender_nickname?: string | null
           id?: string
           level: string
+          series_id?: string | null
           session_date: string
           start_min: number
           title: string
+          topic?: string | null
           updated_at?: string
         }
         Update: {
@@ -555,9 +559,11 @@ export type Database = {
           friender_nickname?: string | null
           id?: string
           level?: string
+          series_id?: string | null
           session_date?: string
           start_min?: number
           title?: string
+          topic?: string | null
           updated_at?: string
         }
         Relationships: []
