@@ -245,7 +245,8 @@ function Row({
             className="focus-visible:ring-accent-blue/50 hover:text-accent-blue-ink text-muted-fg max-w-[12rem] truncate rounded font-bold transition-colors hover:underline focus-visible:ring-2 focus-visible:outline-none">
             {host.name}님
           </button>
-          <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(room.level)}</span>
+          {/* 난이도 — 글자만 빨강(text-brand). 프렌딩 홈 카드·방 관리 카드의 같은 칩과 맞춘다. */}
+          <span className="bg-accent-blue-soft text-brand rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(room.level)}</span>
           <span className="inline-flex items-center gap-1">
             <Users aria-hidden className="size-3" />
             {room.participants}/{room.capacity}명

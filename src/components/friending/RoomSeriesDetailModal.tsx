@@ -185,7 +185,8 @@ export default function RoomSeriesDetailModal({
                   {sameTime ? `${fmtTime(first.startMin)}~${fmtRoomEnd(first.startMin + first.durationMin)} (${first.durationMin}분)` : "회차별 상이"}
                 </dd>
                 <dt className="text-muted-fg-faint">난이도</dt>
-                <dd className="text-ink font-semibold">{roomLevelLabelKo(series.level)}</dd>
+                {/* 난이도만 빨강(text-brand) — 카드의 난이도 칩과 같은 색이라 모달에서도 눈이 같은 곳을 짚는다. */}
+                <dd className="text-brand font-semibold">{roomLevelLabelKo(series.level)}</dd>
                 <dt className="text-muted-fg-faint">정원</dt>
                 <dd className="text-ink font-semibold">회차당 {series.capacity}명</dd>
                 <dt className="text-muted-fg-faint">내 예약</dt>

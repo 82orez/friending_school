@@ -246,7 +246,8 @@ export default function PrepCourseDetailModal({
                 ).map(([label, value]) => (
                   <Fragment key={label}>
                     <dt className="text-muted-fg-faint font-semibold">{label}</dt>
-                    <dd className="text-ink font-bold break-words">{value}</dd>
+                    {/* 난이도만 빨강(text-brand) — 카드의 난이도 칩과 같은 색이라 모달에서도 눈이 같은 곳을 짚는다. */}
+                    <dd className={cn("font-bold break-words", label === "난이도" ? "text-brand" : "text-ink")}>{value}</dd>
                   </Fragment>
                 ))}
               </dl>

@@ -403,7 +403,8 @@ function SeriesCard({
             {first ? `${fmtDateKo(first.session_date)} ~ ${fmtDateKo(last.session_date)}` : "-"} · {weekdaysLabel} · {timeLabel}
           </p>
           <p className="text-muted-fg-faint mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-            <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(series.level)}</span>
+            {/* 난이도 — 글자만 빨강(text-brand). 프렌딩 홈 카드의 같은 칩과 맞춘다. */}
+            <span className="bg-accent-blue-soft text-brand rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(series.level)}</span>
             <span>총 {sessions.length}회차</span>
             <span>남은 {remaining.length}회차</span>
             <span className={cn("inline-flex items-center gap-1", totalReserved > 0 && "text-cta font-bold")}>

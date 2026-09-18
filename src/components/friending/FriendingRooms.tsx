@@ -371,7 +371,8 @@ function SeriesCard({
         <span className="bg-cta/10 text-cta rounded-full px-2 py-0.5">
           총 {sessions.length}회차 · {weekdaysLabelOf(sessions.map((s) => s.sessionDate))}
         </span>
-        <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5">{roomLevelLabelKo(series.level)}</span>
+        {/* 난이도 — 글자만 빨강(text-brand). 배경은 옆의 회차·요일 칩과 구분되도록 연파랑 그대로 둔다. */}
+        <span className="bg-accent-blue-soft text-brand rounded-full px-2 py-0.5">{roomLevelLabelKo(series.level)}</span>
       </p>
 
       <dl className="text-muted-fg mt-2 grid grid-cols-[3.5rem_1fr] gap-x-2 gap-y-1 text-[13px]">

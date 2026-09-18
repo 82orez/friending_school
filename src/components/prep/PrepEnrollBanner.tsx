@@ -214,7 +214,8 @@ export default function PrepEnrollBanner({
                   <span className="text-accent-blue-ink bg-accent-blue-soft/60 rounded-full px-2.5 py-0.5 text-[11.5px] font-bold">
                     매월 {PREP_SESSION_COUNT}회
                   </span>
-                  <span className="text-progress bg-brand/10 rounded-full px-2.5 py-0.5 text-[11.5px] font-bold">{roomLevelLabelKo(c.level)}</span>
+                  {/* 난이도 — 글자만 빨강(text-brand). 연습방·샤우팅의 모든 난이도 표시가 같은 색이다. */}
+                  <span className="text-brand bg-brand/10 rounded-full px-2.5 py-0.5 text-[11.5px] font-bold">{roomLevelLabelKo(c.level)}</span>
                 </div>
 
                 {/* 비교 항목은 한 줄 요약 대신 dl 리스트 — 강좌가 여럿일 때 기간·시간·수업일·수강료가

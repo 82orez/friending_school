@@ -91,7 +91,8 @@ export default function PrepCourseInfoModal({ course, onClose }: { course: Admin
             {rows.map(([label, value]) => (
               <Fragment key={label}>
                 <dt className="text-muted-fg-faint">{label}</dt>
-                <dd className="text-ink font-semibold break-words whitespace-pre-wrap">{value}</dd>
+                {/* 난이도만 빨강(text-brand) — 앱 전체의 난이도 표시가 같은 색이다. */}
+                <dd className={cn("font-semibold break-words whitespace-pre-wrap", label === "난이도" ? "text-brand" : "text-ink")}>{value}</dd>
               </Fragment>
             ))}
           </dl>
