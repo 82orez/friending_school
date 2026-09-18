@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Loader2, Pencil, Trash2, Users } from "lucide-react";
+import { CalendarDays, ChevronRight, Loader2, Pencil, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
+import { ko as koLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { fmtTime, formatDateKo } from "@/lib/availability";
 import { canEnterClass, kstDateMinToMs } from "@/lib/classtime";
 import { fmtRoomEnd, roomsOverlap, type RoomSlot } from "@/lib/room-time";
-import { addDays, fmtDateKo, fmtDateShort, kstToday } from "@/lib/date-kst";
+import { addDays, fmtDateKo, fmtDateKoDow, fmtDateShort, fromLocalDate, kstToday, toLocalDate, weekdayOf } from "@/lib/date-kst";
 import { weekdaysLabelOf } from "@/lib/room-series";
 import { ROOM_TOPIC_MAX } from "@/data/room-series";
 import EnterRoomButton from "@/components/friending/EnterRoomButton";
@@ -19,6 +20,8 @@ import { roomLevelLabelKo } from "@/data/room-levels";
 import { createRoomSeries, deleteRoom, deleteRoomSeries, updateRoomSeries, updateRoomSession } from "@/app/friender/room-actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
@@ -367,6 +370,11 @@ function SeriesCard({
   // 정원 하한 — 아직 시작하지 않은 회차 중 가장 많이 예약된 인원.
   const maxReserved = Math.max(0, ...sessions.filter((r) => startMsOf(r) > now).map((r) => r.participants));
 
+  // 시리즈의 주간 스케줄 = **회차 날짜에서 파생**(컬럼이 없다 — weekdaysLabelOf와 같은 방식). 개설 폼의
+  // `form.weekdays`에 대응하며, 회차를 옮길 수 있는 요일의 전부다.
+  const weekdaysLabel = weekdaysLabelOf(sessions.map((r) => r.session_date));
+  const seriesWeekdays = useMemo(() => Array.from(new Set(sessions.map((r) => weekdayOf(r.session_date)))), [sessions]);
+
   // 시각이 회차마다 다를 수 있다(회차 개별 수정) — 다르면 대표 시각 대신 "회차별 상이"로 알린다.
   const sameTime = sessions.every((r) => r.start_min === first.start_min && r.duration_min === first.duration_min);
   const timeLabel = sameTime ? `${fmtTime(first.start_min)}~${fmtRoomEnd(first.start_min + first.duration_min)}` : "회차별 상이";
@@ -388,8 +396,7 @@ function SeriesCard({
             <h4 className="text-ink truncate text-base font-extrabold">{series.title}</h4>
           </div>
           <p className="text-muted-fg mt-1 text-xs">
-            {first ? `${fmtDateKo(first.session_date)} ~ ${fmtDateKo(last.session_date)}` : "-"} ·{" "}
-            {weekdaysLabelOf(sessions.map((r) => r.session_date))} · {timeLabel}
+            {first ? `${fmtDateKo(first.session_date)} ~ ${fmtDateKo(last.session_date)}` : "-"} · {weekdaysLabel} · {timeLabel}
           </p>
           <p className="text-muted-fg-faint mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
             <span className="bg-accent-blue-soft text-accent-blue-ink rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(series.level)}</span>
@@ -470,6 +477,10 @@ function SeriesCard({
                   onChange={onEditFields}
                   today={today}
                   maxDate={maxDate}
+                  allowedWeekdays={seriesWeekdays}
+                  weekdaysLabel={weekdaysLabel}
+                  // 같은 시리즈의 다른 회차 날짜 — 겹쳐 놓으면 저장이 겹침 검사에 걸리므로 애초에 못 고르게 한다.
+                  usedDates={sessions.filter((x) => x.id !== r.id).map((x) => x.session_date)}
                   disabled={pending}
                   lockSchedule={r.participants > 0 || r.noShows > 0}
                 />
@@ -616,6 +627,9 @@ function SessionFieldsEditor({
   onChange,
   today,
   maxDate,
+  allowedWeekdays,
+  weekdaysLabel,
+  usedDates,
   disabled,
   lockSchedule,
 }: {
@@ -623,27 +637,64 @@ function SessionFieldsEditor({
   onChange: (f: SessionFields) => void;
   today: string;
   maxDate: string;
+  // 시리즈가 쓰는 요일(개설 폼의 form.weekdays에 대응) — 회차는 **같은 요일 안에서만** 옮긴다.
+  allowedWeekdays: number[];
+  weekdaysLabel: string; // "월·수·금"
+  usedDates: string[]; // 같은 시리즈의 다른 회차 날짜
   disabled?: boolean;
   // 예약자가 있는 회차 — 날짜·시각·진행 시간만 잠근다(주제는 계속 수정 가능).
   lockSchedule?: boolean;
 }) {
+  const [dateOpen, setDateOpen] = useState(false);
   const set = (patch: Partial<SessionFields>) => onChange({ ...fields, ...patch });
   const selectClass = "border-rule focus:border-accent-blue h-10 rounded-md border bg-white px-3 text-sm outline-none disabled:opacity-60";
 
+  // 개설 폼의 isPickable과 같은 규칙(같은 요일 + 오늘~+90일)에 **중복 날짜 제외**를 더한 것.
+  const isPickable = (key: string) => key >= today && key <= maxDate && allowedWeekdays.includes(weekdayOf(key)) && !usedDates.includes(key);
+
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <label className="flex flex-col gap-1">
-        <span className="text-muted-fg-faint text-xs font-semibold">수업 날짜</span>
-        <input
-          type="date"
-          value={fields.sessionDate}
-          min={today}
-          max={maxDate}
-          disabled={disabled || lockSchedule}
-          onChange={(e) => set({ sessionDate: e.target.value })}
-          className={selectClass}
-        />
-      </label>
+      {/* ⚠️ <label>로 감싸지 않는다 — 트리거가 버튼이라 라벨 클릭이 팝오버를 한 번 더 토글한다. */}
+      <div className="flex flex-col gap-1">
+        <span id="session-date-label" className="text-muted-fg-faint text-xs font-semibold">
+          수업 날짜
+        </span>
+        <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          <PopoverTrigger
+            type="button"
+            aria-labelledby="session-date-label"
+            disabled={disabled || lockSchedule}
+            className={cn(selectClass, "flex items-center justify-between gap-2 text-left")}>
+            <span>{fmtDateKoDow(fields.sessionDate)}</span>
+            <CalendarDays aria-hidden className="text-muted-fg-faint size-4 shrink-0" />
+          </PopoverTrigger>
+          {/* 기본 w-72라 달력 폭에 맞춰 덮어쓴다. 달력 옵션은 개설 폼과 동일하게 — 두 화면이 같아 보여야 한다. */}
+          <PopoverContent align="start" className="w-auto p-2">
+            <Calendar
+              mode="single"
+              selected={toLocalDate(fields.sessionDate)}
+              onSelect={(d) => {
+                if (!d) return; // 선택된 날짜를 다시 누르면 undefined — 회차는 날짜가 반드시 있어야 하므로 무시
+                set({ sessionDate: fromLocalDate(d) });
+                setDateOpen(false);
+              }}
+              defaultMonth={toLocalDate(fields.sessionDate)}
+              startMonth={toLocalDate(today)}
+              endMonth={toLocalDate(maxDate)}
+              disabled={(d: Date) => !isPickable(fromLocalDate(d))}
+              locale={koLocale}
+              weekStartsOn={0}
+              showOutsideDays={false}
+              formatters={{ formatWeekdayName: (d: Date) => d.toLocaleDateString("ko-KR", { weekday: "short" }) }}
+              modifiers={{ sunday: { dayOfWeek: [0] }, saturday: { dayOfWeek: [6] } }}
+              modifiersClassNames={{ sunday: "!text-brand", saturday: "!text-accent-blue-ink" }}
+            />
+          </PopoverContent>
+        </Popover>
+        {!lockSchedule && (
+          <p className="text-muted-fg-faint text-xs">{weekdaysLabel}요일 중에서만 옮길 수 있어요. 이미 있는 회차 날짜는 고를 수 없습니다.</p>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         {/* 시·분 두 컨트롤이라 <label>로 감싸지 않는다 — 각각 aria-label을 준다. */}

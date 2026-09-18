@@ -62,6 +62,12 @@ export function toLocalDate(dateStr: string): Date {
   return new Date(y, m - 1, d);
 }
 
+// **로컬 Date → YYYY-MM-DD**. `toLocalDate`의 역함수로, 캘린더가 돌려준 Date를 날짜 키로 바꿀 때 쓴다.
+// ⚠️ `toDateStr`(=toISOString) 금지 — 로컬 자정을 UTC로 환산하면 KST에서 하루 밀린다.
+export function fromLocalDate(d: Date): string {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
 // 일자(YYYY-MM-DD)가 걸친 **달 수** — 캘린더 `numberOfMonths`용. 빈 배열이면 1.
 // ⚠️ Date를 만들지 않는다 — 문자열에서 연·월만 잘라 센다(UTC 파싱이 끼면 KST에서 월 경계가 밀린다).
 export function monthsSpannedOf(dates: string[]): number {

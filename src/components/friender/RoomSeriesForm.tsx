@@ -7,7 +7,7 @@ import { ko as koLocale } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { fmtTime } from "@/lib/availability";
 import { fmtRoomEnd, roomsOverlap, type RoomSlot } from "@/lib/room-time";
-import { addDays, fmtDateKo, fmtDateShort, kstToday, monthsSpannedOf, toLocalDate, weekdayOf } from "@/lib/date-kst";
+import { addDays, fmtDateKo, fmtDateShort, fromLocalDate, kstToday, monthsSpannedOf, toLocalDate, weekdayOf } from "@/lib/date-kst";
 import { buildWeeklySessions, weekdaysLabelOf } from "@/lib/room-series";
 import { ROOM_DEFAULT_WEEKS, ROOM_TOPIC_MAX, ROOM_WEEKDAYS, ROOM_WEEK_OPTIONS } from "@/data/room-series";
 import { ROOM_LEVELS, DEFAULT_ROOM_LEVEL, roomLevelLabelKo } from "@/data/room-levels";
@@ -59,9 +59,6 @@ const DEFAULT_DURATION = 40;
 const MAX_AHEAD_DAYS = 90; // 서버 room-actions.ts의 ROOM_MAX_AHEAD_DAYS와 같은 값
 
 const pad2 = (n: number): string => String(n).padStart(2, "0");
-
-// ⚠️ react-day-picker가 주는 Date는 로컬 타임존이다 — toISOString()으로 키를 만들면 KST에서 하루 밀린다.
-const toKey = (d: Date): string => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 
 type Fields = {
   title: string;
@@ -156,7 +153,7 @@ export default function RoomSeriesForm({
 
   const onSelectDates = (next: Date[] | undefined) => {
     // 비활성 날짜는 캘린더가 콜백을 주지 않지만, 같은 술어를 한 번 더 건다(기존 `k >= today` 필터의 자리).
-    applyDates((next ?? []).map(toKey).filter(isPickable));
+    applyDates((next ?? []).map(fromLocalDate).filter(isPickable));
   };
 
   const selectedDates = useMemo(() => dates.map(toLocalDate), [dates]);
@@ -395,7 +392,7 @@ export default function RoomSeriesForm({
             endMonth={toLocalDate(maxDate)}
             numberOfMonths={monthsSpanned}
             // 다른 요일·창 밖은 전부 비활성. 과거는 시작일 min=오늘이라 자동으로 걸러진다.
-            disabled={(d: Date) => !isPickable(toKey(d))}
+            disabled={(d: Date) => !isPickable(fromLocalDate(d))}
             locale={koLocale}
             weekStartsOn={0}
             showOutsideDays={false}
