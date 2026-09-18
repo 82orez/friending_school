@@ -79,7 +79,11 @@ export default function EnterZoomButton({
 
       {withGuide && (
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-          <AlertDialogContent>
+          {/* ⚠️ z-[130] 필수 — 이 버튼은 **모달 안에서도** 쓰인다(프렌딩 홈의 RoomSeriesDetailModal:
+              오버레이 z-[110]·패널 z-[120]). 기본 z-50이면 안내 다이얼로그가 패널 **뒤에** 떠서,
+              참가자가 「입장하기」를 눌러도 아무 일도 일어나지 않는 것처럼 보였다(실제 겪은 버그 —
+              안내를 건너뛰는 호스트 경로만 멀쩡해 더 헷갈렸다). 저장소 공통 규약(PrepCourseBoard 등)과 같은 층. */}
+          <AlertDialogContent className="z-[130]">
             <AlertDialogHeader>
               <AlertDialogTitle>{guideTitle}</AlertDialogTitle>
               <AlertDialogDescription>
