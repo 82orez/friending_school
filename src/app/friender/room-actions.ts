@@ -148,7 +148,7 @@ function validateSessions(
 
 /* ===== 시간 겹침 ===== */
 
-type RoomRow = { id: string; title: string; session_date: string; start_min: number; duration_min: number };
+type RoomRow = { id: string; title: string; session_date: string; start_min: number; duration_min: number; topic?: string | null };
 
 // 같은 프렌더의 다른 방과 시간이 겹치는지 검사 — 프렌더는 몸이 하나고 두 방의 입장 링크가 같은
 // zoom_url이라, 겹치면 참가자가 뒤섞인다.
@@ -217,11 +217,40 @@ async function countParticipantsByRoom(admin: ReturnType<typeof createAdminClien
 async function loadSeriesRows(admin: ReturnType<typeof createAdminClient>, userId: string, key: string): Promise<RoomRow[]> {
   const { data } = await admin
     .from("friender_rooms")
-    .select("id, title, session_date, start_min, duration_min")
+    .select("id, title, session_date, start_min, duration_min, topic")
     .eq("friender_id", userId)
     .or(`series_id.eq.${key},and(id.eq.${key},series_id.is.null)`)
     .order("session_date", { ascending: true });
   return (data ?? []) as RoomRow[];
+}
+
+/* ===== 회차 주제 재배치 ===== */
+
+// 주제는 **회차 번호에 귀속**된다(개설 폼 RoomSeriesForm과 같은 모델) — 날짜를 옮겨 순서가 바뀌면
+// 주제가 행을 따라가 1회차에 2번째 주제가 붙는다(실제 겪은 버그). 그래서 날짜를 고친 뒤
+// **남은 회차의 주제를 새 날짜 순서에 맞춰 다시 붙인다**.
+// ⚠️ 대상은 **아직 시작하지 않은 회차만**이다 — 지난 회차의 주제는 기록이라 소급해서 바꾸지 않는다
+//    (updateRoomSeries의 "미시작 회차만" 규칙과 같은 경계).
+const bySchedule = (a: RoomRow, b: RoomRow) => a.session_date.localeCompare(b.session_date) || a.start_min - b.start_min || a.id.localeCompare(b.id);
+
+function repackTopics(
+  rows: RoomRow[],
+  now: number,
+  edited: { id: string; sessionDate: string; startMin: number; topic: string | null },
+): Map<string, string | null> {
+  const remaining = rows.filter((r) => kstDateMinToMs(r.session_date, r.start_min) > now);
+  // 수정 **전** 순서의 주제 — 편집 중인 회차는 사용자가 방금 입력한 값으로 갈아끼운다
+  // (그 회차 번호의 주제를 고친 것이므로, 행이 아니라 자리에 남는다).
+  const topics = [...remaining].sort(bySchedule).map((r) => (r.id === edited.id ? edited.topic : (r.topic ?? null)));
+
+  // 수정 **후** 순서 — 편집 중인 회차만 새 날짜·시각으로 바꿔 다시 정렬한다.
+  const after = remaining
+    .map((r) => (r.id === edited.id ? { ...r, session_date: edited.sessionDate, start_min: edited.startMin } : r))
+    .sort(bySchedule);
+
+  const out = new Map<string, string | null>();
+  after.forEach((r, i) => out.set(r.id, topics[i] ?? null));
+  return out;
 }
 
 /* ===== 액션 ===== */
@@ -330,7 +359,8 @@ export async function updateRoomSeries(seriesKey: string, patch: RoomSeriesPatch
 export async function updateRoomSession(id: string, patch: RoomSessionPatch): Promise<RoomActionResult> {
   const userId = await requireFriender();
   if (!userId) return { ok: false, error: "권한이 없습니다." };
-  if (!id) return { ok: false, error: "잘못된 요청입니다." };
+  // ⚠️ uuid 검증 필수 — 아래 loadSeriesRows가 이 값을 PostgREST `.or()` 필터 문자열에 넣는다(필터 주입 차단).
+  if (!id || !isUuid(id)) return { ok: false, error: "잘못된 요청입니다." };
 
   const time = validateTime(patch?.startMin, patch?.durationMin);
   if (time.error || !time.values) return { ok: false, error: time.error ?? "잘못된 요청입니다." };
@@ -344,11 +374,11 @@ export async function updateRoomSession(id: string, patch: RoomSessionPatch): Pr
   // 이미 시작한 회차는 수정 불가(삭제만 허용) — 관리 화면의 '지난 회차' 규칙과 동일.
   const { data: cur } = await admin
     .from("friender_rooms")
-    .select("session_date, start_min, duration_min")
+    .select("session_date, start_min, duration_min, series_id")
     .eq("id", id)
     .eq("friender_id", userId)
     .maybeSingle();
-  const room = cur as { session_date?: string; start_min?: number; duration_min?: number } | null;
+  const room = cur as { session_date?: string; start_min?: number; duration_min?: number; series_id?: string | null } | null;
   if (!room) return { ok: false, error: "회차를 찾을 수 없습니다. 목록을 새로고침해 주세요." };
   if (kstDateMinToMs(room.session_date, room.start_min) <= Date.now()) return { ok: false, error: "이미 시작된 회차는 수정할 수 없습니다." };
 
@@ -372,10 +402,20 @@ export async function updateRoomSession(id: string, patch: RoomSessionPatch): Pr
   );
   if (conflict) return { ok: false, error: overlapError(conflict) };
 
+  // 남은 회차의 주제를 새 날짜 순서에 맞춰 다시 붙인다(주제는 회차 번호 귀속 — repackTopics 주석 참조).
+  // 단발 방(series_id = null)은 자기 id가 곧 시리즈 키라 같은 경로로 처리된다(결과는 자기 자신 1건).
+  const siblings = await loadSeriesRows(admin, userId, room.series_id ?? id);
+  const repacked = repackTopics(siblings, Date.now(), {
+    id,
+    sessionDate: next.date,
+    startMin: time.values.startMin,
+    topic: next.topic,
+  });
+
   const { error } = await admin
     .from("friender_rooms")
     .update({
-      topic: next.topic,
+      topic: repacked.has(id) ? (repacked.get(id) ?? null) : next.topic,
       session_date: next.date,
       start_min: time.values.startMin,
       duration_min: time.values.durationMin,
@@ -383,6 +423,29 @@ export async function updateRoomSession(id: string, patch: RoomSessionPatch): Pr
     .eq("id", id)
     .eq("friender_id", userId);
   if (error) return { ok: false, error: "수정 중 문제가 발생했습니다." };
+
+  // 나머지 회차는 주제만 — 실제로 바뀐 것만 모아 **같은 값끼리 묶어** 한 번에 쓴다
+  // (한 칸 밀리면 남은 회차 전부가 바뀔 수 있는데, 빈 주제가 많아 보통 몇 건으로 줄어든다).
+  const groups = new Map<string, { topic: string | null; ids: string[] }>();
+  for (const r of siblings) {
+    if (r.id === id || !repacked.has(r.id)) continue;
+    const topic = repacked.get(r.id) ?? null;
+    if ((r.topic ?? null) === topic) continue;
+    const key = topic ?? " ";
+    const g = groups.get(key) ?? { topic, ids: [] };
+    g.ids.push(r.id);
+    groups.set(key, g);
+  }
+  if (groups.size > 0) {
+    const results = await Promise.all(
+      Array.from(groups.values()).map((g) => admin.from("friender_rooms").update({ topic: g.topic }).eq("friender_id", userId).in("id", g.ids)),
+    );
+    // ⚠️ 일정 update와 원자적이지 않다 — 여기서 실패하면 일정은 이미 저장된 상태라 그렇게 알린다.
+    if (results.some((r) => r.error)) {
+      revalidateRooms();
+      return { ok: false, error: "일정은 저장했지만 회차 주제 재배치에 실패했습니다. 목록을 새로고침한 뒤 확인해 주세요." };
+    }
+  }
 
   revalidateRooms();
   return { ok: true };
