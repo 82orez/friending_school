@@ -432,6 +432,80 @@ export type Database = {
         }
         Relationships: []
       }
+      friender_room_board_comments: {
+        Row: {
+          author_name: string
+          body: string
+          created_at: string
+          id: string
+          is_host: boolean
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          author_name: string
+          body: string
+          created_at?: string
+          id?: string
+          is_host?: boolean
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          author_name?: string
+          body?: string
+          created_at?: string
+          id?: string
+          is_host?: boolean
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "friender_room_board_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "friender_room_board_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friender_room_board_posts: {
+        Row: {
+          author_name: string
+          body: string
+          created_at: string
+          id: string
+          is_host: boolean
+          kind: Database["public"]["Enums"]["room_board_post_kind"]
+          series_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author_name: string
+          body: string
+          created_at?: string
+          id?: string
+          is_host?: boolean
+          kind?: Database["public"]["Enums"]["room_board_post_kind"]
+          series_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author_name?: string
+          body?: string
+          created_at?: string
+          id?: string
+          is_host?: boolean
+          kind?: Database["public"]["Enums"]["room_board_post_kind"]
+          series_key?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       friender_room_participants: {
         Row: {
           created_at: string
@@ -1341,6 +1415,7 @@ export type Database = {
       prep_board_post_kind: "공지" | "일반"
       prep_course_status: "작성중" | "신청" | "승인" | "거절"
       prep_enrollment_status: "입금대기" | "수강확정" | "취소"
+      room_board_post_kind: "공지" | "일반"
       teacher_application_status: "신청" | "승인" | "거절"
       user_role: "admin" | "teacher" | "student" | "friender" | "friender_plus"
     }
@@ -1482,6 +1557,7 @@ export const Constants = {
       prep_board_post_kind: ["공지", "일반"],
       prep_course_status: ["작성중", "신청", "승인", "거절"],
       prep_enrollment_status: ["입금대기", "수강확정", "취소"],
+      room_board_post_kind: ["공지", "일반"],
       teacher_application_status: ["신청", "승인", "거절"],
       user_role: ["admin", "teacher", "student", "friender", "friender_plus"],
     },

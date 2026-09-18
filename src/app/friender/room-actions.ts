@@ -499,6 +499,12 @@ export async function deleteRoomSeries(seriesKey: string): Promise<RoomActionRes
   if (error) return { ok: false, error: "삭제 중 문제가 발생했습니다." };
   if (!deleted || deleted.length === 0) return { ok: false, error: "연습방을 찾을 수 없습니다. 목록을 새로고침해 주세요." };
 
+  // 게시판 정리 — ⚠️ `series_key`는 FK가 아니라(시리즈에 부모 테이블이 없다) cascade가 없다.
+  //    best-effort: 실패해도 삭제는 성공으로 본다. 공개 읽기 정책이 "그 키의 방이 있을 때"만 통과시켜
+  //    남은 행은 이미 아무에게도 보이지 않는다(댓글은 post FK cascade).
+  const { error: boardError } = await admin.from("friender_room_board_posts").delete().eq("series_key", seriesKey);
+  if (boardError) console.error("[deleteRoomSeries] 게시판 정리 실패", boardError);
+
   revalidateRooms();
   return { ok: true };
 }

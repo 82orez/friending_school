@@ -33,3 +33,11 @@ export const ROOM_MAX_SESSIONS = ROOM_MAX_WEEKS * 7;
 
 // 회차별 주제 — 무료 연습방이라 **비워 둬도 개설된다**(샤우팅은 20개 전부 필수).
 export const ROOM_TOPIC_MAX = 100;
+
+// 연습방 게시판 — 상세 모달 「게시판」 탭. ⚠️ 길이 2종은 **DB check와 같은 값**이고
+// 클라 maxLength와 서버 slice가 함께 본다(샤우팅 PREP_BOARD_* 와 같은 규약·같은 값).
+export const ROOM_BOARD_POST_MAX = 1000;
+export const ROOM_BOARD_COMMENT_MAX = 300;
+
+// 일반 글 커서 페이징 크기(공지는 전량 내려온다).
+export const ROOM_BOARD_PAGE_SIZE = 20;
