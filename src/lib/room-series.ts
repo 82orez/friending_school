@@ -1,4 +1,4 @@
-import { ROOM_WEEKDAYS } from "@/data/room-series";
+import { ROOM_WEEKDAYS, roomWeekdayOrder } from "@/data/room-series";
 import { addDays, weekdayOf } from "@/lib/date-kst";
 
 // 연습방 시리즈의 회차 날짜 계산 — 개설 폼과 서버 검증이 같은 규칙을 쓰도록 한 곳에 모은다.
@@ -28,7 +28,9 @@ export function seriesKeyOf(row: { id: string; series_id?: string | null }): str
 }
 
 // "월·수·금" — 컬럼이 아니라 **회차 날짜에서 파생**한다(회차를 개별 삭제·이동해도 표시가 따라온다).
+// ⚠️ 정렬은 getDay() 값이 아니라 `roomWeekdayOrder`(월 시작) — 요일 선택 버튼과 같은 순서라야
+//    "월·수·일"처럼 읽힌다(값으로 정렬하면 일요일이 맨 앞으로 튄다).
 export function weekdaysLabelOf(dates: string[]): string {
-  const days = Array.from(new Set(dates.map(weekdayOf))).sort((a, b) => a - b);
+  const days = Array.from(new Set(dates.map(weekdayOf))).sort((a, b) => roomWeekdayOrder(a) - roomWeekdayOrder(b));
   return days.map((d) => ROOM_WEEKDAYS.find((w) => w.value === d)?.ko ?? "").join("·");
 }

@@ -233,8 +233,9 @@ function Row({
         <p className="text-ink truncate text-sm font-bold">{room.title}</p>
         <p className="text-muted-fg mt-0.5 text-xs">
           {formatDateKo(room.sessionDate)} · {fmtTime(room.startMin)}~{fmtRoomEnd(room.startMin + room.durationMin)}
-          {/* 회차 주제 — 시리즈 연습방은 회차마다 주제가 따로 있다(없으면 줄 자체를 두지 않는다). */}
-          {room.topic?.trim() && <span className="text-muted-fg-faint"> · {room.topic.trim()}</span>}
+          {/* 회차 주제 — 시리즈 연습방은 회차마다 주제가 따로 있다. 선택 입력이라 비어 있으면
+              「주제 미정」으로 채운다(홈 상세 모달·프렌더 방 관리 행과 같은 문구). */}
+          <span className="text-muted-fg-faint"> · {room.topic?.trim() || "주제 미정"}</span>
         </p>
         <p className="text-muted-fg-faint mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
           <button

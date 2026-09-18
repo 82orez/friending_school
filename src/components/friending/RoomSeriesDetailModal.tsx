@@ -252,7 +252,9 @@ function SessionRow({
             <Users aria-hidden className="size-3" />
             {session.participants}/{capacity}명
           </span>
-          {session.topic?.trim() && <span className="truncate">{session.topic.trim()}</span>}
+          {/* 주제는 선택 입력이라 비어 있을 수 있다 — 자리를 비우지 않고 「주제 미정」으로 채운다
+              (행마다 항목 수가 달라지면 목록을 훑기 어렵다. 프렌더 방 관리 행과 같은 문구). */}
+          <span className={cn("truncate", !session.topic?.trim() && "text-muted-fg-faint")}>{session.topic?.trim() || "주제 미정"}</span>
         </p>
       </div>
 
