@@ -126,13 +126,21 @@ export default function RoomSeriesForm({
     regen({ ...form, weekdays });
   };
 
+  // 시작일·요일·기간이 만들어 내는 "기본 회차" = 캘린더에서 고를 수 있는 날짜의 **전부**.
+  // ⚠️ 캘린더 조정은 이 집합의 **부분집합**이어야 한다 — 다른 요일이나 운영 기간 밖 날짜를 끼워 넣으면
+  //    "매주 같은 요일에 반복"이라는 시리즈의 약속이 깨지고 weekdaysLabelOf가 엉뚱한 요일을 달고 나온다.
+  const baseDates = useMemo(() => buildWeeklySessions(form.startDate, form.weekdays, form.weeks), [form.startDate, form.weekdays, form.weeks]);
+  const baseSet = useMemo(() => new Set(baseDates), [baseDates]);
+
   const onSelectDates = (next: Date[] | undefined) => {
-    const keys = (next ?? []).map(toKey).filter((k) => k >= today);
+    // 비활성 날짜는 캘린더가 콜백을 주지 않지만, 허용 집합을 한 번 더 건다(기존 `k >= today` 필터의 자리).
+    const keys = (next ?? []).map(toKey).filter((k) => baseSet.has(k));
     setDates(Array.from(new Set(keys)).sort());
   };
 
   const selectedDates = useMemo(() => dates.map(toLocalDate), [dates]);
-  const monthsSpanned = useMemo(() => monthsSpannedOf(dates), [dates]);
+  // ⚠️ `dates`가 아니라 `baseDates` 기준 — 날짜를 빼서 한 달이 통째로 비어도 그 달이 계속 보여야 다시 넣을 수 있다.
+  const monthsSpanned = useMemo(() => monthsSpannedOf(baseDates), [baseDates]);
   const filledTopics = useMemo(() => dates.filter((d) => (topics[d] ?? "").trim()).length, [dates, topics]);
 
   // 시간 겹침 사전 경고 — 서버 findOverlappingRooms가 authoritative고 여기는 제출 전 안내 레이어다.
@@ -337,22 +345,26 @@ export default function RoomSeriesForm({
         </label>
       </div>
 
-      {/* 회차 캘린더 — 자동으로 채운 일자를 보여주고, 날짜를 눌러 빼거나 더한다. */}
-      {dates.length > 0 && (
+      {/* 회차 캘린더 — 자동으로 채운 일자를 보여주고, **기본 회차 안에서** 날짜를 눌러 빼거나 되돌린다.
+          ⚠️ 렌더 조건이 `dates`가 아니라 `baseDates`다: 회차를 전부 빼도 캘린더가 남아야 다시 넣을 수 있다. */}
+      {baseDates.length > 0 && (
         <div className="border-rule mt-4 rounded-xl border p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-ink text-sm font-bold">수업 일자</p>
             <p className={cn("text-sm font-bold", tooMany ? "text-brand" : "text-cta")}>총 {dates.length}회차</p>
           </div>
-          <p className="text-muted-fg-faint mt-0.5 text-xs">날짜를 눌러 빼거나 더할 수 있어요. (공휴일 제외 등)</p>
+          <p className="text-muted-fg-faint mt-0.5 text-xs">고른 요일·기간 안에서 날짜를 빼거나 다시 넣을 수 있어요. (공휴일 제외 등)</p>
 
           <Calendar
             mode="multiple"
             selected={selectedDates}
             onSelect={lock ? undefined : onSelectDates}
-            defaultMonth={selectedDates[0]}
+            defaultMonth={toLocalDate(baseDates[0])}
+            startMonth={toLocalDate(baseDates[0])}
+            endMonth={toLocalDate(baseDates[baseDates.length - 1])}
             numberOfMonths={monthsSpanned}
-            disabled={{ before: toLocalDate(today) }}
+            // 기본 회차 밖(다른 요일·기간 밖·과거)은 전부 비활성. 과거는 시작일 min=오늘이라 자동으로 걸러진다.
+            disabled={(d: Date) => !baseSet.has(toKey(d))}
             locale={koLocale}
             weekStartsOn={0}
             showOutsideDays={false}
@@ -362,9 +374,19 @@ export default function RoomSeriesForm({
             className="mt-2"
           />
 
-          <p className="text-muted-fg mt-2 text-xs">
-            {fmtDateKo(dates[0])} ~ {fmtDateKo(dates[dates.length - 1])} · {weekdaysLabelOf(dates)}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-muted-fg text-xs">
+              {dates.length > 0
+                ? `${fmtDateKo(dates[0])} ~ ${fmtDateKo(dates[dates.length - 1])} · ${weekdaysLabelOf(dates)}`
+                : "회차를 모두 뺐어요. 날짜를 다시 눌러 주세요."}
+            </p>
+            {/* 일부만 뺀 상태에서도 노출 — 하나씩 다시 누르지 않고 자동 생성분으로 되돌린다. */}
+            {dates.length < baseDates.length && (
+              <Button type="button" variant="outline" size="sm" disabled={lock} onClick={() => setDates(baseDates)}>
+                기본 일정으로 되돌리기
+              </Button>
+            )}
+          </div>
           {tooMany && <p className="text-brand mt-2 text-xs font-bold">회차는 최대 {ROOM_MAX_SESSIONS}개까지 만들 수 있어요.</p>}
         </div>
       )}
