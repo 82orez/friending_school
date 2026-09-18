@@ -29,9 +29,10 @@ import {
 // 연습방 시리즈 개설 폼 — PrepCourseForm(샤우팅)의 구조를 이식하되 결제·심사가 없어 훨씬 짧다.
 // 흐름: 시작일 + 요일 + 기간(주)을 고르면 회차가 자동으로 채워지고, 캘린더에서 개별 조정한다.
 //
-// ⚠️ 주제는 **날짜를 키로** 들고 있는다(Record<date, topic>). 샤우팅은 주제가 '회차 번호'에
-//    귀속돼 배열 인덱스로 맞췄지만, 여기서는 topic이 방 행에 직접 붙으므로 날짜가 곧 키다
-//    — 요일을 바꿔 회차가 다시 만들어져도 살아남은 날짜의 주제는 그대로 남는다.
+// ⚠️ 주제는 **회차 번호에 귀속**된다(`topics[i]` = i+1회차). 날짜 키가 아니다 — 한때 Record<date,topic>이었는데
+//    날짜를 옮기면 주제가 날짜를 따라가 1회차에 2번째 주제가 붙었다(실제 겪은 버그). 주제는 "이 날짜에 할 이야기"가
+//    아니라 "N번째 시간에 할 이야기"라서, 일정이 바뀌면 **날짜만 갈아끼우고 주제는 제자리에 둔다**
+//    (샤우팅 PrepCourseForm과 같은 모델).
 
 // 서버 액션(createRoomSeries)이 받는 모양 그대로.
 export type RoomSeriesFormValues = {
@@ -107,10 +108,9 @@ export default function RoomSeriesForm({
     weeks: ROOM_DEFAULT_WEEKS,
   }));
   const [dates, setDates] = useState<string[]>([]);
-  const [topics, setTopics] = useState<Record<string, string>>({});
-  // 날짜를 옮기는 동안 주인을 잃은 주제들(뺀 순서 = 앞에서부터). 개수가 고정이라 "빼기"는 곧 "옮기기"의 절반이고,
-  // 두 클릭(빼기 → 넣기)에 걸쳐 일어나므로 그 사이를 이 대기열이 잇는다.
-  const [orphanTopics, setOrphanTopics] = useState<{ date: string; topic: string }[]>([]);
+  // 인덱스 = 회차-1. ⚠️ **자르지 않는다** — 기간을 줄였다 늘려도 뒤쪽 주제가 되살아난다
+  // (`dates.length`를 넘는 꼬리는 화면·제출 모두에서 무시되므로 남아 있어도 해롭지 않다).
+  const [topics, setTopics] = useState<string[]>([]);
   const [bulk, setBulk] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -125,12 +125,10 @@ export default function RoomSeriesForm({
   );
 
   // 시작일·요일·기간 중 무엇이 바뀌든 회차를 다시 만든다(캘린더 수동 조정은 그 뒤에 덮어쓴다).
-  // ⚠️ 대기열도 비운다 — 수동 배치를 통째로 버리는 동작이라, 남겨 두면 옛 주제가 엉뚱한 새 날짜에 붙는다.
-  //    살아남은 날짜의 주제가 그대로 남는 건 `topics`가 날짜 키라서 자동으로 따라오는 기존 규약.
+  // 주제는 건드리지 않는다 — 회차 번호에 붙어 있어 날짜가 통째로 바뀌어도 1회차 주제는 계속 1회차다.
   const regen = (next: Fields) => {
     setForm(next);
     setDates(buildBase(next.startDate, next.weekdays, next.weeks));
-    setOrphanTopics([]);
   };
   const set = (patch: Partial<Fields>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -151,34 +149,9 @@ export default function RoomSeriesForm({
   );
 
   // 회차 날짜 교체의 단일 창구 — 캘린더 토글과 「되돌리기」가 모두 여기를 지난다.
-  // **주제 이관**: 회차 수가 고정이라 빼기·넣기는 한 쌍의 "옮기기"다. 뺀 날짜의 주제를 대기열에 담아 뒀다가
-  // 새로 고른 날짜가 비어 있으면 붙여 준다 — ①원래 자기 날짜가 대기열에 있으면 그걸 되찾고(되돌리기·실수 복구)
-  // ②없으면 **가장 먼저 뺀 것부터**(FIFO). 두 개를 빼고 두 개를 넣으면 뺀 순서대로 짝이 맞는다.
+  // 주제는 함께 옮기지 않는다(회차 번호 귀속) — 날짜만 갈아끼우면 커리큘럼 순서가 저절로 유지된다.
   const applyDates = (nextKeys: string[]) => {
-    const keys = Array.from(new Set(nextKeys)).sort();
-    const removed = dates.filter((d) => !keys.includes(d));
-    const added = keys.filter((d) => !dates.includes(d));
-    if (removed.length === 0 && added.length === 0) return;
-
-    const nextTopics = { ...topics };
-    const queue = [...orphanTopics];
-    for (const d of removed) {
-      const topic = topics[d] ?? "";
-      delete nextTopics[d];
-      if (topic.trim()) queue.push({ date: d, topic });
-    }
-    for (const d of added) {
-      if (queue.length === 0) break;
-      if ((nextTopics[d] ?? "").trim()) continue; // 이미 주제가 있는 날짜면 건드리지 않는다
-      const own = queue.findIndex((o) => o.date === d);
-      const i = own >= 0 ? own : 0;
-      nextTopics[d] = queue[i].topic;
-      queue.splice(i, 1);
-    }
-
-    setDates(keys);
-    setTopics(nextTopics);
-    setOrphanTopics(queue);
+    setDates(Array.from(new Set(nextKeys)).sort());
   };
 
   const onSelectDates = (next: Date[] | undefined) => {
@@ -189,7 +162,7 @@ export default function RoomSeriesForm({
   const selectedDates = useMemo(() => dates.map(toLocalDate), [dates]);
   // ⚠️ `dates`가 아니라 `baseDates` 기준 — 날짜를 빼서 한 달이 통째로 비어도 그 달이 계속 보여야 다시 넣을 수 있다.
   const monthsSpanned = useMemo(() => monthsSpannedOf(baseDates), [baseDates]);
-  const filledTopics = useMemo(() => dates.filter((d) => (topics[d] ?? "").trim()).length, [dates, topics]);
+  const filledTopics = useMemo(() => dates.filter((_, i) => (topics[i] ?? "").trim()).length, [dates, topics]);
 
   // 시간 겹침 사전 경고 — 서버 findOverlappingRooms가 authoritative고 여기는 제출 전 안내 레이어다.
   const conflict = useMemo(() => {
@@ -213,9 +186,9 @@ export default function RoomSeriesForm({
       .slice(0, dates.length);
     if (lines.length === 0) return;
     setTopics((prev) => {
-      const next = { ...prev };
+      const next = [...prev];
       lines.forEach((line, i) => {
-        next[dates[i]] = line.slice(0, ROOM_TOPIC_MAX);
+        next[i] = line.slice(0, ROOM_TOPIC_MAX);
       });
       return next;
     });
@@ -233,7 +206,7 @@ export default function RoomSeriesForm({
       capacity: Number(form.capacity),
       startMin,
       durationMin: form.durationMin,
-      sessions: dates.map((date) => ({ date, topic: topics[date] ?? "" })),
+      sessions: dates.map((date, i) => ({ date, topic: topics[i] ?? "" })),
     });
   };
 
@@ -480,14 +453,22 @@ export default function RoomSeriesForm({
           </div>
 
           <ul className="mt-3 list-none space-y-2">
+            {/* ⚠️ key는 날짜가 아니라 **인덱스**다: 주제가 회차 번호에 붙어 있어 목록이 본질적으로 위치 기반이고,
+                날짜 key면 날짜를 옮길 때마다 <Input>이 remount돼 입력 포커스를 잃는다. */}
             {dates.map((date, i) => (
-              <li key={date} className="flex items-center gap-2">
+              <li key={i} className="flex items-center gap-2">
                 <span className="text-muted-fg-faint w-24 shrink-0 text-xs font-semibold">
                   {i + 1}회차 · {fmtDateShort(date)}
                 </span>
                 <Input
-                  value={topics[date] ?? ""}
-                  onChange={(e) => setTopics((prev) => ({ ...prev, [date]: e.target.value }))}
+                  value={topics[i] ?? ""}
+                  onChange={(e) =>
+                    setTopics((prev) => {
+                      const next = [...prev];
+                      next[i] = e.target.value;
+                      return next;
+                    })
+                  }
                   disabled={lock}
                   maxLength={ROOM_TOPIC_MAX}
                   placeholder="이 회차에서 나눌 주제"
