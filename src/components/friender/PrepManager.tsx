@@ -190,7 +190,7 @@ export default function PrepManager({
                 </p>
                 <p className="text-muted-fg-faint mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
                   {/* 난이도 — 글자만 빨강(text-brand). 연습방·샤우팅의 모든 난이도 표시가 같은 색이다. */}
-                  <span className="bg-accent-blue-soft text-brand rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(c.level)}</span>
+                  <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 font-bold">{roomLevelLabelKo(c.level)}</span>
                   <span>정원 {c.capacity}명</span>
                   <span>{formatWon(c.priceKrw)}</span>
                   {c.enrolled > 0 && <span className="text-cta font-bold">수강신청 {c.enrolled}명</span>}

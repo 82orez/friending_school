@@ -296,7 +296,7 @@ export default function RoomsAdminManager({ rooms }: { rooms: AdminRoom[] }) {
                       </td>
                       <td className="px-4 py-3.5 align-middle whitespace-nowrap">
                         {/* 난이도 — 글자만 빨강(text-brand). 앱 전체의 난이도 표시가 같은 색이다. */}
-                        <span className="bg-surface text-brand rounded-full px-2 py-0.5 text-xs font-bold">{roomLevelLabelKo(r.level)}</span>
+                        <span className="bg-brand/10 text-brand rounded-full px-2 py-0.5 text-xs font-bold">{roomLevelLabelKo(r.level)}</span>
                       </td>
                       <td className={cn("px-4 py-3.5 align-middle whitespace-nowrap", r.reserved > 0 ? "text-cta font-bold" : "text-muted-fg-faint")}>
                         {r.reserved}/{r.capacity}
